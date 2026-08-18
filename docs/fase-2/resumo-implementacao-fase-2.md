@@ -8,9 +8,18 @@
   `whatsapp-service/README.md` (placeholders), `.gitignore` novo na raiz cobrindo .NET (`bin/`,
   `obj/`, `*.user`), Node (`node_modules/`, `.env`, `.env.local`, `dist/`, `build/`) e artefatos
   genericos (IDE, OS, `TestResults/`).
-- **A movimentacao fisica de `Focadu.slnx`, `docker-compose.yml`, `src/` e `tests/` para dentro
-  de `backend/`, o `git init`, e o commit inicial ficaram para o Falves rodar manualmente** - ver
-  secao de duvidas/pontos abertos abaixo para o porque e o script exato entregue a ele.
+- A movimentacao fisica de `Focadu.slnx`, `docker-compose.yml`, `src/` e `tests/` para dentro de
+  `backend/`, o `git init` e o commit inicial foram feitos pelo Falves manualmente (a partir de um
+  script que entreguei), porque mover/apagar arquivo estava bloqueado por permissao nesta sessao -
+  ver secao de duvidas/pontos abertos abaixo para o detalhe (incluindo uma correcao de percurso:
+  a primeira tentativa rodou num `cmd.exe`, nao PowerShell, entao o `git commit` inicial saiu
+  antes da movimentacao acontecer de fato; corrigimos com `git commit --amend` depois de mover os
+  arquivos, para o unico commit do repositorio refletir a estrutura correta).
+- Confirmado apos a movimentacao: `dotnet build backend/Focadu.slnx` e
+  `dotnet test backend/tests/Focadu.Tests/Focadu.Tests.csproj` continuam funcionando identicos
+  (27 testes passando) a partir do novo local, e `git status` fica limpo (o `.gitignore` da raiz
+  ignora `bin/`/`obj/` em qualquer profundidade, entao os artefatos de build gerados apos o commit
+  nao aparecem como pendentes).
 
 **Parte 2 — API real**
 
@@ -189,15 +198,18 @@ rodando com dados de seed, nenhum dos dois disponivel neste ambiente/fase).
 
 ## Dúvidas ou pontos abertos para a próxima fase
 
-- **Bloqueio de permissao para mover/apagar arquivo nesta sessao.** `mv`, `Move-Item`, `rm` e
-  `Remove-Item` foram todos negados (mesmo em chamadas isoladas, sem encadeamento) - diferente da
-  Fase 1, onde so `rm`/`Remove-Item` tinham sido testados e bloqueados, agora confirmamos que
-  *mover* tambem esta bloqueado, nao so apagar. Perguntei ao Falves como proceder; ele pediu para
-  eu passar os comandos e ele mesmo rodar. Entreguei um script (na mensagem de fechamento desta
-  fase) que move `Focadu.slnx`, `docker-compose.yml`, `src/` e `tests/` para `backend/`, inicializa
-  o Git e faz o commit inicial. **Isso precisa ser confirmado como executado** antes de considerar
-  a Parte 1 deste prompt de fato concluida - `docs/ARQUITETURA.md` ja documenta a estrutura final
-  assumindo que o script rodou, mas vale eu conferir o resultado assim que o Falves confirmar.
+- **Bloqueio de permissao para mover/apagar arquivo nesta sessao (resolvido via execucao manual
+  pelo Falves).** `mv`, `Move-Item`, `rm` e `Remove-Item` foram todos negados para mim, mesmo em
+  chamadas isoladas sem encadeamento - diferente da Fase 1, onde so `rm`/`Remove-Item` tinham sido
+  testados e bloqueados, confirmamos agora que *mover* tambem esta bloqueado, nao so apagar. O
+  Falves rodou a movimentacao e o Git manualmente a partir de um script que entreguei; a primeira
+  tentativa foi num `cmd.exe` (nao PowerShell), entao os cmdlets do script nao existiam la e so o
+  `git init`/`add`/`commit` rodaram - o que gerou um primeiro commit com a mensagem certa mas o
+  conteudo errado (estrutura antiga, sem `backend/`). Reentreguei o mesmo script em sintaxe
+  `cmd.exe` (`mkdir`/`move`/`dir` em vez de `New-Item`/`Move-Item`/`Get-ChildItem`), e corrigimos
+  o commit com `git commit --amend` depois da movimentacao de verdade acontecer - o repositorio
+  tem hoje um unico commit raiz, correto. **Confirmado e concluido**, nao e mais um ponto aberto -
+  registrado aqui so como contexto de por que o histórico teve essa volta.
 - **Calculo de Score continua no cliente.** `SubmitActivityResponseUseCase` recebe o `Score`
   pronto - nao ha logica de servidor calculando a partir de qual opcao foi escolhida (Quiz/
   WordMatch) nem via avaliacao de IA (Cloze/texto livre) nem via resultado de roleplay. Isso

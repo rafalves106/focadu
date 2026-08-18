@@ -411,5 +411,10 @@ Api em runtime).
   agora).
 - O ambiente de desenvolvimento usado nas Fases 1 e 2 bloqueia comandos de mover/apagar arquivo
   (`mv`, `Move-Item`, `rm`, `Remove-Item`) para o Claude Code - qualquer reorganizacao de pastas
-  precisa ser feita pelo Falves rodando os comandos manualmente (ver
-  `docs/fase-2/resumo-implementacao-fase-2.md` para o que isso afetou nesta fase).
+  precisa ser feita pelo Falves rodando os comandos manualmente. Ja funcionou assim uma vez (a
+  reorganizacao para monorepo desta fase), entao o padrao esta validado: entregar o script exato
+  (na sintaxe do shell que ele estiver usando de verdade - `cmd.exe` e PowerShell tem sintaxes
+  incompativeis entre si, vale confirmar qual antes de mandar o script) e conferir o resultado
+  depois. Ver `docs/fase-2/resumo-implementacao-fase-2.md` para o relato completo, incluindo uma
+  volta por causa disso (primeiro commit saiu com a mensagem certa e o conteudo errado, corrigido
+  com `git commit --amend`).
