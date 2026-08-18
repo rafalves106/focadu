@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Focadu.Api/Focadu.Api.csproj" />
+    <Project Path="src/Focadu.Application/Focadu.Application.csproj" />
+    <Project Path="src/Focadu.Domain/Focadu.Domain.csproj" />
+    <Project Path="src/Focadu.Infrastructure/Focadu.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Focadu.Tests/Focadu.Tests.csproj" />
+  </Folder>
+</Solution>

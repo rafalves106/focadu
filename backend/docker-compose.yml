@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: focadu-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: focadu
+      POSTGRES_USER: focadu
+      POSTGRES_PASSWORD: focadu
+    ports:
+      - "5432:5432"
+    volumes:
+      - focadu-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U focadu -d focadu"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  focadu-postgres-data:

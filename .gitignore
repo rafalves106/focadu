@@ -1,0 +1,23 @@
+## .NET (backend/)
+bin/
+obj/
+*.user
+
+## Node (frontend/, whatsapp-service/)
+node_modules/
+.env
+.env.local
+dist/
+build/
+
+## IDE
+.vs/
+.vscode/
+*.suo
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Test results
+TestResults/

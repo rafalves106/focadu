@@ -1,0 +1,57 @@
+@Focadu.Api_HostAddress = http://localhost:5282
+@courseId = 00000000-0000-0000-0000-000000000000
+@weeklyId = 00000000-0000-0000-0000-000000000000
+@dailyId = 00000000-0000-0000-0000-000000000000
+@activityId = 00000000-0000-0000-0000-000000000000
+
+GET {{Focadu.Api_HostAddress}}/health
+Accept: application/json
+
+###
+
+GET {{Focadu.Api_HostAddress}}/api/courses
+Accept: application/json
+
+###
+
+GET {{Focadu.Api_HostAddress}}/api/courses/{{courseId}}
+Accept: application/json
+
+###
+
+GET {{Focadu.Api_HostAddress}}/api/weeklies/{{weeklyId}}
+Accept: application/json
+
+###
+
+GET {{Focadu.Api_HostAddress}}/api/dailies/{{dailyId}}
+Accept: application/json
+
+###
+
+GET {{Focadu.Api_HostAddress}}/api/today
+Accept: application/json
+
+###
+
+POST {{Focadu.Api_HostAddress}}/api/dailies/{{dailyId}}/start
+Accept: application/json
+
+###
+
+POST {{Focadu.Api_HostAddress}}/api/dailies/{{dailyId}}/activities/{{activityId}}/responses
+Content-Type: application/json
+Accept: application/json
+
+{
+  "score": 85,
+  "transcript": null,
+  "aiFeedback": null
+}
+
+###
+
+POST {{Focadu.Api_HostAddress}}/api/dailies/{{dailyId}}/complete
+Accept: application/json
+
+###

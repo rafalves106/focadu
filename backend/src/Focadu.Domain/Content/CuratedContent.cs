@@ -1,0 +1,38 @@
+using Focadu.Domain.Common;
+using Focadu.Domain.Enums;
+using Focadu.Domain.Exceptions;
+
+namespace Focadu.Domain.Content;
+
+/// <summary>Conteúdo curado (leitura, vídeo ou diagrama) associado a uma Weekly.</summary>
+public class CuratedContent : Entity
+{
+    public Guid WeeklyId { get; private set; }
+    public CuratedContentType Type { get; private set; }
+    public string Title { get; private set; }
+
+    /// <summary>Link externo (ex: vídeo, diagrama hospedado fora). Nulo quando o conteúdo é texto próprio (BodyText).</summary>
+    public string? ExternalUrl { get; private set; }
+
+    /// <summary>Texto de leitura escrito por nós. Nulo quando o conteúdo é apenas um link externo.</summary>
+    public string? BodyText { get; private set; }
+
+    private CuratedContent()
+    {
+        Title = string.Empty;
+    }
+
+    public CuratedContent(Guid weeklyId, CuratedContentType type, string title, string? externalUrl, string? bodyText)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            throw new DomainException("Título do conteúdo é obrigatório.");
+        if (string.IsNullOrWhiteSpace(externalUrl) && string.IsNullOrWhiteSpace(bodyText))
+            throw new DomainException("Um CuratedContent precisa ter ExternalUrl ou BodyText preenchido.");
+
+        WeeklyId = weeklyId;
+        Type = type;
+        Title = title;
+        ExternalUrl = externalUrl;
+        BodyText = bodyText;
+    }
+}
