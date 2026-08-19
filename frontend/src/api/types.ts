@@ -20,6 +20,10 @@ export type TerminalQuality = (typeof TerminalQuality)[keyof typeof TerminalQual
 export type DailyStatus = 0 | 1 | 2 | 3; // Locked, Available, InProgress, Completed
 export type CourseStatus = 0 | 1 | 2; // Draft, Active, Archived
 export type CuratedContentType = 0 | 1 | 2; // Reading, Video, Diagram
+
+// Nomes que a Api de autoria espera no campo `type` do request (case-insensitive, ver
+// CreateCuratedContentUseCase.ParseType) - a mesma ordem do enum acima.
+export const CURATED_CONTENT_TYPE_NAMES = ['Reading', 'Video', 'Diagram'] as const;
 export type WeeklyProjectStatus = 0 | 1 | 2; // Pending, Submitted, Evaluated
 
 // IsCorrect vem nulo ate a atividade ter uma ActivityResponse - gabarito escondido antes de

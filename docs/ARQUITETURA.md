@@ -4,8 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 5 - Correcao de Ambiguidade + Captura e
-> Avaliacao de Voz**.
+> Ultima fase que atualizou este documento: **Fase 6 - Tela de Autoria de Conteudo Curado**.
 
 ## Visao geral do projeto
 
@@ -525,7 +524,7 @@ de testes em vez de silenciosamente virar um 400 generico em producao.
   o campo esperado) agora sempre usa o formato padrao da Api (`requisicao_invalida`, 400) - ver
   `BadHttpRequestException` na secao de tratamento de erro acima.
 
-### Autoria de conteudo curado (Fase 4)
+### Autoria de conteudo curado (Fase 4, tela de UI na Fase 6)
 
 `POST /api/curated-content` e `PUT /api/curated-content/{id}` sao os **unicos** endpoints de
 autoria de conteudo da Api - Course/Monthly/Weekly/Daily/DailyActivity continuam so via seed (ver
@@ -545,8 +544,17 @@ conteudo curado (leituras/videos/diagramas) em si.
 - Codes: `weekly_id_obrigatorio`, `titulo_obrigatorio` (400, `Program.cs`), `tipo_invalido`,
   `conteudo_obrigatorio` (400, caso de uso), `semana_nao_encontrada`, `conteudo_nao_encontrado`
   (404).
-- Usado na pratica pra carregar o texto completo das 4 leituras da Semana 1 por cima dos
-  placeholders do seed - ver `docs/fase-4/resumo-implementacao-fase-4.md`.
+- **Listagem**: nao existe (nem precisou existir) um endpoint dedicado - `GET
+  /api/weeklies/{weeklyId}` ja retornava `curatedContents: CuratedContentDto[]` completo desde a
+  Fase 3, suficiente pra popular a tela de autoria (confirmado na Fase 6 antes de considerar
+  escrever um endpoint novo).
+- **UI (`/admin/conteudo`, Fase 6)**: `frontend/src/routes/AdminContentPage.tsx` - mesmo padrao de
+  navegacao por query string do `/start` (curso -> semana), lista o conteudo da semana com
+  indicador Completo/Pendente (`externalUrl || bodyText` preenchido), formulario unico serve
+  criacao e edicao (`Type` fixo na edicao - nunca muda depois de criado). Sem autenticacao, sem
+  polimento visual alem do padrao de `/start`. Usada na pratica pra carregar o texto completo das
+  4 leituras (Fase 4) e os 4 SVGs de diagrama (Fase 6) da Semana 1 por cima dos placeholders do
+  seed.
 
 ### CORS (Fase 3)
 
@@ -664,7 +672,7 @@ Password=focadu` (definida em `backend/src/Focadu.Api/appsettings.json` e como f
 ferramentas de design-time do EF, ou por `ConnectionStrings:Focadu` / env var equivalente para a
 Api em runtime).
 
-## Frontend (Fase 3, telas de atividade completadas nas Fases 4 e 5)
+## Frontend (Fase 3, telas de atividade completadas nas Fases 4 e 5, autoria na Fase 6)
 
 ```
 frontend/
@@ -672,17 +680,19 @@ frontend/
   .env.example, .env.local (gitignorado - VITE_API_BASE_URL)
   src/
     main.tsx              <- BrowserRouter + Routes
-    App.tsx                <- shell com nav (Hoje / Inicio) + <Outlet/>
+    App.tsx                <- shell com nav (Hoje / Inicio / Conteudo) + <Outlet/>
     index.css               <- @import "tailwindcss" + tokens @theme (paleta da identidade visual)
     api/
       types.ts               <- espelha os DTOs de Focadu.Application (enums como numero, com
-                                   consts tipo ActivityType/AnswerMode/ActivityStatus/TerminalQuality)
+                                   consts tipo ActivityType/AnswerMode/ActivityStatus/TerminalQuality/
+                                   CURATED_CONTENT_TYPE_NAMES)
       client.ts               <- fetch tipado, ApiError, VITE_API_BASE_URL, suporte a FormData
                                    (upload de audio, Fase 5, sem forcar Content-Type json)
-      useApiResource.ts        <- hook pra loading/error/cancelamento (usado pelas 4 sub-telas de /start)
+      useApiResource.ts        <- hook pra loading/error/cancelamento (usado pelas sub-telas de /start e /admin/conteudo)
     routes/
       TodayPage.tsx            <- /hoje (orquestra os 5 tipos de atividade + fluxo de conclusao)
       StartPage.tsx             <- /start (ramifica por query string)
+      AdminContentPage.tsx       <- /admin/conteudo (autoria de CuratedContent, Fase 6)
     components/
       OptionsAnswer.tsx          <- nucleo "escolher opcao" - Quiz, cada termo de WordMatch, Cloze/MultipleChoice
       ClozeFreeTextActivity.tsx   <- Cloze/FreeText (resposta + justificativa)
@@ -703,6 +713,9 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/start?course=` | `GET /api/courses/{courseId}` | Detalhe do curso |
 | `/start?course=&weekly=` | `GET /api/weeklies/{weeklyId}` | Detalhe da semana |
 | `/start?course=&weekly=&daily=` | `GET /api/dailies/{dailyId}` | Estado de uma Daily especifica (somente leitura) |
+| `/admin/conteudo` | `GET /api/courses` | Autoria (Fase 6) - lista de cursos |
+| `/admin/conteudo?course=` | `GET /api/courses/{courseId}` | Autoria - semanas do curso |
+| `/admin/conteudo?course=&weekly=` | `GET /api/weeklies/{weeklyId}` | Autoria - lista + formulario de `CuratedContent` da semana (`POST`/`PUT /api/curated-content`) |
 
 `TodayPage` (`/hoje`) chama `GET /api/today` (ou `GET /api/dailies/{id}` se `?daily=` estiver
 presente) e, se `AccessMode` for `Start`/`Resume`, chama `POST .../start` antes de renderizar (a
@@ -737,8 +750,19 @@ Permissao de microfone negada mostra uma mensagem clara **e mantem o botao dispo
 tentar de novo (bug corrigido durante a verificacao ao vivo - a primeira versao escondia o botao
 inteiro nesse estado, sem jeito de tentar de novo sem recarregar a pagina).
 
+**`/admin/conteudo`, autoria de conteudo curado (Fase 6):** tela de bastidor, sem autenticacao,
+mesmo padrao funcional (nao visual) de `/start` - ramifica por query string (`?course=`,
+`?weekly=`), reaproveitando os mesmos endpoints de leitura que `/start` ja consumia. Lista o
+`CuratedContent` da semana com indicador Completo/Pendente (`externalUrl || bodyText` preenchido)
+e um formulario unico que cria (`POST`) ou edita (`PUT`) dependendo se um item da lista esta
+selecionado - `Type` so e editavel na criacao (nunca muda depois, regra que ja existia no
+backend desde a Fase 4). Existe porque a curadoria de leitura/video (ao contrario da estrutura
+Course/Monthly/Weekly/Daily, que muda raramente e continua so via seed) se repete toda semana -
+ver `docs/fase-6/resumo-implementacao-fase-6.md`.
+
 **`/start` continua funcional mas sem o mesmo polimento visual das telas de atividade** - decisao
 da Fase 3, ainda valida (so as telas de `/hoje` precisavam estar "as mais validadas no Figma").
+`/admin/conteudo` segue o mesmo padrao de "funcional, nao o mesmo nivel de `/hoje`".
 
 Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.config.js`):
 `--color-base` (`#0A0A0A`), `--color-surface` (`#151515`), `--color-surface-alt` (`#1E1E1E`),
@@ -760,8 +784,13 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
 - Endpoints de autoria de Course/Monthly/Weekly/Daily/DailyActivity - so `CuratedContent` tem
   autoria via Api desde a Fase 4 (ver "Autoria de conteudo curado"); o resto da estrutura
   continua so via `SeedWebSecurityCourseUseCase` (estrutural, muda com pouca frequencia).
-- Tela de autoria de conteudo curado no frontend - os endpoints existem e foram usados via
-  script/curl (Fase 4), mas nao ha UI pra isso ainda.
+- **Resolvido na Fase 6, nao e mais pendencia:** tela de autoria de conteudo curado no frontend
+  (`/admin/conteudo`) - antes os endpoints so eram usados via script/curl.
+- Renderizacao de `CuratedContentType.Diagram` na experiencia do aluno (`/hoje`) - os 4 SVGs
+  reais da Semana 1 existem desde a Fase 6 (carregados via `/admin/conteudo`), mas nenhuma
+  `DailyActivity` referencia `Diagram` ainda, entao nao ha onde/como exibi-los pro aluno.
+- Exclusao (`DELETE`) de `CuratedContent` - so criacao/edicao existem; nunca foi pedido um
+  endpoint de remocao.
 - CORS liberado so para `http://localhost:5173` (hardcoded, dev apenas).
 - Retry automatico em falha da chamada a Groq - se a transcricao/avaliacao falhar (rede, rate
   limit), o usuario precisa gravar de novo manualmente.
@@ -775,6 +804,7 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
 | 3 | Correcoes de Api, Seed de Conteudo e Inicio do Frontend | `docs/fase-3/resumo-implementacao-fase-3.md` |
 | 4 | Autoria de Conteudo, Conclusao da Daily e Telas Restantes | `docs/fase-4/resumo-implementacao-fase-4.md` |
 | 5 | Correcao de Ambiguidade + Captura e Avaliacao de Voz | `docs/fase-5/resumo-implementacao-fase-5.md` |
+| 6 | Tela de Autoria de Conteudo Curado | `docs/fase-6/resumo-implementacao-fase-6.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
@@ -806,8 +836,12 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
   `BadHttpRequestException` *antes* do endpoint rodar - `ApiExceptionHandler` ja trata isso
   globalmente (`requisicao_invalida`, 400) desde a Fase 5, nenhum endpoint novo precisa se
   preocupar com isso individualmente.
-- **UI de autoria de conteudo curado ainda nao existe** - os endpoints `POST/PUT
-  /api/curated-content` (Fase 4) funcionam, mas so foram usados via script/curl ate agora.
+- **Resolvido na Fase 6, nao e mais pendencia:** UI de autoria de conteudo curado
+  (`/admin/conteudo`) - os endpoints `POST/PUT /api/curated-content` (Fase 4) agora tem uma tela,
+  nao so uso via script/curl.
+- **Diagramas reais (SVG) das 4 Dailies da Semana 1 ja existem** (Fase 6, `CuratedContentType.
+  Diagram`), mas nenhuma `DailyActivity` os referencia ainda - decidir onde/como exibir `Diagram`
+  na experiencia do aluno (`/hoje`) fica pra uma fase futura.
 - **Resolvido na Fase 5, nao e mais pendencia:** transcricao/avaliacao por voz validadas
   end-to-end com uma chave Groq real - transcricao (`whisper-large-v3`) funcionou de primeira;
   avaliacao expos que `llama-3.3-70b-versatile` (escolha original) tinha saido do catalogo da
