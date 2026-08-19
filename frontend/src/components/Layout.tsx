@@ -22,3 +22,16 @@ export function Centered({ text, tone = 'secondary' }: { text: string; tone?: 's
     </div>
   );
 }
+
+/** Shell compartilhado pelas telas de atividade (Quiz, WordMatch, Cloze, Roleplay) - eyebrow + título + conteúdo centralizado. */
+export function ActivityScreen({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
+  return (
+    <div className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-6 p-6">
+      <div>
+        <p className="text-sm font-medium uppercase tracking-wide text-secondary">{eyebrow}</p>
+        <h1 className="mt-1 text-2xl font-semibold text-primary">{title}</h1>
+      </div>
+      {children}
+    </div>
+  );
+}

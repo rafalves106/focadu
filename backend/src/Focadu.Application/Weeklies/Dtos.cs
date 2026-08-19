@@ -27,13 +27,6 @@ public record DailyOverviewDto(
     int CompletedActivities,
     int PassedActivities);
 
-public record CuratedContentDto(
-    Guid Id,
-    CuratedContentType Type,
-    string Title,
-    string? ExternalUrl,
-    string? BodyText);
-
 public record WeeklyProjectDto(
     Guid Id,
     string SpecText,

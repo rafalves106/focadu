@@ -98,6 +98,7 @@ public class DailyTests
         Assert.Equal(3, reinforcementDaily.Activities.Count);
         Assert.All(reinforcementDaily.Activities, a => Assert.Equal(ActivityStatus.Pending, a.Status));
         Assert.True(daily.ReinforcementTriggered);
+        Assert.Equal(reinforcementDaily.Id, daily.ReinforcementDailyId);
     }
 
     [Fact]

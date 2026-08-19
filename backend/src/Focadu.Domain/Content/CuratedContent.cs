@@ -24,15 +24,34 @@ public class CuratedContent : Entity
 
     public CuratedContent(Guid weeklyId, CuratedContentType type, string title, string? externalUrl, string? bodyText)
     {
-        if (string.IsNullOrWhiteSpace(title))
-            throw new DomainException("Título do conteúdo é obrigatório.");
-        if (string.IsNullOrWhiteSpace(externalUrl) && string.IsNullOrWhiteSpace(bodyText))
-            throw new DomainException("Um CuratedContent precisa ter ExternalUrl ou BodyText preenchido.");
+        Validate(title, externalUrl, bodyText);
 
         WeeklyId = weeklyId;
         Type = type;
         Title = title;
         ExternalUrl = externalUrl;
         BodyText = bodyText;
+    }
+
+    /// <summary>
+    /// Atualiza Title/ExternalUrl/BodyText - usado pela autoria de conteudo (Fase 4) para
+    /// carregar o texto completo por cima de um placeholder de seed, por exemplo. Type e
+    /// WeeklyId nunca mudam depois de criado.
+    /// </summary>
+    public void Update(string title, string? externalUrl, string? bodyText)
+    {
+        Validate(title, externalUrl, bodyText);
+
+        Title = title;
+        ExternalUrl = externalUrl;
+        BodyText = bodyText;
+    }
+
+    private static void Validate(string title, string? externalUrl, string? bodyText)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            throw new DomainException("Título do conteúdo é obrigatório.");
+        if (string.IsNullOrWhiteSpace(externalUrl) && string.IsNullOrWhiteSpace(bodyText))
+            throw new DomainException("Um CuratedContent precisa ter ExternalUrl ou BodyText preenchido.");
     }
 }

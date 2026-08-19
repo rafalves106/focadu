@@ -4,9 +4,11 @@ using Focadu.Domain.Exceptions;
 namespace Focadu.Domain.Activities;
 
 /// <summary>
-/// Opção de resposta para uma atividade Quiz, ou par termo-definição para WordMatch
-/// (nesse caso, o "termo" é modelado como o texto da própria DailyActivity/enunciado,
-/// e cada QuizOption representa uma definição candidata vinculada a ele).
+/// Opção de resposta para uma atividade Quiz, ou par termo-definição para WordMatch (nesse caso,
+/// o "termo" é o próprio DailyActivity.Prompt, e cada QuizOption é uma definição candidata
+/// vinculada a ele - um termo por DailyActivity; várias DailyActivity WordMatch na mesma Daily
+/// formam, juntas, o exercício de associação). Também usada pelo Cloze com AnswerMode =
+/// MultipleChoice (Fase 4), pra preencher a lacuna do enunciado.
 /// </summary>
 public class QuizOption : Entity
 {

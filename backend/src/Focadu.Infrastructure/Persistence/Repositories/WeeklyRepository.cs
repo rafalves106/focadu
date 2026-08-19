@@ -1,3 +1,4 @@
+using Focadu.Domain.Content;
 using Focadu.Domain.Repositories;
 using Focadu.Domain.Weeklies;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +48,9 @@ public class WeeklyRepository : IWeeklyRepository
             .Where(w => monthlyIds.Contains(w.MonthlyId) && w.Dailies.Any(d => d.Date == date))
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<CuratedContent?> GetCuratedContentByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        await _context.CuratedContents.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
     public async Task AddAsync(Weekly weekly, CancellationToken cancellationToken = default) =>
         await _context.Weeklies.AddAsync(weekly, cancellationToken);

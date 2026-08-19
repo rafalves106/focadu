@@ -1,11 +1,18 @@
 namespace Focadu.Api.Contracts;
 
 /// <summary>
-/// SelectedOptionId e Score sao mutuamente exclusivos, dependendo do tipo da atividade (decidido
-/// dentro de SubmitActivityResponseUseCase, que e quem enxerga o ActivityType):
-/// - Quiz/WordMatch: cliente manda SelectedOptionId; o Score e sempre calculado no servidor a
-///   partir de QuizOption.IsCorrect (nunca aceito pronto do cliente, pra nao dar pra forjar nota).
-/// - Cloze/Roleplay: cliente ainda manda Score pronto, ate IContentEvaluationService existir.
-/// Ambos os campos sao nullable de proposito, pra distinguir "nao veio" de "veio 0"/Guid vazio.
+/// Qual campo e usado depende do ActivityType (e, pro Cloze, do AnswerMode) da atividade -
+/// decidido dentro de SubmitActivityResponseUseCase.ResolveScore, que e quem enxerga esses dados:
+/// - Quiz/WordMatch/Cloze(MultipleChoice): SelectedOptionId.
+/// - Cloze(FreeText): Transcript (a resposta em texto livre, comparada no backend contra
+///   ExpectedAnswer) + opcionalmente Justification (guardada, nao avaliada nesta fase).
+/// - Roleplay: SelectedRoleplayNodeId (o node terminal alcancado ao percorrer o dialogo).
+/// Nao ha mais campo Score - desde a Fase 4, o backend calcula o Score de todo tipo de atividade,
+/// nunca aceita pronto do cliente.
 /// </summary>
-public record SubmitActivityResponseRequest(Guid? SelectedOptionId, int? Score, string? Transcript, string? AiFeedback);
+public record SubmitActivityResponseRequest(
+    Guid? SelectedOptionId,
+    Guid? SelectedRoleplayNodeId,
+    string? Transcript,
+    string? Justification,
+    string? AiFeedback);

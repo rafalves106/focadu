@@ -12,9 +12,9 @@ namespace Focadu.Application.Dailies;
 /// (na ordem) se essa resposta faz a Daily disparar reforco diario e se a Weekly, por sua vez,
 /// disparou reforco semanal - as duas regras centrais de EvaluationPolicy.
 ///
-/// O Score nunca vem pronto do cliente para Quiz/WordMatch (ver ResolveScore) - so para
-/// Cloze/Roleplay, que ainda dependem de IContentEvaluationService (sem adapter concreto ate
-/// agora, so a porta existe).
+/// Desde a Fase 4, o Score de TODO tipo de atividade e calculado aqui dentro (ResolveScore) -
+/// nunca mais aceito pronto do cliente, pra nenhum tipo. Isso fechou de vez a lacuna que a Fase 3
+/// deixou aberta so pra Cloze/Roleplay.
 /// </summary>
 public class SubmitActivityResponseUseCase
 {
@@ -32,9 +32,10 @@ public class SubmitActivityResponseUseCase
     public async Task<SubmitActivityResponseResult> ExecuteAsync(
         Guid dailyId,
         Guid activityId,
-        int? score,
         Guid? selectedOptionId,
+        Guid? selectedRoleplayNodeId,
         string? transcript,
+        string? justification,
         string? aiFeedback,
         CancellationToken cancellationToken = default)
     {
@@ -45,8 +46,8 @@ public class SubmitActivityResponseUseCase
         var activity = daily.Activities.FirstOrDefault(a => a.Id == activityId)
             ?? throw new DomainException("Atividade não encontrada nesta Daily.", "atividade_nao_encontrada");
 
-        var resolvedScore = ResolveScore(activity, score, selectedOptionId);
-        var response = daily.SubmitActivityResponse(activityId, resolvedScore, transcript, aiFeedback);
+        var resolvedScore = ResolveScore(activity, selectedOptionId, selectedRoleplayNodeId, transcript);
+        var response = daily.SubmitActivityResponse(activityId, resolvedScore, transcript, justification, aiFeedback);
 
         Guid? reinforcementDailyId = null;
         var dailyReinforcementTriggered = false;
@@ -67,46 +68,104 @@ public class SubmitActivityResponseUseCase
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var responseDto = new ActivityResponseDto(
-            response.Id, response.ActivityId, response.AttemptNumber,
-            response.Score, response.Passed, response.Transcript, response.AiFeedback, response.CreatedAt);
+            response.Id, response.ActivityId, response.AttemptNumber, response.Score, response.Passed,
+            response.Transcript, response.Justification, response.AiFeedback, response.CreatedAt);
 
         return new SubmitActivityResponseResult(
             responseDto, dailyReinforcementTriggered, reinforcementDailyId, weeklyReinforcementTriggered);
     }
 
     /// <summary>
-    /// Quiz/WordMatch: o Score e sempre calculado aqui a partir da opcao escolhida - o dominio ja
-    /// tem QuizOption.IsCorrect como fonte da verdade, entao nao ha necessidade de IA nem de
-    /// confiar num Score que o cliente poderia mandar pronto (100 pra qualquer atividade).
-    /// Cloze/Roleplay: sem IContentEvaluationService implementado ainda, o Score continua vindo
-    /// pronto do chamador - unico caminho legado que sobra depois desta mudanca.
+    /// Decide como calcular o Score, conforme o tipo (e, pro Cloze, o AnswerMode) da atividade.
+    /// Quiz/WordMatch e Cloze/MultipleChoice: a partir da QuizOption escolhida (IsCorrect e a
+    /// fonte da verdade). Cloze/FreeText: comparacao textual do Transcript contra ExpectedAnswer.
+    /// Roleplay: a partir do TerminalQuality do RoleplayNode terminal alcancado.
     /// </summary>
-    internal static int ResolveScore(DailyActivity activity, int? score, Guid? selectedOptionId)
+    internal static int ResolveScore(
+        DailyActivity activity, Guid? selectedOptionId, Guid? selectedRoleplayNodeId, string? transcript)
     {
-        if (activity.Type is ActivityType.Quiz or ActivityType.WordMatch)
+        return activity.Type switch
         {
-            if (selectedOptionId is null)
-            {
-                throw new ValidationException(
-                    "selected_option_id_obrigatorio", "O campo 'selectedOptionId' e obrigatorio para esta atividade.");
-            }
+            ActivityType.Quiz or ActivityType.WordMatch => ScoreFromSelectedOption(activity, selectedOptionId),
+            ActivityType.Cloze when activity.AnswerMode == AnswerMode.MultipleChoice =>
+                ScoreFromSelectedOption(activity, selectedOptionId),
+            ActivityType.Cloze => ScoreFromFreeTextAnswer(activity, transcript),
+            ActivityType.Roleplay => ScoreFromRoleplayTerminalNode(activity, selectedRoleplayNodeId),
+            _ => throw new DomainException($"Tipo de atividade '{activity.Type}' nao tem calculo de Score definido."),
+        };
+    }
 
-            var option = activity.QuizOptions.FirstOrDefault(o => o.Id == selectedOptionId);
-            if (option is null)
-            {
-                throw new ValidationException(
-                    "selected_option_id_invalido", "O 'selectedOptionId' informado nao corresponde a uma opcao desta atividade.");
-            }
-
-            return option.IsCorrect ? 100 : 0;
+    private static int ScoreFromSelectedOption(DailyActivity activity, Guid? selectedOptionId)
+    {
+        if (selectedOptionId is null)
+        {
+            throw new ValidationException(
+                "selected_option_id_obrigatorio", "O campo 'selectedOptionId' e obrigatorio para esta atividade.");
         }
 
-        // Cloze/Roleplay: mesma validacao que a Api fazia antes desta mudanca.
-        if (score is null)
-            throw new ValidationException("score_obrigatorio", "O campo 'score' e obrigatorio para esta atividade.");
-        if (score is < 0 or > 100)
-            throw new ValidationException("score_invalido", "O campo 'score' precisa estar entre 0 e 100.");
+        var option = activity.QuizOptions.FirstOrDefault(o => o.Id == selectedOptionId);
+        if (option is null)
+        {
+            throw new ValidationException(
+                "selected_option_id_invalido", "O 'selectedOptionId' informado nao corresponde a uma opcao desta atividade.");
+        }
 
-        return score.Value;
+        return option.IsCorrect ? 100 : 0;
+    }
+
+    // ponytail: comparacao textual exata (trim + case-insensitive), sem avaliacao semantica/IA -
+    // suficiente pra respostas curtas de codigo/termo unico. Upgrade natural: trocar por
+    // IContentEvaluationService quando existir um adapter concreto (ver docs/ARQUITETURA.md).
+    private static int ScoreFromFreeTextAnswer(DailyActivity activity, string? transcript)
+    {
+        if (string.IsNullOrWhiteSpace(transcript))
+        {
+            throw new ValidationException(
+                "transcript_obrigatorio", "O campo 'transcript' (sua resposta) e obrigatorio para esta atividade.");
+        }
+
+        if (string.IsNullOrWhiteSpace(activity.ExpectedAnswer))
+            throw new DomainException("Esta atividade Cloze/FreeText nao tem ExpectedAnswer configurado.");
+
+        var isCorrect = string.Equals(transcript.Trim(), activity.ExpectedAnswer.Trim(), StringComparison.OrdinalIgnoreCase);
+        return isCorrect ? 100 : 0;
+    }
+
+    /// <summary>
+    /// Mapeamento TerminalQuality -> Score, decidido na Fase 4: Ideal e a unica qualidade que
+    /// passa do EvaluationPolicy.PassingScore (80) - Suboptimal e Poor sempre reprovam, com
+    /// Suboptimal valendo mais que Poor pra diferenciar "quase la" de "resposta ruim" no
+    /// historico, mesmo os dois nao passando.
+    /// </summary>
+    private static int ScoreFromRoleplayTerminalNode(DailyActivity activity, Guid? selectedRoleplayNodeId)
+    {
+        if (selectedRoleplayNodeId is null)
+        {
+            throw new ValidationException(
+                "selected_roleplay_node_id_obrigatorio", "O campo 'selectedRoleplayNodeId' e obrigatorio para esta atividade.");
+        }
+
+        var node = activity.RoleplayNodes.FirstOrDefault(n => n.Id == selectedRoleplayNodeId);
+        if (node is null)
+        {
+            throw new ValidationException(
+                "selected_roleplay_node_id_invalido",
+                "O 'selectedRoleplayNodeId' informado nao corresponde a um node desta atividade.");
+        }
+
+        if (!node.IsTerminal)
+        {
+            throw new ValidationException(
+                "selected_roleplay_node_nao_terminal",
+                "So e possivel enviar a resposta ao atingir um node terminal (IsTerminal = true).");
+        }
+
+        return node.TerminalQuality switch
+        {
+            TerminalQuality.Ideal => 100,
+            TerminalQuality.Suboptimal => 60,
+            TerminalQuality.Poor => 20,
+            _ => throw new DomainException("Node terminal sem TerminalQuality definida."),
+        };
     }
 }

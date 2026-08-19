@@ -1,5 +1,6 @@
 using Focadu.Application.Ports;
 using Focadu.Domain.Courses;
+using Focadu.Domain.Dailies;
 using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
 using Focadu.Domain.Weeklies;
@@ -121,6 +122,19 @@ public class SeedWebSecurityCourseUseCase
         quiz.AddQuizOption("Content-Type", true);
         quiz.AddQuizOption("Content-Length", false);
         quiz.AddQuizOption("Accept-Language", false);
+
+        // WordMatch (Fase 4): 1 termo por DailyActivity (Prompt = termo, QuizOptions = definicoes
+        // candidatas) - as duas juntas, na mesma Daily, formam o exercicio de associacao que o
+        // frontend renderiza como 1 tela so (ver docs/ARQUITETURA.md).
+        var wordMatch1 = daily.AddActivity(ActivityType.WordMatch, 1, AnswerMode.MultipleChoice, prompt: "Content-Type");
+        wordMatch1.AddQuizOption("Diz ao destinatario qual e o formato do conteudo no corpo da mensagem (ex: text/html, application/json)", true);
+        wordMatch1.AddQuizOption("Diz ao servidor quantos bytes o cliente aceita receber no corpo da resposta", false);
+        wordMatch1.AddQuizOption("Indica se a conexao deve permanecer aberta apos a resposta", false);
+
+        var wordMatch2 = daily.AddActivity(ActivityType.WordMatch, 2, AnswerMode.MultipleChoice, prompt: "Cache-Control");
+        wordMatch2.AddQuizOption("Define por quanto tempo e de que forma a resposta pode ser armazenada em cache", true);
+        wordMatch2.AddQuizOption("Define qual algoritmo de compressao foi usado no corpo da resposta", false);
+        wordMatch2.AddQuizOption("Informa qual codificacao de caracteres o corpo usa", false);
     }
 
     private static void AddDay3(Weekly weekly, DateOnly date)
@@ -147,6 +161,21 @@ public class SeedWebSecurityCourseUseCase
         quiz.AddQuizOption("Porque HTTP e stateless - cada requisicao e independente, sem memoria da anterior", true);
         quiz.AddQuizOption("Porque HTTP exige certificado de cliente em toda requisicao", false);
         quiz.AddQuizOption("Porque o servidor mantem a conexao TCP aberta indefinidamente com o navegador", false);
+
+        // Cloze/MultipleChoice (Fase 4): mesma mecanica do Quiz (SelectedOptionId), so reaproveitada.
+        var clozeChoice = daily.AddActivity(ActivityType.Cloze, 1, AnswerMode.MultipleChoice,
+            prompt: "Complete a frase: um cookie marcado como ___ nao pode ser lido via JavaScript, " +
+                "o que dificulta o roubo do cookie de sessao por um ataque de XSS.");
+        clozeChoice.AddQuizOption("HttpOnly", true);
+        clozeChoice.AddQuizOption("Secure", false);
+        clozeChoice.AddQuizOption("SameSite=Strict", false);
+
+        // Cloze/FreeText (Fase 4, "usado para codigo"): resposta comparada no servidor contra
+        // ExpectedAnswer (ver SubmitActivityResponseUseCase.ScoreFromFreeTextAnswer).
+        daily.AddActivity(ActivityType.Cloze, 2, AnswerMode.FreeText,
+            prompt: "Complete o codigo: document.___ = 'nome=valor; path=/'; " +
+                "(a propriedade do objeto document usada para definir um cookie via JavaScript)",
+            expectedAnswer: "cookie");
     }
 
     private static void AddDay4(Weekly weekly, DateOnly date)
@@ -173,6 +202,55 @@ public class SeedWebSecurityCourseUseCase
         quiz.AddQuizOption("Confidencialidade e integridade dos dados em transito, alem de autenticar o servidor via certificado", true);
         quiz.AddQuizOption("Que o servidor nunca sofrera ataques de SQL Injection", false);
         quiz.AddQuizOption("Que a senha do usuario nunca precisa ser validada no backend", false);
+
+        AddTlsRoleplay(daily);
+    }
+
+    /// <summary>
+    /// Roleplay (Fase 4) com 3 niveis: "start" -> 2 caminhos -> 3 desfechos terminais, cada um
+    /// com uma TerminalQuality diferente (Ideal/Suboptimal/Poor), pra exercitar os 3 valores no
+    /// calculo de Score (ver SubmitActivityResponseUseCase.ScoreFromRoleplayTerminalNode).
+    /// "start" e a convencao adotada pro node inicial de todo Roleplay (nao ha campo IsStart no
+    /// dominio - o frontend procura o node com NodeKey = "start").
+    /// </summary>
+    private static void AddTlsRoleplay(Daily daily)
+    {
+        var roleplay = daily.AddActivity(ActivityType.Roleplay, 1, AnswerMode.FreeText,
+            prompt: "Voce e o dev responsavel por decidir a configuracao de TLS de um novo servico interno.");
+
+        var start = roleplay.AddRoleplayNode("start",
+            "Sua equipe esta subindo um novo servico interno que so sera acessado por outros " +
+            "servidores da mesma rede privada, nunca pela internet. Alguem sugere pular o HTTPS " +
+            "\"porque e rede interna, ninguem vai interceptar\". O que voce faz?");
+
+        var httpOnly = roleplay.AddRoleplayNode("trafego_sem_tls",
+            "Voces sobem o servico em HTTP puro. Meses depois, uma auditoria de seguranca " +
+            "encontra o trafego de credenciais internas passando em texto claro pela rede, e " +
+            "aponta isso como uma falha grave.");
+
+        var suboptimalEnd = roleplay.AddRoleplayNode("corrige_depois",
+            "Voce reconhece o erro e migra pra HTTPS imediatamente. O problema e corrigido, mas " +
+            "o incidente ja ficou registrado como achado de auditoria - o time perde tempo depois " +
+            "explicando por que a decisao inicial foi tomada.",
+            isTerminal: true, terminalQuality: TerminalQuality.Suboptimal);
+
+        var poorEnd = roleplay.AddRoleplayNode("defende_http",
+            "Voce argumenta que \"rede interna ja e segura por definicao\". A auditoria discorda: " +
+            "qualquer pessoa com acesso a rede (um servico comprometido, um insider) conseguiria " +
+            "interceptar tudo, e voces nao tinham nenhuma camada extra de protecao.",
+            isTerminal: true, terminalQuality: TerminalQuality.Poor);
+
+        var idealEnd = roleplay.AddRoleplayNode("https_interno",
+            "Voce configura HTTPS com um certificado interno (assinado por uma CA propria da " +
+            "empresa), garantindo que mesmo o trafego dentro da rede privada esteja protegido " +
+            "contra interceptacao e adulteracao - inclusive de outros times/servicos na mesma rede.",
+            isTerminal: true, terminalQuality: TerminalQuality.Ideal);
+
+        start.AddOption("Concordo, e uso HTTP simples so nessa rede interna", httpOnly.Id);
+        start.AddOption("Insisto em usar HTTPS mesmo internamente, com certificado proprio", idealEnd.Id);
+
+        httpOnly.AddOption("Reconheco o erro e migro pra HTTPS imediatamente", suboptimalEnd.Id);
+        httpOnly.AddOption("Argumento que \"rede interna e segura por definicao\"", poorEnd.Id);
     }
 
     private static DateOnly FirstBusinessDayOnOrAfter(DateOnly date) => date.DayOfWeek switch

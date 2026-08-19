@@ -8,13 +8,19 @@ export type ActivityType = (typeof ActivityType)[keyof typeof ActivityType];
 export const DailyAccessMode = { Start: 0, Resume: 1, Replay: 2, ReadOnly: 3 } as const;
 export type DailyAccessMode = (typeof DailyAccessMode)[keyof typeof DailyAccessMode];
 
-export type ActivityStatus = 0 | 1; // Pending, Completed
-export type AnswerMode = 0 | 1; // MultipleChoice, FreeText
+export const ActivityStatus = { Pending: 0, Completed: 1 } as const;
+export type ActivityStatus = (typeof ActivityStatus)[keyof typeof ActivityStatus];
+
+export const AnswerMode = { MultipleChoice: 0, FreeText: 1 } as const;
+export type AnswerMode = (typeof AnswerMode)[keyof typeof AnswerMode];
+
+export const TerminalQuality = { Ideal: 0, Suboptimal: 1, Poor: 2 } as const;
+export type TerminalQuality = (typeof TerminalQuality)[keyof typeof TerminalQuality];
+
 export type DailyStatus = 0 | 1 | 2 | 3; // Locked, Available, InProgress, Completed
 export type CourseStatus = 0 | 1 | 2; // Draft, Active, Archived
 export type CuratedContentType = 0 | 1 | 2; // Reading, Video, Diagram
 export type WeeklyProjectStatus = 0 | 1 | 2; // Pending, Submitted, Evaluated
-export type TerminalQuality = 0 | 1 | 2; // Ideal, Suboptimal, Poor
 
 // IsCorrect vem nulo ate a atividade ter uma ActivityResponse - gabarito escondido antes de
 // responder (ver Focadu.Application.Dailies.DailyStateMapper).
@@ -46,6 +52,7 @@ export interface ActivityResponseDto {
   score: number;
   passed: boolean;
   transcript: string | null;
+  justification: string | null;
   aiFeedback: string | null;
   createdAt: string;
 }
@@ -81,6 +88,16 @@ export interface SubmitActivityResponseResult {
   dailyReinforcementTriggered: boolean;
   reinforcementDailyId: string | null;
   weeklyReinforcementTriggered: boolean;
+}
+
+// Reforco (diario/semanal), quando existe, ja foi disparado antes (durante alguma resposta
+// anterior) - so aqui o cliente tem certeza de ter visto todas as atividades da Daily.
+export interface CompleteDailyResult {
+  daily: DailyStateDto;
+  dailyReinforcementTriggered: boolean;
+  reinforcementDailyId: string | null;
+  weeklyReinforcementTriggered: boolean;
+  weeklyReinforcementId: string | null;
 }
 
 export interface CourseSummaryDto {

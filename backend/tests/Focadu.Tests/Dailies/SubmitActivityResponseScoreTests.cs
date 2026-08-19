@@ -8,9 +8,9 @@ namespace Focadu.Tests.Dailies;
 
 /// <summary>
 /// SubmitActivityResponseUseCase.ResolveScore e a unica logica que decide o Score de uma resposta
-/// (Quiz/WordMatch calculado no servidor, Cloze/Roleplay ainda recebido do chamador) - testada
-/// direto (internal, via InternalsVisibleTo em Focadu.Application) sem precisar de fakes de
-/// repositorio, ja que so depende de objetos de dominio.
+/// (todo tipo de atividade, desde a Fase 4) - testada direto (internal, via InternalsVisibleTo em
+/// Focadu.Application) sem precisar de fakes de repositorio, ja que so depende de objetos de
+/// dominio.
 /// </summary>
 public class SubmitActivityResponseScoreTests
 {
@@ -23,7 +23,7 @@ public class SubmitActivityResponseScoreTests
         var correct = activity.AddQuizOption("Certa", true);
         activity.AddQuizOption("Errada", false);
 
-        var score = SubmitActivityResponseUseCase.ResolveScore(activity, score: null, selectedOptionId: correct.Id);
+        var score = SubmitActivityResponseUseCase.ResolveScore(activity, correct.Id, null, null);
 
         Assert.Equal(100, score);
     }
@@ -37,7 +37,7 @@ public class SubmitActivityResponseScoreTests
         activity.AddQuizOption("Certa", true);
         var wrong = activity.AddQuizOption("Errada", false);
 
-        var score = SubmitActivityResponseUseCase.ResolveScore(activity, score: null, selectedOptionId: wrong.Id);
+        var score = SubmitActivityResponseUseCase.ResolveScore(activity, wrong.Id, null, null);
 
         Assert.Equal(0, score);
     }
@@ -51,23 +51,9 @@ public class SubmitActivityResponseScoreTests
         activity.AddQuizOption("Certa", true);
 
         var ex = Assert.Throws<ValidationException>(
-            () => SubmitActivityResponseUseCase.ResolveScore(activity, score: 100, selectedOptionId: null));
+            () => SubmitActivityResponseUseCase.ResolveScore(activity, null, null, null));
 
         Assert.Equal("selected_option_id_obrigatorio", ex.Code);
-    }
-
-    [Fact]
-    public void Quiz_ClientSentScoreIsIgnored_ScoreIsAlwaysComputedFromOption()
-    {
-        var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var activity = daily.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
-        var wrong = activity.AddQuizOption("Errada", false);
-
-        // Cliente tenta forjar score:100 numa opcao errada - o Score calculado (0) prevalece.
-        var score = SubmitActivityResponseUseCase.ResolveScore(activity, score: 100, selectedOptionId: wrong.Id);
-
-        Assert.Equal(0, score);
     }
 
     [Fact]
@@ -81,46 +67,95 @@ public class SubmitActivityResponseScoreTests
         var otherOption = otherActivity.AddQuizOption("De outra atividade", true);
 
         var ex = Assert.Throws<ValidationException>(
-            () => SubmitActivityResponseUseCase.ResolveScore(activity, score: null, selectedOptionId: otherOption.Id));
+            () => SubmitActivityResponseUseCase.ResolveScore(activity, otherOption.Id, null, null));
 
         Assert.Equal("selected_option_id_invalido", ex.Code);
     }
 
     [Fact]
-    public void Cloze_UsesScoreFromCaller_UntilContentEvaluationServiceExists()
+    public void ClozeMultipleChoice_UsesSameSelectedOptionPathAsQuiz()
     {
         var weekly = DailyFixtures.NewWeekly();
         var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var activity = daily.AddActivity(ActivityType.Cloze, 0, AnswerMode.FreeText, expectedAnswer: "resposta esperada");
+        var activity = daily.AddActivity(ActivityType.Cloze, 0, AnswerMode.MultipleChoice);
+        var correct = activity.AddQuizOption("GET", true);
+        activity.AddQuizOption("DELETE", false);
 
-        var score = SubmitActivityResponseUseCase.ResolveScore(activity, score: 85, selectedOptionId: null);
+        var score = SubmitActivityResponseUseCase.ResolveScore(activity, correct.Id, null, null);
 
-        Assert.Equal(85, score);
+        Assert.Equal(100, score);
+    }
+
+    [Theory]
+    [InlineData("console.log(x)", true)]
+    [InlineData("  console.log(x)  ", true)]
+    [InlineData("CONSOLE.LOG(X)", true)]
+    [InlineData("console.log(y)", false)]
+    public void ClozeFreeText_ComparesTranscriptAgainstExpectedAnswer_TrimmedAndCaseInsensitive(string transcript, bool expectedCorrect)
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var daily = weekly.AddDaily(1, DailyFixtures.Today);
+        var activity = daily.AddActivity(ActivityType.Cloze, 0, AnswerMode.FreeText, expectedAnswer: "console.log(x)");
+
+        var score = SubmitActivityResponseUseCase.ResolveScore(activity, null, null, transcript);
+
+        Assert.Equal(expectedCorrect ? 100 : 0, score);
     }
 
     [Fact]
-    public void Cloze_WithoutScore_Throws()
+    public void ClozeFreeText_WithoutTranscript_Throws()
     {
         var weekly = DailyFixtures.NewWeekly();
         var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var activity = daily.AddActivity(ActivityType.Cloze, 0, AnswerMode.FreeText);
+        var activity = daily.AddActivity(ActivityType.Cloze, 0, AnswerMode.FreeText, expectedAnswer: "x");
 
         var ex = Assert.Throws<ValidationException>(
-            () => SubmitActivityResponseUseCase.ResolveScore(activity, score: null, selectedOptionId: null));
+            () => SubmitActivityResponseUseCase.ResolveScore(activity, null, null, null));
 
-        Assert.Equal("score_obrigatorio", ex.Code);
+        Assert.Equal("transcript_obrigatorio", ex.Code);
     }
 
-    [Fact]
-    public void Roleplay_ScoreOutOfRange_Throws()
+    [Theory]
+    [InlineData(TerminalQuality.Ideal, 100)]
+    [InlineData(TerminalQuality.Suboptimal, 60)]
+    [InlineData(TerminalQuality.Poor, 20)]
+    public void Roleplay_TerminalNodeReached_ScoresFromTerminalQuality(TerminalQuality quality, int expectedScore)
     {
         var weekly = DailyFixtures.NewWeekly();
         var daily = weekly.AddDaily(1, DailyFixtures.Today);
         var activity = daily.AddActivity(ActivityType.Roleplay, 0, AnswerMode.FreeText);
+        var terminalNode = activity.AddRoleplayNode("end", "Fim de papo.", isTerminal: true, terminalQuality: quality);
+
+        var score = SubmitActivityResponseUseCase.ResolveScore(activity, null, terminalNode.Id, null);
+
+        Assert.Equal(expectedScore, score);
+    }
+
+    [Fact]
+    public void Roleplay_WithoutSelectedNodeId_Throws()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var daily = weekly.AddDaily(1, DailyFixtures.Today);
+        var activity = daily.AddActivity(ActivityType.Roleplay, 0, AnswerMode.FreeText);
+        activity.AddRoleplayNode("end", "Fim.", isTerminal: true, terminalQuality: TerminalQuality.Ideal);
 
         var ex = Assert.Throws<ValidationException>(
-            () => SubmitActivityResponseUseCase.ResolveScore(activity, score: 150, selectedOptionId: null));
+            () => SubmitActivityResponseUseCase.ResolveScore(activity, null, null, null));
 
-        Assert.Equal("score_invalido", ex.Code);
+        Assert.Equal("selected_roleplay_node_id_obrigatorio", ex.Code);
+    }
+
+    [Fact]
+    public void Roleplay_SelectedNode_NotTerminal_Throws()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var daily = weekly.AddDaily(1, DailyFixtures.Today);
+        var activity = daily.AddActivity(ActivityType.Roleplay, 0, AnswerMode.FreeText);
+        var startNode = activity.AddRoleplayNode("start", "Ola.");
+
+        var ex = Assert.Throws<ValidationException>(
+            () => SubmitActivityResponseUseCase.ResolveScore(activity, null, startNode.Id, null));
+
+        Assert.Equal("selected_roleplay_node_nao_terminal", ex.Code);
     }
 }

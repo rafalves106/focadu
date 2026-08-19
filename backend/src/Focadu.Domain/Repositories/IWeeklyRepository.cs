@@ -1,3 +1,4 @@
+using Focadu.Domain.Content;
 using Focadu.Domain.Weeklies;
 
 namespace Focadu.Domain.Repositories;
@@ -24,6 +25,12 @@ public interface IWeeklyRepository
     /// percorrer Course -> Monthlies -> Weeklies inteiro em memoria.
     /// </summary>
     Task<Weekly?> GetByDateAsync(Guid courseId, DateOnly date, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Busca um CuratedContent direto pelo Id, sem carregar o grafo completo da Weekly - usado
+    /// pela autoria de conteudo curado (Fase 4), que so precisa ler/atualizar esse unico registro.
+    /// </summary>
+    Task<CuratedContent?> GetCuratedContentByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task AddAsync(Weekly weekly, CancellationToken cancellationToken = default);
 }

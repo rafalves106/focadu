@@ -43,7 +43,8 @@ internal static class DailyStateMapper
         var responses = activity.Responses
             .OrderBy(r => r.AttemptNumber)
             .Select(r => new ActivityResponseDto(
-                r.Id, r.ActivityId, r.AttemptNumber, r.Score, r.Passed, r.Transcript, r.AiFeedback, r.CreatedAt))
+                r.Id, r.ActivityId, r.AttemptNumber, r.Score, r.Passed,
+                r.Transcript, r.Justification, r.AiFeedback, r.CreatedAt))
             .ToList();
 
         return new DailyActivityDto(

@@ -29,6 +29,15 @@ public class DailyConfiguration : IEntityTypeConfiguration<Daily>
             .HasForeignKey(a => a.DailyId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Referencia "fraca" auto-relacionada (mesmo padrao de DailyActivity.ContentId): se a
+        // Daily de reforco gerada for removida por algum motivo, so desvincula (SetNull), nunca
+        // apaga em cadeia a Daily de origem.
+        builder.HasOne<Daily>()
+            .WithMany()
+            .HasForeignKey(d => d.ReinforcementDailyId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
+
         builder.HasIndex(d => new { d.WeeklyId, d.DayNumber }).IsUnique();
     }
 }

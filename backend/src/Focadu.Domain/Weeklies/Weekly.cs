@@ -127,7 +127,7 @@ public class Weekly : Entity
             reinforcementDaily.AddClonedActivity(activity, orderIndex++);
         }
 
-        source.MarkReinforcementTriggered();
+        source.MarkReinforcementTriggered(reinforcementDaily.Id);
         _dailies.Add(reinforcementDaily);
         return reinforcementDaily;
     }

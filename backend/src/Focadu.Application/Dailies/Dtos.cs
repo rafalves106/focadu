@@ -55,6 +55,7 @@ public record ActivityResponseDto(
     int Score,
     bool Passed,
     string? Transcript,
+    string? Justification,
     string? AiFeedback,
     DateTime CreatedAt);
 
@@ -63,3 +64,16 @@ public record SubmitActivityResponseResult(
     bool DailyReinforcementTriggered,
     Guid? ReinforcementDailyId,
     bool WeeklyReinforcementTriggered);
+
+/// <summary>
+/// Resultado de POST .../complete. O reforco (diario/semanal), quando existe, ja foi disparado
+/// antes - durante alguma SubmitActivityResponse anterior, nao neste momento - mas so aqui o
+/// cliente tem certeza de ter visto todas as atividades da Daily, entao e o ponto natural pra
+/// reportar "voce precisa saber disso" antes de sair da tela.
+/// </summary>
+public record CompleteDailyResult(
+    DailyStateDto Daily,
+    bool DailyReinforcementTriggered,
+    Guid? ReinforcementDailyId,
+    bool WeeklyReinforcementTriggered,
+    Guid? WeeklyReinforcementId);

@@ -4,6 +4,8 @@
 @dailyId = 00000000-0000-0000-0000-000000000000
 @activityId = 00000000-0000-0000-0000-000000000000
 @selectedOptionId = 00000000-0000-0000-0000-000000000000
+@selectedRoleplayNodeId = 00000000-0000-0000-0000-000000000000
+@curatedContentId = 00000000-0000-0000-0000-000000000000
 
 GET {{Focadu.Api_HostAddress}}/health
 Accept: application/json
@@ -40,33 +42,68 @@ Accept: application/json
 
 ###
 
-### Quiz/WordMatch: Score e sempre calculado no servidor a partir de selectedOptionId.
+### Quiz/WordMatch/Cloze(MultipleChoice): Score sempre calculado no servidor a partir de selectedOptionId.
 POST {{Focadu.Api_HostAddress}}/api/dailies/{{dailyId}}/activities/{{activityId}}/responses
 Content-Type: application/json
 Accept: application/json
 
 {
-  "selectedOptionId": "{{selectedOptionId}}",
-  "transcript": null,
-  "aiFeedback": null
+  "selectedOptionId": "{{selectedOptionId}}"
 }
 
 ###
 
-### Cloze/Roleplay: ainda sem IContentEvaluationService, Score continua vindo pronto do chamador.
+### Cloze(FreeText): transcript comparado no servidor contra ExpectedAnswer; justification so armazenada.
 POST {{Focadu.Api_HostAddress}}/api/dailies/{{dailyId}}/activities/{{activityId}}/responses
 Content-Type: application/json
 Accept: application/json
 
 {
-  "score": 85,
-  "transcript": null,
-  "aiFeedback": null
+  "transcript": "console.log(x)",
+  "justification": "Porque queremos imprimir o valor de x no console."
+}
+
+###
+
+### Roleplay: node terminal alcancado ao percorrer o dialogo (IsTerminal = true).
+POST {{Focadu.Api_HostAddress}}/api/dailies/{{dailyId}}/activities/{{activityId}}/responses
+Content-Type: application/json
+Accept: application/json
+
+{
+  "selectedRoleplayNodeId": "{{selectedRoleplayNodeId}}"
 }
 
 ###
 
 POST {{Focadu.Api_HostAddress}}/api/dailies/{{dailyId}}/complete
 Accept: application/json
+
+###
+
+### Autoria de conteudo curado ----------------------------------------------------------------
+
+POST {{Focadu.Api_HostAddress}}/api/curated-content
+Content-Type: application/json
+Accept: application/json
+
+{
+  "weeklyId": "{{weeklyId}}",
+  "type": "Reading",
+  "title": "Novo artigo da semana",
+  "externalUrl": "https://example.com/artigo"
+}
+
+###
+
+PUT {{Focadu.Api_HostAddress}}/api/curated-content/{{curatedContentId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Como a web funciona",
+  "externalUrl": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Getting_started/Web_standards/How_the_web_works",
+  "bodyText": "Texto completo curado vai aqui."
+}
 
 ###
