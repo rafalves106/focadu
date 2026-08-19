@@ -39,4 +39,16 @@ public record WeeklyOverviewDto(
     int TotalDailies,
     int CompletedDailies,
     int WeakDailies,
-    bool HasWeeklyReinforcement);
+    bool HasWeeklyReinforcement,
+    /// <summary>Fase 8: pra grids de navegacao (Detalhes do Curso) mostrarem status por dia sem precisar buscar WeeklyDetailDto de cada semana.</summary>
+    IReadOnlyCollection<DailyStatusSummaryDto> Days);
+
+/// <summary>Resumo enxuto de uma Daily pra grids de navegacao (Fase 8) - versao mais leve de DailyOverviewDto (WeeklyDetailDto), sem PenaltyPoints/PassedActivities que essas telas nao usam.</summary>
+public record DailyStatusSummaryDto(
+    Guid Id,
+    int DayNumber,
+    DateOnly Date,
+    DailyStatus Status,
+    bool IsReinforcement,
+    int TotalActivities,
+    int CompletedActivities);

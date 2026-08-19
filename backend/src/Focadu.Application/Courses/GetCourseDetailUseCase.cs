@@ -43,9 +43,16 @@ public class GetCourseDetailUseCase
                 var weeklyCompleted = weekly.Dailies.Count(d => d.Status == Domain.Enums.DailyStatus.Completed);
                 var weeklyWeak = weekly.GetWeakDailies().Count;
 
+                var dayDtos = weekly.Dailies
+                    .OrderBy(d => d.DayNumber)
+                    .Select(d => new DailyStatusSummaryDto(
+                        d.Id, d.DayNumber, d.Date, d.Status, d.IsReinforcement,
+                        d.Activities.Count, d.Activities.Count(a => a.Status == Domain.Enums.ActivityStatus.Completed)))
+                    .ToList();
+
                 weeklyDtos.Add(new WeeklyOverviewDto(
                     weekly.Id, weekly.Number, weekly.Title, weekly.Theme,
-                    weeklyTotal, weeklyCompleted, weeklyWeak, weekly.Reinforcements.Count > 0));
+                    weeklyTotal, weeklyCompleted, weeklyWeak, weekly.Reinforcements.Count > 0, dayDtos));
 
                 totalDailies += weeklyTotal;
                 completedDailies += weeklyCompleted;

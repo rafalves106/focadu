@@ -25,8 +25,11 @@ export type AnswerMode = (typeof AnswerMode)[keyof typeof AnswerMode];
 export const TerminalQuality = { Ideal: 0, Suboptimal: 1, Poor: 2 } as const;
 export type TerminalQuality = (typeof TerminalQuality)[keyof typeof TerminalQuality];
 
-export type DailyStatus = 0 | 1 | 2 | 3; // Locked, Available, InProgress, Completed
-export type CourseStatus = 0 | 1 | 2; // Draft, Active, Archived
+export const DailyStatus = { Locked: 0, Available: 1, InProgress: 2, Completed: 3 } as const;
+export type DailyStatus = (typeof DailyStatus)[keyof typeof DailyStatus];
+
+export const CourseStatus = { Draft: 0, Active: 1, Archived: 2 } as const;
+export type CourseStatus = (typeof CourseStatus)[keyof typeof CourseStatus];
 export type CuratedContentType = 0 | 1 | 2; // Reading, Video, Diagram
 
 // Nomes que a Api de autoria espera no campo `type` do request (case-insensitive, ver
@@ -35,6 +38,17 @@ export const CURATED_CONTENT_TYPE_NAMES = ['Reading', 'Video', 'Diagram'] as con
 
 export const WeeklyProjectStatus = { Pending: 0, Submitted: 1, Evaluated: 2 } as const;
 export type WeeklyProjectStatus = (typeof WeeklyProjectStatus)[keyof typeof WeeklyProjectStatus];
+
+/** ActivityType -> rotulo de UI (usado pra "proxima etapa" no StartDashboard/CourseDetailPage, Fase 8). */
+export const ACTIVITY_TYPE_LABEL: Record<ActivityType, string> = {
+  [ActivityType.Quiz]: 'Quiz do dia',
+  [ActivityType.WordMatch]: 'Associe os termos',
+  [ActivityType.Cloze]: 'Complete a frase',
+  [ActivityType.Roleplay]: 'Roleplay',
+  [ActivityType.VoiceSummary]: 'Resumo falado',
+  [ActivityType.Reading]: 'Leitura',
+  [ActivityType.Video]: 'Vídeo',
+};
 
 // IsCorrect vem nulo ate a atividade ter uma ActivityResponse - gabarito escondido antes de
 // responder (ver Focadu.Application.Dailies.DailyStateMapper).
@@ -137,6 +151,19 @@ export interface WeeklyOverviewDto {
   completedDailies: number;
   weakDailies: number;
   hasWeeklyReinforcement: boolean;
+  /** Fase 8: status por dia, pra grids de navegacao (Detalhes do Curso) sem round-trip extra por semana. */
+  days: DailyStatusSummaryDto[];
+}
+
+/** Resumo enxuto de uma Daily pra grids de navegacao (Fase 8) - versao mais leve de DailyOverviewDto. */
+export interface DailyStatusSummaryDto {
+  id: string;
+  dayNumber: number;
+  date: string;
+  status: DailyStatus;
+  isReinforcement: boolean;
+  totalActivities: number;
+  completedActivities: number;
 }
 
 export interface MonthlyOverviewDto {

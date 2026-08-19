@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ProgressBar } from './ProgressBar';
 import quickQuestionOrb from '../assets/reading/quick-question-orb.svg';
 
 /**
@@ -20,15 +21,13 @@ export function SessionTopBar({
   progress: number;
   tone?: 'accent' | 'project';
 }) {
-  const fillClass = tone === 'project' ? 'bg-project shadow-[0_0_8px_rgba(255,184,0,0.5)]' : 'bg-accent shadow-[0_0_8px_rgba(57,255,106,0.5)]';
-
   return (
     <div className="flex items-center justify-between">
       <div className="text-xs font-medium uppercase tracking-[2px] text-muted">{eyebrow}</div>
       <div className="flex flex-col items-end gap-2">
         <p className="text-[11px] font-medium uppercase tracking-[1.5px] text-secondary">{stepLabel}</p>
-        <div className="h-1.5 w-[220px] overflow-hidden rounded-full bg-surface-alt">
-          <div className={`h-full rounded-full ${fillClass}`} style={{ width: `${Math.round(progress * 100)}%` }} />
+        <div className="w-[220px]">
+          <ProgressBar progress={progress} tone={tone} />
         </div>
       </div>
     </div>

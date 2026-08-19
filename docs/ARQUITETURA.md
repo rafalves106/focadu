@@ -4,8 +4,8 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 7 - Etapas de Conteudo, Projeto Semanal, Menu de
-> Configuracoes e Feedback Unificado**.
+> Ultima fase que atualizou este documento: **Fase 8 - Polimento das Telas de Navegacao (Start,
+> Visao Semanal, Detalhes do Curso)**.
 
 ## Visao geral do projeto
 
@@ -315,7 +315,7 @@ composicao da Fase 1). Todos sob `/api`, alem de `GET /health`:
 | Metodo | Rota | Caso de uso | Sucesso |
 |---|---|---|---|
 | GET | `/api/courses` | `ListCoursesUseCase` | 200 |
-| GET | `/api/courses/{courseId}` | `GetCourseDetailUseCase` | 200, 404 se nao existe |
+| GET | `/api/courses/{courseId}` | `GetCourseDetailUseCase` | 200, 404 se nao existe (Fase 8: `WeeklyOverviewDto.Days` traz status por dia, pro mini-grid de `CourseDetailPage`) |
 | GET | `/api/weeklies/{weeklyId}` | `GetWeeklyDetailUseCase` | 200, 404 se nao existe |
 | GET | `/api/dailies/{dailyId}` | `GetDailyStateUseCase` | 200, 404/400/409 (ver abaixo) |
 | GET | `/api/today` | `GetTodayUseCase` | 200, 404/409 (ver abaixo) |
@@ -697,17 +697,25 @@ frontend/
     App.tsx                <- shell com nav (Hoje / Inicio / Conteudo) + <Outlet/>
     index.css               <- @import "tailwindcss" + tokens @theme (paleta da identidade visual)
     assets/reading/          <- SVGs do design Figma (dots, play, check, orbe) - bytes exatos, Fase 7
+    lib/
+      statusBadge.ts           <- dailyStatusBadgeProps (Fase 8) - separado de components/StatusBadge.tsx
+                                   pra nao co-exportar funcao junto com componente (fast refresh)
     api/
       types.ts               <- espelha os DTOs de Focadu.Application (enums como numero, com
                                    consts tipo ActivityType/AnswerMode/ActivityStatus/TerminalQuality/
-                                   WeeklyProjectStatus/CURATED_CONTENT_TYPE_NAMES)
+                                   WeeklyProjectStatus/DailyStatus/CourseStatus (Fase 8, viraram
+                                   const), ACTIVITY_TYPE_LABEL/CURATED_CONTENT_TYPE_NAMES)
       client.ts               <- fetch tipado, ApiError, VITE_API_BASE_URL, suporte a FormData
                                    (upload de audio, Fase 5, sem forcar Content-Type json)
       useApiResource.ts        <- hook pra loading/error/cancelamento (usado pelas sub-telas de /start e /admin/conteudo)
     routes/
       TodayPage.tsx            <- /hoje (orquestra os 7 tipos de atividade, o menu de configuracoes
                                    e o fluxo de conclusao - Fase 7)
-      StartPage.tsx             <- /start (ramifica por query string, +?project= na Fase 7)
+      StartPage.tsx             <- /start (so o roteador por query string - Fase 8: as 3 telas
+                                   viraram arquivos proprios abaixo, StartPage so decide qual mostrar)
+      StartDashboard.tsx         <- /start sem params - hub "Comecar Hoje"/"Projeto"/"Trilha" (Fase 8)
+      WeeklyDetailPage.tsx        <- /start?weekly= - dias da semana + projeto + navegacao entre semanas (Fase 8)
+      CourseDetailPage.tsx        <- /start?course= - trilha completa (semanas + mini-grid de dias) (Fase 8)
       WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7)
       AdminContentPage.tsx       <- /admin/conteudo (autoria de CuratedContent, Fase 6)
     components/
@@ -718,9 +726,13 @@ frontend/
       ReadingActivity.tsx         <- etapa de leitura de um CuratedContent (Fase 7)
       VideoActivity.tsx           <- etapa de video - embed real do YouTube (Fase 7)
       FeedbackPanel.tsx           <- bloco de resultado compartilhado pelos 5 componentes de atividade (Fase 7)
-      SessionShell.tsx            <- SessionTopBar + QuickQuestionOrb, compartilhados por Reading/Video/Projeto (Fase 7)
+      SessionShell.tsx            <- SessionTopBar + QuickQuestionOrb, compartilhados por Reading/Video/Projeto (Fase 7);
+                                   SessionTopBar usa ProgressBar por baixo desde a Fase 8
       MaterialSidebar.tsx         <- "Material de hoje", compartilhado por Reading/Video (Fase 7)
       SettingsMenu.tsx            <- menu de configuracoes (overlay), montado em TodayPage (Fase 7)
+      StatusBadge.tsx              <- badge de status generico, so apresentacao (Fase 8)
+      ProgressBar.tsx               <- barra de progresso generica, extraida de SessionTopBar (Fase 8)
+      WeeklyProjectCard.tsx          <- card do projeto semanal, usado por StartDashboard e WeeklyDetailPage (Fase 8)
       CompletionSummary.tsx       <- pos POST .../complete (reforco diario/semanal, se houver)
       Layout.tsx                  <- PageShell, Centered, ActivityScreen (shells compartilhados)
 ```
@@ -731,10 +743,10 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | Rota | Consome | Tela |
 |---|---|---|
 | `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7) |
-| `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco) |
-| `/start` | `GET /api/courses` | Lista de cursos |
-| `/start?course=` | `GET /api/courses/{courseId}` | Detalhe do curso |
-| `/start?course=&weekly=` | `GET /api/weeklies/{weeklyId}` | Detalhe da semana |
+| `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco; Fase 8: tambem usada como "reprise" de um dia ja concluido, clicado a partir da Visao Semanal) |
+| `/start` | `GET /api/today` + `GET /api/weeklies/{id}` + `GET /api/courses` + `GET /api/courses/{id}` | `StartDashboard` (Fase 8) - hub "Comecar Hoje"/"Projeto desta Semana"/"Trilha Completa" |
+| `/start?course=` | `GET /api/courses/{courseId}` | `CourseDetailPage` (Fase 8) - trilha completa do curso |
+| `/start?course=&weekly=` | `GET /api/weeklies/{weeklyId}` (+ `GET /api/courses/{courseId}` pra navegacao entre semanas) | `WeeklyDetailPage` (Fase 8) - dias da semana + projeto |
 | `/start?course=&weekly=&daily=` | `GET /api/dailies/{dailyId}` | Estado de uma Daily especifica (somente leitura) |
 | `/start?course=&weekly=&project=1` | `GET /api/weeklies/{weeklyId}` | Projeto pratico da semana (`WeeklyProjectPage`, Fase 7 - submissao via `POST .../project/submit`) |
 | `/admin/conteudo` | `GET /api/courses` | Autoria (Fase 6) - lista de cursos |
@@ -874,12 +886,26 @@ de Projeto Semanal).
 | 5 | Correcao de Ambiguidade + Captura e Avaliacao de Voz | `docs/fase-5/resumo-implementacao-fase-5.md` |
 | 6 | Tela de Autoria de Conteudo Curado | `docs/fase-6/resumo-implementacao-fase-6.md` |
 | 7 | Etapas de Conteudo, Projeto Semanal, Menu de Configuracoes e Feedback Unificado | `docs/fase-7/resumo-implementacao-fase-7.md` |
+| 8 | Polimento das Telas de Navegacao (Start, Visao Semanal, Detalhes do Curso) | `docs/fase-8/resumo-implementacao-fase-8.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
 - O contrato da Api (rotas, DTOs, formato de erro) esta documentado na secao "Superficie da
   API" acima; o client tipado do frontend (`frontend/src/api/`) e o exemplo de referencia de
   como consumi-lo.
+- **`Focadu.Tests` so testa dominio puro** (entidades, `Weekly`/`Daily`, `EvaluationPolicy`) e
+  funcoes `internal static` da camada de aplicacao que nao dependem de repositorio
+  (`SubmitActivityResponseUseCase.ResolveScore`, `DailyStateMapper.ToDto`) - **nao ha fakes de
+  `ICourseRepository`/`IWeeklyRepository`/etc. em lugar nenhum do projeto**, entao casos de uso
+  simples de leitura/mapeamento (`GetCourseDetailUseCase`, `GetWeeklyDetailUseCase`) nunca tiveram
+  teste dedicado; a checagem desses fica pra verificacao ao vivo (Postgres real + `dotnet run` +
+  requisicoes reais), nao unit test. Se uma fase futura decidir que vale a pena introduzir fakes de
+  repositorio, isso e uma decisao de infraestrutura de teste nova pro projeto, nao so "mais um
+  teste".
+- `WeeklyOverviewDto` (dentro de `CourseDetailDto`, usado por `CourseDetailPage` no frontend) tem
+  um campo `Days` (Fase 8) com status por dia - pensado pra grids de navegacao, nao pra logica de
+  negocio. Se o numero de Dailies por Weekly crescer muito, isso engorda a resposta de
+  `GET /api/courses/{courseId}` proporcionalmente.
 - `GET /api/today` e `GET /api/dailies/{dailyId}` retornam o mesmo `DailyStateDto` -
   `AccessMode` e o campo que decide se a tela deve ser editavel ou so leitura.
 - `POST .../responses` nao tem mais campo `Score` - todo tipo de atividade calcula o Score no
