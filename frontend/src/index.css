@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/*
+ * Paleta da identidade visual da Focadu (validada no Figma). Tokens definidos como cores
+ * Tailwind custom (Tailwind v4, CSS-first) - viram utilitarios: bg-base, bg-surface,
+ * bg-surface-alt, text-accent, bg-accent, text-alert, bg-alert, text-primary, text-secondary,
+ * text-muted.
+ */
+@theme {
+  --color-base: #0a0a0a;
+  --color-surface: #151515;
+  --color-surface-alt: #1e1e1e;
+  --color-accent: #39ff6a;
+  --color-alert: #ff3b3b;
+  --color-primary: #f5f5f5;
+  --color-secondary: #9a9a9a;
+  --color-muted: #5c5c5c;
+}
+
+body {
+  background-color: var(--color-base);
+  color: var(--color-primary);
+}

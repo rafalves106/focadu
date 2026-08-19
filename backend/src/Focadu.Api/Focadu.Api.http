@@ -3,6 +3,7 @@
 @weeklyId = 00000000-0000-0000-0000-000000000000
 @dailyId = 00000000-0000-0000-0000-000000000000
 @activityId = 00000000-0000-0000-0000-000000000000
+@selectedOptionId = 00000000-0000-0000-0000-000000000000
 
 GET {{Focadu.Api_HostAddress}}/health
 Accept: application/json
@@ -39,6 +40,20 @@ Accept: application/json
 
 ###
 
+### Quiz/WordMatch: Score e sempre calculado no servidor a partir de selectedOptionId.
+POST {{Focadu.Api_HostAddress}}/api/dailies/{{dailyId}}/activities/{{activityId}}/responses
+Content-Type: application/json
+Accept: application/json
+
+{
+  "selectedOptionId": "{{selectedOptionId}}",
+  "transcript": null,
+  "aiFeedback": null
+}
+
+###
+
+### Cloze/Roleplay: ainda sem IContentEvaluationService, Score continua vindo pronto do chamador.
 POST {{Focadu.Api_HostAddress}}/api/dailies/{{dailyId}}/activities/{{activityId}}/responses
 Content-Type: application/json
 Accept: application/json

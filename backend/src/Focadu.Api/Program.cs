@@ -3,7 +3,7 @@ using Focadu.Api.ErrorHandling;
 using Focadu.Application;
 using Focadu.Application.Courses;
 using Focadu.Application.Dailies;
-using Focadu.Application.Exceptions;
+using Focadu.Application.Seed;
 using Focadu.Application.Weeklies;
 using Focadu.Infrastructure;
 
@@ -20,7 +20,31 @@ builder.Services.AddFocaduInfrastructure(connectionString);
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// CORS para o frontend Vite (Passo 3) - porta diferente da Api conta como origem diferente, o
+// navegador bloqueia sem isso mesmo os dois rodando em localhost. So dev por enquanto (unico
+// usuario-teste, sem deploy ainda) - ver docs/ARQUITETURA.md se isso precisar virar configuravel.
+const string FrontendDevCorsPolicy = "FrontendDev";
+builder.Services.AddCors(options => options.AddPolicy(FrontendDevCorsPolicy, policy => policy
+    .WithOrigins("http://localhost:5173", "http://127.0.0.1:5173")
+    .AllowAnyHeader()
+    .AllowAnyMethod()));
+
 var app = builder.Build();
+
+// `dotnet run --project src/Focadu.Api -- seed`: popula o curso piloto "Web Security" e encerra,
+// sem subir o servidor HTTP. Nao e um endpoint porque a Api ainda nao tem autoria de conteudo.
+if (args.Contains("seed"))
+{
+    using var scope = app.Services.CreateScope();
+    var seeder = scope.ServiceProvider.GetRequiredService<SeedWebSecurityCourseUseCase>();
+    var result = await seeder.ExecuteAsync();
+
+    Console.WriteLine(result.AlreadyExisted
+        ? "Seed: curso 'Web Security' ja existe - nada foi inserido."
+        : $"Seed: curso 'Web Security' criado com sucesso (CourseId={result.CourseId}).");
+
+    return;
+}
 
 // Middleware de erro primeiro: qualquer excecao lancada por qualquer endpoint abaixo (validacao,
 // regra de dominio, recurso nao encontrado) passa por ApiExceptionHandler e vira o mesmo formato
@@ -33,6 +57,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors(FrontendDevCorsPolicy);
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
@@ -81,18 +106,17 @@ api.MapPost("/dailies/{dailyId}/start", async (string dailyId, StartOrResumeDail
     })
     .WithName("StartOrResumeDaily");
 
+// Score obrigatorio/valido depende do tipo da atividade (Quiz/WordMatch usam SelectedOptionId,
+// Cloze/Roleplay usam Score) - essa decisao mora dentro do caso de uso, que e quem enxerga o
+// ActivityType (ver SubmitActivityResponseUseCase.ResolveScore).
 api.MapPost("/dailies/{dailyId}/activities/{activityId}/responses",
         async (string dailyId, string activityId, SubmitActivityResponseRequest? request, SubmitActivityResponseUseCase useCase, CancellationToken ct) =>
         {
             var dId = RouteParsing.RequireGuid(dailyId, "dailyId");
             var aId = RouteParsing.RequireGuid(activityId, "activityId");
 
-            if (request?.Score is null)
-                throw new ValidationException("score_obrigatorio", "O campo 'score' e obrigatorio.");
-            if (request.Score is < 0 or > 100)
-                throw new ValidationException("score_invalido", "O campo 'score' precisa estar entre 0 e 100.");
-
-            var result = await useCase.ExecuteAsync(dId, aId, request.Score.Value, request.Transcript, request.AiFeedback, ct);
+            var result = await useCase.ExecuteAsync(
+                dId, aId, request?.Score, request?.SelectedOptionId, request?.Transcript, request?.AiFeedback, ct);
             return Results.Created($"/api/dailies/{dailyId}/activities/{activityId}/responses/{result.Response.Id}", result);
         })
     .WithName("SubmitActivityResponse");
