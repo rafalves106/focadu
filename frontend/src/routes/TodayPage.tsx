@@ -6,6 +6,7 @@ import { ActivityScreen, Centered } from '../components/Layout';
 import { OptionsAnswer } from '../components/OptionsAnswer';
 import { ClozeFreeTextActivity } from '../components/ClozeFreeTextActivity';
 import { RoleplayActivity } from '../components/RoleplayActivity';
+import { VoiceSummaryActivity } from '../components/VoiceSummaryActivity';
 import { CompletionSummary } from '../components/CompletionSummary';
 
 // "Pino" do passo atual - so identifica QUAL atividade/grupo mostrar, nunca guarda uma copia dos
@@ -177,6 +178,18 @@ export function TodayPage() {
   if (activity.type === ActivityType.Roleplay) {
     return (
       <RoleplayActivity
+        key={activity.id}
+        dailyId={daily.id}
+        activity={activity}
+        onDailyRefetched={setDaily}
+        onContinue={handleContinue}
+      />
+    );
+  }
+
+  if (activity.type === ActivityType.VoiceSummary) {
+    return (
+      <VoiceSummaryActivity
         key={activity.id}
         dailyId={daily.id}
         activity={activity}

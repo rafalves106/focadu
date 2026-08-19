@@ -8,6 +8,30 @@ namespace Focadu.Tests.Dailies;
 
 public class DailyTests
 {
+    [Fact]
+    public void AddActivity_VoiceSummary_WithoutContentId_Throws()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var daily = weekly.AddDaily(1, DailyFixtures.Today);
+
+        Assert.Throws<DomainException>(
+            () => daily.AddActivity(ActivityType.VoiceSummary, 0, AnswerMode.FreeText, prompt: "Resuma o texto."));
+    }
+
+    [Fact]
+    public void AddActivity_VoiceSummary_WithContentId_Succeeds()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var daily = weekly.AddDaily(1, DailyFixtures.Today);
+        var contentId = Guid.NewGuid();
+
+        var activity = daily.AddActivity(
+            ActivityType.VoiceSummary, 0, AnswerMode.FreeText, prompt: "Resuma o texto.", contentId: contentId);
+
+        Assert.Equal(ActivityType.VoiceSummary, activity.Type);
+        Assert.Equal(contentId, activity.ContentId);
+    }
+
     [Theory]
     [InlineData(0, false)]
     [InlineData(79, false)]

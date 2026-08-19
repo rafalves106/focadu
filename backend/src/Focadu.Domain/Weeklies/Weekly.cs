@@ -78,6 +78,21 @@ public class Weekly : Entity
     public IReadOnlyCollection<Daily> GetWeakDailies() =>
         _dailies.Where(d => d.IsWeakDay).ToList();
 
+    /// <summary>
+    /// Resolve qual Daily desta Weekly esta datada em "date", preferindo sempre a Daily
+    /// nao-reforco quando houver mais de uma na mesma data (ex: uma Daily normal e a Daily de
+    /// reforco gerada a partir dela no mesmo dia, ja que CreateDailyReinforcement usa "hoje" como
+    /// data). O atalho "/hoje" nunca deve resolver acidentalmente pra uma Daily de reforco -
+    /// acesso a ela e sempre via link explicito (Daily.ReinforcementDailyId). Determinístico
+    /// mesmo sem esse cenario: OrderBy/ThenBy nunca dependem da ordem natural do banco.
+    /// </summary>
+    public Daily? GetDailyByDate(DateOnly date) =>
+        _dailies
+            .Where(d => d.Date == date)
+            .OrderBy(d => d.IsReinforcement)
+            .ThenBy(d => d.DayNumber)
+            .FirstOrDefault();
+
     public bool ShouldTriggerWeeklyReinforcement()
     {
         var alreadyCovered = _reinforcements.SelectMany(r => r.WeakDailyIds).ToHashSet();

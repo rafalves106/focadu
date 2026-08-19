@@ -4,8 +4,8 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 4 - Autoria de Conteudo, Conclusao da Daily e
-> Telas Restantes**.
+> Ultima fase que atualizou este documento: **Fase 5 - Correcao de Ambiguidade + Captura e
+> Avaliacao de Voz**.
 
 ## Visao geral do projeto
 
@@ -58,10 +58,12 @@ Focadu.Domain          <- entidades, value objects, regras de negocio, interface
 Focadu.Application      <- casos de uso, DTOs, interfaces de servicos externos (ports:
                            IContentEvaluationService, IAudioTranscriptionService, IClock),
                            excecoes de aplicacao (NotFoundException, ConflictException,
-                           ValidationException). So depende de Focadu.Domain.
+                           ValidationException, ExternalServiceException). So depende de
+                           Focadu.Domain.
 Focadu.Infrastructure   <- adapters concretos: DbContext do EF Core, IEntityTypeConfiguration
-                           por entidade, repositorios Postgres, UnitOfWork, SystemClock.
-                           Depende de Focadu.Domain e Focadu.Application.
+                           por entidade, repositorios Postgres, UnitOfWork, SystemClock, adapters
+                           Groq (transcricao + avaliacao, Fase 5). Depende de Focadu.Domain e
+                           Focadu.Application.
 Focadu.Api              <- composicao (DI) + endpoints HTTP reais, validacao de request,
                            tratamento de erro padronizado. Depende dos tres acima.
 Focadu.Tests            <- testes unitarios de dominio (xUnit). Depende de Domain e Application.
@@ -81,7 +83,8 @@ src/
     Common/Entity.cs               <- classe base: Id (Guid) gerado no proprio dominio
     Exceptions/DomainException.cs  <- carrega um Code (string) de erro, ver secao de API abaixo
     Policies/EvaluationPolicy.cs   <- as 3 constantes de negocio centralizadas
-    Enums/                          <- CourseStatus, DailyStatus, DailyAccessMode, ActivityType,
+    Enums/                          <- CourseStatus, DailyStatus, DailyAccessMode, ActivityType
+                                       (Quiz/WordMatch/Cloze/Roleplay/VoiceSummary - Fase 5),
                                        ActivityStatus, AnswerMode, TerminalQuality,
                                        CuratedContentType, WeeklyProjectStatus
     Courses/Course.cs
@@ -103,20 +106,26 @@ src/
                                        testar direto membros internal (DailyStateMapper.ToDto,
                                        SubmitActivityResponseUseCase.ResolveScore) sem precisar de
                                        fakes de repositorio
-    Ports/                          <- IClock, IContentEvaluationService (stub, sem impl),
-                                       IAudioTranscriptionService (stub, sem impl)
-    Exceptions/                     <- NotFoundException, ConflictException, ValidationException
+    Ports/                          <- IClock, IContentEvaluationService, IAudioTranscriptionService
+                                       (adapters concretos desde a Fase 5, ver Focadu.Infrastructure/Services)
+    Exceptions/                     <- NotFoundException, ConflictException, ValidationException,
+                                       ExternalServiceException (Fase 5 - erro de servico externo)
     Shared/                         <- DTOs reaproveitados entre modulos (ex: sessoes de reforco,
                                        CuratedContentDto)
     Courses/                        <- ListCoursesUseCase, GetCourseDetailUseCase, Dtos.cs
     Weeklies/                       <- GetWeeklyDetailUseCase, Dtos.cs
     Content/                         <- CreateCuratedContentUseCase, UpdateCuratedContentUseCase (Fase 4)
-    Dailies/                        <- GetDailyStateUseCase, GetTodayUseCase,
+    Dailies/                        <- GetDailyStateUseCase, GetTodayUseCase (usa
+                                       Weekly.GetDailyByDate desde a Fase 5),
                                        StartOrResumeDailyUseCase, SubmitActivityResponseUseCase
-                                       (+ ResolveScore, cobre os 4 ActivityType desde a Fase 4 -
-                                       ver "Score no servidor" abaixo), CompleteDailyUseCase
-                                       (retorna CompleteDailyResult), DailyStateMapper.cs
-                                       (interno, compartilhado pelos casos de uso acima), Dtos.cs
+                                       (+ ResolveScore, cobre Quiz/WordMatch/Cloze/Roleplay - ver
+                                       "Score no servidor" abaixo), SubmitVoiceSummaryResponseUseCase
+                                       (Fase 5 - transcreve + avalia por IA), ActivityResponseRecorder
+                                       (interno, Fase 5 - "grava resposta + checa reforco",
+                                       compartilhado pelos 2 casos de uso de submissao),
+                                       CompleteDailyUseCase (retorna CompleteDailyResult),
+                                       DailyStateMapper.cs (interno, compartilhado pelos casos de
+                                       uso de leitura), Dtos.cs
     Seed/                            <- SeedWebSecurityCourseUseCase, ver secao de Seed
     DependencyInjection.cs
   Focadu.Infrastructure/
@@ -128,22 +137,29 @@ src/
       UnitOfWork.cs
       Migrations/                   <- InitialCreate (Fase 1), AddPromptToDailyActivity (Fase 3),
                                        Fase4SchemaChanges (Daily.ReinforcementDailyId,
-                                       ActivityResponse.Justification)
-    Services/SystemClock.cs         <- implementacao real de IClock (hora local)
+                                       ActivityResponse.Justification) - Fase 5 nao precisou de
+                                       migration nova (ActivityType.VoiceSummary e so mais um
+                                       valor de string dentro da coluna existente)
+    Services/
+      SystemClock.cs                 <- implementacao real de IClock (hora local)
+      GroqOptions.cs                  <- ApiKey da Groq (Fase 5)
+      GroqAudioTranscriptionService.cs  <- adapter de IAudioTranscriptionService (Fase 5)
+      GroqContentEvaluationService.cs   <- adapter de IContentEvaluationService (Fase 5)
     DependencyInjection.cs
   Focadu.Api/
-    Program.cs                      <- composicao de DI + 10 endpoints reais (ver secao abaixo)
+    Program.cs                      <- composicao de DI + 11 endpoints reais (ver secao abaixo)
     ErrorHandling/                  <- ApiExceptionHandler (IExceptionHandler), ErrorResponse
     Contracts/                      <- RouteParsing (parse de Guid com erro padronizado),
                                        SubmitActivityResponseRequest, CuratedContentRequests (Fase 4)
-    appsettings.json                <- connection string default do Postgres local
+    appsettings.json                <- connection string + Groq:ApiKey (vazio por padrao) default
+    Focadu.Api.csproj                <- UserSecretsId (Fase 5, ver "Como configurar a chave da Groq")
 tests/
   Focadu.Tests/
-    Dailies/DailyTests.cs
-    Weeklies/WeeklyTests.cs
+    Dailies/DailyTests.cs           <- + exigencia de ContentId pra VoiceSummary (Fase 5)
+    Weeklies/WeeklyTests.cs         <- + Weekly.GetDailyByDate (Fase 5)
     Policies/EvaluationPolicyTests.cs
     Domain/DomainExceptionCodeTests.cs  <- trava os Code usados pela Api (ver abaixo)
-    Dailies/SubmitActivityResponseScoreTests.cs  <- ResolveScore, cobre os 4 ActivityType (Fase 4)
+    Dailies/SubmitActivityResponseScoreTests.cs  <- ResolveScore, cobre Quiz/WordMatch/Cloze/Roleplay
     Dailies/DailyStateMapperTests.cs             <- gabarito escondido/revelado (Fase 3)
     TestHelpers/DailyFixtures.cs
 ```
@@ -181,6 +197,14 @@ contem uma Daily datada em `date` dentro daquele curso - usado pelo atalho "/hoj
 (`ICourseRepository`, `IMonthlyRepository`), usados principalmente para navegacao/gestao de
 conteudo, nao para as regras de acesso/reforco do dia a dia.
 
+**`Weekly.GetDailyByDate(date)` (Fase 5):** resolve qual `Daily` desta Weekly esta datada em
+`date`, preferindo sempre a Daily **nao-reforco** quando houver mais de uma na mesma data (ex:
+uma Daily normal e a Daily de reforco gerada a partir dela no mesmo dia -
+`CreateDailyReinforcement` usa "hoje" como data). `GetTodayUseCase` usa este metodo - o atalho
+"/hoje" nunca deve resolver acidentalmente pra uma Daily de reforco; acesso a ela e sempre via
+link explicito (`Daily.ReinforcementDailyId`). Fecha a ambiguidade documentada como pendente
+desde a Fase 4.
+
 **`DailyActivity.Prompt` (Fase 3):** enunciado/pergunta da propria atividade (pergunta do Quiz,
 termo do WordMatch, contexto do Cloze/Roleplay) - sempre visivel ao cliente (nunca redigido, e o
 que o usuario precisa ler pra responder). Faltava na Fase 1: so existiam `QuizOption` (as opcoes)
@@ -204,7 +228,15 @@ origem). Antes da Fase 4, `ReinforcementTriggered` virava `true` mas nao havia c
 **`ActivityResponse.Justification` (Fase 4):** texto livre opcional, pedido no Cloze/FreeText
 antes de revelar se a resposta esta certa - so armazenado, sem avaliacao de IA. Distinto de
 `Transcript` (que carrega a resposta em si, seja ela transcrita de voz ou digitada) e de
-`AiFeedback` (feedback vindo de uma avaliacao de IA sobre a resposta - ainda sem uso real).
+`AiFeedback` (feedback vindo de uma avaliacao de IA sobre a resposta).
+
+**`ActivityType.VoiceSummary` (Fase 5):** resumo falado sobre um `CuratedContent`. Diferente dos
+outros 4 tipos: `ContentId` e **obrigatorio** na criacao (`DomainException` senao - e o texto de
+referencia que a IA usa pra avaliar), `Prompt` e a instrucao ("Explique com suas palavras..."), e
+nunca usa `QuizOption` nem `ExpectedAnswer` - a resposta e sempre `ActivityResponse.Transcript`
+(a transcricao do audio), com `Score`/`AiFeedback` vindos inteiramente da avaliacao por IA (ver
+"Score no servidor" abaixo). `AnswerMode` usado pro seed e `FreeText` (nao ha nocao de multipla
+escolha pra um resumo falado).
 
 ## Regras de negocio centralizadas
 
@@ -279,6 +311,7 @@ composicao da Fase 1). Todos sob `/api`, alem de `GET /health`:
 | GET | `/api/today` | `GetTodayUseCase` | 200, 404/409 (ver abaixo) |
 | POST | `/api/dailies/{dailyId}/start` | `StartOrResumeDailyUseCase` | 200 |
 | POST | `/api/dailies/{dailyId}/activities/{activityId}/responses` | `SubmitActivityResponseUseCase` | 201 (cria uma nova `ActivityResponse`) |
+| POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/audio` | `SubmitVoiceSummaryResponseUseCase` (Fase 5) | 201, `multipart/form-data`, so pra `VoiceSummary` |
 | POST | `/api/dailies/{dailyId}/complete` | `CompleteDailyUseCase` | 200 (`CompleteDailyResult`, ver abaixo) |
 | POST | `/api/curated-content` | `CreateCuratedContentUseCase` (Fase 4) | 201, 400/404 |
 | PUT | `/api/curated-content/{id}` | `UpdateCuratedContentUseCase` (Fase 4) | 200, 400/404 |
@@ -317,19 +350,22 @@ usar `/api/courses/{courseId}` para desambiguar). Isso e seguro para o cenario a
 curso piloto, "Web Security"), mas para de funcionar sozinho se o produto crescer para varios
 cursos ativos ao mesmo tempo sem um conceito de usuario - ver pontos abertos da Fase 2.
 
-### Score no servidor para todo tipo de atividade (Fase 3 + Fase 4)
+### Score no servidor para todo tipo de atividade (Fase 3 + Fase 4 + Fase 5)
 
 `POST .../responses` **nao tem mais campo `Score`** - desde a Fase 4, o Score de qualquer tipo de
-atividade e sempre calculado dentro de `SubmitActivityResponseUseCase.ResolveScore`, nunca aceito
-pronto do cliente (fecha de vez a lacuna que a Fase 3 tinha deixado aberta so pra Cloze/Roleplay,
-que na epoca ainda recebiam `Score` do chamador):
+atividade e sempre calculado no servidor, nunca aceito pronto do cliente:
 
 | Tipo | Campo do request | Como o Score e calculado |
 |---|---|---|
 | `Quiz` / `WordMatch` | `SelectedOptionId` | 100 se a opcao existe nessa atividade e `IsCorrect = true`, senao 0 |
 | `Cloze` + `AnswerMode.MultipleChoice` | `SelectedOptionId` | Mesmo mecanismo de Quiz/WordMatch (reaproveitado) |
-| `Cloze` + `AnswerMode.FreeText` | `Transcript` | 100 se `Transcript.Trim()` bate com `ExpectedAnswer.Trim()` (case-insensitive), senao 0 - **ponytail**: comparacao textual simples, sem IA; upgrade natural e `IContentEvaluationService` |
+| `Cloze` + `AnswerMode.FreeText` | `Transcript` | 100 se `Transcript.Trim()` bate com `ExpectedAnswer.Trim()` (case-insensitive), senao 0 - **ponytail**: comparacao textual simples, sem IA |
 | `Roleplay` | `SelectedRoleplayNodeId` | A partir do `TerminalQuality` do node terminal alcancado (ver tabela abaixo) - o node precisa ter `IsTerminal = true` |
+| `VoiceSummary` | Arquivo de audio (`POST .../responses/audio`, endpoint separado - ver "Resumo falado por voz" abaixo) | Resultado de `IContentEvaluationService.EvaluateAsync` (Groq, Fase 5) |
+
+Os 4 primeiros tipos sao resolvidos sincronamente em
+`SubmitActivityResponseUseCase.ResolveScore`. `VoiceSummary` e assincrono (chama 2 servicos
+externos) e por isso vive num caso de uso e endpoint proprios - ver abaixo.
 
 Mapeamento `TerminalQuality` -> Score (decidido na Fase 4, unico node que passa do
 `PassingScore` de 80 e o `Ideal`):
@@ -354,6 +390,50 @@ Validacao (`ValidationException`, mesmo envelope padrao de erro):
 | `selected_roleplay_node_id_obrigatorio` | Roleplay sem `SelectedRoleplayNodeId` no corpo |
 | `selected_roleplay_node_id_invalido` | `SelectedRoleplayNodeId` nao corresponde a um `RoleplayNode` desta atividade |
 | `selected_roleplay_node_nao_terminal` | `SelectedRoleplayNodeId` aponta pra um node com `IsTerminal = false` |
+
+### Resumo falado por voz (`POST .../responses/audio`, Fase 5)
+
+Endpoint separado do texto porque o corpo e binario (`multipart/form-data`, campo `audio`), nao
+JSON. Fluxo de `SubmitVoiceSummaryResponseUseCase`:
+
+1. Valida tamanho do arquivo (`MaxAudioSizeBytes` = 25MB - **ponytail**: calibrado pra cobrir
+   ~10min de gravacao tipica do navegador com folga, e coincide com o limite de upload da propria
+   Groq) e que a atividade e do tipo `VoiceSummary`.
+2. Resolve o `CuratedContent` referenciado por `activity.ContentId` - se nao tiver `BodyText`,
+   `conteudo_referencia_ausente` (400).
+3. `IAudioTranscriptionService.TranscribeAsync` (Groq Whisper, `whisper-large-v3`) - transcricao
+   vazia vira `ExternalServiceException` (`transcricao_vazia`, 502).
+4. `IContentEvaluationService.EvaluateAsync` (Groq chat completion, `llama-3.3-70b-versatile`,
+   JSON mode) com `ContentEvaluationRequest(ExpectedAnswer: BodyText, UserAnswer: transcricao,
+   ContextText: Prompt)` - retorna `ContentEvaluationResult(Score, Feedback)`.
+5. Grava a resposta e checa reforco via `ActivityResponseRecorder` (mesmo passo compartilhado com
+   `SubmitActivityResponseUseCase`) - `Transcript` = transcricao, `AiFeedback` = feedback da IA,
+   `Score` = nota da IA, `Justification` = nulo (nao se aplica a VoiceSummary).
+
+Prompt de avaliacao (formato confirmado com o Falves antes de implementar - decisao registrada em
+`docs/fase-5/resumo-implementacao-fase-5.md`): 1 chamada, JSON mode, pedindo 1 nota unica de 0 a
+100 que ja pondera "conteudo correto" e "clareza da explicacao" juntos, mais 1 feedback curto em
+PT-BR. Texto exato dos prompts (sistema + usuario) em
+`Focadu.Infrastructure.Services.GroqContentEvaluationService`.
+
+**Resposta malformada da IA nunca vira uma nota inventada.** Se o JSON retornado pela Groq nao
+tiver `score` (inteiro 0-100) e `feedback` (string) validos, `GroqContentEvaluationService` lanca
+`ExternalServiceException("avaliacao_ia_formato_invalido", ...)` (502) - o usuario ve um erro
+claro e pode gravar de novo, em vez de receber uma pontuacao que ninguem validou.
+
+Codes especificos deste fluxo:
+
+| Code | Status | Quando |
+|---|---|---|
+| `audio_obrigatorio` | 400 | Nenhum arquivo enviado no campo `audio` |
+| `audio_muito_grande` | 400 | Arquivo acima de 25MB |
+| `tipo_atividade_invalido` | 400 | Atividade nao e do tipo `VoiceSummary` |
+| `conteudo_referencia_ausente` | 400 | `CuratedContent` referenciado sem `BodyText` |
+| `transcricao_vazia` | 502 | Groq Whisper devolveu transcricao vazia |
+| `avaliacao_ia_formato_invalido` | 502 | Resposta da Groq nao e o JSON esperado |
+| `groq_timeout` | 503 | Groq nao respondeu a tempo (timeout de 60s no `HttpClient`) |
+| `groq_indisponivel` / `groq_transcricao_falhou` / `groq_avaliacao_falhou` | 502 | Erro de rede ou status HTTP de erro vindo da Groq |
+| `groq_api_key_nao_configurada` | 502 | `Groq:ApiKey` vazia - ver "Como configurar a chave da Groq" abaixo |
 
 ### Conclusao da Daily (`POST .../complete`) e reforco (Fase 4)
 
@@ -385,8 +465,7 @@ Toda excecao lancada por um endpoint vira o mesmo formato de corpo:
 ```
 
 Isso e feito por `Focadu.Api.ErrorHandling.ApiExceptionHandler` (um `IExceptionHandler` do
-ASP.NET Core, registrado globalmente via `app.UseExceptionHandler()`), que reconhece 4 tipos de
-excecao:
+ASP.NET Core, registrado globalmente via `app.UseExceptionHandler()`), que reconhece:
 
 | Tipo | Onde vive | Status HTTP |
 |---|---|---|
@@ -394,7 +473,14 @@ excecao:
 | `Focadu.Application.Exceptions.NotFoundException` | Application | Sempre 404 |
 | `Focadu.Application.Exceptions.ConflictException` | Application | Sempre 409 |
 | `Focadu.Application.Exceptions.ValidationException` | Application (lancada pela Api antes do caso de uso) | Sempre 400 |
+| `Focadu.Application.Exceptions.ExternalServiceException` (Fase 5) | Application (lancada pelos adapters Groq) | `StatusCode` explicito no construtor - 502 default, 503 pra timeout |
+| `Microsoft.AspNetCore.Http.BadHttpRequestException` (Fase 5) | Framework (model binding) | Sempre 400, `Code = "requisicao_invalida"` - corpo ausente/malformado (JSON invalido, `multipart/form-data` sem o campo esperado) antes do endpoint rodar |
 | Qualquer outra excecao | - | 500, `Code = "erro_interno"`, logada via `ILogger` |
+
+**`BadHttpRequestException` descoberto e corrigido na Fase 5** ao testar o endpoint de audio com
+corpo ausente - sem esse caso, caia no 500 generico. Cobre qualquer entrada malformada que o
+model binding do ASP.NET Core rejeita antes do endpoint rodar, JSON incluso - fecha tambem o
+ponto em aberto sobre "JSON malformado" documentado desde a Fase 2.
 
 `DomainException` carrega um `Code` (string, snake_case) alem da `Message`, exatamente para a
 Api conseguir decidir o status HTTP sem depender do texto da mensagem (que pode mudar de
@@ -431,9 +517,9 @@ de testes em vez de silenciosamente virar um 400 generico em producao.
 - `SubmitActivityResponseRequest` tem `SelectedOptionId`/`SelectedRoleplayNodeId`/`Transcript`/
   `Justification` (todos opcionais) - qual e obrigatorio depende do `ActivityType`/`AnswerMode`,
   validado dentro do caso de uso (ver "Score no servidor" acima), nao em `Program.cs`.
-- Corpo de request malformado (JSON invalido) ainda pode gerar uma resposta de erro fora do
-  formato padrao da Api, por vir do model binding do ASP.NET Core antes do endpoint rodar - ver
-  pontos abertos da Fase 2.
+- **Resolvido na Fase 5:** corpo de request malformado (JSON invalido, `multipart/form-data` sem
+  o campo esperado) agora sempre usa o formato padrao da Api (`requisicao_invalida`, 400) - ver
+  `BadHttpRequestException` na secao de tratamento de erro acima.
 
 ### Autoria de conteudo curado (Fase 4)
 
@@ -480,8 +566,9 @@ Popula a Semana 1 completa do curso "Web Security": 4 Dailies, CuratedContent po
 completo das 4 leituras carregado via `PUT /api/curated-content/{id}` - Fase 4, nao faz parte do
 seed em si), e pelo menos 1 `DailyActivity` de cada tipo distribuida pelos 4 dias - Quiz (todos os
 dias), WordMatch (2 termos, Dia 2), Cloze/MultipleChoice + Cloze/FreeText (Dia 3), Roleplay (3
-niveis, Dia 4) - alem do `WeeklyProject`. Conteudo completo em
-`docs/fase-3/resumo-implementacao-fase-3.md` e `docs/fase-4/resumo-implementacao-fase-4.md`.
+niveis, Dia 4), VoiceSummary (Dia 1, referenciando a leitura "Como a web funciona" - Fase 5) -
+alem do `WeeklyProject`. Conteudo completo em `docs/fase-3/resumo-implementacao-fase-3.md`,
+`docs/fase-4/resumo-implementacao-fase-4.md` e `docs/fase-5/resumo-implementacao-fase-5.md`.
 
 Acionado via `dotnet run --project src/Focadu.Api -- seed` (checagem de `args` em `Program.cs`,
 antes de `app.Run()` - roda e encerra, sem subir o servidor HTTP).
@@ -515,6 +602,36 @@ Corrigido uma unica vez, centralizado em `FocaduDbContext.OnModelCreating`
 (`idProperty.ValueGenerated = ValueGenerated.Never` pra toda entidade) - sem migration nova, e so
 metadado do EF Core, nao muda schema.
 
+## Groq (transcricao e avaliacao por IA, Fase 5)
+
+Os dois ports que existiam so como stub desde a Fase 1 (`IAudioTranscriptionService`,
+`IContentEvaluationService`) agora tem adapter concreto via Groq
+(`Focadu.Infrastructure.Services`) - ver "Resumo falado por voz" acima pro fluxo completo. Os
+dois usam `HttpClient` tipado (`services.AddHttpClient<TPort, TAdapter>`), base address
+`https://api.groq.com/openai/v1/`, timeout de 60s.
+
+### Como configurar a chave da Groq
+
+A chave **nunca** fica hardcoded nem commitada - vem de `Groq:ApiKey` na configuracao do
+ASP.NET Core, com 3 formas de prover isso (da mais recomendada pra dev, a de producao/CI):
+
+```bash
+# 1. Recomendado em dev: user-secrets (Focadu.Api.csproj ja tem UserSecretsId configurado)
+cd backend/src/Focadu.Api
+dotnet user-secrets set "Groq:ApiKey" "sua-chave-aqui"
+
+# 2. Alternativa: variavel de ambiente (funciona em qualquer ambiente, inclusive CI/deploy)
+export Groq__ApiKey="sua-chave-aqui"   # note o duplo underscore - convencao do ASP.NET Core p/ chaves aninhadas
+
+# 3. Nunca faca isso: colocar a chave em appsettings.json ou appsettings.Development.json -
+# esses arquivos sao commitados no Git.
+```
+
+Sem a chave configurada, o resto da Api sobe normalmente (diferente da connection string, que
+falha o startup se ausente) - so as duas chamadas à Groq falham, com um erro claro
+(`groq_api_key_nao_configurada`, 502) em vez de um 401 sem contexto vindo da Groq. Chave obtida em
+[console.groq.com](https://console.groq.com).
+
 ## Como rodar localmente
 
 ```bash
@@ -523,6 +640,7 @@ docker compose up -d                                    # sobe Postgres em local
 dotnet ef database update -p src/Focadu.Infrastructure --startup-project src/Focadu.Infrastructure  # aplica as migrations
 dotnet build Focadu.slnx                                # build de toda a solucao
 dotnet test tests/Focadu.Tests/Focadu.Tests.csproj      # roda os testes de dominio
+dotnet user-secrets set "Groq:ApiKey" "sua-chave-aqui" --project src/Focadu.Api  # so necessario pra VoiceSummary funcionar de verdade
 dotnet run --project src/Focadu.Api -- seed              # popula o curso "Web Security" (idempotente)
 dotnet run --project src/Focadu.Api                      # sobe a API completa
 ```
@@ -542,7 +660,7 @@ Password=focadu` (definida em `backend/src/Focadu.Api/appsettings.json` e como f
 ferramentas de design-time do EF, ou por `ConnectionStrings:Focadu` / env var equivalente para a
 Api em runtime).
 
-## Frontend (Fase 3, telas de atividade completadas na Fase 4)
+## Frontend (Fase 3, telas de atividade completadas nas Fases 4 e 5)
 
 ```
 frontend/
@@ -555,15 +673,17 @@ frontend/
     api/
       types.ts               <- espelha os DTOs de Focadu.Application (enums como numero, com
                                    consts tipo ActivityType/AnswerMode/ActivityStatus/TerminalQuality)
-      client.ts               <- fetch tipado, ApiError, VITE_API_BASE_URL
+      client.ts               <- fetch tipado, ApiError, VITE_API_BASE_URL, suporte a FormData
+                                   (upload de audio, Fase 5, sem forcar Content-Type json)
       useApiResource.ts        <- hook pra loading/error/cancelamento (usado pelas 4 sub-telas de /start)
     routes/
-      TodayPage.tsx            <- /hoje (orquestra os 4 tipos de atividade + fluxo de conclusao)
+      TodayPage.tsx            <- /hoje (orquestra os 5 tipos de atividade + fluxo de conclusao)
       StartPage.tsx             <- /start (ramifica por query string)
     components/
       OptionsAnswer.tsx          <- nucleo "escolher opcao" - Quiz, cada termo de WordMatch, Cloze/MultipleChoice
       ClozeFreeTextActivity.tsx   <- Cloze/FreeText (resposta + justificativa)
       RoleplayActivity.tsx        <- navega o grafo de RoleplayNode client-side
+      VoiceSummaryActivity.tsx    <- grava audio (MediaRecorder), envia multipart, mostra transcricao+feedback (Fase 5)
       CompletionSummary.tsx       <- pos POST .../complete (reforco diario/semanal, se houver)
       Layout.tsx                  <- PageShell, Centered, ActivityScreen (shells compartilhados)
 ```
@@ -573,7 +693,7 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 
 | Rota | Consome | Tela |
 |---|---|---|
-| `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 4 tipos de atividade implementados de ponta a ponta** |
+| `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 5 tipos de atividade implementados de ponta a ponta** |
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco) |
 | `/start` | `GET /api/courses` | Lista de cursos |
 | `/start?course=` | `GET /api/courses/{courseId}` | Detalhe do curso |
@@ -604,6 +724,15 @@ node com `NodeKey === "start"` e a convencao adotada pro node inicial (nao ha ca
 dominio). So ao selecionar uma opcao que leva a um node com `IsTerminal = true` e que o frontend
 chama `POST .../responses` com `SelectedRoleplayNodeId`.
 
+**VoiceSummary, na tela (Fase 5):** `MediaRecorder` grava o audio do microfone - botao circular
+central com glow (verde parado/hover, vermelho pulsante durante a gravacao), contador MM:SS,
+limite de 10min (parada automatica + botao manual). Ao parar, envia o `Blob` gravado via
+`multipart/form-data` pro endpoint de audio; mostra "transcrevendo e avaliando..." enquanto
+espera, depois transcricao + feedback da IA + certo/errado, mesmo padrao visual dos outros tipos.
+Permissao de microfone negada mostra uma mensagem clara **e mantem o botao disponivel** pra
+tentar de novo (bug corrigido durante a verificacao ao vivo - a primeira versao escondia o botao
+inteiro nesse estado, sem jeito de tentar de novo sem recarregar a pagina).
+
 **`/start` continua funcional mas sem o mesmo polimento visual das telas de atividade** - decisao
 da Fase 3, ainda valida (so as telas de `/hoje` precisavam estar "as mais validadas no Figma").
 
@@ -614,17 +743,15 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
 
 ## Fora de escopo ate agora
 
-- Tela de resumo falado/microfone, menu de configuracoes, captura de voz real no frontend.
+- Menu de configuracoes no frontend.
 - Servico de WhatsApp (`whatsapp-service/` e so placeholder).
 - Autenticacao/autorizacao real (usuario fixo/hardcoded, unico usuario-teste) - **reconfirmado
   na Fase 2**: nenhuma entidade recebe `UserId`.
-- Captura, upload e transcricao de voz.
 - Integracao com GitHub (Octokit.NET) e exigencia de publicacao publica (LinkedIn/GitHub).
-- Geracao de conteudo/avaliacao via IA (Groq) - **reconfirmado na Fase 4**: Cloze/FreeText usa
-  comparacao textual simples, Roleplay usa mapeamento fixo de `TerminalQuality` (ver "Score no
-  servidor") - nenhum dos dois e avaliacao inteligente de verdade. So os ports
-  (`IContentEvaluationService`, `IAudioTranscriptionService`) existem, sem adapter concreto nem
-  registro no DI.
+- Geracao de conteudo/avaliacao via IA pra Cloze/Roleplay - **reconfirmado na Fase 4**:
+  Cloze/FreeText usa comparacao textual simples, Roleplay usa mapeamento fixo de
+  `TerminalQuality` (ver "Score no servidor") - nenhum dos dois e avaliacao inteligente de
+  verdade. So `VoiceSummary` usa avaliacao por IA de verdade (Groq, desde a Fase 5).
 - Sistema de Gems/Marketplace/Ranking/Cosmeticos/Arcade/UGC.
 - Endpoints de autoria de Course/Monthly/Weekly/Daily/DailyActivity - so `CuratedContent` tem
   autoria via Api desde a Fase 4 (ver "Autoria de conteudo curado"); o resto da estrutura
@@ -632,6 +759,12 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
 - Tela de autoria de conteudo curado no frontend - os endpoints existem e foram usados via
   script/curl (Fase 4), mas nao ha UI pra isso ainda.
 - CORS liberado so para `http://localhost:5173` (hardcoded, dev apenas).
+- **Transcricao/avaliacao por voz nunca testadas contra a Groq real** (Fase 5 - sem
+  `GROQ_API_KEY` disponivel na sessao que implementou). Estruturalmente completo e com os
+  caminhos de erro validados, mas o comportamento real da IA (qualidade da transcricao, da
+  avaliacao, latencia) ainda precisa de validacao com uma chave de verdade.
+- Retry automatico em falha da chamada a Groq - se a transcricao/avaliacao falhar (rede, rate
+  limit), o usuario precisa gravar de novo manualmente.
 
 ## Fases concluidas
 
@@ -641,6 +774,7 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
 | 2 | Monorepo Git + API Real (Backend .NET) | `docs/fase-2/resumo-implementacao-fase-2.md` |
 | 3 | Correcoes de Api, Seed de Conteudo e Inicio do Frontend | `docs/fase-3/resumo-implementacao-fase-3.md` |
 | 4 | Autoria de Conteudo, Conclusao da Daily e Telas Restantes | `docs/fase-4/resumo-implementacao-fase-4.md` |
+| 5 | Correcao de Ambiguidade + Captura e Avaliacao de Voz | `docs/fase-5/resumo-implementacao-fase-5.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
@@ -651,7 +785,8 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
   `AccessMode` e o campo que decide se a tela deve ser editavel ou so leitura.
 - `POST .../responses` nao tem mais campo `Score` - todo tipo de atividade calcula o Score no
   servidor (ver "Score no servidor para todo tipo de atividade" acima). Qual campo usar
-  (`SelectedOptionId`/`Transcript`/`SelectedRoleplayNodeId`) depende do `ActivityType`/`AnswerMode`.
+  (`SelectedOptionId`/`Transcript`/`SelectedRoleplayNodeId`/arquivo de audio) depende do
+  `ActivityType`/`AnswerMode`.
 - Gabarito (`IsCorrect`/`ExpectedAnswer`/`TerminalQuality`) so aparece depois da primeira
   resposta - o frontend precisa re-buscar o estado da Daily apos um submit pra ver o gabarito
   revelado (o resultado do submit em si nao traz as opcoes/nodes atualizados).
@@ -660,18 +795,23 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
   fase futura adicionar uma entidade nova, isso ja esta coberto globalmente em
   `FocaduDbContext.OnModelCreating`, nao precisa reconfigurar por entidade.
 - `GET /api/today` assume exatamente um Course `Active`; isso quebra se o produto crescer para
-  multiplos cursos ativos sem antes resolver o conceito de usuario/"curso atual". Alem disso,
-  pode ficar ambiguo se houver 2+ Dailies com a mesma `Date` na mesma Weekly (`CreateDailyReinforcement`
-  usa `IClock.Today()` como data da Daily de reforco, entao isso e possivel) - nao foi um
-  problema pratico na Fase 4 porque `reinforcementDailyId` (retornado por `POST .../complete`)
-  permite navegar direto pra sessao de reforco sem depender de `/api/today` escolher "o dia
-  certo" sozinho, mas a ambiguidade em si continua existindo no caso geral.
+  multiplos cursos ativos sem antes resolver o conceito de usuario/"curso atual".
 - No frontend, qualquer tela que mostre mais de uma "atividade" em sequencia (como `TodayPage`)
   precisa decidir explicitamente *quando* avançar pra proxima, nao só reagir a toda mudança de
   dado - ver "Maquina de passo (Step)" na secao de Frontend. Reagir automaticamente a cada
-  atualizacao de estado engole o feedback da ultima resposta.
+  atualizacao de estado engole o feedback da ultima resposta - o mesmo cuidado vale pra qualquer
+  estado com "tentar de novo" (ex: permissao de microfone negada): nunca esconder a acao que
+  permite ao usuario reagir ao proprio erro.
+- Model binding malformado (JSON invalido, `multipart/form-data` sem o campo esperado) lanca
+  `BadHttpRequestException` *antes* do endpoint rodar - `ApiExceptionHandler` ja trata isso
+  globalmente (`requisicao_invalida`, 400) desde a Fase 5, nenhum endpoint novo precisa se
+  preocupar com isso individualmente.
 - **UI de autoria de conteudo curado ainda nao existe** - os endpoints `POST/PUT
   /api/curated-content` (Fase 4) funcionam, mas so foram usados via script/curl ate agora.
-- **Resolvido na Fase 3, nao e mais pendencia:** o schema ja foi validado contra um Postgres real
-  rodando (Docker disponivel nesta sessao) - ver "Persistencia" acima para o relato completo,
-  incluindo o bug de concorrencia do EF Core que essa validacao revelou e corrigiu.
+- **Transcricao/avaliacao por voz (Groq) nunca testadas com uma chave real** (Fase 5, sem
+  `GROQ_API_KEY` disponivel na sessao que implementou) - prioridade alta pra validar antes de
+  considerar VoiceSummary pronto pra uso real, nao so estruturalmente correto. Ver "Como
+  configurar a chave da Groq" acima.
+- **Resolvido na Fase 5, nao e mais pendencia:** a ambiguidade de `/api/today` quando 2+ Dailies
+  compartilham a mesma `Date` (Daily normal + Daily de reforco geradas no mesmo dia) - ver
+  `Weekly.GetDailyByDate` acima.

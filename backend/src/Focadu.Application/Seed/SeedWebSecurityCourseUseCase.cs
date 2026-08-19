@@ -79,7 +79,7 @@ public class SeedWebSecurityCourseUseCase
         var daily = weekly.AddDaily(1, date);
 
         // TODO: substituir pelo texto completo curado
-        weekly.AddCuratedContent(CuratedContentType.Reading, "Como a web funciona",
+        var reading = weekly.AddCuratedContent(CuratedContentType.Reading, "Como a web funciona",
             "https://developer.mozilla.org/en-US/docs/Learn_web_development/Getting_started/Web_standards/How_the_web_works",
             "Um pedido de pagina passa por resolucao de DNS, abertura de conexao TCP (e TLS, se " +
             "for HTTPS) e a troca de requisicao/resposta HTTP antes do navegador renderizar algo. " +
@@ -97,6 +97,14 @@ public class SeedWebSecurityCourseUseCase
         quiz.AddQuizOption("O navegador resolve o dominio via DNS, abre uma conexao com o servidor e troca requisicao/resposta HTTP", true);
         quiz.AddQuizOption("O navegador baixa o site inteiro por FTP antes de exibir qualquer coisa", false);
         quiz.AddQuizOption("O servidor envia a pagina via um socket UDP sem estabelecer conexao", false);
+
+        // VoiceSummary (Fase 5): resposta e sempre a transcricao do audio, avaliada pela Groq
+        // contra reading.BodyText - nao usa QuizOption nem ExpectedAnswer.
+        daily.AddActivity(ActivityType.VoiceSummary, 1, AnswerMode.FreeText,
+            prompt: "Explique com suas proprias palavras o que voce entendeu sobre como a web " +
+                "funciona - o ciclo requisicao-resposta, o papel do HTTP, e por que isso importa " +
+                "pra seguranca.",
+            contentId: reading.Id);
     }
 
     private static void AddDay2(Weekly weekly, DateOnly date)

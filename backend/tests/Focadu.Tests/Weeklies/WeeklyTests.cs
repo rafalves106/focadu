@@ -133,4 +133,36 @@ public class WeeklyTests
 
         Assert.Equal(DailyAccessMode.ReadOnly, weekly.EvaluateDailyAccess(pastDaily.Id, today));
     }
+
+    [Fact]
+    public void GetDailyByDate_PrefersNonReinforcementDaily_WhenTwoDailiesShareTheSameDate()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var today = DailyFixtures.Today;
+        // Dia fraco datado hoje mesmo - a reinforcement Daily gerada a partir dele tambem fica
+        // datada hoje (CreateDailyReinforcement usa a data passada como "hoje"), reproduzindo
+        // exatamente o cenario de ambiguidade da Fase 5.
+        var weakDaily = DailyFixtures.NewWeakDaily(weekly, 1, today);
+
+        var reinforcementDaily = weekly.CreateDailyReinforcement(weakDaily.Id, today);
+
+        Assert.Equal(today, weakDaily.Date);
+        Assert.Equal(today, reinforcementDaily.Date);
+        Assert.True(reinforcementDaily.IsReinforcement);
+
+        var resolved = weekly.GetDailyByDate(today);
+
+        Assert.Equal(weakDaily.Id, resolved?.Id);
+        Assert.NotEqual(reinforcementDaily.Id, resolved?.Id);
+    }
+
+    [Fact]
+    public void GetDailyByDate_ReturnsNull_WhenNoDailyMatchesTheDate()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var today = DailyFixtures.Today;
+        weekly.AddDaily(1, today.AddDays(-1));
+
+        Assert.Null(weekly.GetDailyByDate(today));
+    }
 }

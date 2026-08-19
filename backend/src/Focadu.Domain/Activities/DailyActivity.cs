@@ -56,6 +56,11 @@ public class DailyActivity : Entity
     {
         if (orderIndex < 0)
             throw new DomainException("OrderIndex não pode ser negativo.");
+        if (type == ActivityType.VoiceSummary && contentId is null)
+        {
+            throw new DomainException(
+                "DailyActivity do tipo VoiceSummary precisa de um ContentId (o CuratedContent que o usuário deve resumir).");
+        }
 
         DailyId = dailyId;
         Type = type;

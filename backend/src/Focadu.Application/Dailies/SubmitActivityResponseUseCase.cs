@@ -47,32 +47,10 @@ public class SubmitActivityResponseUseCase
             ?? throw new DomainException("Atividade não encontrada nesta Daily.", "atividade_nao_encontrada");
 
         var resolvedScore = ResolveScore(activity, selectedOptionId, selectedRoleplayNodeId, transcript);
-        var response = daily.SubmitActivityResponse(activityId, resolvedScore, transcript, justification, aiFeedback);
 
-        Guid? reinforcementDailyId = null;
-        var dailyReinforcementTriggered = false;
-        if (daily.ShouldTriggerDailyReinforcement())
-        {
-            var reinforcementDaily = weekly.CreateDailyReinforcement(daily.Id, _clock.Today());
-            reinforcementDailyId = reinforcementDaily.Id;
-            dailyReinforcementTriggered = true;
-        }
-
-        var weeklyReinforcementTriggered = false;
-        if (weekly.ShouldTriggerWeeklyReinforcement())
-        {
-            weekly.TriggerWeeklyReinforcement();
-            weeklyReinforcementTriggered = true;
-        }
-
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        var responseDto = new ActivityResponseDto(
-            response.Id, response.ActivityId, response.AttemptNumber, response.Score, response.Passed,
-            response.Transcript, response.Justification, response.AiFeedback, response.CreatedAt);
-
-        return new SubmitActivityResponseResult(
-            responseDto, dailyReinforcementTriggered, reinforcementDailyId, weeklyReinforcementTriggered);
+        return await ActivityResponseRecorder.RecordAsync(
+            weekly, daily, activityId, resolvedScore, transcript, justification, aiFeedback,
+            _clock, _unitOfWork, cancellationToken);
     }
 
     /// <summary>
