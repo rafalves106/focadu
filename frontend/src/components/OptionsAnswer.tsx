@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto, QuizOptionDto } from '../api/types';
+import { FeedbackPanel } from './FeedbackPanel';
 
 /**
  * Nucleo reutilizavel de "escolher uma opcao": usado por Quiz, cada termo de WordMatch (ver
@@ -95,19 +96,12 @@ export function OptionsAnswer({
       )}
 
       {answered && lastResponse && (
-        <p className={`font-semibold ${lastResponse.passed ? 'text-accent' : 'text-alert'}`}>
-          {lastResponse.passed ? 'Acertou! 🎉' : 'Essa não foi - confira a opção certa acima.'}
-        </p>
-      )}
-
-      {answered && onContinue && (
-        <button
-          type="button"
-          onClick={onContinue}
-          className="rounded-xl border border-surface-alt bg-surface px-4 py-3 font-semibold text-primary hover:border-accent"
-        >
-          Continuar
-        </button>
+        <FeedbackPanel
+          passed={lastResponse.passed}
+          score={lastResponse.score}
+          headline={{ pass: 'Acertou! 🎉', fail: 'Essa não foi - confira a opção certa acima.' }}
+          onContinue={onContinue}
+        />
       )}
     </div>
   );

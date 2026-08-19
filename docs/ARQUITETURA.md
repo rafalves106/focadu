@@ -4,7 +4,8 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 6 - Tela de Autoria de Conteudo Curado**.
+> Ultima fase que atualizou este documento: **Fase 7 - Etapas de Conteudo, Projeto Semanal, Menu de
+> Configuracoes e Feedback Unificado**.
 
 ## Visao geral do projeto
 
@@ -83,9 +84,9 @@ src/
     Exceptions/DomainException.cs  <- carrega um Code (string) de erro, ver secao de API abaixo
     Policies/EvaluationPolicy.cs   <- as 3 constantes de negocio centralizadas
     Enums/                          <- CourseStatus, DailyStatus, DailyAccessMode, ActivityType
-                                       (Quiz/WordMatch/Cloze/Roleplay/VoiceSummary - Fase 5),
-                                       ActivityStatus, AnswerMode, TerminalQuality,
-                                       CuratedContentType, WeeklyProjectStatus
+                                       (Quiz/WordMatch/Cloze/Roleplay/VoiceSummary - Fase 5;
+                                       Reading/Video - Fase 7), ActivityStatus, AnswerMode,
+                                       TerminalQuality, CuratedContentType, WeeklyProjectStatus
     Courses/Course.cs
     Monthlies/Monthly.cs
     Weeklies/Weekly.cs              <- aggregate root "operacional" (ver secao de regras)
@@ -237,6 +238,16 @@ nunca usa `QuizOption` nem `ExpectedAnswer` - a resposta e sempre `ActivityRespo
 "Score no servidor" abaixo). `AnswerMode` usado pro seed e `FreeText` (nao ha nocao de multipla
 escolha pra um resumo falado).
 
+**`ActivityType.Reading`/`Video` (Fase 7):** etapas de consumo de um `CuratedContent` - mesma regra
+de `ContentId` obrigatorio do `VoiceSummary` (generalizada em `DailyActivity.ctor`), mas sem
+avaliacao nenhuma: concluir a etapa e o proprio "acerto". `SubmitActivityResponseUseCase.
+ResolveScore` sempre devolve 100 pra esses dois tipos - a `ActivityResponse` e gravada pelo mesmo
+`Daily.SubmitActivityResponse`/`ActivityResponseRecorder` que os outros 4 tipos usam (mesma tabela,
+mesmo pipeline de conclusao), so que nunca reprova (Score 100 >= `PassingScore`), entao nunca soma
+`PenaltyPoints` nem dispara reforco. O request de `POST .../responses` pra esses tipos vai vazio
+(nenhum campo de `SubmitActivityResponseRequest` e usado). Preencheu a lacuna que existia desde a
+Fase 3: antes so havia tela pras atividades avaliaveis, nunca pro texto/video em si.
+
 ## Regras de negocio centralizadas
 
 Todas as constantes de negocio ficam em `Focadu.Domain.Policies.EvaluationPolicy` - unico lugar
@@ -312,8 +323,10 @@ composicao da Fase 1). Todos sob `/api`, alem de `GET /health`:
 | POST | `/api/dailies/{dailyId}/activities/{activityId}/responses` | `SubmitActivityResponseUseCase` | 201 (cria uma nova `ActivityResponse`) |
 | POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/audio` | `SubmitVoiceSummaryResponseUseCase` (Fase 5) | 201, `multipart/form-data`, so pra `VoiceSummary` |
 | POST | `/api/dailies/{dailyId}/complete` | `CompleteDailyUseCase` | 200 (`CompleteDailyResult`, ver abaixo) |
+| GET | `/api/curated-content/{id}` | `GetCuratedContentUseCase` (Fase 7) | 200, 404 - o frontend precisa disso pra renderizar as etapas Reading/Video, que so tem `ContentId` no `DailyActivityDto` |
 | POST | `/api/curated-content` | `CreateCuratedContentUseCase` (Fase 4) | 201, 400/404 |
 | PUT | `/api/curated-content/{id}` | `UpdateCuratedContentUseCase` (Fase 4) | 200, 400/404 |
+| POST | `/api/weeklies/{weeklyId}/project/submit` | `SubmitWeeklyProjectUseCase` (Fase 7) | 200, 400/404 - `WeeklyProject.Submit` existia desde a Fase 1, so faltava endpoint |
 
 As rotas da Api sao caminhos REST simples (`/api/weeklies/{weeklyId}`), **nao** um espelho das
 rotas do frontend (`/start?course=&weekly=`) - o frontend usa query string no seu proprio router
@@ -361,6 +374,7 @@ atividade e sempre calculado no servidor, nunca aceito pronto do cliente:
 | `Cloze` + `AnswerMode.FreeText` | `Transcript` | 100 se `Transcript.Trim()` bate com `ExpectedAnswer.Trim()` (case-insensitive), senao 0 - **ponytail**: comparacao textual simples, sem IA |
 | `Roleplay` | `SelectedRoleplayNodeId` | A partir do `TerminalQuality` do node terminal alcancado (ver tabela abaixo) - o node precisa ter `IsTerminal = true` |
 | `VoiceSummary` | Arquivo de audio (`POST .../responses/audio`, endpoint separado - ver "Resumo falado por voz" abaixo) | Resultado de `IContentEvaluationService.EvaluateAsync` (Groq, Fase 5) |
+| `Reading` / `Video` (Fase 7) | Nenhum (corpo vazio) | Sempre 100 - sem avaliacao, concluir a etapa e o proprio "acerto" (nunca reprova, nunca soma `PenaltyPoints`) |
 
 Os 4 primeiros tipos sao resolvidos sincronamente em
 `SubmitActivityResponseUseCase.ResolveScore`. `VoiceSummary` e assincrono (chama 2 servicos
@@ -682,22 +696,31 @@ frontend/
     main.tsx              <- BrowserRouter + Routes
     App.tsx                <- shell com nav (Hoje / Inicio / Conteudo) + <Outlet/>
     index.css               <- @import "tailwindcss" + tokens @theme (paleta da identidade visual)
+    assets/reading/          <- SVGs do design Figma (dots, play, check, orbe) - bytes exatos, Fase 7
     api/
       types.ts               <- espelha os DTOs de Focadu.Application (enums como numero, com
                                    consts tipo ActivityType/AnswerMode/ActivityStatus/TerminalQuality/
-                                   CURATED_CONTENT_TYPE_NAMES)
+                                   WeeklyProjectStatus/CURATED_CONTENT_TYPE_NAMES)
       client.ts               <- fetch tipado, ApiError, VITE_API_BASE_URL, suporte a FormData
                                    (upload de audio, Fase 5, sem forcar Content-Type json)
       useApiResource.ts        <- hook pra loading/error/cancelamento (usado pelas sub-telas de /start e /admin/conteudo)
     routes/
-      TodayPage.tsx            <- /hoje (orquestra os 5 tipos de atividade + fluxo de conclusao)
-      StartPage.tsx             <- /start (ramifica por query string)
+      TodayPage.tsx            <- /hoje (orquestra os 7 tipos de atividade, o menu de configuracoes
+                                   e o fluxo de conclusao - Fase 7)
+      StartPage.tsx             <- /start (ramifica por query string, +?project= na Fase 7)
+      WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7)
       AdminContentPage.tsx       <- /admin/conteudo (autoria de CuratedContent, Fase 6)
     components/
       OptionsAnswer.tsx          <- nucleo "escolher opcao" - Quiz, cada termo de WordMatch, Cloze/MultipleChoice
       ClozeFreeTextActivity.tsx   <- Cloze/FreeText (resposta + justificativa)
       RoleplayActivity.tsx        <- navega o grafo de RoleplayNode client-side
       VoiceSummaryActivity.tsx    <- grava audio (MediaRecorder), envia multipart, mostra transcricao+feedback (Fase 5)
+      ReadingActivity.tsx         <- etapa de leitura de um CuratedContent (Fase 7)
+      VideoActivity.tsx           <- etapa de video - embed real do YouTube (Fase 7)
+      FeedbackPanel.tsx           <- bloco de resultado compartilhado pelos 5 componentes de atividade (Fase 7)
+      SessionShell.tsx            <- SessionTopBar + QuickQuestionOrb, compartilhados por Reading/Video/Projeto (Fase 7)
+      MaterialSidebar.tsx         <- "Material de hoje", compartilhado por Reading/Video (Fase 7)
+      SettingsMenu.tsx            <- menu de configuracoes (overlay), montado em TodayPage (Fase 7)
       CompletionSummary.tsx       <- pos POST .../complete (reforco diario/semanal, se houver)
       Layout.tsx                  <- PageShell, Centered, ActivityScreen (shells compartilhados)
 ```
@@ -707,12 +730,13 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 
 | Rota | Consome | Tela |
 |---|---|---|
-| `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 5 tipos de atividade implementados de ponta a ponta** |
+| `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7) |
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco) |
 | `/start` | `GET /api/courses` | Lista de cursos |
 | `/start?course=` | `GET /api/courses/{courseId}` | Detalhe do curso |
 | `/start?course=&weekly=` | `GET /api/weeklies/{weeklyId}` | Detalhe da semana |
 | `/start?course=&weekly=&daily=` | `GET /api/dailies/{dailyId}` | Estado de uma Daily especifica (somente leitura) |
+| `/start?course=&weekly=&project=1` | `GET /api/weeklies/{weeklyId}` | Projeto pratico da semana (`WeeklyProjectPage`, Fase 7 - submissao via `POST .../project/submit`) |
 | `/admin/conteudo` | `GET /api/courses` | Autoria (Fase 6) - lista de cursos |
 | `/admin/conteudo?course=` | `GET /api/courses/{courseId}` | Autoria - semanas do curso |
 | `/admin/conteudo?course=&weekly=` | `GET /api/weeklies/{weeklyId}` | Autoria - lista + formulario de `CuratedContent` da semana (`POST`/`PUT /api/curated-content`) |
@@ -746,6 +770,39 @@ central com glow (verde parado/hover, vermelho pulsante durante a gravacao), con
 limite de 10min (parada automatica + botao manual). Ao parar, envia o `Blob` gravado via
 `multipart/form-data` pro endpoint de audio; mostra "transcrevendo e avaliando..." enquanto
 espera, depois transcricao + feedback da IA + certo/errado, mesmo padrao visual dos outros tipos.
+
+**Reading/Video, na tela (Fase 7):** telas proprias (`ReadingActivity`/`VideoActivity`), com um
+chrome diferente do `ActivityScreen` centralizado das outras 5 - barra de progresso real
+(`ETAPA {posicao} DE {total}`, calculada a partir de `daily.activities` ordenadas por
+`OrderIndex`), sidebar "Material de hoje" (`MaterialSidebar`, filtrado pelos `ContentId` das
+`DailyActivity` da Daily atual - `weekly.curatedContents` traz os 4 dias juntos, sem esse filtro
+mostraria a semana inteira) e o orbe decorativo (`QuickQuestionOrb`) - chrome compartilhado via
+`SessionShell.tsx`. `VideoActivity` embeda o YouTube de verdade (`youtube-nocookie.com`, a partir
+de `CuratedContent.ExternalUrl`) - `rel=0`+`modestbranding=1` reduzem a interface do player ao
+minimo que a API do YouTube permite sem uma integracao paga (nao remove 100% dos videos
+recomendados no final). Concluir qualquer uma das duas so faz `POST .../responses` com corpo
+vazio (Score sempre 100 no servidor, ver acima) e avanca - sem `FeedbackPanel`, ja que nao ha
+gabarito pra revelar.
+
+**Menu de configuracoes (Fase 7):** `SettingsMenu`, montado em `TodayPage` sobre a tela de estudo -
+`backdrop-blur` nativo (sem borrar a arvore de tras manualmente). ESC e o botao "voltar" do
+navegador, enquanto a sessao esta ativa (ha um `step` resolvido e a Daily ainda nao foi concluida
+nesta visita), abrem o menu em vez de deixar o usuario sair - `useSessionExitGuard` (hook local em
+`TodayPage.tsx`) empurra uma entrada de historico "sentinela" via `history.pushState` e a
+"recusa" no `popstate`, porque o app usa `<BrowserRouter>` declarativo (nao `createBrowserRouter`),
+que nao expoe `useBlocker`. Unicas acoes reais: fechar (fecha o menu) e "Sair e salvar progresso"
+(navega pra `/start` - o progresso ja esta salvo a cada resposta enviada ao servidor, nao ha nada
+extra pra persistir). Aparencia/Som/Notificacoes/Limite de gravacao/Perfil/Atalhos sao placeholders
+visuais, sem persistencia.
+
+**Feedback unificado (Fase 7):** `FeedbackPanel`, usado pelos 5 componentes de atividade avaliada
+(`OptionsAnswer`, `ClozeFreeTextActivity`, `RoleplayActivity`, `VoiceSummaryActivity`) no lugar do
+bloco de "reveal" que cada um tinha por conta propria - gauge circular de `Score`, inset com a
+resposta do usuario (so quando ha `transcript`), texto de `aiFeedback` (so quando existe) e uma
+linha de detalhe especifica do tipo (`Resposta esperada`/`Qualidade do desfecho`, via a prop
+`detail`). Nao reproduz a divisao em 2 colunas "o que acertou / onde melhorar" do design porque o
+dominio so guarda `AiFeedback` como 1 string unica (`GroqContentEvaluationService`), nao uma lista
+estruturada - sem mudar nenhum comportamento funcional dos 5 componentes, so a apresentacao final.
 Permissao de microfone negada mostra uma mensagem clara **e mantem o botao disponivel** pra
 tentar de novo (bug corrigido durante a verificacao ao vivo - a primeira versao escondia o botao
 inteiro nesse estado, sem jeito de tentar de novo sem recarregar a pagina).
@@ -767,11 +824,11 @@ da Fase 3, ainda valida (so as telas de `/hoje` precisavam estar "as mais valida
 Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.config.js`):
 `--color-base` (`#0A0A0A`), `--color-surface` (`#151515`), `--color-surface-alt` (`#1E1E1E`),
 `--color-accent` (`#39FF6A`), `--color-alert` (`#FF3B3B`), `--color-primary`/`secondary`/`muted`
-(`#F5F5F5`/`#9A9A9A`/`#5C5C5C`).
+(`#F5F5F5`/`#9A9A9A`/`#5C5C5C`), `--color-project` (`#FFB800`, Fase 7 - so pro tema ambar da tela
+de Projeto Semanal).
 
 ## Fora de escopo ate agora
 
-- Menu de configuracoes no frontend.
 - Servico de WhatsApp (`whatsapp-service/` e so placeholder).
 - Autenticacao/autorizacao real (usuario fixo/hardcoded, unico usuario-teste) - **reconfirmado
   na Fase 2**: nenhuma entidade recebe `UserId`.
@@ -794,6 +851,17 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
 - CORS liberado so para `http://localhost:5173` (hardcoded, dev apenas).
 - Retry automatico em falha da chamada a Groq - se a transcricao/avaliacao falhar (rede, rate
   limit), o usuario precisa gravar de novo manualmente.
+- **Resolvido na Fase 7, nao e mais pendencia:** menu de configuracoes no frontend - so que
+  Aparencia/Som/Notificacoes/Limite de gravacao/Perfil/Atalhos continuam so visuais, sem
+  persistencia (ver "Menu de configuracoes" na secao de Frontend).
+- Sistema de Gems/XP/cosmeticos/ranking (mesma pendencia de "Gems/Marketplace/Ranking/Cosmeticos/
+  Arcade/UGC" acima) - **reconfirmado em standby na Fase 7**, mesmo aparecendo em telas adjacentes
+  do Figma usado nessa fase.
+- `WeeklyProject` so tem `SpecText` como texto livre unico - o mockup do Figma da tela de Projeto
+  Semanal mostra titulo/objetivos/recursos adicionais como campos separados, que o dominio nao tem
+  (ver "Duvidas" em `docs/fase-7/resumo-implementacao-fase-7.md`).
+- Avaliacao (`WeeklyProject.Evaluate()`) segue sem endpoint - so `Submit` ganhou um na Fase 7
+  (mudar `Status` pra `Evaluated` continua so possivel via acesso direto ao dominio/banco).
 
 ## Fases concluidas
 
@@ -805,6 +873,7 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
 | 4 | Autoria de Conteudo, Conclusao da Daily e Telas Restantes | `docs/fase-4/resumo-implementacao-fase-4.md` |
 | 5 | Correcao de Ambiguidade + Captura e Avaliacao de Voz | `docs/fase-5/resumo-implementacao-fase-5.md` |
 | 6 | Tela de Autoria de Conteudo Curado | `docs/fase-6/resumo-implementacao-fase-6.md` |
+| 7 | Etapas de Conteudo, Projeto Semanal, Menu de Configuracoes e Feedback Unificado | `docs/fase-7/resumo-implementacao-fase-7.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
@@ -841,7 +910,12 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
   nao so uso via script/curl.
 - **Diagramas reais (SVG) das 4 Dailies da Semana 1 ja existem** (Fase 6, `CuratedContentType.
   Diagram`), mas nenhuma `DailyActivity` os referencia ainda - decidir onde/como exibir `Diagram`
-  na experiencia do aluno (`/hoje`) fica pra uma fase futura.
+  na experiencia do aluno (`/hoje`) fica pra uma fase futura. Reading/Video ganharam tela na Fase 7
+  - Diagram e o unico `CuratedContentType` que ainda nao tem.
+- **`GET /api/curated-content/{id}` (Fase 7)** existe pra dar ao frontend o conteudo de uma
+  `DailyActivity` Reading/Video - se uma fase futura extinguir esse padrao (ex: embutir o
+  `CuratedContent` direto no `DailyActivityDto`), vale revisar se o endpoint isolado ainda e
+  necessario (autoria/`/admin/conteudo` nao o usa, so `ReadingActivity`/`VideoActivity`).
 - **Resolvido na Fase 5, nao e mais pendencia:** transcricao/avaliacao por voz validadas
   end-to-end com uma chave Groq real - transcricao (`whisper-large-v3`) funcionou de primeira;
   avaliacao expos que `llama-3.3-70b-versatile` (escolha original) tinha saido do catalogo da

@@ -32,6 +32,34 @@ public class DailyTests
         Assert.Equal(contentId, activity.ContentId);
     }
 
+    // Reading/Video (Fase 7): mesma regra de ContentId obrigatorio do VoiceSummary - ver
+    // DailyActivity.ctor.
+    [Theory]
+    [InlineData(ActivityType.Reading)]
+    [InlineData(ActivityType.Video)]
+    public void AddActivity_ReadingOrVideo_WithoutContentId_Throws(ActivityType type)
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var daily = weekly.AddDaily(1, DailyFixtures.Today);
+
+        Assert.Throws<DomainException>(() => daily.AddActivity(type, 0, AnswerMode.MultipleChoice));
+    }
+
+    [Theory]
+    [InlineData(ActivityType.Reading)]
+    [InlineData(ActivityType.Video)]
+    public void AddActivity_ReadingOrVideo_WithContentId_Succeeds(ActivityType type)
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var daily = weekly.AddDaily(1, DailyFixtures.Today);
+        var contentId = Guid.NewGuid();
+
+        var activity = daily.AddActivity(type, 0, AnswerMode.MultipleChoice, contentId: contentId);
+
+        Assert.Equal(type, activity.Type);
+        Assert.Equal(contentId, activity.ContentId);
+    }
+
     [Theory]
     [InlineData(0, false)]
     [InlineData(79, false)]

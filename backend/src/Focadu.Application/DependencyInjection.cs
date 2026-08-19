@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddScoped<ListCoursesUseCase>();
         services.AddScoped<GetCourseDetailUseCase>();
         services.AddScoped<GetWeeklyDetailUseCase>();
+        services.AddScoped<SubmitWeeklyProjectUseCase>();
         services.AddScoped<GetDailyStateUseCase>();
         services.AddScoped<GetTodayUseCase>();
         services.AddScoped<StartOrResumeDailyUseCase>();
@@ -24,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<SeedWebSecurityCourseUseCase>();
         services.AddScoped<CreateCuratedContentUseCase>();
         services.AddScoped<UpdateCuratedContentUseCase>();
+        services.AddScoped<GetCuratedContentUseCase>();
         return services;
     }
 }

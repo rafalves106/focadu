@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
 import { ActivityScreen } from './Layout';
+import { FeedbackPanel } from './FeedbackPanel';
 
 /**
  * Cloze/FreeText ("usado para codigo"): campo de texto livre, comparado no servidor contra
@@ -91,23 +92,19 @@ export function ClozeFreeTextActivity({
       )}
 
       {answered && lastResponse && (
-        <div>
-          <p className={`font-semibold ${lastResponse.passed ? 'text-accent' : 'text-alert'}`}>
-            {lastResponse.passed ? 'Acertou! 🎉' : 'Essa não foi.'}
-          </p>
-          {expectedAnswer && (
-            <p className="mt-1 text-sm text-secondary">
-              Resposta esperada: <span className="font-mono">{expectedAnswer}</span>
-            </p>
-          )}
-          <button
-            type="button"
-            onClick={onContinue}
-            className="mt-4 rounded-xl border border-surface-alt bg-surface px-4 py-3 font-semibold text-primary hover:border-accent"
-          >
-            Continuar
-          </button>
-        </div>
+        <FeedbackPanel
+          passed={lastResponse.passed}
+          score={lastResponse.score}
+          transcript={transcript}
+          detail={
+            expectedAnswer && (
+              <p className="text-sm text-secondary">
+                Resposta esperada: <span className="font-mono">{expectedAnswer}</span>
+              </p>
+            )
+          }
+          onContinue={onContinue}
+        />
       )}
     </ActivityScreen>
   );

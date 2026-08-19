@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
 import { ActivityScreen } from './Layout';
+import { FeedbackPanel } from './FeedbackPanel';
 
 const MAX_RECORDING_SECONDS = 10 * 60;
 
@@ -162,31 +163,13 @@ export function VoiceSummaryActivity({
       )}
 
       {state === 'answered' && lastResponse && (
-        <div className="flex flex-col gap-3">
-          <div>
-            <p className="text-sm text-secondary">Sua transcrição:</p>
-            <p className="mt-1 text-primary">{lastResponse.transcript}</p>
-          </div>
-
-          {lastResponse.aiFeedback && (
-            <div>
-              <p className="text-sm text-secondary">Feedback:</p>
-              <p className="mt-1 text-primary">{lastResponse.aiFeedback}</p>
-            </div>
-          )}
-
-          <p className={`font-semibold ${lastResponse.passed ? 'text-accent' : 'text-alert'}`}>
-            {lastResponse.passed ? `Passou! Nota: ${lastResponse.score}` : `Não passou dessa vez - nota: ${lastResponse.score}`}
-          </p>
-
-          <button
-            type="button"
-            onClick={onContinue}
-            className="rounded-xl border border-surface-alt bg-surface px-4 py-3 font-semibold text-primary hover:border-accent"
-          >
-            Continuar
-          </button>
-        </div>
+        <FeedbackPanel
+          passed={lastResponse.passed}
+          score={lastResponse.score}
+          transcript={lastResponse.transcript}
+          aiFeedback={lastResponse.aiFeedback}
+          onContinue={onContinue}
+        />
       )}
     </ActivityScreen>
   );

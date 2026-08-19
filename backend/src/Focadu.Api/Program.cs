@@ -93,12 +93,32 @@ api.MapGet("/weeklies/{weeklyId}", async (string weeklyId, GetWeeklyDetailUseCas
     })
     .WithName("GetWeeklyDetail");
 
+// Submissao do projeto pratico da semana (Fase 7) - WeeklyProject.Submit ja existia no dominio
+// desde a Fase 1, so faltava endpoint. SubmissionUrl e a unica entrada do cliente; Status muda
+// pra Submitted dentro do proprio dominio (WeeklyProject.Submit).
+api.MapPost("/weeklies/{weeklyId}/project/submit", async (string weeklyId, SubmitWeeklyProjectRequest? request, SubmitWeeklyProjectUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
+        if (string.IsNullOrWhiteSpace(request?.SubmissionUrl))
+            throw new ValidationException("submission_url_obrigatoria", "O campo 'submissionUrl' e obrigatorio.");
+
+        return Results.Ok(await useCase.ExecuteAsync(id, request.SubmissionUrl, ct));
+    })
+    .WithName("SubmitWeeklyProject");
+
 // --- Conteudo curado (autoria) ---------------------------------------------------------------
 // Unico tipo de conteudo com endpoint de criacao/edicao ate agora - Course/Monthly/Weekly/Daily/
 // DailyActivity continuam so via seed (estrutura muda raramente; conteudo curado muda toda
 // semana, ver docs/ARQUITETURA.md). WeeklyId/Type/Title sao exigidos aqui (formato de request,
 // nao depende de nenhum dado de dominio); "Type invalido" e "falta ExternalUrl/BodyText" moram
 // no caso de uso, que e quem sabe validar contra o enum e as regras de CuratedContent.
+
+api.MapGet("/curated-content/{id}", async (string id, GetCuratedContentUseCase useCase, CancellationToken ct) =>
+    {
+        var contentId = RouteParsing.RequireGuid(id, "id");
+        return Results.Ok(await useCase.ExecuteAsync(contentId, ct));
+    })
+    .WithName("GetCuratedContent");
 
 api.MapPost("/curated-content", async (CreateCuratedContentRequest? request, CreateCuratedContentUseCase useCase, CancellationToken ct) =>
     {

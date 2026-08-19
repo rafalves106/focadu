@@ -69,6 +69,10 @@ public class SubmitActivityResponseUseCase
                 ScoreFromSelectedOption(activity, selectedOptionId),
             ActivityType.Cloze => ScoreFromFreeTextAnswer(activity, transcript),
             ActivityType.Roleplay => ScoreFromRoleplayTerminalNode(activity, selectedRoleplayNodeId),
+            // Reading/Video (Fase 7): nao ha avaliacao - concluir a etapa e o proprio "acerto".
+            // Score fixo 100 (sempre Passed) so pra marcar a atividade como feita via o mesmo
+            // pipeline de ActivityResponse/PenaltyPoints dos outros tipos, nunca penalizando.
+            ActivityType.Reading or ActivityType.Video => 100,
             _ => throw new DomainException($"Tipo de atividade '{activity.Type}' nao tem calculo de Score definido."),
         };
     }

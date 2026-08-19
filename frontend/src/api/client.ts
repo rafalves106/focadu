@@ -7,6 +7,7 @@ import type {
   DailyStateDto,
   SubmitActivityResponseResult,
   WeeklyDetailDto,
+  WeeklyProjectDto,
 } from './types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5282';
@@ -58,6 +59,7 @@ export const api = {
   getCourse: (courseId: string) => request<CourseDetailDto>(`/api/courses/${courseId}`),
   getWeekly: (weeklyId: string) => request<WeeklyDetailDto>(`/api/weeklies/${weeklyId}`),
   getDaily: (dailyId: string) => request<DailyStateDto>(`/api/dailies/${dailyId}`),
+  getCuratedContent: (id: string) => request<CuratedContentDto>(`/api/curated-content/${id}`),
   startDaily: (dailyId: string) => request<DailyStateDto>(`/api/dailies/${dailyId}/start`, { method: 'POST' }),
   completeDaily: (dailyId: string) =>
     request<CompleteDailyResult>(`/api/dailies/${dailyId}/complete`, { method: 'POST' }),
@@ -82,4 +84,10 @@ export const api = {
     request<CuratedContentDto>('/api/curated-content', { method: 'POST', body: JSON.stringify(body) }),
   updateCuratedContent: (id: string, body: { title: string; externalUrl: string | null; bodyText: string | null }) =>
     request<CuratedContentDto>(`/api/curated-content/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  // Projeto semanal (Fase 7): unica escrita do aluno sobre WeeklyProject - Status vira Submitted no dominio (WeeklyProject.Submit).
+  submitWeeklyProject: (weeklyId: string, submissionUrl: string) =>
+    request<WeeklyProjectDto>(`/api/weeklies/${weeklyId}/project/submit`, {
+      method: 'POST',
+      body: JSON.stringify({ submissionUrl }),
+    }),
 };

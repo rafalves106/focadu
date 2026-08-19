@@ -2,7 +2,15 @@
 // padrao no ASP.NET Core, confirmado empiricamente contra a Api real). Enums do C# chegam como
 // numero (a ordem dos valores importa - ver os enums correspondentes em Focadu.Domain.Enums).
 
-export const ActivityType = { Quiz: 0, WordMatch: 1, Cloze: 2, Roleplay: 3, VoiceSummary: 4 } as const;
+export const ActivityType = {
+  Quiz: 0,
+  WordMatch: 1,
+  Cloze: 2,
+  Roleplay: 3,
+  VoiceSummary: 4,
+  Reading: 5,
+  Video: 6,
+} as const;
 export type ActivityType = (typeof ActivityType)[keyof typeof ActivityType];
 
 export const DailyAccessMode = { Start: 0, Resume: 1, Replay: 2, ReadOnly: 3 } as const;
@@ -24,7 +32,9 @@ export type CuratedContentType = 0 | 1 | 2; // Reading, Video, Diagram
 // Nomes que a Api de autoria espera no campo `type` do request (case-insensitive, ver
 // CreateCuratedContentUseCase.ParseType) - a mesma ordem do enum acima.
 export const CURATED_CONTENT_TYPE_NAMES = ['Reading', 'Video', 'Diagram'] as const;
-export type WeeklyProjectStatus = 0 | 1 | 2; // Pending, Submitted, Evaluated
+
+export const WeeklyProjectStatus = { Pending: 0, Submitted: 1, Evaluated: 2 } as const;
+export type WeeklyProjectStatus = (typeof WeeklyProjectStatus)[keyof typeof WeeklyProjectStatus];
 
 // IsCorrect vem nulo ate a atividade ter uma ActivityResponse - gabarito escondido antes de
 // responder (ver Focadu.Application.Dailies.DailyStateMapper).
