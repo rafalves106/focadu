@@ -4,8 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 9 - Polimento das Atividades Individuais (Quiz,
-> Cloze, Ligar Palavras, Roleplay)**.
+> Ultima fase que atualizou este documento: **Fase 10 - Estados de Erro**.
 
 ## Visao geral do projeto
 
@@ -694,20 +693,25 @@ frontend/
   .env.example, .env.local (gitignorado - VITE_API_BASE_URL)
   src/
     main.tsx              <- BrowserRouter + Routes
-    App.tsx                <- shell com nav (Hoje / Inicio / Conteudo) + <Outlet/>
+    App.tsx                <- shell com nav (Hoje / Inicio / Conteudo) + <ErrorBoundary key={pathname}><Outlet/></ErrorBoundary> (Fase 10)
     index.css               <- @import "tailwindcss" + tokens @theme (paleta da identidade visual)
     assets/reading/          <- SVGs do design Figma (dots, play, check, orbe) - bytes exatos, Fase 7
     lib/
       statusBadge.ts           <- dailyStatusBadgeProps (Fase 8) - separado de components/StatusBadge.tsx
                                    pra nao co-exportar funcao junto com componente (fast refresh)
+      apiError.ts               <- classifyApiError/ApiFailure (Fase 10) - classifica qualquer erro
+                                   de fetch/Api numa das 5 categorias que as telas de erro sabem renderizar
     api/
       types.ts               <- espelha os DTOs de Focadu.Application (enums como numero, com
                                    consts tipo ActivityType/AnswerMode/ActivityStatus/TerminalQuality/
                                    WeeklyProjectStatus/DailyStatus/CourseStatus (Fase 8, viraram
                                    const), ACTIVITY_TYPE_LABEL/CURATED_CONTENT_TYPE_NAMES)
       client.ts               <- fetch tipado, ApiError, VITE_API_BASE_URL, suporte a FormData
-                                   (upload de audio, Fase 5, sem forcar Content-Type json)
-      useApiResource.ts        <- hook pra loading/error/cancelamento (usado pelas sub-telas de /start e /admin/conteudo)
+                                   (upload de audio, Fase 5, sem forcar Content-Type json); request()
+                                   usa AbortSignal.timeout() desde a Fase 10 (10s padrao, 70s pro
+                                   endpoint de audio - ver "Timeout de requisicoes")
+      useApiResource.ts        <- hook pra loading/error/cancelamento (usado pelas sub-telas de /start e /admin/conteudo);
+                                   `error` e um `ApiFailure` classificado (nao string) + `retry()` desde a Fase 10
     routes/
       TodayPage.tsx            <- /hoje (orquestra os 7 tipos de atividade, o menu de configuracoes
                                    e o fluxo de conclusao - Fase 7)
@@ -741,6 +745,14 @@ frontend/
       WeeklyProjectCard.tsx          <- card do projeto semanal, usado por StartDashboard e WeeklyDetailPage (Fase 8)
       CompletionSummary.tsx       <- pos POST .../complete (reforco diario/semanal, se houver); resumo real +
                                    badge "Conceito Dominado" (aprovacao >= 90%) + "Refazer este dia" desde a Fase 9
+      ErrorBoundary.tsx            <- class component, pega excecoes de render (Fase 10) - montado em App.tsx
+      errors/                       <- telas de erro (Fase 10)
+        ErrorLayout.tsx                <- chrome compartilhado (icone/legenda/titulo/descricao/CTAs)
+        EmptyStateError.tsx             <- dado carregado com sucesso mas vazio (nao e erro de rede)
+        NoConnectionError.tsx            <- fetch falhou de verdade (TypeError/offline)
+        TimeoutError.tsx                  <- AbortSignal.timeout() disparou
+        GenericError.tsx                   <- 5xx/404/excecao inesperada - tambem usado pelo ErrorBoundary
+        ApiErrorScreen.tsx                  <- dispatcher: escolhe a tela certa a partir de ApiFailure.type
       Layout.tsx                  <- PageShell, Centered, ActivityScreen (shells compartilhados)
 ```
 
@@ -787,6 +799,30 @@ componente (`QuizActivity`, `ClozeFreeTextActivity`, `RoleplayActivity`, `WordMa
 atividade so vira "concluida" quando o usuario responde de verdade. Pula automaticamente pra quem
 ja respondeu antes (`activity.responses.length > 0`), evitando reintro ao reabrir uma atividade ja
 feita (ex: `/hoje?daily=` num dia passado).
+
+**Estados de erro (Fase 10):** `useApiResource.error` e `TodayPage`'s error state sao um
+`ApiFailure` classificado (`lib/apiError.ts`, `classifyApiError`) em vez de string solta -
+`noConnection` (fetch lancou `TypeError`, ou `navigator.onLine === false`), `timeout`
+(`AbortSignal.timeout()` disparou - rejeita com `DOMException` `name: "TimeoutError"`, **nao**
+`"AbortError"`, que e so pra cancelamento manual), `serverError`/`notFound`/`generic` (`ApiError`
+com `status` 5xx/404/outro). `components/errors/ApiErrorScreen.tsx` e o dispatcher: cada tela troca
+`if (error) return <Centered text={error} .../>` por
+`if (error) return <ApiErrorScreen error={error} onRetry={retry} />` - `retry` (`useApiResource`)
+so incrementa um contador ja nas deps do efeito, refaz o fetch sem duplicar logica.
+`components/errors/EmptyStateError.tsx` fica fora do dispatcher - nao e erro de rede/Api, e uma
+condicao sobre dados carregados com sucesso (ex: `CourseDetailPage` sem semanas), quem chama decide
+isso direto. `components/ErrorBoundary.tsx` (class component, montado em `App.tsx` ao redor do
+`<Outlet/>`, `key={location.pathname}` pra resetar sozinho ao navegar) pega excecoes de **render**
+que nenhum catch de fetch cobriria - mostra `GenericError`, caminho totalmente separado do
+`ApiErrorScreen`. **Dois dos 4 links do Figma desta fase nao correspondiam ao nome do prompt**
+("Sem Conexao" apontava pra uma tela de sessao expirada, "Erro Generico" pra uma tela de streak
+perdido - nenhum dos dois foi construido, ver `docs/fase-10/resumo-implementacao-fase-10.md`).
+
+**Timeout de requisicoes (Fase 10):** `api/client.ts.request()` usa `AbortSignal.timeout()` - 10s
+por padrao (`DEFAULT_TIMEOUT_MS`), exceto `submitVoiceSummaryResponse` (70s,
+`VOICE_SUMMARY_TIMEOUT_MS`) - o endpoint de audio transcreve + avalia por IA em sequencia no
+backend, que ja tem seu proprio timeout de 60s pra Groq (ver "Resumo falado por voz" acima); um
+timeout de cliente de 10s quebraria essa atividade toda vez.
 
 **Roleplay, na tela:** navega o grafo inteiramente no cliente (todos os `RoleplayNode`/
 `RoleplayOption` ja vieram no `DailyActivityDto` inicial - nao ha ida-e-volta a cada escolha). O
@@ -891,6 +927,14 @@ de Projeto Semanal).
   (ver "Duvidas" em `docs/fase-7/resumo-implementacao-fase-7.md`).
 - Avaliacao (`WeeklyProject.Evaluate()`) segue sem endpoint - so `Submit` ganhou um na Fase 7
   (mudar `Status` pra `Evaluated` continua so possivel via acesso direto ao dominio/banco).
+- **Resolvido na Fase 10, nao e mais pendencia:** telas de erro no frontend (sem conexao, timeout,
+  vazio, erro generico) - antes uma falha de fetch so mostrava texto vermelho solto
+  (`<Centered text={error} tone="alert" />`).
+- "Modo Offline" (cache local pra continuar navegando sem servidor) e "Reportar" (mailto/formulario
+  de feedback no erro generico) - ambos citados no prompt da Fase 10 como "futuro", sem cache local
+  nem endereco de suporte pra apontar ainda.
+- Sistema de sessao/expiracao por inatividade - o design "Erro - Sessao Expirada" da Fase 10 nao
+  tem tela porque esse conceito nao existe no app (usuario unico hardcoded, sem login).
 
 ## Fases concluidas
 
@@ -905,6 +949,7 @@ de Projeto Semanal).
 | 7 | Etapas de Conteudo, Projeto Semanal, Menu de Configuracoes e Feedback Unificado | `docs/fase-7/resumo-implementacao-fase-7.md` |
 | 8 | Polimento das Telas de Navegacao (Start, Visao Semanal, Detalhes do Curso) | `docs/fase-8/resumo-implementacao-fase-8.md` |
 | 9 | Polimento das Atividades Individuais (Quiz, Cloze, Ligar Palavras, Roleplay) | `docs/fase-9/resumo-implementacao-fase-9.md` |
+| 10 | Estados de Erro | `docs/fase-10/resumo-implementacao-fase-10.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
@@ -921,6 +966,20 @@ de Projeto Semanal).
   datas/relogio. Usam os mesmos componentes ja validados nos outros dois fluxos
   (`IntroCard`/`OptionCard`/`CodeHighlight`/`FeedbackPanel`), mas vale uma conferencia visual numa
   proxima sessao.
+- **"Sessao Expirada" e "Streak Perdido" (2 dos 4 designs do Figma da Fase 10) nao tem tela** - o
+  primeiro precisaria de um conceito de sessao/expiracao por inatividade que o app nao tem (usuario
+  unico hardcoded, sem login); o segundo e gamificacao (Gems/XP/streak), em standby desde a Fase 6.
+  Ver `docs/fase-10/resumo-implementacao-fase-10.md` pra tabela completa do que cada link do Figma
+  continha de verdade vs. o que o prompt dizia.
+- **Testando erros de rede com Playwright: usar o host completo no glob de `page.route()`**
+  (ex: `http://localhost:5282/api/**`), nunca so `**/api/**` - o Vite dev server serve os arquivos-
+  fonte do frontend por HTTP (`/src/api/client.ts`, `/src/api/types.ts`), um glob generico demais
+  intercepta esses modulos tambem e quebra o app inteiro (tela em branco) antes mesmo de qualquer
+  chamada de Api de verdade acontecer - descoberto durante a verificacao ao vivo da Fase 10.
+- **Timeout do cliente e por chamada** (`request(path, { timeoutMs })`, `api/client.ts`) - qualquer
+  endpoint futuro que demore mais que os 10s padrao (como o de audio, ver "Timeout de requisicoes")
+  precisa passar seu proprio `timeoutMs`, senao a `TimeoutError` aparece antes do backend ter
+  chance de responder de verdade.
 - **`Focadu.Tests` so testa dominio puro** (entidades, `Weekly`/`Daily`, `EvaluationPolicy`) e
   funcoes `internal static` da camada de aplicacao que nao dependem de repositorio
   (`SubmitActivityResponseUseCase.ResolveScore`, `DailyStateMapper.ToDto`) - **nao ha fakes de

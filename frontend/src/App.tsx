@@ -1,6 +1,12 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 export function App() {
+  // `key` pelo pathname: sem isso, navegar pra outra rota depois de um crash mantinha o boundary
+  // "travado" (ele fica acima do <Outlet/>, nao remonta sozinho so por trocar de rota) - assim o
+  // React remonta o ErrorBoundary (reseta hasError) a cada navegacao.
+  const location = useLocation();
+
   return (
     <div className="min-h-screen bg-base">
       <nav className="flex gap-4 border-b border-surface-alt bg-surface px-6 py-3">
@@ -14,7 +20,9 @@ export function App() {
           Conteúdo
         </NavLink>
       </nav>
-      <Outlet />
+      <ErrorBoundary key={location.pathname}>
+        <Outlet />
+      </ErrorBoundary>
     </div>
   );
 }

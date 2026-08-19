@@ -2,6 +2,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { Centered, PageShell } from '../components/Layout';
+import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { WeeklyProjectPage } from './WeeklyProjectPage';
 import { StartDashboard } from './StartDashboard';
 import { CourseDetailPage } from './CourseDetailPage';
@@ -42,10 +43,10 @@ function DailyView({
   weeklyId: string | null;
   courseId: string | null;
 }) {
-  const { data: daily, error, loading } = useApiResource(() => api.getDaily(dailyId), [dailyId]);
+  const { data: daily, error, loading, retry } = useApiResource(() => api.getDaily(dailyId), [dailyId]);
 
   if (loading) return <Centered text="Carregando dia..." />;
-  if (error) return <Centered text={error} tone="alert" />;
+  if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
   if (!daily) return null;
 
   const backTo = `/start?course=${courseId ?? ''}&weekly=${weeklyId ?? daily.weeklyId}`;

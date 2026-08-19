@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { CURATED_CONTENT_TYPE_NAMES, type CuratedContentDto, type CuratedContentType } from '../api/types';
 import { Centered, PageShell } from '../components/Layout';
+import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 
 /**
  * `/admin/conteudo` - tela de bastidor pra autoria de CuratedContent (Fase 6). Segue o mesmo
@@ -22,10 +23,10 @@ export function AdminContentPage() {
 }
 
 function CourseListView() {
-  const { data: courses, error, loading } = useApiResource(() => api.getCourses(), []);
+  const { data: courses, error, loading, retry } = useApiResource(() => api.getCourses(), []);
 
   if (loading) return <Centered text="Carregando cursos..." />;
-  if (error) return <Centered text={error} tone="alert" />;
+  if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
 
   return (
     <PageShell title="Autoria de conteúdo - Cursos">
@@ -47,10 +48,10 @@ function CourseListView() {
 }
 
 function CourseView({ courseId }: { courseId: string }) {
-  const { data: course, error, loading } = useApiResource(() => api.getCourse(courseId), [courseId]);
+  const { data: course, error, loading, retry } = useApiResource(() => api.getCourse(courseId), [courseId]);
 
   if (loading) return <Centered text="Carregando curso..." />;
-  if (error) return <Centered text={error} tone="alert" />;
+  if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
   if (!course) return null;
 
   return (
@@ -87,10 +88,10 @@ function WeeklyContentView({ weeklyId, courseId }: { weeklyId: string; courseId:
   // Bump pra forcar o useApiResource a refazer a busca apos salvar - mais simples do que dar ao
   // hook compartilhado um metodo de refetch que mais nenhuma outra tela usa ainda.
   const [refreshKey, setRefreshKey] = useState(0);
-  const { data: weekly, error, loading } = useApiResource(() => api.getWeekly(weeklyId), [weeklyId, refreshKey]);
+  const { data: weekly, error, loading, retry } = useApiResource(() => api.getWeekly(weeklyId), [weeklyId, refreshKey]);
 
   if (loading) return <Centered text="Carregando semana..." />;
-  if (error) return <Centered text={error} tone="alert" />;
+  if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
   if (!weekly) return null;
 
   const backTo = courseId ? `/admin/conteudo?course=${courseId}` : '/admin/conteudo';

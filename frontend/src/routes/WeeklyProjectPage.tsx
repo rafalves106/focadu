@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { WeeklyProjectStatus } from '../api/types';
 import { Centered } from '../components/Layout';
+import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { SessionTopBar, QuickQuestionOrb } from '../components/SessionShell';
 
 const STATUS_BADGE: Record<number, { label: string; className: string }> = {
@@ -29,13 +30,13 @@ const STATUS_PROGRESS: Record<number, number> = {
  * a Api nao tem.
  */
 export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; courseId: string | null }) {
-  const { data: weekly, error, loading } = useApiResource(() => api.getWeekly(weeklyId), [weeklyId]);
+  const { data: weekly, error, loading, retry } = useApiResource(() => api.getWeekly(weeklyId), [weeklyId]);
   const [submissionUrl, setSubmissionUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (loading) return <Centered text="Carregando projeto..." />;
-  if (error) return <Centered text={error} tone="alert" />;
+  if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
   if (!weekly) return null;
 
   const backTo = `/start?course=${courseId ?? ''}&weekly=${weeklyId}`;
