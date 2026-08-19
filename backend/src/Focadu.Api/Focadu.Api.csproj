@@ -4,6 +4,9 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Permite `dotnet user-secrets set "Groq:ApiKey" "..."` pra configurar a chave da Groq em
+         dev sem tocar em appsettings*.json (ver docs/ARQUITETURA.md). -->
+    <UserSecretsId>473fe126-02bd-4bd5-84f8-cedab6abd9fb</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

@@ -43,7 +43,8 @@ public class GetTodayUseCase
         var weekly = await _weeklyRepository.GetByDateAsync(activeCourses[0].Id, today, cancellationToken)
             ?? throw new NotFoundException("daily_hoje_nao_encontrada", "Nenhuma Daily cadastrada para hoje.");
 
-        var daily = weekly.Dailies.First(d => d.Date == today);
+        var daily = weekly.GetDailyByDate(today)
+            ?? throw new NotFoundException("daily_hoje_nao_encontrada", "Nenhuma Daily cadastrada para hoje.");
         var accessMode = weekly.EvaluateDailyAccess(daily.Id, today);
 
         return DailyStateMapper.ToDto(daily, accessMode);

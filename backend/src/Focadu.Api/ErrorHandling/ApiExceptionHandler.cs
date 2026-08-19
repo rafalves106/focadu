@@ -38,6 +38,13 @@ public class ApiExceptionHandler : IExceptionHandler
             NotFoundException nfe => (StatusCodes.Status404NotFound, nfe.Code, nfe.Message),
             ConflictException ce => (StatusCodes.Status409Conflict, ce.Code, ce.Message),
             ValidationException ve => (StatusCodes.Status400BadRequest, ve.Code, ve.Message),
+            ExternalServiceException ese => (ese.StatusCode, ese.Code, ese.Message),
+            // O model binding do ASP.NET Core (JSON malformado, multipart/form-data ausente ou
+            // sem o campo esperado, etc.) lanca isso antes do endpoint rodar - sem esse caso,
+            // caia no 500 generico abaixo (Fase 5: descoberto testando o endpoint de audio com
+            // corpo ausente, mas cobre qualquer entrada malformada, JSON incluso).
+            BadHttpRequestException =>
+                (StatusCodes.Status400BadRequest, "requisicao_invalida", "O corpo da requisicao esta ausente ou nao pode ser interpretado."),
             _ => (StatusCodes.Status500InternalServerError, "erro_interno", "Ocorreu um erro inesperado.")
         };
 

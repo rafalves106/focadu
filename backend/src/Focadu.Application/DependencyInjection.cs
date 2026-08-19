@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<GetTodayUseCase>();
         services.AddScoped<StartOrResumeDailyUseCase>();
         services.AddScoped<SubmitActivityResponseUseCase>();
+        services.AddScoped<SubmitVoiceSummaryResponseUseCase>();
         services.AddScoped<CompleteDailyUseCase>();
         services.AddScoped<SeedWebSecurityCourseUseCase>();
         services.AddScoped<CreateCuratedContentUseCase>();

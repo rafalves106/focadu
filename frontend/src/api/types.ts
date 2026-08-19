@@ -2,7 +2,7 @@
 // padrao no ASP.NET Core, confirmado empiricamente contra a Api real). Enums do C# chegam como
 // numero (a ordem dos valores importa - ver os enums correspondentes em Focadu.Domain.Enums).
 
-export const ActivityType = { Quiz: 0, WordMatch: 1, Cloze: 2, Roleplay: 3 } as const;
+export const ActivityType = { Quiz: 0, WordMatch: 1, Cloze: 2, Roleplay: 3, VoiceSummary: 4 } as const;
 export type ActivityType = (typeof ActivityType)[keyof typeof ActivityType];
 
 export const DailyAccessMode = { Start: 0, Resume: 1, Replay: 2, ReadOnly: 3 } as const;

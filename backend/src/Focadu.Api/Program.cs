@@ -16,8 +16,14 @@ builder.Services.AddOpenApi();
 var connectionString = builder.Configuration.GetConnectionString("Focadu")
     ?? throw new InvalidOperationException("Connection string 'Focadu' nao configurada (appsettings.json ou variavel de ambiente ConnectionStrings__Focadu).");
 
+// Groq (Fase 5): diferente da connection string, uma chave ausente nao impede o app de subir -
+// so a transcricao/avaliacao de VoiceSummary falham (com erro claro) quando de fato chamadas sem
+// ela configurada. Configuravel via appsettings/user-secrets ("Groq:ApiKey") ou env var
+// Groq__ApiKey - nunca hardcoded nem commitada (ver docs/ARQUITETURA.md).
+var groqApiKey = builder.Configuration["Groq:ApiKey"] ?? string.Empty;
+
 builder.Services.AddFocaduApplication();
-builder.Services.AddFocaduInfrastructure(connectionString);
+builder.Services.AddFocaduInfrastructure(connectionString, groqApiKey);
 
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -154,6 +160,25 @@ api.MapPost("/dailies/{dailyId}/activities/{activityId}/responses",
             return Results.Created($"/api/dailies/{dailyId}/activities/{activityId}/responses/{result.Response.Id}", result);
         })
     .WithName("SubmitActivityResponse");
+
+// Endpoint separado do texto (POST .../responses) porque o corpo aqui e binario (multipart/
+// form-data), nao JSON. Fluxo: transcreve (Groq Whisper) -> avalia contra o CuratedContent de
+// referencia (Groq chat completion) -> Score/Passed vem da avaliacao, nunca do cliente.
+api.MapPost("/dailies/{dailyId}/activities/{activityId}/responses/audio",
+        async (string dailyId, string activityId, IFormFile? audio, SubmitVoiceSummaryResponseUseCase useCase, CancellationToken ct) =>
+        {
+            var dId = RouteParsing.RequireGuid(dailyId, "dailyId");
+            var aId = RouteParsing.RequireGuid(activityId, "activityId");
+
+            if (audio is null)
+                throw new ValidationException("audio_obrigatorio", "O arquivo de audio e obrigatorio.");
+
+            await using var stream = audio.OpenReadStream();
+            var result = await useCase.ExecuteAsync(dId, aId, stream, audio.Length, ct);
+            return Results.Created($"/api/dailies/{dailyId}/activities/{activityId}/responses/{result.Response.Id}", result);
+        })
+    .WithName("SubmitVoiceSummaryResponse")
+    .DisableAntiforgery();
 
 api.MapPost("/dailies/{dailyId}/complete", async (string dailyId, CompleteDailyUseCase useCase, CancellationToken ct) =>
     {

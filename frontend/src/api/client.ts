@@ -23,9 +23,12 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  // FormData (upload de audio) nunca leva Content-Type manual - o navegador define o boundary
+  // do multipart sozinho; forcar 'application/json' aqui quebraria o parsing no backend.
+  const isFormData = init?.body instanceof FormData;
   const res = await fetch(`${BASE_URL}${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
+    headers: isFormData ? init?.headers : { 'Content-Type': 'application/json', ...init?.headers },
   });
 
   if (!res.ok) {
@@ -62,4 +65,14 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  // VoiceSummary (Fase 5): endpoint separado do texto porque o corpo e binario (multipart/
+  // form-data) - o backend transcreve e avalia por IA, Score nunca vem do cliente.
+  submitVoiceSummaryResponse: (dailyId: string, activityId: string, audioBlob: Blob) => {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+    return request<SubmitActivityResponseResult>(
+      `/api/dailies/${dailyId}/activities/${activityId}/responses/audio`,
+      { method: 'POST', body: formData },
+    );
+  },
 };
