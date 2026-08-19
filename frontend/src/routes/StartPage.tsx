@@ -28,7 +28,10 @@ export function StartPage() {
 
   if (showProject && weeklyId) return <WeeklyProjectPage weeklyId={weeklyId} courseId={courseId} />;
   if (dailyId) return <DailyView dailyId={dailyId} weeklyId={weeklyId} courseId={courseId} />;
-  if (weeklyId) return <WeeklyDetailPage weeklyId={weeklyId} courseId={courseId} />;
+  // key={weeklyId}: sem isso, "Proximo Modulo" no PublicationModal (Fase 11) so troca a query
+  // string - o componente continuaria montado com o modal ainda aberto (mostrando o sucesso da
+  // semana anterior por cima da semana nova). Mesmo truque de App.tsx (key={location.pathname}).
+  if (weeklyId) return <WeeklyDetailPage key={weeklyId} weeklyId={weeklyId} courseId={courseId} />;
   if (courseId) return <CourseDetailPage courseId={courseId} />;
   return <StartDashboard />;
 }

@@ -41,7 +41,9 @@ public record WeeklyOverviewDto(
     int WeakDailies,
     bool HasWeeklyReinforcement,
     /// <summary>Fase 8: pra grids de navegacao (Detalhes do Curso) mostrarem status por dia sem precisar buscar WeeklyDetailDto de cada semana.</summary>
-    IReadOnlyCollection<DailyStatusSummaryDto> Days);
+    IReadOnlyCollection<DailyStatusSummaryDto> Days,
+    /// <summary>Fase 11: true quando ESTA Weekly esta com o modulo completo mas sem publicacao Validated - o proximo Weekly (Number+1) fica bloqueado por causa disso, ver StartOrResumeDailyUseCase.</summary>
+    bool RequiresPublicationToUnlock);
 
 /// <summary>Resumo enxuto de uma Daily pra grids de navegacao (Fase 8) - versao mais leve de DailyOverviewDto (WeeklyDetailDto), sem PenaltyPoints/PassedActivities que essas telas nao usam.</summary>
 public record DailyStatusSummaryDto(

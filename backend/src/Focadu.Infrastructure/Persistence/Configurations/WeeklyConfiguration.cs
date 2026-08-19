@@ -31,6 +31,11 @@ public class WeeklyConfiguration : IEntityTypeConfiguration<Weekly>
             .HasForeignKey<WeeklyProject>(p => p.WeeklyId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(w => w.Publication)
+            .WithOne()
+            .HasForeignKey<ModulePublication>(p => p.WeeklyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasMany(w => w.Reinforcements)
             .WithOne()
             .HasForeignKey(r => r.WeeklyId)

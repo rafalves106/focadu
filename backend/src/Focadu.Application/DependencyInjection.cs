@@ -16,6 +16,12 @@ public static class DependencyInjection
         services.AddScoped<GetCourseDetailUseCase>();
         services.AddScoped<GetWeeklyDetailUseCase>();
         services.AddScoped<SubmitWeeklyProjectUseCase>();
+        services.AddScoped<EvaluateWeeklyProjectUseCase>();
+        services.AddScoped<GenerateLinkedInDraftUseCase>();
+        services.AddScoped<GetGitHubRepositoriesUseCase>();
+        services.AddScoped<CommitModuleSummaryUseCase>();
+        services.AddScoped<SubmitPublicationUseCase>();
+        services.AddScoped<GetPublicationStatusUseCase>();
         services.AddScoped<GetDailyStateUseCase>();
         services.AddScoped<GetTodayUseCase>();
         services.AddScoped<StartOrResumeDailyUseCase>();

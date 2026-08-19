@@ -13,9 +13,10 @@ namespace Focadu.Infrastructure;
 public static class DependencyInjection
 {
     private static readonly Uri GroqBaseAddress = new("https://api.groq.com/openai/v1/");
+    private static readonly Uri GitHubBaseAddress = new("https://api.github.com/");
 
     public static IServiceCollection AddFocaduInfrastructure(
-        this IServiceCollection services, string connectionString, string groqApiKey)
+        this IServiceCollection services, string connectionString, string groqApiKey, GitHubOptions gitHubOptions)
     {
         services.AddDbContext<FocaduDbContext>(options => options.UseNpgsql(connectionString));
 
@@ -31,6 +32,24 @@ public static class DependencyInjection
         services.AddSingleton(new GroqOptions(groqApiKey));
         services.AddHttpClient<IAudioTranscriptionService, GroqAudioTranscriptionService>(ConfigureGroqClient);
         services.AddHttpClient<IContentEvaluationService, GroqContentEvaluationService>(ConfigureGroqClient);
+        // Rascunho de post do LinkedIn (Fase 11) - mesmo cliente/chave do Groq, so um adapter
+        // diferente (gera texto livre, sem JSON mode/Score).
+        services.AddHttpClient<IDraftGenerationService, GroqDraftGenerationService>(ConfigureGroqClient);
+
+        // GitHub (Fase 11) - token ausente nao impede o app de subir, so as chamadas do
+        // GitHubService falham (com erro claro) quando de fato invocadas sem ele configurado
+        // (mesma decisao do Groq acima).
+        services.AddSingleton(gitHubOptions);
+        services.AddHttpClient<IGitHubService, GitHubService>(client =>
+        {
+            client.BaseAddress = GitHubBaseAddress;
+            if (!string.IsNullOrWhiteSpace(gitHubOptions.Token))
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", gitHubOptions.Token);
+            // A Api do GitHub exige User-Agent e recusa a requisicao sem ele.
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Focadu/1.0");
+            client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+            client.Timeout = TimeSpan.FromSeconds(20);
+        });
 
         return services;
 

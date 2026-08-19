@@ -12,7 +12,9 @@ public record WeeklyDetailDto(
     IReadOnlyCollection<DailyOverviewDto> Dailies,
     IReadOnlyCollection<CuratedContentDto> CuratedContents,
     WeeklyProjectDto? Project,
-    IReadOnlyCollection<WeeklyReinforcementSummaryDto> Reinforcements);
+    IReadOnlyCollection<WeeklyReinforcementSummaryDto> Reinforcements,
+    /// <summary>Fase 11: true quando o modulo esta completo mas ainda falta uma publicacao Validated - o frontend usa isso pro banner/bloqueio, sem precisar de uma 2a chamada a /publication/status so pra saber "precisa ou nao".</summary>
+    bool RequiresPublicationToUnlock);
 
 /// <summary>Desempenho de um dia dentro da semana: quantas atividades tem, quantas ja foram feitas, quantas passaram.</summary>
 public record DailyOverviewDto(

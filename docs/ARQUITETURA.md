@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 10 - Estados de Erro**.
+> Ultima fase que atualizou este documento: **Fase 11 - Sistema de Publicacao Publica**.
 
 ## Visao geral do projeto
 
@@ -85,12 +85,15 @@ src/
     Enums/                          <- CourseStatus, DailyStatus, DailyAccessMode, ActivityType
                                        (Quiz/WordMatch/Cloze/Roleplay/VoiceSummary - Fase 5;
                                        Reading/Video - Fase 7), ActivityStatus, AnswerMode,
-                                       TerminalQuality, CuratedContentType, WeeklyProjectStatus
+                                       TerminalQuality, CuratedContentType, WeeklyProjectStatus,
+                                       PublicationPlatform/PublicationStatus (Fase 11)
     Courses/Course.cs
     Monthlies/Monthly.cs
     Weeklies/Weekly.cs              <- aggregate root "operacional" (ver secao de regras)
     Weeklies/WeeklyProject.cs
     Weeklies/WeeklyReinforcement.cs (+ WeakDailyLink interno, so para mapeamento EF)
+    Weeklies/ModulePublication.cs   <- 1:1 com Weekly, publicacao publica exigida pra desbloquear
+                                       o proximo modulo (Fase 11, ver secao propria)
     Dailies/Daily.cs
     Activities/DailyActivity.cs
     Activities/ActivityResponse.cs
@@ -106,17 +109,24 @@ src/
                                        SubmitActivityResponseUseCase.ResolveScore) sem precisar de
                                        fakes de repositorio
     Ports/                          <- IClock, IContentEvaluationService, IAudioTranscriptionService
-                                       (adapters concretos desde a Fase 5, ver Focadu.Infrastructure/Services)
+                                       (adapters concretos desde a Fase 5, ver Focadu.Infrastructure/Services),
+                                       IDraftGenerationService, IGitHubService (Fase 11, ver secao propria)
     Exceptions/                     <- NotFoundException, ConflictException, ValidationException,
                                        ExternalServiceException (Fase 5 - erro de servico externo)
     Shared/                         <- DTOs reaproveitados entre modulos (ex: sessoes de reforco,
                                        CuratedContentDto)
     Courses/                        <- ListCoursesUseCase, GetCourseDetailUseCase, Dtos.cs
-    Weeklies/                       <- GetWeeklyDetailUseCase, Dtos.cs
+    Weeklies/                       <- GetWeeklyDetailUseCase, Dtos.cs, EvaluateWeeklyProjectUseCase
+                                       (Fase 11 - fecha lacuna aberta desde a Fase 7),
+                                       GetPublicationStatusUseCase, GenerateLinkedInDraftUseCase,
+                                       GetGitHubRepositoriesUseCase, CommitModuleSummaryUseCase,
+                                       SubmitPublicationUseCase, PublicationDtos.cs (Fase 11)
     Content/                         <- CreateCuratedContentUseCase, UpdateCuratedContentUseCase (Fase 4)
     Dailies/                        <- GetDailyStateUseCase, GetTodayUseCase (usa
                                        Weekly.GetDailyByDate desde a Fase 5),
-                                       StartOrResumeDailyUseCase, SubmitActivityResponseUseCase
+                                       StartOrResumeDailyUseCase (Fase 11: checa bloqueio por
+                                       publicacao pendente da Weekly anterior antes de liberar a
+                                       primeira Daily de uma nova Weekly), SubmitActivityResponseUseCase
                                        (+ ResolveScore, cobre Quiz/WordMatch/Cloze/Roleplay - ver
                                        "Score no servidor" abaixo), SubmitVoiceSummaryResponseUseCase
                                        (Fase 5 - transcreve + avalia por IA), ActivityResponseRecorder
@@ -131,31 +141,44 @@ src/
     Persistence/
       FocaduDbContext.cs
       FocaduDbContextFactory.cs    <- design-time factory p/ `dotnet ef migrations`
-      Configurations/               <- 1 IEntityTypeConfiguration por entidade (12 arquivos)
+      Configurations/               <- 1 IEntityTypeConfiguration por entidade (13 arquivos,
+                                       + ModulePublicationConfiguration na Fase 11)
       Repositories/                 <- CourseRepository, MonthlyRepository, WeeklyRepository
+                                       (FullGraph() inclui Publication desde a Fase 11)
       UnitOfWork.cs
       Migrations/                   <- InitialCreate (Fase 1), AddPromptToDailyActivity (Fase 3),
                                        Fase4SchemaChanges (Daily.ReinforcementDailyId,
                                        ActivityResponse.Justification) - Fase 5 nao precisou de
                                        migration nova (ActivityType.VoiceSummary e so mais um
-                                       valor de string dentro da coluna existente)
+                                       valor de string dentro da coluna existente),
+                                       Fase11ModulePublication (tabela ModulePublications) +
+                                       Fase11ModulePublicationNavigation (FK que faltava - ver
+                                       "Bug real: navegacao 1:1 sem HasOne" abaixo)
     Services/
       SystemClock.cs                 <- implementacao real de IClock (hora local)
       GroqOptions.cs                  <- ApiKey da Groq (Fase 5)
       GroqAudioTranscriptionService.cs  <- adapter de IAudioTranscriptionService (Fase 5)
       GroqContentEvaluationService.cs   <- adapter de IContentEvaluationService (Fase 5)
+      GroqDraftGenerationService.cs      <- adapter de IDraftGenerationService (Fase 11 - rascunho
+                                             de LinkedIn, mesmo HttpClient/erro do Groq, sem JSON mode)
+      GitHubOptions.cs                    <- Token/Username do GitHub (Fase 11)
+      GitHubService.cs                     <- adapter de IGitHubService (Fase 11, ver secao propria)
     DependencyInjection.cs
   Focadu.Api/
-    Program.cs                      <- composicao de DI + 11 endpoints reais (ver secao abaixo)
+    Program.cs                      <- composicao de DI + 19 endpoints reais sob /api, + /health (ver secao abaixo)
     ErrorHandling/                  <- ApiExceptionHandler (IExceptionHandler), ErrorResponse
     Contracts/                      <- RouteParsing (parse de Guid com erro padronizado),
-                                       SubmitActivityResponseRequest, CuratedContentRequests (Fase 4)
-    appsettings.json                <- connection string + Groq:ApiKey (vazio por padrao) default
+                                       SubmitActivityResponseRequest, CuratedContentRequests (Fase 4),
+                                       PublicationRequests (Fase 11)
+    appsettings.json                <- connection string + Groq:ApiKey + GitHub:Token/Username
+                                       (todos vazios por padrao) default
     Focadu.Api.csproj                <- UserSecretsId (Fase 5, ver "Como configurar a chave da Groq")
 tests/
   Focadu.Tests/
     Dailies/DailyTests.cs           <- + exigencia de ContentId pra VoiceSummary (Fase 5)
-    Weeklies/WeeklyTests.cs         <- + Weekly.GetDailyByDate (Fase 5)
+    Weeklies/WeeklyTests.cs         <- + Weekly.GetDailyByDate (Fase 5), + IsModuleComplete/
+                                       RequiresPublicationToUnlock (Fase 11)
+    Weeklies/ModulePublicationTests.cs  <- Submit/MarkValidated/MarkFailed/retry apos falha (Fase 11)
     Policies/EvaluationPolicyTests.cs
     Domain/DomainExceptionCodeTests.cs  <- trava os Code usados pela Api (ver abaixo)
     Dailies/SubmitActivityResponseScoreTests.cs  <- ResolveScore, cobre Quiz/WordMatch/Cloze/Roleplay
@@ -180,7 +203,9 @@ Course (Draft/Active/Archived)
         │           └── RoleplayOption (Text, NextNodeId?)
         ├── CuratedContent (Type, Title, ExternalUrl?, BodyText?)
         ├── WeeklyProject (SpecText, Status, SubmissionUrl?)       [1:1 com Weekly]
-        └── WeeklyReinforcement (TriggeredAt, WeakDailyIds)
+        ├── WeeklyReinforcement (TriggeredAt, WeakDailyIds)
+        └── ModulePublication (Status, Platform?, SubmittedUrl?, GeneratedDraft?,
+                                ValidationError?)                   [1:1 com Weekly, Fase 11]
 ```
 
 `Weekly` e o **aggregate root operacional**: e ele quem concentra as regras de negocio que
@@ -306,6 +331,59 @@ Quando uma Daily atinge o limiar de penalidade, `Weekly.CreateDailyReinforcement
 `WeeklyWeakDaysThreshold` dias fracos ainda nao cobertos por um `WeeklyReinforcement` anterior,
 `Weekly.TriggerWeeklyReinforcement` cria o registro correspondente.
 
+### Publicacao publica e bloqueio de modulo (Fase 11)
+
+Implementa a filosofia central do produto (Documento Mestre, Secao 2.3 - "prova de evolucao
+publica"): completar uma Weekly nao basta mais, e preciso publicar prova disso (LinkedIn ou
+GitHub) antes da proxima Weekly liberar.
+
+- **`Weekly.IsModuleComplete()`**: todos os Dailies **originais** (`!IsReinforcement`) com
+  `Status == Completed` **e** `WeeklyProject.Status == Evaluated`. Dailies de reforco ficam de
+  fora de proposito - um reforco pendente nao deveria travar quem ja terminou o conteudo
+  original da semana.
+- **`Weekly.RequiresPublicationToUnlock()`**: `IsModuleComplete() && Publication?.Status !=
+  Validated`. `Weekly.Publication` so existe depois da primeira acao do usuario no modal
+  (`StartPublication()`, idempotente) - antes disso e `null`, e o front interpreta isso como
+  `Pending` quando o modulo ja esta completo (`GetPublicationStatusUseCase`).
+- **Bloqueio em si vive em `StartOrResumeDailyUseCase`** (Application), nao em `Weekly` -
+  `Weekly.EvaluateDailyAccess` so enxerga a propria Weekly, nunca as irmas. O use case busca as
+  Weeklies do mesmo `MonthlyId` (`IWeeklyRepository.GetByMonthlyIdAsync`), acha a de `Number - 1`
+  e, se ela `RequiresPublicationToUnlock()`, lanca `modulo_bloqueado_por_publicacao` (409) antes
+  de chamar `Weekly.StartOrResumeDaily`. **Escopo: so a Weekly anterior dentro do mesmo Monthly**
+  - nao atravessa Monthlies (so existe 1 hoje); se um 2o Monthly aparecer, a ultima Weekly de um
+  Monthly nao bloqueia a primeira do proximo ainda.
+- **Acesso a conteudo ja visto nunca e bloqueado** - o bloqueio so entra no caminho de
+  `StartOrResumeDailyUseCase` (comecar/retomar uma Daily nova); `Weekly.EvaluateDailyAccess`
+  (Replay/ReadOnly de Dailies passadas) nunca passa por essa checagem.
+- **`ModulePublication`** (entidade, 1:1 com `Weekly`): `GenerateDraft(text)` (rascunho da IA),
+  `Submit(platform, url)` (`Status -> Submitted`; lanca `publicacao_ja_validada` **so** se ja
+  `Validated` - depois de `Failed` e re-chamavel, e como um retry reseta `ValidationError`),
+  `MarkValidated()`/`MarkFailed(reason)` (exigem `Status == Submitted`).
+- **`EvaluateWeeklyProjectUseCase`** (novo, Fase 11): `WeeklyProject.Evaluate()` existia desde a
+  Fase 1 sem endpoint (pendencia documentada desde a Fase 7) - sem ele, `IsModuleComplete()`
+  nunca seria `true` de verdade. `POST /api/weeklies/{weeklyId}/project/evaluate`, so backend,
+  sem UI (nao ha papel de "revisor" neste app de usuario unico).
+- **Geracao do rascunho de LinkedIn** (`GenerateLinkedInDraftUseCase` + `GroqDraftGenerationService`):
+  usa `Weekly.Theme` (ou `Title`) + ate 3 titulos de `CuratedContent` (`Reading`/`Video`) como
+  contexto - **nao** usa `AiFeedback` de nenhuma `ActivityResponse` de proposito (evita vazar o
+  resultado de uma tentativa especifica num post publico). Groq sem JSON mode (texto livre, tom
+  pessoal em primeira pessoa).
+- **Fluxo GitHub** (`GetGitHubRepositoriesUseCase`, `CommitModuleSummaryUseCase`,
+  `GitHubService`): lista repos publicos, cria/reusa um repo, commita um resumo Markdown
+  (`MODULO-{n}.md`) via `PUT /repos/{owner}/{repo}/contents/{path}`. O commit bem sucedido *e* a
+  prova - `CommitModuleSummaryUseCase` ja chama `Submit`+`MarkValidated` na mesma operacao, sem
+  round-trip de validacao redundante depois.
+- **Validacao de LinkedIn e so estrutural** (regex `linkedin.com/(posts|feed/update)/...`), nunca
+  verifica se o post fala sobre o modulo de verdade - nao ha API gratuita de conteudo do LinkedIn
+  pra isso; limitacao conhecida, ja sinalizada assim no prompt da fase.
+- **Um unico `SubmitPublicationUseCase` cobre LinkedIn e GitHub** (nao ha
+  `ValidatePublicationUseCase` separado) - GitHub valida via `IGitHubService.GetRepositoryAsync`
+  (owner/repo extraidos da URL, exige `IsPrivate == false`); retry e so resubmeter a mesma URL
+  pelo mesmo endpoint, nao precisa de logica nova.
+- **GitHub nunca foi testado contra a API real** (decisao explicita do usuario nesta fase, ver
+  `docs/fase-11/resumo-implementacao-fase-11.md`) - verificado via `page.route()` do Playwright
+  mockando as duas chamadas que tocariam GitHub de verdade.
+
 ## Superficie da API (Focadu.Api)
 
 Desde a Fase 2, `Focadu.Api` tem endpoints REST reais (nao mais so os 4 minimos de prova de
@@ -326,6 +404,12 @@ composicao da Fase 1). Todos sob `/api`, alem de `GET /health`:
 | POST | `/api/curated-content` | `CreateCuratedContentUseCase` (Fase 4) | 201, 400/404 |
 | PUT | `/api/curated-content/{id}` | `UpdateCuratedContentUseCase` (Fase 4) | 200, 400/404 |
 | POST | `/api/weeklies/{weeklyId}/project/submit` | `SubmitWeeklyProjectUseCase` (Fase 7) | 200, 400/404 - `WeeklyProject.Submit` existia desde a Fase 1, so faltava endpoint |
+| POST | `/api/weeklies/{weeklyId}/project/evaluate` | `EvaluateWeeklyProjectUseCase` (Fase 11) | 200, 404 - `WeeklyProject.Evaluate` existia desde a Fase 1, so faltava endpoint (so backend, sem UI) |
+| GET | `/api/weeklies/{weeklyId}/publication/status` | `GetPublicationStatusUseCase` (Fase 11) | 200, 404 |
+| POST | `/api/weeklies/{weeklyId}/publication/draft` | `GenerateLinkedInDraftUseCase` (Fase 11) | 200, 404, 502 (Groq) |
+| POST | `/api/weeklies/{weeklyId}/publication/github-commit` | `CommitModuleSummaryUseCase` (Fase 11) | 200, 400/404, 502 (GitHub) |
+| POST | `/api/weeklies/{weeklyId}/publication/submit` | `SubmitPublicationUseCase` (Fase 11) | 200, 400/404 - LinkedIn valida por regex, GitHub chama a API real |
+| GET | `/api/github/repositories` | `GetGitHubRepositoriesUseCase` (Fase 11) | 200, 502 (GitHub) |
 
 As rotas da Api sao caminhos REST simples (`/api/weeklies/{weeklyId}`), **nao** um espelho das
 rotas do frontend (`/start?course=&weekly=`) - o frontend usa query string no seu proprio router
@@ -515,6 +599,8 @@ default (400):
 | `atividade_nao_encontrada` | 404 | `activityId` nao encontrado dentro da Daily |
 | `reforco_semanal_condicoes_nao_atingidas` | 409 | guarda defensiva, nao alcancada pela Api hoje |
 | `reforco_diario_condicoes_nao_atingidas` | 409 | guarda defensiva, nao alcancada pela Api hoje |
+| `modulo_bloqueado_por_publicacao` | 409 | `StartOrResumeDailyUseCase` quando a Weekly anterior (mesmo Monthly) ainda `RequiresPublicationToUnlock` (Fase 11) |
+| `publicacao_ja_validada` | 409 | `ModulePublication.Submit` chamado depois que a publicacao ja esta `Validated` (Fase 11) |
 
 Qualquer outro `DomainException.Code` (as validacoes de criacao de conteudo em `Course`,
 `Monthly`, `DailyActivity`, `QuizOption`, `RoleplayNode`, etc., que ainda nao tem endpoint de
@@ -627,6 +713,18 @@ Corrigido uma unica vez, centralizado em `FocaduDbContext.OnModelCreating`
 (`idProperty.ValueGenerated = ValueGenerated.Never` pra toda entidade) - sem migration nova, e so
 metadado do EF Core, nao muda schema.
 
+**Bug real: navegacao 1:1 sem `HasOne`, corrigido na Fase 11.** `WeeklyConfiguration` nunca
+declarava `HasOne(w => w.Publication).WithOne().HasForeignKey<ModulePublication>(p =>
+p.WeeklyId)` (ao contrario de `Project`, que ja tinha o equivalente desde antes). Sem essa
+declaracao, `.Include(w => w.Publication)` em `WeeklyRepository.FullGraph()` derrubava
+`GET /api/courses/{id}` inteiro com `InvalidOperationException` ("'w.Publication' is invalid
+inside an Include operation") - so apareceu ao vivo, carregando um curso de teste (nenhum teste de
+unidade cobre repositorio, ver "`Focadu.Tests` so testa dominio puro" nos pontos abertos).
+Corrigido adicionando o `HasOne` que faltava + uma segunda migration
+(`Fase11ModulePublicationNavigation`, so adiciona a FK que devia existir desde a primeira). **Toda
+navegacao 1:1 nova precisa do `HasOne`/`WithOne` explicito na configuration correspondente, nao so
+a coluna FK/indice unico** - sem isso o EF Core nem reconhece a propriedade como navegacao.
+
 ## Groq (transcricao e avaliacao por IA, Fase 5)
 
 Os dois ports que existiam so como stub desde a Fase 1 (`IAudioTranscriptionService`,
@@ -657,6 +755,39 @@ falha o startup se ausente) - so as duas chamadas à Groq falham, com um erro cl
 (`groq_api_key_nao_configurada`, 502) em vez de um 401 sem contexto vindo da Groq. Chave obtida em
 [console.groq.com](https://console.groq.com).
 
+## GitHub (commit de resumo do modulo, Fase 11)
+
+`IGitHubService` (`Focadu.Infrastructure.Services.GitHubService`) e um adapter via `HttpClient`
+tipado cru pra `https://api.github.com/` - **sem pacote Octokit.NET**, mesmo padrao ja usado pro
+Groq (`services.AddHttpClient<IGitHubService, GitHubService>(...)`), apesar do prompt da Fase 11
+ter dito duas vezes que "Octokit ja estava configurado desde a Fase 1" (afirmacao falsa,
+verificada por `grep` antes de implementar - ver `docs/fase-11/resumo-implementacao-fase-11.md`).
+Headers fixos: `Authorization: Bearer {token}` (so quando configurado), `User-Agent: Focadu/1.0`
+(exigido pela API do GitHub), `Accept: application/vnd.github+json`. Timeout de 20s.
+
+### Como configurar o token do GitHub
+
+Mesmo padrao de 3 formas da chave da Groq acima (user-secrets em dev, variavel de ambiente em
+producao/CI, nunca em `appsettings.json`):
+
+```bash
+cd backend/src/Focadu.Api
+dotnet user-secrets set "GitHub:Token" "seu-token-aqui"      # precisa de escopo de escrita (repo), nao so leitura
+dotnet user-secrets set "GitHub:Username" "seu-usuario-aqui"
+```
+
+Sem o token configurado, o resto da Api sobe normalmente - so as chamadas que tocam o GitHub
+falham com `github_token_nao_configurado` (502). **O token nunca foi validado contra a API real
+nesta fase** (decisao explicita do usuario - ver `docs/fase-11/resumo-implementacao-fase-11.md`);
+o prompt ja pedia pra confirmar que o token tem escopo de escrita (`repo`), nao so leitura, antes
+de assumir que o commit funciona.
+
+| Code | Status | Quando |
+|---|---|---|
+| `github_token_nao_configurado` | 502 | `GitHub:Token` vazio - qualquer chamada que precise dele |
+| `github_timeout` | 503 | GitHub nao respondeu a tempo (timeout de 20s) |
+| `github_indisponivel` / `github_falhou` | 502 | Erro de rede ou status HTTP de erro vindo do GitHub |
+
 ## Como rodar localmente
 
 ```bash
@@ -665,7 +796,8 @@ docker compose up -d                                    # sobe Postgres em local
 dotnet ef database update -p src/Focadu.Infrastructure --startup-project src/Focadu.Infrastructure  # aplica as migrations
 dotnet build Focadu.slnx                                # build de toda a solucao
 dotnet test tests/Focadu.Tests/Focadu.Tests.csproj      # roda os testes de dominio
-dotnet user-secrets set "Groq:ApiKey" "sua-chave-aqui" --project src/Focadu.Api  # so necessario pra VoiceSummary funcionar de verdade
+dotnet user-secrets set "Groq:ApiKey" "sua-chave-aqui" --project src/Focadu.Api  # so necessario pra VoiceSummary/rascunho de LinkedIn funcionar de verdade
+dotnet user-secrets set "GitHub:Token" "seu-token-aqui" --project src/Focadu.Api  # so necessario pro commit de resumo do modulo funcionar de verdade
 dotnet run --project src/Focadu.Api -- seed              # popula o curso "Web Security" (idempotente)
 dotnet run --project src/Focadu.Api                      # sobe a API completa
 ```
@@ -705,7 +837,9 @@ frontend/
       types.ts               <- espelha os DTOs de Focadu.Application (enums como numero, com
                                    consts tipo ActivityType/AnswerMode/ActivityStatus/TerminalQuality/
                                    WeeklyProjectStatus/DailyStatus/CourseStatus (Fase 8, viraram
-                                   const), ACTIVITY_TYPE_LABEL/CURATED_CONTENT_TYPE_NAMES)
+                                   const), ACTIVITY_TYPE_LABEL/CURATED_CONTENT_TYPE_NAMES,
+                                   PublicationPlatform/PublicationStatus/ModulePublicationDto/
+                                   GitHubRepoDto (Fase 11)
       client.ts               <- fetch tipado, ApiError, VITE_API_BASE_URL, suporte a FormData
                                    (upload de audio, Fase 5, sem forcar Content-Type json); request()
                                    usa AbortSignal.timeout() desde a Fase 10 (10s padrao, 70s pro
@@ -716,10 +850,16 @@ frontend/
       TodayPage.tsx            <- /hoje (orquestra os 7 tipos de atividade, o menu de configuracoes
                                    e o fluxo de conclusao - Fase 7)
       StartPage.tsx             <- /start (so o roteador por query string - Fase 8: as 3 telas
-                                   viraram arquivos proprios abaixo, StartPage so decide qual mostrar)
+                                   viraram arquivos proprios abaixo, StartPage so decide qual mostrar);
+                                   `<WeeklyDetailPage key={weeklyId} .../>` desde a Fase 11 (ver
+                                   "Bug real: modal preso ao trocar de Weekly" abaixo)
       StartDashboard.tsx         <- /start sem params - hub "Comecar Hoje"/"Projeto"/"Trilha" (Fase 8)
-      WeeklyDetailPage.tsx        <- /start?weekly= - dias da semana + projeto + navegacao entre semanas (Fase 8)
-      CourseDetailPage.tsx        <- /start?course= - trilha completa (semanas + mini-grid de dias) (Fase 8)
+      WeeklyDetailPage.tsx        <- /start?weekly= - dias da semana + projeto + navegacao entre semanas
+                                   (Fase 8); banner + trigger do PublicationModal quando
+                                   `requiresPublicationToUnlock` (Fase 11)
+      CourseDetailPage.tsx        <- /start?course= - trilha completa (semanas + mini-grid de dias)
+                                   (Fase 8); badge "🔒 Bloqueado" na Weekly seguinte a uma que ainda
+                                   precisa de publicacao (Fase 11)
       WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7)
       AdminContentPage.tsx       <- /admin/conteudo (autoria de CuratedContent, Fase 6)
     components/
@@ -746,6 +886,10 @@ frontend/
       CompletionSummary.tsx       <- pos POST .../complete (reforco diario/semanal, se houver); resumo real +
                                    badge "Conceito Dominado" (aprovacao >= 90%) + "Refazer este dia" desde a Fase 9
       ErrorBoundary.tsx            <- class component, pega excecoes de render (Fase 10) - montado em App.tsx
+      publication/
+        PublicationModal.tsx          <- modal de publicacao publica (Fase 11) - maquina de passo local
+                                          (`Step`), 8 sub-componentes no mesmo arquivo (os 9 arquivos
+                                          sugeridos no prompt viraram 1 - ver resumo da fase)
       errors/                       <- telas de erro (Fase 10)
         ErrorLayout.tsx                <- chrome compartilhado (icone/legenda/titulo/descricao/CTAs)
         EmptyStateError.tsx             <- dado carregado com sucesso mas vazio (nao e erro de rede)
@@ -817,6 +961,35 @@ que nenhum catch de fetch cobriria - mostra `GenericError`, caminho totalmente s
 `ApiErrorScreen`. **Dois dos 4 links do Figma desta fase nao correspondiam ao nome do prompt**
 ("Sem Conexao" apontava pra uma tela de sessao expirada, "Erro Generico" pra uma tela de streak
 perdido - nenhum dos dois foi construido, ver `docs/fase-10/resumo-implementacao-fase-10.md`).
+
+**Modal de Publicacao Publica (Fase 11):** `PublicationModal` recebe `weeklyId`/`courseId`/
+`onClose` (sem `onPublished` - ver "Bug real" abaixo) e gerencia sozinho uma maquina de passo
+(`intro` → `linkedinDraft`/`githubSelect` → `linkedinEditor`/`urlSubmit` → `validating` →
+`success`/`error`), mesmo padrao ja usado em `TodayPage` (Fase 4), so que a arvore inteira cabe
+num unico componente porque nao e uma sequencia de N atividades. Erros de rede usam
+`classifyApiError` (Fase 10) num bloco compacto, nao `ErrorLayout`/`ApiErrorScreen` (pressupoe
+`min-h-screen`, incompativel com um card de modal); erro de **validacao** (URL invalida/repo
+privado) e estado de dominio (`ModulePublicationDto.status === Failed`), tela propria, sem relacao
+com erro de rede.
+
+**Bug real: `onPublished` desmontava o modal antes do usuario ver o sucesso (Fase 11).** A
+primeira versao de `WeeklyDetailPage` chamava `retry()` (`useApiResource`) dentro de um callback
+`onPublished`, disparado *antes* do `PublicationModal` terminar de renderizar `SuccessStep`.
+`retry()` seta `loading = true`, que faz `WeeklyDetailPage` retornar so `<Centered/>` - isso
+desmonta o modal (e todo seu `step`) no meio do fluxo; o usuario nunca via "Publicado com
+Sucesso!", so via o modal reabrir do zero em `'intro'`. Corrigido movendo o refetch pra `onClose`
+(so quando o usuario decide sair do modal) - `onPublished` foi removido do componente por nao
+sobrar nenhum uso real. Licao geral: **nunca dispare um refetch que muda `loading` do componente
+pai enquanto um modal filho ainda esta no meio de mostrar seu proprio resultado.**
+
+**Bug real: modal preso ao trocar de Weekly via "Proximo Modulo" (Fase 11).** `StartPage`
+renderizava `<WeeklyDetailPage weeklyId={weeklyId} .../>` sem `key` - trocar a query string
+(`?weekly=`) so muda props, nao remonta o componente, entao `showPublicationModal` (e o
+`SuccessStep` da Weekly *anterior*) ficava aberto por cima da Weekly nova. Corrigido com
+`key={weeklyId}`, mesmo padrao ja usado em `App.tsx` (`key={location.pathname}` no
+`ErrorBoundary`, Fase 10) - **qualquer estado local que deveria resetar ao trocar de "entidade
+exibida" via query string precisa de uma `key` que muda junto**, React nao remonta sozinho so
+porque uma prop mudou.
 
 **Timeout de requisicoes (Fase 10):** `api/client.ts.request()` usa `AbortSignal.timeout()` - 10s
 por padrao (`DEFAULT_TIMEOUT_MS`), exceto `submitVoiceSummaryResponse` (70s,
@@ -897,7 +1070,11 @@ de Projeto Semanal).
 - Servico de WhatsApp (`whatsapp-service/` e so placeholder).
 - Autenticacao/autorizacao real (usuario fixo/hardcoded, unico usuario-teste) - **reconfirmado
   na Fase 2**: nenhuma entidade recebe `UserId`.
-- Integracao com GitHub (Octokit.NET) e exigencia de publicacao publica (LinkedIn/GitHub).
+- **Resolvido na Fase 11, nao e mais pendencia:** integracao com GitHub (via `HttpClient` cru, sem
+  Octokit.NET - a afirmacao do prompt de que "Octokit ja estava configurado desde a Fase 1" era
+  falsa) e exigencia de publicacao publica (LinkedIn/GitHub) pra desbloquear o proximo modulo -
+  ver "Publicacao publica e bloqueio de modulo" acima. O fluxo GitHub em si nunca foi exercitado
+  contra a API real do GitHub (decisao explicita do usuario nesta fase).
 - Geracao de conteudo/avaliacao via IA pra Cloze/Roleplay - **reconfirmado na Fase 4**:
   Cloze/FreeText usa comparacao textual simples, Roleplay usa mapeamento fixo de
   `TerminalQuality` (ver "Score no servidor") - nenhum dos dois e avaliacao inteligente de
@@ -925,8 +1102,10 @@ de Projeto Semanal).
 - `WeeklyProject` so tem `SpecText` como texto livre unico - o mockup do Figma da tela de Projeto
   Semanal mostra titulo/objetivos/recursos adicionais como campos separados, que o dominio nao tem
   (ver "Duvidas" em `docs/fase-7/resumo-implementacao-fase-7.md`).
-- Avaliacao (`WeeklyProject.Evaluate()`) segue sem endpoint - so `Submit` ganhou um na Fase 7
-  (mudar `Status` pra `Evaluated` continua so possivel via acesso direto ao dominio/banco).
+- **Resolvido na Fase 11, nao e mais pendencia:** `WeeklyProject.Evaluate()` ganhou endpoint
+  (`POST .../project/evaluate`, `EvaluateWeeklyProjectUseCase`) - so backend, sem UI (nao ha papel
+  de "revisor" neste app de usuario unico), mas necessario pra `IsModuleComplete()` algum dia
+  virar `true` de verdade.
 - **Resolvido na Fase 10, nao e mais pendencia:** telas de erro no frontend (sem conexao, timeout,
   vazio, erro generico) - antes uma falha de fetch so mostrava texto vermelho solto
   (`<Centered text={error} tone="alert" />`).
@@ -950,6 +1129,7 @@ de Projeto Semanal).
 | 8 | Polimento das Telas de Navegacao (Start, Visao Semanal, Detalhes do Curso) | `docs/fase-8/resumo-implementacao-fase-8.md` |
 | 9 | Polimento das Atividades Individuais (Quiz, Cloze, Ligar Palavras, Roleplay) | `docs/fase-9/resumo-implementacao-fase-9.md` |
 | 10 | Estados de Erro | `docs/fase-10/resumo-implementacao-fase-10.md` |
+| 11 | Sistema de Publicacao Publica | `docs/fase-11/resumo-implementacao-fase-11.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
@@ -1037,3 +1217,31 @@ de Projeto Semanal).
 - **Resolvido na Fase 5, nao e mais pendencia:** a ambiguidade de `/api/today` quando 2+ Dailies
   compartilham a mesma `Date` (Daily normal + Daily de reforco geradas no mesmo dia) - ver
   `Weekly.GetDailyByDate` acima.
+- **GitHub nunca foi testado contra a API real** (Fase 11, decisao explicita do usuario) - o
+  codigo (`GitHubService`, `CommitModuleSummaryUseCase`) espelha o padrao ja comprovado do Groq,
+  mas so foi verificado estruturalmente (Playwright `page.route()` mockando as respostas). Antes
+  de confiar nele em uso real: configurar `GitHub:Token` com escopo de escrita (`repo`, nao so
+  leitura) e exercitar os 2 endpoints que tocam GitHub (`github-commit`, `submit` com URL de
+  GitHub) contra a API de verdade pelo menos uma vez.
+- **Validacao de publicacao no LinkedIn e so estrutural** (Fase 11) - confirma o formato da URL
+  (`linkedin.com/posts/...` ou `linkedin.com/feed/update/...`), nunca o conteudo do post. Nao ha
+  API gratuita simples de conteudo do LinkedIn pra resolver isso - limitacao conhecida, ja
+  sinalizada assim no prompt original da fase.
+- **Bloqueio de modulo (Fase 11) so olha a Weekly anterior dentro do mesmo Monthly** - nao
+  atravessa Monthlies (so existe 1 hoje). Se um curso ganhar um 2o Monthly, a ultima Weekly de um
+  Monthly nao vai bloquear a primeira do proximo sozinha - precisaria trocar
+  `GetByMonthlyIdAsync` por uma busca ordenada cross-Monthly em `StartOrResumeDailyUseCase`.
+- **Toda navegacao 1:1 nova entre entidades precisa de `HasOne`/`WithOne` explicito** na
+  `IEntityTypeConfiguration` correspondente (ver "Bug real: navegacao 1:1 sem HasOne", secao de
+  Persistencia) - a coluna FK + indice unico sozinhos nao bastam pro EF Core reconhecer a
+  propriedade como navegacao inclui­vel.
+- **Qualquer estado local (`useState`) de um componente que deveria resetar ao trocar de
+  "entidade exibida" via query string precisa de uma `key` na instancia** (ver "Bug real: modal
+  preso ao trocar de Weekly", secao de Frontend) - trocar so a prop nao remonta o componente
+  sozinho em React.
+- **Nunca dispare um refetch que muda `loading` do componente pai enquanto um modal filho ainda
+  esta mostrando seu proprio resultado** (ver "Bug real: `onPublished` desmontava o modal", secao
+  de Frontend) - o refetch precisa esperar o usuario decidir sair (`onClose`), nao disparar no
+  meio do fluxo de sucesso/erro do modal.
+- **"Auditoria de Repositorios" (citada no prompt da Fase 11 como proxima fase) depende de uma
+  decisao de escopo (estatica vs. dinamica) antes de virar um prompt tecnico** - ainda em aberto.

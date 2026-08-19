@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
@@ -8,6 +9,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
 import { ProgressBar } from '../components/ProgressBar';
 import { WeeklyProjectCard } from '../components/WeeklyProjectCard';
+import { PublicationModal } from '../components/publication/PublicationModal';
 
 const WEEKDAY_LABEL = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
@@ -33,6 +35,7 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
   const { data: weekly, error, loading, retry } = useApiResource(() => api.getWeekly(weeklyId), [weeklyId]);
   // So pra breadcrumb + navegacao entre semanas - se nao tiver courseId na URL, essas partes somem sem quebrar a tela.
   const { data: course } = useApiResource(() => (courseId ? api.getCourse(courseId) : Promise.resolve(null)), [courseId]);
+  const [showPublicationModal, setShowPublicationModal] = useState(false);
 
   if (loading) return <Centered text="Carregando semana..." />;
   if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
@@ -72,6 +75,24 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
         </h1>
         {weekly.theme && <p className="text-secondary">{weekly.theme}</p>}
       </div>
+
+      {weekly.requiresPublicationToUnlock && (
+        <div className="flex flex-col items-start gap-3 rounded-2xl border border-project/40 bg-project/10 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-semibold text-primary">🔒 Publique sua conclusão para liberar a próxima semana</p>
+            <p className="text-sm text-secondary">
+              Você completou os dias e o projeto desta semana. Publique uma prova no LinkedIn ou GitHub para continuar.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowPublicationModal(true)}
+            className="shrink-0 rounded-xl bg-project px-4 py-2 text-sm font-semibold text-base hover:opacity-90"
+          >
+            Publicar agora
+          </button>
+        </div>
+      )}
 
       {(prevWeek || nextWeek) && (
         <div className="flex items-center justify-between text-sm">
@@ -134,6 +155,21 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
           )}
         </div>
       </div>
+
+      {showPublicationModal && (
+        <PublicationModal
+          weeklyId={weeklyId}
+          courseId={courseId}
+          // retry() so ao fechar (nao durante o fluxo): useApiResource.retry() dispara
+          // "Carregando semana..." (early return acima), que desmontaria o modal no meio do
+          // passo a passo e resetaria o step de volta pra 'intro' antes do usuario ver a tela de
+          // sucesso. Ver doc comment de PublicationModal.
+          onClose={() => {
+            setShowPublicationModal(false);
+            retry();
+          }}
+        />
+      )}
     </div>
   );
 }

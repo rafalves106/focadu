@@ -59,8 +59,13 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
         <div className="flex flex-col gap-4">
           <p className="text-sm font-bold uppercase tracking-wide text-muted">Conteúdo Programático</p>
           <div className="flex flex-col gap-3">
-            {weeks.map((weekly) => (
-              <WeekSummaryCard key={weekly.id} weekly={weekly} courseId={courseId} />
+            {weeks.map((weekly, index) => (
+              <WeekSummaryCard
+                key={weekly.id}
+                weekly={weekly}
+                courseId={courseId}
+                isLocked={weeks[index - 1]?.requiresPublicationToUnlock ?? false}
+              />
             ))}
           </div>
           {weeks.length === 0 && (
@@ -93,25 +98,36 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function WeekSummaryCard({ weekly, courseId }: { weekly: WeeklyOverviewDto; courseId: string }) {
+function WeekSummaryCard({
+  weekly,
+  courseId,
+  isLocked,
+}: {
+  weekly: WeeklyOverviewDto;
+  courseId: string;
+  isLocked: boolean;
+}) {
   const isComplete = weekly.totalDailies > 0 && weekly.completedDailies === weekly.totalDailies;
   const primaryDays = weekly.days.filter((d) => !d.isReinforcement).sort((a, b) => a.dayNumber - b.dayNumber);
 
-  return (
-    <Link
-      to={`/start?course=${courseId}&weekly=${weekly.id}`}
-      className={`block rounded-xl border-[1.5px] bg-surface p-5 hover:border-accent ${isComplete ? 'border-surface-alt' : 'border-accent'}`}
+  const body = (
+    <div
+      className={`rounded-xl border-[1.5px] bg-surface p-5 ${isLocked ? 'opacity-50' : 'hover:border-accent'} ${isComplete ? 'border-surface-alt' : 'border-accent'}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
-          <span aria-hidden="true">{isComplete ? '✅' : '▶️'}</span>
+          <span aria-hidden="true">{isLocked ? '🔒' : isComplete ? '✅' : '▶️'}</span>
           <p className="font-bold text-primary">
             Semana {weekly.number}: {weekly.theme ?? weekly.title}
           </p>
         </div>
-        <span className="text-sm text-secondary">
-          {weekly.completedDailies} de {weekly.totalDailies} dias
-        </span>
+        {isLocked ? (
+          <span className="text-sm font-semibold text-project">Bloqueado</span>
+        ) : (
+          <span className="text-sm text-secondary">
+            {weekly.completedDailies} de {weekly.totalDailies} dias
+          </span>
+        )}
       </div>
 
       <div className="mt-3 flex items-center gap-2">
@@ -120,6 +136,13 @@ function WeekSummaryCard({ weekly, courseId }: { weekly: WeeklyOverviewDto; cour
         ))}
         {weekly.hasWeeklyReinforcement && <span className="ml-2 text-xs text-alert">+ reforço</span>}
       </div>
+    </div>
+  );
+
+  if (isLocked) return body;
+  return (
+    <Link to={`/start?course=${courseId}&weekly=${weekly.id}`} className="block">
+      {body}
     </Link>
   );
 }

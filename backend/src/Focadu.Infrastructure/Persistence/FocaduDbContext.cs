@@ -31,6 +31,7 @@ public class FocaduDbContext : DbContext
     public DbSet<CuratedContent> CuratedContents => Set<CuratedContent>();
     public DbSet<WeeklyProject> WeeklyProjects => Set<WeeklyProject>();
     public DbSet<WeeklyReinforcement> WeeklyReinforcements => Set<WeeklyReinforcement>();
+    public DbSet<ModulePublication> ModulePublications => Set<ModulePublication>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

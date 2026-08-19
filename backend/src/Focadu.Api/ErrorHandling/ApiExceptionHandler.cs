@@ -27,6 +27,8 @@ public class ApiExceptionHandler : IExceptionHandler
         ["atividade_nao_encontrada"] = StatusCodes.Status404NotFound,
         ["reforco_semanal_condicoes_nao_atingidas"] = StatusCodes.Status409Conflict,
         ["reforco_diario_condicoes_nao_atingidas"] = StatusCodes.Status409Conflict,
+        ["modulo_bloqueado_por_publicacao"] = StatusCodes.Status409Conflict,
+        ["publicacao_ja_validada"] = StatusCodes.Status409Conflict,
     };
 
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
