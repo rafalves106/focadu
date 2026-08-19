@@ -31,7 +31,7 @@ export function FeedbackPanel({
   /** Omitido dentro de grupos (ex: cada termo do WordMatch) - quem chama decide quando mostrar "Continuar". */
   onContinue?: () => void;
 }) {
-  const { pass = 'Acertou! 🎉', fail = 'Essa não foi.' } = headline ?? {};
+  const { pass = 'Acertou! 🎉', fail = '❌ Quase lá.' } = headline ?? {};
 
   return (
     <div className="flex flex-col gap-3">
@@ -61,9 +61,9 @@ export function FeedbackPanel({
         <button
           type="button"
           onClick={onContinue}
-          className="rounded-xl border border-surface-alt bg-surface px-4 py-3 font-semibold text-primary hover:border-accent"
+          className="rounded-xl bg-accent px-4 py-3.5 text-sm font-bold tracking-wide text-base"
         >
-          Continuar
+          CONTINUAR →
         </button>
       )}
     </div>

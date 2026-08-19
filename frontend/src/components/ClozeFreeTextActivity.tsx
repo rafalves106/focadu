@@ -3,12 +3,17 @@ import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
 import { ActivityScreen } from './Layout';
 import { FeedbackPanel } from './FeedbackPanel';
+import { IntroCard } from './activities/IntroCard';
+import { CodeHighlight } from './activities/CodeHighlight';
 
 /**
  * Cloze/FreeText ("usado para codigo"): campo de texto livre, comparado no servidor contra
  * ExpectedAnswer (comparacao textual simples, sem IA - ver
  * SubmitActivityResponseUseCase.ScoreFromFreeTextAnswer). Pede uma justificativa breve antes de
  * revelar se acertou - so armazenada nesta fase, sem avaliacao.
+ *
+ * Fase 9 (design Figma "Cloze 1-6"): ganhou Intro (`started`, gate local) e o prompt passou a
+ * renderizar via CodeHighlight (realca a lacuna "___").
  */
 export function ClozeFreeTextActivity({
   dailyId,
@@ -21,6 +26,7 @@ export function ClozeFreeTextActivity({
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
 }) {
+  const [started, setStarted] = useState(activity.responses.length > 0);
   const [transcript, setTranscript] = useState('');
   const [justification, setJustification] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -53,8 +59,23 @@ export function ClozeFreeTextActivity({
     }
   }
 
+  if (!started) {
+    return (
+      <IntroCard
+        badge="Cloze test"
+        title="Complete o código"
+        description="Preencha a lacuna com o termo certo."
+        rules={['1 tentativa - sem retorno.', 'Uma justificativa breve é opcional, antes de ver o gabarito.']}
+        ctaLabel="COMEÇAR"
+        onStart={() => setStarted(true)}
+      />
+    );
+  }
+
   return (
-    <ActivityScreen eyebrow="Complete o código" title={activity.prompt ?? ''}>
+    <ActivityScreen eyebrow="Complete o código" title="Preencha a lacuna">
+      <CodeHighlight text={activity.prompt ?? ''} />
+
       <label className="flex flex-col gap-2">
         <span className="text-sm text-secondary">Sua resposta</span>
         <input
@@ -85,9 +106,9 @@ export function ClozeFreeTextActivity({
           type="button"
           onClick={handleSubmit}
           disabled={!transcript.trim() || submitting}
-          className="rounded-xl bg-accent px-4 py-3 font-semibold text-base disabled:opacity-40"
+          className="rounded-xl bg-accent px-4 py-3.5 text-sm font-bold tracking-wide text-base disabled:opacity-40"
         >
-          {submitting ? 'Enviando...' : 'Responder'}
+          {submitting ? 'ENVIANDO...' : 'CONFIRMAR'}
         </button>
       )}
 

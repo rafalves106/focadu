@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto, QuizOptionDto } from '../api/types';
 import { FeedbackPanel } from './FeedbackPanel';
+import { OptionCard } from './activities/OptionCard';
+
+const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 /**
  * Nucleo reutilizavel de "escolher uma opcao": usado por Quiz, cada termo de WordMatch (ver
@@ -54,30 +57,29 @@ export function OptionsAnswer({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-3">
-        {options.map((option) => {
+        {options.map((option, index) => {
           const isSelected = option.id === selectedOptionId;
           const isRevealedCorrect = answered && option.isCorrect === true;
           const isRevealedWrongPick = answered && isSelected && option.isCorrect === false;
+          const state = isRevealedCorrect
+            ? 'correct'
+            : isRevealedWrongPick
+              ? 'wrong'
+              : answered
+                ? 'dimmed'
+                : isSelected
+                  ? 'selected'
+                  : 'neutral';
 
           return (
-            <button
+            <OptionCard
               key={option.id}
-              type="button"
+              label={LETTERS[index]}
+              text={option.text}
+              state={state}
               disabled={answered || submitting}
               onClick={() => setSelectedOptionId(option.id)}
-              className={[
-                'rounded-xl border px-4 py-3 text-left transition-colors disabled:cursor-default',
-                isRevealedCorrect
-                  ? 'border-accent bg-accent/10 text-accent'
-                  : isRevealedWrongPick
-                    ? 'border-alert bg-alert/10 text-alert'
-                    : isSelected
-                      ? 'border-accent bg-surface-alt text-primary'
-                      : 'border-surface-alt bg-surface text-primary enabled:hover:border-secondary',
-              ].join(' ')}
-            >
-              {option.text}
-            </button>
+            />
           );
         })}
       </div>
@@ -89,9 +91,9 @@ export function OptionsAnswer({
           type="button"
           onClick={handleSubmit}
           disabled={!selectedOptionId || submitting}
-          className="rounded-xl bg-accent px-4 py-3 font-semibold text-base disabled:opacity-40"
+          className="rounded-xl bg-accent px-4 py-3.5 text-sm font-bold tracking-wide text-base disabled:opacity-40"
         >
-          {submitting ? 'Enviando...' : 'Responder'}
+          {submitting ? 'ENVIANDO...' : 'CONFIRMAR RESPOSTA'}
         </button>
       )}
 

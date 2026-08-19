@@ -4,6 +4,8 @@ import type { DailyActivityDto, DailyStateDto, RoleplayNodeDto } from '../api/ty
 import { TerminalQuality } from '../api/types';
 import { ActivityScreen } from './Layout';
 import { FeedbackPanel } from './FeedbackPanel';
+import { IntroCard } from './activities/IntroCard';
+import { OptionCard } from './activities/OptionCard';
 
 const TERMINAL_QUALITY_LABEL: Record<number, string> = {
   [TerminalQuality.Ideal]: 'Ideal',
@@ -16,6 +18,9 @@ const TERMINAL_QUALITY_LABEL: Record<number, string> = {
  * DailyActivityDto - ver WeeklyRepository.FullGraph no backend). "start" e a convencao adotada
  * pro node inicial (nao ha campo IsStart no dominio). So ao atingir um node terminal e que
  * enviamos SelectedRoleplayNodeId - o Score vem do TerminalQuality alcancado.
+ *
+ * Fase 9 (design Figma "Roleplay 1-6"): ganhou Intro (`started`) e as decisoes usam OptionCard
+ * (sem letra A/B/C - sao acoes, nao alternativas de multipla escolha).
  */
 export function RoleplayActivity({
   dailyId,
@@ -31,6 +36,7 @@ export function RoleplayActivity({
   const nodesById = new Map(activity.roleplayNodes.map((n) => [n.id, n]));
   const startNode = activity.roleplayNodes.find((n) => n.nodeKey === 'start') ?? activity.roleplayNodes[0];
 
+  const [started, setStarted] = useState(activity.responses.length > 0);
   const [currentNodeId, setCurrentNodeId] = useState<string | null>(startNode?.id ?? null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +82,19 @@ export function RoleplayActivity({
     setCurrentNodeId(nextNode.id);
   }
 
+  if (!started) {
+    return (
+      <IntroCard
+        badge="Roleplay"
+        title="Roleplay"
+        description={activity.prompt ?? ''}
+        rules={['Cada decisão leva a um desfecho diferente.', 'Só é possível responder ao chegar num desfecho (nó terminal).']}
+        ctaLabel="COMEÇAR"
+        onStart={() => setStarted(true)}
+      />
+    );
+  }
+
   if (!displayNode) {
     return (
       <ActivityScreen eyebrow="Roleplay" title={activity.prompt ?? ''}>
@@ -86,7 +105,7 @@ export function RoleplayActivity({
 
   return (
     <ActivityScreen eyebrow="Roleplay" title={activity.prompt ?? ''}>
-      <div className="rounded-xl border border-surface-alt bg-surface p-4">
+      <div className="rounded-xl border border-surface-alt bg-surface p-5 leading-relaxed">
         <p className="text-primary">{displayNode.text}</p>
       </div>
 
@@ -95,15 +114,13 @@ export function RoleplayActivity({
       {!answered && !displayNode.isTerminal && (
         <div className="flex flex-col gap-3">
           {displayNode.options.map((option) => (
-            <button
+            <OptionCard
               key={option.id}
-              type="button"
+              text={option.text}
+              state="neutral"
               disabled={submitting}
               onClick={() => handleChooseOption(option.nextNodeId)}
-              className="rounded-xl border border-surface-alt bg-surface px-4 py-3 text-left text-primary transition-colors enabled:hover:border-accent disabled:opacity-40"
-            >
-              {option.text}
-            </button>
+            />
           ))}
         </div>
       )}
