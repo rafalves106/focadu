@@ -39,6 +39,18 @@ export const CURATED_CONTENT_TYPE_NAMES = ['Reading', 'Video', 'Diagram'] as con
 export const WeeklyProjectStatus = { Pending: 0, Submitted: 1, Evaluated: 2 } as const;
 export type WeeklyProjectStatus = (typeof WeeklyProjectStatus)[keyof typeof WeeklyProjectStatus];
 
+export const PublicationPlatform = { LinkedIn: 1, GitHub: 2 } as const;
+export type PublicationPlatform = (typeof PublicationPlatform)[keyof typeof PublicationPlatform];
+// Nomes que a Api espera no campo `platform` do request de submissao (case-insensitive, ver
+// Program.cs) - mesma ordem/convencao de CURATED_CONTENT_TYPE_NAMES.
+export const PUBLICATION_PLATFORM_NAMES: Record<PublicationPlatform, string> = {
+  [PublicationPlatform.LinkedIn]: 'LinkedIn',
+  [PublicationPlatform.GitHub]: 'GitHub',
+};
+
+export const PublicationStatus = { NotRequired: 0, Pending: 1, Submitted: 2, Validated: 3, Failed: 4 } as const;
+export type PublicationStatus = (typeof PublicationStatus)[keyof typeof PublicationStatus];
+
 /** ActivityType -> rotulo de UI (usado pra "proxima etapa" no StartDashboard/CourseDetailPage, Fase 8). */
 export const ACTIVITY_TYPE_LABEL: Record<ActivityType, string> = {
   [ActivityType.Quiz]: 'Quiz do dia',
@@ -153,6 +165,8 @@ export interface WeeklyOverviewDto {
   hasWeeklyReinforcement: boolean;
   /** Fase 8: status por dia, pra grids de navegacao (Detalhes do Curso) sem round-trip extra por semana. */
   days: DailyStatusSummaryDto[];
+  /** Fase 11: true quando ESTA Weekly esta com o modulo completo mas sem publicacao Validated - a PROXIMA Weekly (Number+1) fica bloqueada por causa disso. */
+  requiresPublicationToUnlock: boolean;
 }
 
 /** Resumo enxuto de uma Daily pra grids de navegacao (Fase 8) - versao mais leve de DailyOverviewDto. */
@@ -236,6 +250,25 @@ export interface WeeklyDetailDto {
   curatedContents: CuratedContentDto[];
   project: WeeklyProjectDto | null;
   reinforcements: WeeklyReinforcementSummaryDto[];
+  /** Fase 11: true quando ESTA Weekly completou o modulo mas ainda falta publicacao Validated. */
+  requiresPublicationToUnlock: boolean;
+}
+
+export interface ModulePublicationDto {
+  weeklyId: string;
+  status: PublicationStatus;
+  platform: PublicationPlatform | null;
+  submittedUrl: string | null;
+  generatedDraft: string | null;
+  validationError: string | null;
+}
+
+export interface GitHubRepoDto {
+  owner: string;
+  name: string;
+  fullName: string;
+  url: string;
+  isPrivate: boolean;
 }
 
 export interface ApiErrorBody {

@@ -43,6 +43,6 @@ public class GetWeeklyDetailUseCase
 
         return new WeeklyDetailDto(
             weekly.Id, weekly.MonthlyId, weekly.Number, weekly.Title, weekly.Theme,
-            dailyDtos, contentDtos, projectDto, reinforcementDtos);
+            dailyDtos, contentDtos, projectDto, reinforcementDtos, weekly.RequiresPublicationToUnlock());
     }
 }

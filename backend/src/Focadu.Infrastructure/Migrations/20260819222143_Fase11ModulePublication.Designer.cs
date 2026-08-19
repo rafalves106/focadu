@@ -3,6 +3,7 @@ using System;
 using Focadu.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Focadu.Infrastructure.Migrations
 {
     [DbContext(typeof(FocaduDbContext))]
-    partial class FocaduDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260819222143_Fase11ModulePublication")]
+    partial class Fase11ModulePublication
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -505,15 +508,6 @@ namespace Focadu.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Focadu.Domain.Weeklies.ModulePublication", b =>
-                {
-                    b.HasOne("Focadu.Domain.Weeklies.Weekly", null)
-                        .WithOne("Publication")
-                        .HasForeignKey("Focadu.Domain.Weeklies.ModulePublication", "WeeklyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Focadu.Domain.Weeklies.Weekly", b =>
                 {
                     b.HasOne("Focadu.Domain.Monthlies.Monthly", null)
@@ -603,8 +597,6 @@ namespace Focadu.Infrastructure.Migrations
                     b.Navigation("Dailies");
 
                     b.Navigation("Project");
-
-                    b.Navigation("Publication");
 
                     b.Navigation("Reinforcements");
                 });

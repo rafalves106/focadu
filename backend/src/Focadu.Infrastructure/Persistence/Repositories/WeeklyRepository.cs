@@ -27,7 +27,8 @@ public class WeeklyRepository : IWeeklyRepository
             .Include(w => w.Dailies).ThenInclude(d => d.Activities).ThenInclude(a => a.RoleplayNodes).ThenInclude(n => n.Options)
             .Include(w => w.CuratedContents)
             .Include(w => w.Project)
-            .Include(w => w.Reinforcements);
+            .Include(w => w.Reinforcements)
+            .Include(w => w.Publication);
 
     public async Task<Weekly?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         await FullGraph().FirstOrDefaultAsync(w => w.Id == id, cancellationToken);

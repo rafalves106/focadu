@@ -31,6 +31,9 @@ public class Weekly : Entity
     private readonly List<WeeklyReinforcement> _reinforcements = new();
     public IReadOnlyCollection<WeeklyReinforcement> Reinforcements => _reinforcements.AsReadOnly();
 
+    private ModulePublication? _publication;
+    public ModulePublication? Publication => _publication;
+
     private Weekly()
     {
         Title = string.Empty;
@@ -74,6 +77,31 @@ public class Weekly : Entity
         _project = new WeeklyProject(Id, specText);
         return _project;
     }
+
+    /// <summary>Cria a publicacao desta Weekly sob demanda (na primeira vez que o aluno abre o fluxo, Fase 11) - idempotente.</summary>
+    public ModulePublication StartPublication()
+    {
+        _publication ??= new ModulePublication(Id);
+        return _publication;
+    }
+
+    /// <summary>
+    /// "Modulo completo" (Fase 11): todas as Dailies originais (nao-reforco) concluidas e o
+    /// WeeklyProject avaliado. Reforco fica de fora de proposito - nao e parte do conteudo
+    /// planejado do modulo, e uma Daily de reforco pendente nunca deveria travar a prova de
+    /// aprendizado de quem ja terminou o conteudo original.
+    /// </summary>
+    public bool IsModuleComplete()
+    {
+        var originalDailies = _dailies.Where(d => !d.IsReinforcement).ToList();
+        return originalDailies.Count > 0
+            && originalDailies.All(d => d.Status == DailyStatus.Completed)
+            && _project is { Status: WeeklyProjectStatus.Evaluated };
+    }
+
+    /// <summary>Verdadeiro quando o modulo esta completo mas ainda nao tem uma publicacao Validated - trava o proximo modulo (ver StartOrResumeDailyUseCase).</summary>
+    public bool RequiresPublicationToUnlock() =>
+        IsModuleComplete() && _publication?.Status != PublicationStatus.Validated;
 
     public IReadOnlyCollection<Daily> GetWeakDailies() =>
         _dailies.Where(d => d.IsWeakDay).ToList();

@@ -52,7 +52,8 @@ public class GetCourseDetailUseCase
 
                 weeklyDtos.Add(new WeeklyOverviewDto(
                     weekly.Id, weekly.Number, weekly.Title, weekly.Theme,
-                    weeklyTotal, weeklyCompleted, weeklyWeak, weekly.Reinforcements.Count > 0, dayDtos));
+                    weeklyTotal, weeklyCompleted, weeklyWeak, weekly.Reinforcements.Count > 0, dayDtos,
+                    weekly.RequiresPublicationToUnlock()));
 
                 totalDailies += weeklyTotal;
                 completedDailies += weeklyCompleted;

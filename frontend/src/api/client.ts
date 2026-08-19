@@ -1,13 +1,17 @@
-import type {
-  ApiErrorBody,
-  CompleteDailyResult,
-  CourseDetailDto,
-  CourseSummaryDto,
-  CuratedContentDto,
-  DailyStateDto,
-  SubmitActivityResponseResult,
-  WeeklyDetailDto,
-  WeeklyProjectDto,
+import {
+  PUBLICATION_PLATFORM_NAMES,
+  type ApiErrorBody,
+  type CompleteDailyResult,
+  type CourseDetailDto,
+  type CourseSummaryDto,
+  type CuratedContentDto,
+  type DailyStateDto,
+  type GitHubRepoDto,
+  type ModulePublicationDto,
+  type PublicationPlatform,
+  type SubmitActivityResponseResult,
+  type WeeklyDetailDto,
+  type WeeklyProjectDto,
 } from './types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5282';
@@ -99,5 +103,20 @@ export const api = {
     request<WeeklyProjectDto>(`/api/weeklies/${weeklyId}/project/submit`, {
       method: 'POST',
       body: JSON.stringify({ submissionUrl }),
+    }),
+  // Publicacao publica do modulo (Fase 11) - prova de aprendizado exigida ao completar uma Weekly.
+  getPublicationStatus: (weeklyId: string) => request<ModulePublicationDto>(`/api/weeklies/${weeklyId}/publication/status`),
+  generateLinkedInDraft: (weeklyId: string) =>
+    request<ModulePublicationDto>(`/api/weeklies/${weeklyId}/publication/draft`, { method: 'POST' }),
+  getGitHubRepositories: () => request<GitHubRepoDto[]>('/api/github/repositories'),
+  commitToGitHub: (weeklyId: string, repoName: string, isNewRepo: boolean) =>
+    request<ModulePublicationDto>(`/api/weeklies/${weeklyId}/publication/github-commit`, {
+      method: 'POST',
+      body: JSON.stringify({ repoName, isNewRepo }),
+    }),
+  submitPublication: (weeklyId: string, platform: PublicationPlatform, url: string) =>
+    request<ModulePublicationDto>(`/api/weeklies/${weeklyId}/publication/submit`, {
+      method: 'POST',
+      body: JSON.stringify({ platform: PUBLICATION_PLATFORM_NAMES[platform], url }),
     }),
 };

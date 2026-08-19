@@ -7,7 +7,9 @@ using Focadu.Application.Dailies;
 using Focadu.Application.Exceptions;
 using Focadu.Application.Seed;
 using Focadu.Application.Weeklies;
+using Focadu.Domain.Enums;
 using Focadu.Infrastructure;
+using Focadu.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,8 +24,16 @@ var connectionString = builder.Configuration.GetConnectionString("Focadu")
 // Groq__ApiKey - nunca hardcoded nem commitada (ver docs/ARQUITETURA.md).
 var groqApiKey = builder.Configuration["Groq:ApiKey"] ?? string.Empty;
 
+// GitHub (Fase 11): mesma decisao do Groq acima - token/username ausentes nao impedem o app de
+// subir, so as chamadas de GitHubService falham (com erro claro) quando de fato invocadas sem
+// eles configurados. "GitHub:Token" precisa de escopo de escrita (repo), nao so leitura - ver
+// docs/ARQUITETURA.md.
+var gitHubOptions = new GitHubOptions(
+    builder.Configuration["GitHub:Token"] ?? string.Empty,
+    builder.Configuration["GitHub:Username"] ?? string.Empty);
+
 builder.Services.AddFocaduApplication();
-builder.Services.AddFocaduInfrastructure(connectionString, groqApiKey);
+builder.Services.AddFocaduInfrastructure(connectionString, groqApiKey, gitHubOptions);
 
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -105,6 +115,64 @@ api.MapPost("/weeklies/{weeklyId}/project/submit", async (string weeklyId, Submi
         return Results.Ok(await useCase.ExecuteAsync(id, request.SubmissionUrl, ct));
     })
     .WithName("SubmitWeeklyProject");
+
+// Avaliacao do projeto (Fase 11) - WeeklyProject.Evaluate() existia no dominio desde a Fase 1 sem
+// endpoint (gap documentado na Fase 7); precisou ganhar um porque Weekly.IsModuleComplete() exige
+// Project Evaluated. Sem tela propria - ver EvaluateWeeklyProjectUseCase.
+api.MapPost("/weeklies/{weeklyId}/project/evaluate", async (string weeklyId, EvaluateWeeklyProjectUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
+        return Results.Ok(await useCase.ExecuteAsync(id, ct));
+    })
+    .WithName("EvaluateWeeklyProject");
+
+// --- Publicacao publica do modulo (Fase 11) -------------------------------------------------
+// Prova de aprendizado exigida ao completar uma Weekly (Documento Mestre, Secao 2.3) - LinkedIn
+// (rascunho por IA + URL colada manualmente) ou GitHub (commit automatico via GitHubService, ja
+// validado no proprio commit). /submit cobre tanto a primeira submissao quanto "tentar de novo"
+// (resubmete a mesma URL/platform).
+
+api.MapGet("/weeklies/{weeklyId}/publication/status", async (string weeklyId, GetPublicationStatusUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
+        return Results.Ok(await useCase.ExecuteAsync(id, ct));
+    })
+    .WithName("GetPublicationStatus");
+
+api.MapPost("/weeklies/{weeklyId}/publication/draft", async (string weeklyId, GenerateLinkedInDraftUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
+        return Results.Ok(await useCase.ExecuteAsync(id, ct));
+    })
+    .WithName("GenerateLinkedInDraft");
+
+api.MapPost("/weeklies/{weeklyId}/publication/github-commit",
+        async (string weeklyId, GitHubCommitRequest? request, CommitModuleSummaryUseCase useCase, CancellationToken ct) =>
+        {
+            var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
+            if (string.IsNullOrWhiteSpace(request?.RepoName))
+                throw new ValidationException("repo_name_obrigatorio", "O campo 'repoName' e obrigatorio.");
+
+            return Results.Ok(await useCase.ExecuteAsync(id, request.RepoName, request.IsNewRepo, ct));
+        })
+    .WithName("CommitModuleSummary");
+
+api.MapPost("/weeklies/{weeklyId}/publication/submit",
+        async (string weeklyId, SubmitPublicationRequest? request, SubmitPublicationUseCase useCase, CancellationToken ct) =>
+        {
+            var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
+            if (string.IsNullOrWhiteSpace(request?.Url))
+                throw new ValidationException("url_obrigatoria", "O campo 'url' e obrigatorio.");
+            if (!Enum.TryParse<PublicationPlatform>(request.Platform, ignoreCase: true, out var platform) || !Enum.IsDefined(platform))
+                throw new ValidationException("platform_invalida", "O campo 'platform' precisa ser LinkedIn ou GitHub.");
+
+            return Results.Ok(await useCase.ExecuteAsync(id, platform, request.Url, ct));
+        })
+    .WithName("SubmitPublication");
+
+api.MapGet("/github/repositories", async (GetGitHubRepositoriesUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(ct)))
+    .WithName("GetGitHubRepositories");
 
 // --- Conteudo curado (autoria) ---------------------------------------------------------------
 // Unico tipo de conteudo com endpoint de criacao/edicao ate agora - Course/Monthly/Weekly/Daily/

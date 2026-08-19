@@ -1,5 +1,6 @@
 using Focadu.Domain.Enums;
 using Focadu.Domain.Exceptions;
+using Focadu.Domain.Weeklies;
 using Focadu.Tests.TestHelpers;
 using Xunit;
 
@@ -164,5 +165,106 @@ public class WeeklyTests
         weekly.AddDaily(1, today.AddDays(-1));
 
         Assert.Null(weekly.GetDailyByDate(today));
+    }
+
+    // Fase 11: IsModuleComplete/RequiresPublicationToUnlock.
+
+    [Fact]
+    public void IsModuleComplete_False_WhenDailiesArentAllCompleted()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var (daily, _) = DailyFixtures.NewDailyWithOneActivity(weekly, 1, DailyFixtures.Today);
+        DefineEvaluatedProject(weekly);
+
+        Assert.False(weekly.IsModuleComplete());
+    }
+
+    [Fact]
+    public void IsModuleComplete_False_WhenProjectNotEvaluated()
+    {
+        var weekly = CompleteWeeklyDailies(DailyFixtures.NewWeekly());
+        weekly.DefineProject("Faca X.");
+        // Nunca submetido/avaliado.
+
+        Assert.False(weekly.IsModuleComplete());
+    }
+
+    [Fact]
+    public void IsModuleComplete_True_WhenDailiesDoneAndProjectEvaluated()
+    {
+        var weekly = CompleteWeeklyDailies(DailyFixtures.NewWeekly());
+        DefineEvaluatedProject(weekly);
+
+        Assert.True(weekly.IsModuleComplete());
+    }
+
+    [Fact]
+    public void IsModuleComplete_IgnoresReinforcementDailies()
+    {
+        // Dia original concluido (mesmo com penalidade/dia fraco) gera uma Daily de reforco
+        // pendente - so a original conta pro modulo, a de reforco (IsReinforcement) fica de fora.
+        var weekly = DailyFixtures.NewWeekly();
+        var weakDaily = DailyFixtures.NewWeakDaily(weekly, 1, DailyFixtures.Today);
+        // CreateDailyReinforcement so aceita antes da 1a conclusao (ShouldTriggerDailyReinforcement
+        // exige !HasEverCompleted) - por isso o reforco vem antes do Complete() aqui.
+        weekly.CreateDailyReinforcement(weakDaily.Id, DailyFixtures.Today.AddDays(1));
+        weakDaily.Complete();
+        DefineEvaluatedProject(weekly);
+
+        Assert.True(weekly.IsModuleComplete());
+    }
+
+    [Fact]
+    public void RequiresPublicationToUnlock_True_WhenModuleCompleteAndNoPublicationStarted()
+    {
+        var weekly = CompleteWeeklyDailies(DailyFixtures.NewWeekly());
+        DefineEvaluatedProject(weekly);
+
+        Assert.True(weekly.RequiresPublicationToUnlock());
+    }
+
+    [Fact]
+    public void RequiresPublicationToUnlock_False_WhenPublicationValidated()
+    {
+        var weekly = CompleteWeeklyDailies(DailyFixtures.NewWeekly());
+        DefineEvaluatedProject(weekly);
+
+        var publication = weekly.StartPublication();
+        publication.Submit(PublicationPlatform.GitHub, "https://github.com/falves/x");
+        publication.MarkValidated();
+
+        Assert.False(weekly.RequiresPublicationToUnlock());
+    }
+
+    [Fact]
+    public void RequiresPublicationToUnlock_StaysTrue_WhenPublicationFailed()
+    {
+        var weekly = CompleteWeeklyDailies(DailyFixtures.NewWeekly());
+        DefineEvaluatedProject(weekly);
+
+        var publication = weekly.StartPublication();
+        publication.Submit(PublicationPlatform.LinkedIn, "https://naolinkedin.com/x");
+        publication.MarkFailed("URL invalida.");
+
+        Assert.True(weekly.RequiresPublicationToUnlock());
+    }
+
+    /// <summary>Completa (Start+Submit 100+Complete) todas as Dailies ja existentes na Weekly - helper local so pros testes de modulo completo acima.</summary>
+    private static Weekly CompleteWeeklyDailies(Weekly weekly)
+    {
+        var (_, activity) = DailyFixtures.NewDailyWithOneActivity(weekly, weekly.Dailies.Count + 1, DailyFixtures.Today);
+        var daily = weekly.Dailies.Last();
+        daily.Start();
+        daily.SubmitActivityResponse(activity.Id, 100);
+        daily.Complete();
+        return weekly;
+    }
+
+    /// <summary>DefineProject/Submit/Evaluate sao void (nao encadeaveis) - helper so pra nao repetir as 3 linhas em cada teste acima.</summary>
+    private static void DefineEvaluatedProject(Weekly weekly)
+    {
+        var project = weekly.DefineProject("Faca X.");
+        project.Submit("https://github.com/x");
+        project.Evaluate();
     }
 }
