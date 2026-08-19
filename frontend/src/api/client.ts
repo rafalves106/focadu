@@ -1,5 +1,6 @@
 import type {
   ApiErrorBody,
+  CompleteDailyResult,
   CourseDetailDto,
   CourseSummaryDto,
   DailyStateDto,
@@ -36,12 +37,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
-// Quiz/WordMatch mandam selectedOptionId (Score e sempre calculado no servidor); Cloze/Roleplay
-// ainda mandam score pronto, ate IContentEvaluationService existir (ver docs/ARQUITETURA.md).
+// Qual campo e usado depende do tipo (e, pro Cloze, do AnswerMode) da atividade - ver
+// SubmitActivityResponseUseCase.ResolveScore no backend. Nao ha mais campo Score: desde a Fase 4
+// o backend calcula o Score de todo tipo de atividade, nunca aceita pronto do cliente.
 export interface SubmitActivityResponseBody {
   selectedOptionId?: string;
-  score?: number;
+  selectedRoleplayNodeId?: string;
   transcript?: string;
+  justification?: string;
   aiFeedback?: string;
 }
 
@@ -52,7 +55,8 @@ export const api = {
   getWeekly: (weeklyId: string) => request<WeeklyDetailDto>(`/api/weeklies/${weeklyId}`),
   getDaily: (dailyId: string) => request<DailyStateDto>(`/api/dailies/${dailyId}`),
   startDaily: (dailyId: string) => request<DailyStateDto>(`/api/dailies/${dailyId}/start`, { method: 'POST' }),
-  completeDaily: (dailyId: string) => request<DailyStateDto>(`/api/dailies/${dailyId}/complete`, { method: 'POST' }),
+  completeDaily: (dailyId: string) =>
+    request<CompleteDailyResult>(`/api/dailies/${dailyId}/complete`, { method: 'POST' }),
   submitActivityResponse: (dailyId: string, activityId: string, body: SubmitActivityResponseBody) =>
     request<SubmitActivityResponseResult>(`/api/dailies/${dailyId}/activities/${activityId}/responses`, {
       method: 'POST',

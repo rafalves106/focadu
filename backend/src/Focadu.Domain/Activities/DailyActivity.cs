@@ -83,10 +83,19 @@ public class DailyActivity : Entity
         return clone;
     }
 
+    /// <summary>
+    /// Quiz/WordMatch: as opções da pergunta/termo. Cloze com AnswerMode = MultipleChoice
+    /// (Fase 4): as opções pra preencher a lacuna - mesmo mecanismo, só reaproveitado.
+    /// </summary>
     public QuizOption AddQuizOption(string text, bool isCorrect)
     {
-        if (Type is not (ActivityType.Quiz or ActivityType.WordMatch))
-            throw new DomainException("QuizOption só pode ser adicionada a atividades do tipo Quiz ou WordMatch.");
+        var allowed = Type is ActivityType.Quiz or ActivityType.WordMatch
+            || (Type == ActivityType.Cloze && AnswerMode == AnswerMode.MultipleChoice);
+        if (!allowed)
+        {
+            throw new DomainException(
+                "QuizOption só pode ser adicionada a atividades do tipo Quiz, WordMatch, ou Cloze com AnswerMode MultipleChoice.");
+        }
 
         var option = new QuizOption(Id, text, isCorrect);
         _quizOptions.Add(option);
@@ -110,10 +119,10 @@ public class DailyActivity : Entity
     /// (via Daily.SubmitActivityResponse), que é quem decide se a tentativa conta para penalidade
     /// (primeira rodada) ou é uma repetição (replay, sem efeito em PenaltyPoints).
     /// </summary>
-    internal ActivityResponse RecordResponse(int score, string? transcript, string? aiFeedback)
+    internal ActivityResponse RecordResponse(int score, string? transcript, string? justification, string? aiFeedback)
     {
         var attemptNumber = _responses.Count + 1;
-        var response = new ActivityResponse(Id, attemptNumber, score, transcript, aiFeedback);
+        var response = new ActivityResponse(Id, attemptNumber, score, transcript, justification, aiFeedback);
         _responses.Add(response);
         Status = ActivityStatus.Completed;
         return response;

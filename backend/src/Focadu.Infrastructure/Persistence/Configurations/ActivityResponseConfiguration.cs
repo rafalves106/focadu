@@ -15,6 +15,7 @@ public class ActivityResponseConfiguration : IEntityTypeConfiguration<ActivityRe
         builder.Property(r => r.Score).IsRequired();
         builder.Property(r => r.Passed).IsRequired();
         builder.Property(r => r.Transcript);
+        builder.Property(r => r.Justification);
         builder.Property(r => r.AiFeedback);
         builder.Property(r => r.CreatedAt).IsRequired();
         builder.Property(r => r.ActivityId).IsRequired();

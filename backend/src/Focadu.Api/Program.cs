@@ -1,8 +1,10 @@
 using Focadu.Api.Contracts;
 using Focadu.Api.ErrorHandling;
 using Focadu.Application;
+using Focadu.Application.Content;
 using Focadu.Application.Courses;
 using Focadu.Application.Dailies;
+using Focadu.Application.Exceptions;
 using Focadu.Application.Seed;
 using Focadu.Application.Weeklies;
 using Focadu.Infrastructure;
@@ -85,6 +87,37 @@ api.MapGet("/weeklies/{weeklyId}", async (string weeklyId, GetWeeklyDetailUseCas
     })
     .WithName("GetWeeklyDetail");
 
+// --- Conteudo curado (autoria) ---------------------------------------------------------------
+// Unico tipo de conteudo com endpoint de criacao/edicao ate agora - Course/Monthly/Weekly/Daily/
+// DailyActivity continuam so via seed (estrutura muda raramente; conteudo curado muda toda
+// semana, ver docs/ARQUITETURA.md). WeeklyId/Type/Title sao exigidos aqui (formato de request,
+// nao depende de nenhum dado de dominio); "Type invalido" e "falta ExternalUrl/BodyText" moram
+// no caso de uso, que e quem sabe validar contra o enum e as regras de CuratedContent.
+
+api.MapPost("/curated-content", async (CreateCuratedContentRequest? request, CreateCuratedContentUseCase useCase, CancellationToken ct) =>
+    {
+        if (request?.WeeklyId is null)
+            throw new ValidationException("weekly_id_obrigatorio", "O campo 'weeklyId' e obrigatorio.");
+        if (string.IsNullOrWhiteSpace(request.Title))
+            throw new ValidationException("titulo_obrigatorio", "O campo 'title' e obrigatorio.");
+
+        var result = await useCase.ExecuteAsync(
+            request.WeeklyId.Value, request.Type, request.Title, request.ExternalUrl, request.BodyText, ct);
+        return Results.Created($"/api/curated-content/{result.Id}", result);
+    })
+    .WithName("CreateCuratedContent");
+
+api.MapPut("/curated-content/{id}", async (string id, UpdateCuratedContentRequest? request, UpdateCuratedContentUseCase useCase, CancellationToken ct) =>
+    {
+        var contentId = RouteParsing.RequireGuid(id, "id");
+        if (string.IsNullOrWhiteSpace(request?.Title))
+            throw new ValidationException("titulo_obrigatorio", "O campo 'title' e obrigatorio.");
+
+        var result = await useCase.ExecuteAsync(contentId, request.Title, request.ExternalUrl, request.BodyText, ct);
+        return Results.Ok(result);
+    })
+    .WithName("UpdateCuratedContent");
+
 // --- Dailies -------------------------------------------------------------------------------
 
 api.MapGet("/dailies/{dailyId}", async (string dailyId, GetDailyStateUseCase useCase, CancellationToken ct) =>
@@ -106,9 +139,9 @@ api.MapPost("/dailies/{dailyId}/start", async (string dailyId, StartOrResumeDail
     })
     .WithName("StartOrResumeDaily");
 
-// Score obrigatorio/valido depende do tipo da atividade (Quiz/WordMatch usam SelectedOptionId,
-// Cloze/Roleplay usam Score) - essa decisao mora dentro do caso de uso, que e quem enxerga o
-// ActivityType (ver SubmitActivityResponseUseCase.ResolveScore).
+// Qual campo e obrigatorio/valido depende do tipo (e, pro Cloze, do AnswerMode) da atividade -
+// essa decisao mora dentro do caso de uso, que e quem enxerga o ActivityType/AnswerMode
+// (ver SubmitActivityResponseUseCase.ResolveScore). O Score nunca vem do cliente.
 api.MapPost("/dailies/{dailyId}/activities/{activityId}/responses",
         async (string dailyId, string activityId, SubmitActivityResponseRequest? request, SubmitActivityResponseUseCase useCase, CancellationToken ct) =>
         {
@@ -116,7 +149,8 @@ api.MapPost("/dailies/{dailyId}/activities/{activityId}/responses",
             var aId = RouteParsing.RequireGuid(activityId, "activityId");
 
             var result = await useCase.ExecuteAsync(
-                dId, aId, request?.Score, request?.SelectedOptionId, request?.Transcript, request?.AiFeedback, ct);
+                dId, aId, request?.SelectedOptionId, request?.SelectedRoleplayNodeId,
+                request?.Transcript, request?.Justification, request?.AiFeedback, ct);
             return Results.Created($"/api/dailies/{dailyId}/activities/{activityId}/responses/{result.Response.Id}", result);
         })
     .WithName("SubmitActivityResponse");

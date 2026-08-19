@@ -1,3 +1,4 @@
+using Focadu.Application.Content;
 using Focadu.Application.Courses;
 using Focadu.Application.Dailies;
 using Focadu.Application.Seed;
@@ -20,6 +21,8 @@ public static class DependencyInjection
         services.AddScoped<SubmitActivityResponseUseCase>();
         services.AddScoped<CompleteDailyUseCase>();
         services.AddScoped<SeedWebSecurityCourseUseCase>();
+        services.AddScoped<CreateCuratedContentUseCase>();
+        services.AddScoped<UpdateCuratedContentUseCase>();
         return services;
     }
 }

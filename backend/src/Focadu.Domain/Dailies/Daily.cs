@@ -31,6 +31,9 @@ public class Daily : Entity
     /// <summary>Evita que a mesma Daily dispare mais de uma Daily de reforço na mesma rodada.</summary>
     public bool ReinforcementTriggered { get; private set; }
 
+    /// <summary>Id da Daily de reforço gerada a partir desta Daily, quando ReinforcementTriggered = true - preenchido junto, nunca separadamente (ver MarkReinforcementTriggered).</summary>
+    public Guid? ReinforcementDailyId { get; private set; }
+
     private readonly List<DailyActivity> _activities = new();
     public IReadOnlyCollection<DailyActivity> Activities => _activities.AsReadOnly();
 
@@ -114,7 +117,8 @@ public class Daily : Entity
     /// o gatilho de reforço diário. Depois da primeira conclusão (replay), a resposta é guardada
     /// no histórico normalmente, mas não mexe em PenaltyPoints nem dispara reforço de novo.
     /// </summary>
-    public ActivityResponse SubmitActivityResponse(Guid activityId, int score, string? transcript = null, string? aiFeedback = null)
+    public ActivityResponse SubmitActivityResponse(
+        Guid activityId, int score, string? transcript = null, string? justification = null, string? aiFeedback = null)
     {
         if (Status is DailyStatus.Locked or DailyStatus.Available)
             throw new DomainException("A Daily precisa ser iniciada antes de registrar respostas.", "daily_nao_iniciada");
@@ -122,7 +126,7 @@ public class Daily : Entity
         var activity = _activities.FirstOrDefault(a => a.Id == activityId)
             ?? throw new DomainException("Atividade não encontrada nesta Daily.", "atividade_nao_encontrada");
 
-        var response = activity.RecordResponse(score, transcript, aiFeedback);
+        var response = activity.RecordResponse(score, transcript, justification, aiFeedback);
 
         if (!HasEverCompleted && !response.Passed)
         {
@@ -136,7 +140,11 @@ public class Daily : Entity
     public bool ShouldTriggerDailyReinforcement() =>
         !HasEverCompleted && !ReinforcementTriggered && PenaltyPoints >= EvaluationPolicy.DailyPenaltyThreshold;
 
-    internal void MarkReinforcementTriggered() => ReinforcementTriggered = true;
+    internal void MarkReinforcementTriggered(Guid reinforcementDailyId)
+    {
+        ReinforcementTriggered = true;
+        ReinforcementDailyId = reinforcementDailyId;
+    }
 
     /// <summary>Atividades com ao menos uma resposta reprovada nesta Daily — usadas para montar a Daily de reforço.</summary>
     public IReadOnlyCollection<DailyActivity> GetFailedActivities() =>

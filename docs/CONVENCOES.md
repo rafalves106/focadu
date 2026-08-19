@@ -41,8 +41,15 @@ concluido), o Claude Code deve, sem que o Falves precise pedir de novo:
    seguindo o modelo fixo abaixo.
 2. Atualizar `docs/ARQUITETURA.md` para refletir o estado atual e consolidado do projeto apos
    aquela fase (nao recriar do zero - editar em cima do que ja existe).
+3. Commitar todas as mudancas da fase (`git add` + `git commit`), com uma mensagem descritiva
+   que identifique a fase e resuma o que foi feito - inclusive os dois passos acima, que fazem
+   parte do mesmo commit de fechamento. Sem esse passo, uma fase pode ficar "concluida" no chat
+   mas ausente do historico do Git, que e o unico registro persistente entre sessoes.
 
-Isso e parte permanente do processo de trabalho neste projeto, nao uma tarefa avulsa.
+Isso e parte permanente do processo de trabalho neste projeto, nao uma tarefa avulsa. Nao pedir
+autorizacao pra commitar ao final de fase - e o proprio fechamento da fase, nao uma acao avulsa
+que precise de confirmacao separada a cada vez (**decidido na Fase 4**, depois do trabalho da
+Fase 3 ter ficado uncommitted por descuido).
 
 ## Modelo fixo para `resumo-implementacao-fase-N.md`
 

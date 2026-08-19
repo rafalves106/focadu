@@ -4,8 +4,8 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 3 - Correcoes de Api, Seed de Conteudo e
-> Inicio do Frontend**.
+> Ultima fase que atualizou este documento: **Fase 4 - Autoria de Conteudo, Conclusao da Daily e
+> Telas Restantes**.
 
 ## Visao geral do projeto
 
@@ -106,15 +106,18 @@ src/
     Ports/                          <- IClock, IContentEvaluationService (stub, sem impl),
                                        IAudioTranscriptionService (stub, sem impl)
     Exceptions/                     <- NotFoundException, ConflictException, ValidationException
-    Shared/                         <- DTOs reaproveitados entre modulos (ex: sessoes de reforco)
+    Shared/                         <- DTOs reaproveitados entre modulos (ex: sessoes de reforco,
+                                       CuratedContentDto)
     Courses/                        <- ListCoursesUseCase, GetCourseDetailUseCase, Dtos.cs
     Weeklies/                       <- GetWeeklyDetailUseCase, Dtos.cs
+    Content/                         <- CreateCuratedContentUseCase, UpdateCuratedContentUseCase (Fase 4)
     Dailies/                        <- GetDailyStateUseCase, GetTodayUseCase,
                                        StartOrResumeDailyUseCase, SubmitActivityResponseUseCase
-                                       (+ ResolveScore, ver "Score no servidor" abaixo),
-                                       CompleteDailyUseCase, DailyStateMapper.cs (interno,
-                                       compartilhado pelos casos de uso acima), Dtos.cs
-    Seed/                            <- SeedWebSecurityCourseUseCase (Fase 3), ver secao de Seed
+                                       (+ ResolveScore, cobre os 4 ActivityType desde a Fase 4 -
+                                       ver "Score no servidor" abaixo), CompleteDailyUseCase
+                                       (retorna CompleteDailyResult), DailyStateMapper.cs
+                                       (interno, compartilhado pelos casos de uso acima), Dtos.cs
+    Seed/                            <- SeedWebSecurityCourseUseCase, ver secao de Seed
     DependencyInjection.cs
   Focadu.Infrastructure/
     Persistence/
@@ -123,14 +126,16 @@ src/
       Configurations/               <- 1 IEntityTypeConfiguration por entidade (12 arquivos)
       Repositories/                 <- CourseRepository, MonthlyRepository, WeeklyRepository
       UnitOfWork.cs
-      Migrations/                   <- InitialCreate (Fase 1) + AddPromptToDailyActivity (Fase 3)
+      Migrations/                   <- InitialCreate (Fase 1), AddPromptToDailyActivity (Fase 3),
+                                       Fase4SchemaChanges (Daily.ReinforcementDailyId,
+                                       ActivityResponse.Justification)
     Services/SystemClock.cs         <- implementacao real de IClock (hora local)
     DependencyInjection.cs
   Focadu.Api/
-    Program.cs                      <- composicao de DI + 8 endpoints reais (ver secao abaixo)
+    Program.cs                      <- composicao de DI + 10 endpoints reais (ver secao abaixo)
     ErrorHandling/                  <- ApiExceptionHandler (IExceptionHandler), ErrorResponse
     Contracts/                      <- RouteParsing (parse de Guid com erro padronizado),
-                                       SubmitActivityResponseRequest
+                                       SubmitActivityResponseRequest, CuratedContentRequests (Fase 4)
     appsettings.json                <- connection string default do Postgres local
 tests/
   Focadu.Tests/
@@ -138,7 +143,7 @@ tests/
     Weeklies/WeeklyTests.cs
     Policies/EvaluationPolicyTests.cs
     Domain/DomainExceptionCodeTests.cs  <- trava os Code usados pela Api (ver abaixo)
-    Dailies/SubmitActivityResponseScoreTests.cs  <- ResolveScore (Fase 3)
+    Dailies/SubmitActivityResponseScoreTests.cs  <- ResolveScore, cobre os 4 ActivityType (Fase 4)
     Dailies/DailyStateMapperTests.cs             <- gabarito escondido/revelado (Fase 3)
     TestHelpers/DailyFixtures.cs
 ```
@@ -152,9 +157,9 @@ volta; navegacao e sempre pai -> filhos):
 Course (Draft/Active/Archived)
 └── Monthly (Number, Title)
     └── Weekly (Number, Title, Theme)
-        ├── Daily (DayNumber, Date, Status, IsReinforcement, PenaltyPoints)
+        ├── Daily (DayNumber, Date, Status, IsReinforcement, PenaltyPoints, ReinforcementDailyId?)
         │   └── DailyActivity (Type, OrderIndex, AnswerMode, Prompt?, ContentId?, ExpectedAnswer?)
-        │       ├── ActivityResponse (AttemptNumber, Score, Passed, Transcript?, AiFeedback?)
+        │       ├── ActivityResponse (AttemptNumber, Score, Passed, Transcript?, Justification?, AiFeedback?)
         │       ├── QuizOption (Text, IsCorrect)                  [Quiz e WordMatch]
         │       └── RoleplayNode (NodeKey, Text, IsTerminal, TerminalQuality?)  [Roleplay]
         │           └── RoleplayOption (Text, NextNodeId?)
@@ -182,6 +187,24 @@ que o usuario precisa ler pra responder). Faltava na Fase 1: so existiam `QuizOp
 e `ExpectedAnswer` (gabarito do Cloze), sem nenhum campo pra guardar o texto da pergunta em si.
 Descoberto ao escrever o seed de conteudo real da Fase 3 e confirmado com o Falves antes de mexer
 no schema - ver `docs/fase-3/resumo-implementacao-fase-3.md`.
+
+**WordMatch: 1 termo = 1 `DailyActivity`, nao 1 atividade com varios pares (Fase 4, confirmado com
+o Falves).** `Prompt` e o termo, `QuizOptions` sao as definicoes candidatas (exatamente 1
+correta) - o mesmo mecanismo de Quiz, so reaproveitado. Varias `DailyActivity` WordMatch na mesma
+`Daily` formam, juntas (do ponto de vista do frontend), um unico exercicio de associacao - mas
+cada uma continua sendo uma atividade independente pro dominio (penalidade, historico de
+respostas, etc). O schema nao suporta "N pares simultaneos numa unica atividade" - essa foi a
+alternativa descartada, ver `docs/fase-4/resumo-implementacao-fase-4.md`.
+
+**`Daily.ReinforcementDailyId` (Fase 4):** Guid? preenchido junto com `ReinforcementTriggered`
+(`Weekly.CreateDailyReinforcement` grava o Id da Daily de reforco recem-criada na Daily de
+origem). Antes da Fase 4, `ReinforcementTriggered` virava `true` mas nao havia como descobrir
+*qual* Daily foi gerada a partir dela sem heuristica - agora e um link direto.
+
+**`ActivityResponse.Justification` (Fase 4):** texto livre opcional, pedido no Cloze/FreeText
+antes de revelar se a resposta esta certa - so armazenado, sem avaliacao de IA. Distinto de
+`Transcript` (que carrega a resposta em si, seja ela transcrita de voz ou digitada) e de
+`AiFeedback` (feedback vindo de uma avaliacao de IA sobre a resposta - ainda sem uso real).
 
 ## Regras de negocio centralizadas
 
@@ -256,7 +279,9 @@ composicao da Fase 1). Todos sob `/api`, alem de `GET /health`:
 | GET | `/api/today` | `GetTodayUseCase` | 200, 404/409 (ver abaixo) |
 | POST | `/api/dailies/{dailyId}/start` | `StartOrResumeDailyUseCase` | 200 |
 | POST | `/api/dailies/{dailyId}/activities/{activityId}/responses` | `SubmitActivityResponseUseCase` | 201 (cria uma nova `ActivityResponse`) |
-| POST | `/api/dailies/{dailyId}/complete` | `CompleteDailyUseCase` | 200 |
+| POST | `/api/dailies/{dailyId}/complete` | `CompleteDailyUseCase` | 200 (`CompleteDailyResult`, ver abaixo) |
+| POST | `/api/curated-content` | `CreateCuratedContentUseCase` (Fase 4) | 201, 400/404 |
+| PUT | `/api/curated-content/{id}` | `UpdateCuratedContentUseCase` (Fase 4) | 200, 400/404 |
 
 As rotas da Api sao caminhos REST simples (`/api/weeklies/{weeklyId}`), **nao** um espelho das
 rotas do frontend (`/start?course=&weekly=`) - o frontend usa query string no seu proprio router
@@ -269,9 +294,10 @@ Os dois usam `Weekly.EvaluateDailyAccess` internamente e devolvem o **mesmo form
 (`DailyStateDto`, com a lista completa de `Activities`) tanto para a Daily ativa quanto para uma
 Daily passada - quem diferencia "tela de estudo imersiva" de "resumo/gabarito" e o campo
 `AccessMode` no corpo da resposta (`Start`/`Resume`/`Replay` = editavel; `ReadOnly` = so
-consulta), nao um shape de resposta diferente. Isso vale tambem para as respostas de
-`POST .../start` e `POST .../complete` - os tres retornam `DailyStateDto`, para o cliente sempre
-ter o estado atualizado sem precisar de uma segunda chamada.
+consulta), nao um shape de resposta diferente. Isso vale tambem para a resposta de
+`POST .../start` - ela retorna `DailyStateDto` direto, para o cliente sempre ter o estado
+atualizado sem precisar de uma segunda chamada. `POST .../complete` retorna um shape diferente
+(`CompleteDailyResult`, ver abaixo) porque, alem do estado da Daily, precisa reportar reforco.
 
 `DailyActivityDto` expoe `Prompt` (enunciado) sempre, sem redacao - e o que o usuario precisa ler
 pra responder. Ja `QuizOptions[].IsCorrect`, `ExpectedAnswer` e `RoleplayNodes[].TerminalQuality`
@@ -291,23 +317,64 @@ usar `/api/courses/{courseId}` para desambiguar). Isso e seguro para o cenario a
 curso piloto, "Web Security"), mas para de funcionar sozinho se o produto crescer para varios
 cursos ativos ao mesmo tempo sem um conceito de usuario - ver pontos abertos da Fase 2.
 
-### Score no servidor para Quiz/WordMatch (Fase 3)
+### Score no servidor para todo tipo de atividade (Fase 3 + Fase 4)
 
-`POST .../responses` recebe `SelectedOptionId` (Guid) para atividades `Quiz`/`WordMatch`, nao mais
-`Score` pronto - o `Score` e sempre calculado dentro de `SubmitActivityResponseUseCase.ResolveScore`
-(100 se a opcao escolhida existe nessa atividade e `IsCorrect = true`, 0 caso contrario). Qualquer
-`Score` que o cliente mande junto e ignorado para esses dois tipos. `Cloze`/`Roleplay` continuam
-recebendo `Score` pronto do chamador - comentario explicito no codigo (`ResolveScore`) explicando
-que isso e assim porque dependem de `IContentEvaluationService`, ainda sem adapter concreto.
+`POST .../responses` **nao tem mais campo `Score`** - desde a Fase 4, o Score de qualquer tipo de
+atividade e sempre calculado dentro de `SubmitActivityResponseUseCase.ResolveScore`, nunca aceito
+pronto do cliente (fecha de vez a lacuna que a Fase 3 tinha deixado aberta so pra Cloze/Roleplay,
+que na epoca ainda recebiam `Score` do chamador):
+
+| Tipo | Campo do request | Como o Score e calculado |
+|---|---|---|
+| `Quiz` / `WordMatch` | `SelectedOptionId` | 100 se a opcao existe nessa atividade e `IsCorrect = true`, senao 0 |
+| `Cloze` + `AnswerMode.MultipleChoice` | `SelectedOptionId` | Mesmo mecanismo de Quiz/WordMatch (reaproveitado) |
+| `Cloze` + `AnswerMode.FreeText` | `Transcript` | 100 se `Transcript.Trim()` bate com `ExpectedAnswer.Trim()` (case-insensitive), senao 0 - **ponytail**: comparacao textual simples, sem IA; upgrade natural e `IContentEvaluationService` |
+| `Roleplay` | `SelectedRoleplayNodeId` | A partir do `TerminalQuality` do node terminal alcancado (ver tabela abaixo) - o node precisa ter `IsTerminal = true` |
+
+Mapeamento `TerminalQuality` -> Score (decidido na Fase 4, unico node que passa do
+`PassingScore` de 80 e o `Ideal`):
+
+| TerminalQuality | Score |
+|---|---|
+| `Ideal` | 100 |
+| `Suboptimal` | 60 |
+| `Poor` | 20 |
+
+`Transcript` (Cloze/FreeText) tambem aceita `Justification` opcional no mesmo request - texto
+livre do usuario sobre por que respondeu aquilo, so armazenado (`ActivityResponse.Justification`),
+sem avaliacao.
 
 Validacao (`ValidationException`, mesmo envelope padrao de erro):
 
 | Code | Quando |
 |---|---|
-| `selected_option_id_obrigatorio` | Quiz/WordMatch sem `SelectedOptionId` no corpo |
+| `selected_option_id_obrigatorio` | Quiz/WordMatch/Cloze(MultipleChoice) sem `SelectedOptionId` no corpo |
 | `selected_option_id_invalido` | `SelectedOptionId` nao corresponde a uma `QuizOption` desta atividade |
-| `score_obrigatorio` | Cloze/Roleplay sem `Score` no corpo |
-| `score_invalido` | Cloze/Roleplay com `Score` fora de 0-100 |
+| `transcript_obrigatorio` | Cloze(FreeText) sem `Transcript` no corpo |
+| `selected_roleplay_node_id_obrigatorio` | Roleplay sem `SelectedRoleplayNodeId` no corpo |
+| `selected_roleplay_node_id_invalido` | `SelectedRoleplayNodeId` nao corresponde a um `RoleplayNode` desta atividade |
+| `selected_roleplay_node_nao_terminal` | `SelectedRoleplayNodeId` aponta pra um node com `IsTerminal = false` |
+
+### Conclusao da Daily (`POST .../complete`) e reforco (Fase 4)
+
+O reforco (diario e/ou semanal), quando existe, **ja foi disparado antes** - durante alguma
+`SubmitActivityResponse` anterior (`Daily.ShouldTriggerDailyReinforcement()`/
+`Weekly.ShouldTriggerWeeklyReinforcement()` sao avaliados resposta a resposta, nao no momento da
+conclusao). `CompleteDailyUseCase` so reporta o estado ja existente:
+
+```
+CompleteDailyResult(
+  Daily: DailyStateDto,
+  DailyReinforcementTriggered: bool,     <- Daily.ReinforcementTriggered
+  ReinforcementDailyId: Guid?,            <- Daily.ReinforcementDailyId
+  WeeklyReinforcementTriggered: bool,     <- existe algum WeeklyReinforcement cobrindo esta Daily
+  WeeklyReinforcementId: Guid?)
+```
+
+`WeeklyReinforcementTriggered`/`WeeklyReinforcementId` sao calculados procurando, em
+`weekly.Reinforcements`, o primeiro `WeeklyReinforcement` cujo `WeakDailyIds` contem o Id desta
+Daily - nao precisa de nenhum campo novo no dominio, so uma busca (`WeeklyReinforcement.WeakDailyIds`
+ja e publico).
 
 ### Tratamento de erro padronizado
 
@@ -361,12 +428,35 @@ de testes em vez de silenciosamente virar um 400 generico em producao.
   `{id:guid}`), parseados explicitamente via `RouteParsing.RequireGuid` - de proposito, para um
   Guid malformado tambem virar `{ error: "id_invalido", message: "..." }` (400) em vez do 404
   generico que uma constraint de rota do ASP.NET Core geraria sozinha.
-- `SubmitActivityResponseRequest` tem `SelectedOptionId` (Guid?) e `Score` (int?, legado para
-  Cloze/Roleplay) - qual e obrigatorio depende do `ActivityType`, validado dentro do caso de uso
-  (ver "Score no servidor" acima), nao mais em `Program.cs`.
+- `SubmitActivityResponseRequest` tem `SelectedOptionId`/`SelectedRoleplayNodeId`/`Transcript`/
+  `Justification` (todos opcionais) - qual e obrigatorio depende do `ActivityType`/`AnswerMode`,
+  validado dentro do caso de uso (ver "Score no servidor" acima), nao em `Program.cs`.
 - Corpo de request malformado (JSON invalido) ainda pode gerar uma resposta de erro fora do
   formato padrao da Api, por vir do model binding do ASP.NET Core antes do endpoint rodar - ver
   pontos abertos da Fase 2.
+
+### Autoria de conteudo curado (Fase 4)
+
+`POST /api/curated-content` e `PUT /api/curated-content/{id}` sao os **unicos** endpoints de
+autoria de conteudo da Api - Course/Monthly/Weekly/Daily/DailyActivity continuam so via seed (ver
+"Fora de escopo"), porque a estrutura muda com pouca frequencia; o que muda toda semana e o
+conteudo curado (leituras/videos/diagramas) em si.
+
+- `POST`: corpo `{ weeklyId, type, title, externalUrl?, bodyText? }` - `type` e string
+  (`"Reading"/"Video"/"Diagram"`, case-insensitive), mais legivel pra curadoria manual do que o
+  numero que a Api usa nas respostas de leitura. `weeklyId`/`title` sao validados em `Program.cs`
+  (formato de request, incondicional); `type` invalido e falta de `externalUrl`/`bodyText` sao
+  validados dentro do caso de uso (`CreateCuratedContentUseCase`), porque dependem de logica de
+  dominio/enum.
+- `PUT`: corpo `{ title, externalUrl?, bodyText? }` - `Type`/`WeeklyId` nunca aparecem (nunca
+  mudam depois de criado). Busca o `CuratedContent` direto por Id
+  (`IWeeklyRepository.GetCuratedContentByIdAsync`, sem carregar o grafo completo da Weekly) e
+  chama `CuratedContent.Update(...)`.
+- Codes: `weekly_id_obrigatorio`, `titulo_obrigatorio` (400, `Program.cs`), `tipo_invalido`,
+  `conteudo_obrigatorio` (400, caso de uso), `semana_nao_encontrada`, `conteudo_nao_encontrado`
+  (404).
+- Usado na pratica pra carregar o texto completo das 4 leituras da Semana 1 por cima dos
+  placeholders do seed - ver `docs/fase-4/resumo-implementacao-fase-4.md`.
 
 ### CORS (Fase 3)
 
@@ -375,25 +465,33 @@ frontend Vite conseguir chamar a Api em dev - sem isso o navegador bloqueia toda
 diferentes contam como origens diferentes, mesmo os dois em `localhost`). Hardcoded e so-dev de
 proposito (unico usuario-teste, sem ambiente de deploy ainda) - ver pontos abertos.
 
-## Seed de conteudo (Fase 3)
+## Seed de conteudo (Fase 3, estendido na Fase 4)
 
-Nao ha endpoint de autoria de conteudo na Api (ver "Fora de escopo"), entao o unico jeito de
-popular Course/Monthly/Weekly/Daily/DailyActivity/CuratedContent e via
-`SeedWebSecurityCourseUseCase` (`Focadu.Application.Seed`) - idempotente por nome de Course
-("Web Security"), monta o grafo inteiro em memoria via API publica do dominio e persiste com uma
-unica chamada a `ICourseRepository.AddAsync` + `IUnitOfWork.SaveChangesAsync` (o `Add` do EF Core
-cascateia o grafo inteiro automaticamente, sem precisar de `IMonthlyRepository`/`IWeeklyRepository`
-separados). Popula a Semana 1 completa do curso "Web Security" (4 Dailies, CuratedContent por dia,
-1 DailyActivity Quiz por dia, WeeklyProject) - conteudo completo em
-`docs/fase-3/resumo-implementacao-fase-3.md`.
+Course/Monthly/Weekly/Daily/DailyActivity nao tem endpoint de autoria (ver "Fora de escopo"),
+entao o unico jeito de popular essa estrutura e via `SeedWebSecurityCourseUseCase`
+(`Focadu.Application.Seed`) - idempotente por nome de Course ("Web Security"), monta o grafo
+inteiro em memoria via API publica do dominio e persiste com uma unica chamada a
+`ICourseRepository.AddAsync` + `IUnitOfWork.SaveChangesAsync` (o `Add` do EF Core cascateia o
+grafo inteiro automaticamente, sem precisar de `IMonthlyRepository`/`IWeeklyRepository`
+separados). `CuratedContent` em si tambem pode ser criado/editado via Api (ver "Autoria de
+conteudo curado" acima) - o seed so garante que exista *algo* pra começar.
+
+Popula a Semana 1 completa do curso "Web Security": 4 Dailies, CuratedContent por dia (texto
+completo das 4 leituras carregado via `PUT /api/curated-content/{id}` - Fase 4, nao faz parte do
+seed em si), e pelo menos 1 `DailyActivity` de cada tipo distribuida pelos 4 dias - Quiz (todos os
+dias), WordMatch (2 termos, Dia 2), Cloze/MultipleChoice + Cloze/FreeText (Dia 3), Roleplay (3
+niveis, Dia 4) - alem do `WeeklyProject`. Conteudo completo em
+`docs/fase-3/resumo-implementacao-fase-3.md` e `docs/fase-4/resumo-implementacao-fase-4.md`.
 
 Acionado via `dotnet run --project src/Focadu.Api -- seed` (checagem de `args` em `Program.cs`,
 antes de `app.Run()` - roda e encerra, sem subir o servidor HTTP).
 
 ## Persistencia (EF Core + Postgres)
 
-Duas migrations ate agora: `InitialCreate` (Fase 1) e `AddPromptToDailyActivity` (Fase 3, coluna
-nova `DailyActivities.Prompt`, nullable). Decisoes de design confirmadas na Fase 1 continuam
+Tres migrations ate agora: `InitialCreate` (Fase 1), `AddPromptToDailyActivity` (Fase 3, coluna
+nova `DailyActivities.Prompt`, nullable), e `Fase4SchemaChanges` (`Dailies.ReinforcementDailyId` -
+Guid?, FK auto-relacionada com `SetNull` - e `ActivityResponses.Justification` - text, nullable).
+Decisoes de design confirmadas na Fase 1 continuam
 valendo integralmente (Guid como Id, tabela associativa real para
 `WeeklyReinforcement.WeakDailyIds`, enums como `string`, etc.) - ver
 `docs/fase-1/resumo-implementacao-fase-1.md` para o raciocinio completo de cada uma.
@@ -444,7 +542,7 @@ Password=focadu` (definida em `backend/src/Focadu.Api/appsettings.json` e como f
 ferramentas de design-time do EF, ou por `ConnectionStrings:Focadu` / env var equivalente para a
 Api em runtime).
 
-## Frontend (Fase 3)
+## Frontend (Fase 3, telas de atividade completadas na Fase 4)
 
 ```
 frontend/
@@ -455,15 +553,19 @@ frontend/
     App.tsx                <- shell com nav (Hoje / Inicio) + <Outlet/>
     index.css               <- @import "tailwindcss" + tokens @theme (paleta da identidade visual)
     api/
-      types.ts               <- espelha os DTOs de Focadu.Application (enums como numero)
+      types.ts               <- espelha os DTOs de Focadu.Application (enums como numero, com
+                                   consts tipo ActivityType/AnswerMode/ActivityStatus/TerminalQuality)
       client.ts               <- fetch tipado, ApiError, VITE_API_BASE_URL
       useApiResource.ts        <- hook pra loading/error/cancelamento (usado pelas 4 sub-telas de /start)
     routes/
-      TodayPage.tsx            <- /hoje
+      TodayPage.tsx            <- /hoje (orquestra os 4 tipos de atividade + fluxo de conclusao)
       StartPage.tsx             <- /start (ramifica por query string)
     components/
-      QuizActivity.tsx           <- a tela de Quiz de verdade (a mais validada no Figma)
-      Layout.tsx                  <- PageShell, Centered (compartilhados pelas telas de /start)
+      OptionsAnswer.tsx          <- nucleo "escolher opcao" - Quiz, cada termo de WordMatch, Cloze/MultipleChoice
+      ClozeFreeTextActivity.tsx   <- Cloze/FreeText (resposta + justificativa)
+      RoleplayActivity.tsx        <- navega o grafo de RoleplayNode client-side
+      CompletionSummary.tsx       <- pos POST .../complete (reforco diario/semanal, se houver)
+      Layout.tsx                  <- PageShell, Centered, ActivityScreen (shells compartilhados)
 ```
 
 Roteamento exatamente como documentado (nao espelha as rotas REST da Api, que sao um recurso
@@ -471,21 +573,39 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 
 | Rota | Consome | Tela |
 |---|---|---|
-| `/hoje` | `GET /api/today` | Daily ativa de hoje - **Quiz implementado de ponta a ponta** |
+| `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 4 tipos de atividade implementados de ponta a ponta** |
+| `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco) |
 | `/start` | `GET /api/courses` | Lista de cursos |
 | `/start?course=` | `GET /api/courses/{courseId}` | Detalhe do curso |
 | `/start?course=&weekly=` | `GET /api/weeklies/{weeklyId}` | Detalhe da semana |
-| `/start?course=&weekly=&daily=` | `GET /api/dailies/{dailyId}` | Estado de uma Daily especifica |
+| `/start?course=&weekly=&daily=` | `GET /api/dailies/{dailyId}` | Estado de uma Daily especifica (somente leitura) |
 
-`/hoje` chama `GET /api/today` e, se `AccessMode` for `Start`/`Resume`, chama
-`POST .../start` antes de renderizar (a Daily precisa estar `InProgress` pra aceitar respostas -
-`daily_nao_iniciada` senao). So a atividade tipo `Quiz` tem tela real (`QuizActivity`); outros
-tipos mostram uma mensagem simples de "ainda nao implementado". `QuizActivity`: opcoes sem
-gabarito -> selecao -> `POST .../responses` com `SelectedOptionId` -> busca a Daily de novo (o
-resultado do submit nao traz as opcoes) pra pegar o gabarito ja revelado e mostrar
-certo/errado. As 4 variacoes de `/start` sao funcionais mas nao receberam o mesmo polimento
-visual que `/hoje` (fora de escopo explicito desta fase - so a tela de Quiz precisava estar
-"a mais validada no Figma").
+`TodayPage` (`/hoje`) chama `GET /api/today` (ou `GET /api/dailies/{id}` se `?daily=` estiver
+presente) e, se `AccessMode` for `Start`/`Resume`, chama `POST .../start` antes de renderizar (a
+Daily precisa estar `InProgress` pra aceitar respostas - `daily_nao_iniciada` senao).
+
+**Maquina de passo (`Step`) - por que existe (Fase 4):** `TodayPage` nao re-deriva "o que
+mostrar" a cada resposta recebida - ela mantem um `Step` "pinado" (`{kind:'activity', activityId}`
+| `{kind:'wordMatchGroup'}` | `{kind:'done'}'}`) que so muda quando o usuario clica "Continuar".
+Sem isso, a ultima atividade da sessao (ou o ultimo termo de um WordMatch) tinha o proprio reveal
+engolido - assim que a resposta era enviada e os dados atualizavam, o componente pai ja trocava de
+tela antes do usuario conseguir ler "Acertou!"/"Errou" (bug encontrado e corrigido durante a
+verificacao ao vivo desta fase). Cada componente de atividade (`OptionsAnswer`,
+`ClozeFreeTextActivity`, `RoleplayActivity`) recebe `onDailyRefetched` (atualiza os dados) e
+`onContinue` (so chamado quando o usuario decide avancar) como callbacks separados.
+
+**WordMatch, na tela:** todas as `DailyActivity` do tipo WordMatch da Daily sao renderizadas
+juntas (uma linha `OptionsAnswer` por termo, cada uma pontuando/revelando de forma independente);
+o botao "Continuar" do grupo so aparece quando todos os termos ja tem resposta.
+
+**Roleplay, na tela:** navega o grafo inteiramente no cliente (todos os `RoleplayNode`/
+`RoleplayOption` ja vieram no `DailyActivityDto` inicial - nao ha ida-e-volta a cada escolha). O
+node com `NodeKey === "start"` e a convencao adotada pro node inicial (nao ha campo `IsStart` no
+dominio). So ao selecionar uma opcao que leva a um node com `IsTerminal = true` e que o frontend
+chama `POST .../responses` com `SelectedRoleplayNodeId`.
+
+**`/start` continua funcional mas sem o mesmo polimento visual das telas de atividade** - decisao
+da Fase 3, ainda valida (so as telas de `/hoje` precisavam estar "as mais validadas no Figma").
 
 Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.config.js`):
 `--color-base` (`#0A0A0A`), `--color-surface` (`#151515`), `--color-surface-alt` (`#1E1E1E`),
@@ -494,23 +614,23 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
 
 ## Fora de escopo ate agora
 
-- Telas de WordMatch, Cloze e Roleplay no frontend - so Quiz esta implementado (Fase 3).
 - Tela de resumo falado/microfone, menu de configuracoes, captura de voz real no frontend.
-- `POST .../complete` nao e chamado pelo frontend ainda - a tela de Quiz cobre responder uma
-  atividade, nao concluir a Daily inteira.
 - Servico de WhatsApp (`whatsapp-service/` e so placeholder).
 - Autenticacao/autorizacao real (usuario fixo/hardcoded, unico usuario-teste) - **reconfirmado
   na Fase 2**: nenhuma entidade recebe `UserId`.
 - Captura, upload e transcricao de voz.
 - Integracao com GitHub (Octokit.NET) e exigencia de publicacao publica (LinkedIn/GitHub).
-- Geracao de conteudo/avaliacao via IA (Groq) - **reconfirmado na Fase 3**: `Cloze`/`Roleplay`
-  continuam recebendo `Score` pronto do chamador (ver "Score no servidor"); so os ports
+- Geracao de conteudo/avaliacao via IA (Groq) - **reconfirmado na Fase 4**: Cloze/FreeText usa
+  comparacao textual simples, Roleplay usa mapeamento fixo de `TerminalQuality` (ver "Score no
+  servidor") - nenhum dos dois e avaliacao inteligente de verdade. So os ports
   (`IContentEvaluationService`, `IAudioTranscriptionService`) existem, sem adapter concreto nem
   registro no DI.
 - Sistema de Gems/Marketplace/Ranking/Cosmeticos/Arcade/UGC.
-- Endpoints de autoria de conteudo (criar Course/Monthly/Weekly/Daily/DailyActivity/etc.) - a
-  Api e so leitura + as 3 acoes de progresso do aluno (iniciar, responder, concluir). Conteudo
-  hoje so pode ser inserido via `SeedWebSecurityCourseUseCase` (ver "Seed de conteudo" acima).
+- Endpoints de autoria de Course/Monthly/Weekly/Daily/DailyActivity - so `CuratedContent` tem
+  autoria via Api desde a Fase 4 (ver "Autoria de conteudo curado"); o resto da estrutura
+  continua so via `SeedWebSecurityCourseUseCase` (estrutural, muda com pouca frequencia).
+- Tela de autoria de conteudo curado no frontend - os endpoints existem e foram usados via
+  script/curl (Fase 4), mas nao ha UI pra isso ainda.
 - CORS liberado so para `http://localhost:5173` (hardcoded, dev apenas).
 
 ## Fases concluidas
@@ -520,6 +640,7 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
 | 1 | Dominio e Schema (Backend .NET) | `docs/fase-1/resumo-implementacao-fase-1.md` |
 | 2 | Monorepo Git + API Real (Backend .NET) | `docs/fase-2/resumo-implementacao-fase-2.md` |
 | 3 | Correcoes de Api, Seed de Conteudo e Inicio do Frontend | `docs/fase-3/resumo-implementacao-fase-3.md` |
+| 4 | Autoria de Conteudo, Conclusao da Daily e Telas Restantes | `docs/fase-4/resumo-implementacao-fase-4.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
@@ -528,27 +649,29 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
   como consumi-lo.
 - `GET /api/today` e `GET /api/dailies/{dailyId}` retornam o mesmo `DailyStateDto` -
   `AccessMode` e o campo que decide se a tela deve ser editavel ou so leitura.
-- `SelectedOptionId` (Quiz/WordMatch) e `Score` (Cloze/Roleplay) sao mutuamente exclusivos no
-  corpo de `POST .../responses`, decidido pelo `ActivityType` da atividade - ver "Score no
-  servidor" acima.
+- `POST .../responses` nao tem mais campo `Score` - todo tipo de atividade calcula o Score no
+  servidor (ver "Score no servidor para todo tipo de atividade" acima). Qual campo usar
+  (`SelectedOptionId`/`Transcript`/`SelectedRoleplayNodeId`) depende do `ActivityType`/`AnswerMode`.
 - Gabarito (`IsCorrect`/`ExpectedAnswer`/`TerminalQuality`) so aparece depois da primeira
   resposta - o frontend precisa re-buscar o estado da Daily apos um submit pra ver o gabarito
-  revelado (o resultado do submit em si nao traz as opcoes atualizadas).
+  revelado (o resultado do submit em si nao traz as opcoes/nodes atualizados).
 - Toda `Entity` precisa de `ValueGenerated.Never` no `Id` pra funcionar corretamente com EF Core
-  quando adicionada a um grafo ja tracked (ver "Bug de concorrencia do EF Core") - se uma fase
-  futura adicionar uma entidade nova, isso ja esta coberto globalmente em
+  quando adicionada a um grafo ja tracked (ver "Bug de concorrencia do EF Core", Fase 3) - se uma
+  fase futura adicionar uma entidade nova, isso ja esta coberto globalmente em
   `FocaduDbContext.OnModelCreating`, nao precisa reconfigurar por entidade.
 - `GET /api/today` assume exatamente um Course `Active`; isso quebra se o produto crescer para
-  multiplos cursos ativos sem antes resolver o conceito de usuario/"curso atual".
-- WordMatch, Cloze e Roleplay ainda nao tem tela no frontend - so a estrutura de dados e a Api
-  ja suportam esses tipos.
+  multiplos cursos ativos sem antes resolver o conceito de usuario/"curso atual". Alem disso,
+  pode ficar ambiguo se houver 2+ Dailies com a mesma `Date` na mesma Weekly (`CreateDailyReinforcement`
+  usa `IClock.Today()` como data da Daily de reforco, entao isso e possivel) - nao foi um
+  problema pratico na Fase 4 porque `reinforcementDailyId` (retornado por `POST .../complete`)
+  permite navegar direto pra sessao de reforco sem depender de `/api/today` escolher "o dia
+  certo" sozinho, mas a ambiguidade em si continua existindo no caso geral.
+- No frontend, qualquer tela que mostre mais de uma "atividade" em sequencia (como `TodayPage`)
+  precisa decidir explicitamente *quando* avançar pra proxima, nao só reagir a toda mudança de
+  dado - ver "Maquina de passo (Step)" na secao de Frontend. Reagir automaticamente a cada
+  atualizacao de estado engole o feedback da ultima resposta.
+- **UI de autoria de conteudo curado ainda nao existe** - os endpoints `POST/PUT
+  /api/curated-content` (Fase 4) funcionam, mas so foram usados via script/curl ate agora.
 - **Resolvido na Fase 3, nao e mais pendencia:** o schema ja foi validado contra um Postgres real
   rodando (Docker disponivel nesta sessao) - ver "Persistencia" acima para o relato completo,
   incluindo o bug de concorrencia do EF Core que essa validacao revelou e corrigiu.
-- **Resolvido na Fase 3, nao e mais pendencia:** o bloqueio de comandos de mover/apagar arquivo
-  que afetou as Fases 1 e 2 (`mv`, `Move-Item`, `rm`, `Remove-Item` negados, exigindo que o
-  Falves rodasse scripts manualmente) nao se aplicou nesta sessao - comandos de arquivo foram
-  executados diretamente sem problema. Nao ha garantia de que uma sessao futura tenha o mesmo
-  ambiente; se o bloqueio voltar, o padrao descrito em
-  `docs/fase-2/resumo-implementacao-fase-2.md` (entregar o script exato pro Falves rodar) ainda
-  vale.
