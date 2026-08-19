@@ -26,12 +26,17 @@ public record DailyActivityDto(
     Guid? ContentId,
     ActivityStatus Status,
     AnswerMode AnswerMode,
+    string? Prompt,
     string? ExpectedAnswer,
     IReadOnlyCollection<QuizOptionDto> QuizOptions,
     IReadOnlyCollection<RoleplayNodeDto> RoleplayNodes,
     IReadOnlyCollection<ActivityResponseDto> Responses);
 
-public record QuizOptionDto(Guid Id, string Text, bool IsCorrect);
+/// <summary>
+/// IsCorrect vem nulo enquanto a atividade não tem nenhuma ActivityResponse registrada - o
+/// gabarito só é revelado depois da primeira tentativa (ver DailyStateMapper).
+/// </summary>
+public record QuizOptionDto(Guid Id, string Text, bool? IsCorrect);
 
 public record RoleplayNodeDto(
     Guid Id,

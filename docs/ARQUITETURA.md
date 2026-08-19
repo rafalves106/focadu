@@ -4,7 +4,8 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 2 - Monorepo Git + API Real**.
+> Ultima fase que atualizou este documento: **Fase 3 - Correcoes de Api, Seed de Conteudo e
+> Inicio do Frontend**.
 
 ## Visao geral do projeto
 
@@ -30,8 +31,8 @@ focadu/                    <- raiz do repositorio Git
 │   ├── docker-compose.yml
 │   ├── src/
 │   └── tests/
-├── frontend/               <- Vite + React Router, implementacao prevista para o Passo 3
-│   └── README.md            (placeholder ate la)
+├── frontend/               <- Vite + React + TypeScript + React Router + Tailwind (Fase 3)
+│   └── src/
 └── whatsapp-service/        <- servico Node isolado de notificacao, fase futura
     └── README.md             (placeholder ate la)
 ```
@@ -44,7 +45,8 @@ backend, frontend e whatsapp-service, nao so o codigo .NET.
 - **Backend**: .NET 10, C# puro no dominio, PostgreSQL + EF Core (Code-First Migrations,
   provider Npgsql), xUnit, ASP.NET Core Web API (minimal APIs). Solucao no formato `.slnx`
   (`backend/Focadu.slnx`).
-- **Frontend** (Passo 3, ainda nao implementado): Vite + React Router, planejado.
+- **Frontend** (Fase 3): Vite + React 19 + TypeScript + React Router 7 + Tailwind CSS v4
+  (CSS-first, tokens em `@theme`). Client HTTP tipado com fetch nativo, sem lib extra.
 - **WhatsApp Service** (fase futura, ainda nao implementado): servico Node isolado.
 
 ## Arquitetura do backend: Hexagonal (Ports & Adapters) + DDD
@@ -97,6 +99,10 @@ src/
     Repositories/                   <- ICourseRepository, IMonthlyRepository, IWeeklyRepository,
                                        IUnitOfWork (ports)
   Focadu.Application/
+    AssemblyInfo.cs                 <- InternalsVisibleTo("Focadu.Tests"), desde a Fase 3 - permite
+                                       testar direto membros internal (DailyStateMapper.ToDto,
+                                       SubmitActivityResponseUseCase.ResolveScore) sem precisar de
+                                       fakes de repositorio
     Ports/                          <- IClock, IContentEvaluationService (stub, sem impl),
                                        IAudioTranscriptionService (stub, sem impl)
     Exceptions/                     <- NotFoundException, ConflictException, ValidationException
@@ -104,9 +110,11 @@ src/
     Courses/                        <- ListCoursesUseCase, GetCourseDetailUseCase, Dtos.cs
     Weeklies/                       <- GetWeeklyDetailUseCase, Dtos.cs
     Dailies/                        <- GetDailyStateUseCase, GetTodayUseCase,
-                                       StartOrResumeDailyUseCase, SubmitActivityResponseUseCase,
+                                       StartOrResumeDailyUseCase, SubmitActivityResponseUseCase
+                                       (+ ResolveScore, ver "Score no servidor" abaixo),
                                        CompleteDailyUseCase, DailyStateMapper.cs (interno,
                                        compartilhado pelos casos de uso acima), Dtos.cs
+    Seed/                            <- SeedWebSecurityCourseUseCase (Fase 3), ver secao de Seed
     DependencyInjection.cs
   Focadu.Infrastructure/
     Persistence/
@@ -115,7 +123,7 @@ src/
       Configurations/               <- 1 IEntityTypeConfiguration por entidade (12 arquivos)
       Repositories/                 <- CourseRepository, MonthlyRepository, WeeklyRepository
       UnitOfWork.cs
-      Migrations/                   <- InitialCreate (schema completo, sem mudancas na Fase 2)
+      Migrations/                   <- InitialCreate (Fase 1) + AddPromptToDailyActivity (Fase 3)
     Services/SystemClock.cs         <- implementacao real de IClock (hora local)
     DependencyInjection.cs
   Focadu.Api/
@@ -130,6 +138,8 @@ tests/
     Weeklies/WeeklyTests.cs
     Policies/EvaluationPolicyTests.cs
     Domain/DomainExceptionCodeTests.cs  <- trava os Code usados pela Api (ver abaixo)
+    Dailies/SubmitActivityResponseScoreTests.cs  <- ResolveScore (Fase 3)
+    Dailies/DailyStateMapperTests.cs             <- gabarito escondido/revelado (Fase 3)
     TestHelpers/DailyFixtures.cs
 ```
 
@@ -143,7 +153,7 @@ Course (Draft/Active/Archived)
 └── Monthly (Number, Title)
     └── Weekly (Number, Title, Theme)
         ├── Daily (DayNumber, Date, Status, IsReinforcement, PenaltyPoints)
-        │   └── DailyActivity (Type, OrderIndex, AnswerMode, ContentId?, ExpectedAnswer?)
+        │   └── DailyActivity (Type, OrderIndex, AnswerMode, Prompt?, ContentId?, ExpectedAnswer?)
         │       ├── ActivityResponse (AttemptNumber, Score, Passed, Transcript?, AiFeedback?)
         │       ├── QuizOption (Text, IsCorrect)                  [Quiz e WordMatch]
         │       └── RoleplayNode (NodeKey, Text, IsTerminal, TerminalQuality?)  [Roleplay]
@@ -165,6 +175,13 @@ contem uma Daily datada em `date` dentro daquele curso - usado pelo atalho "/hoj
 `Course` e `Monthly` sao aggregates mais simples, com repositorio proprio
 (`ICourseRepository`, `IMonthlyRepository`), usados principalmente para navegacao/gestao de
 conteudo, nao para as regras de acesso/reforco do dia a dia.
+
+**`DailyActivity.Prompt` (Fase 3):** enunciado/pergunta da propria atividade (pergunta do Quiz,
+termo do WordMatch, contexto do Cloze/Roleplay) - sempre visivel ao cliente (nunca redigido, e o
+que o usuario precisa ler pra responder). Faltava na Fase 1: so existiam `QuizOption` (as opcoes)
+e `ExpectedAnswer` (gabarito do Cloze), sem nenhum campo pra guardar o texto da pergunta em si.
+Descoberto ao escrever o seed de conteudo real da Fase 3 e confirmado com o Falves antes de mexer
+no schema - ver `docs/fase-3/resumo-implementacao-fase-3.md`.
 
 ## Regras de negocio centralizadas
 
@@ -256,10 +273,13 @@ consulta), nao um shape de resposta diferente. Isso vale tambem para as resposta
 `POST .../start` e `POST .../complete` - os tres retornam `DailyStateDto`, para o cliente sempre
 ter o estado atualizado sem precisar de uma segunda chamada.
 
-`DailyActivityDto` expoe `QuizOptions[].IsCorrect`, `ExpectedAnswer` e
-`RoleplayNodes[].TerminalQuality` sem redacao - o dominio ja e a fonte da verdade retornada
-(so traduzida para DTO, nunca a entidade EF diretamente). Ver "Duvidas e pontos abertos" na
-Fase 2 para a implicacao disso (gabarito visivel antes de responder).
+`DailyActivityDto` expoe `Prompt` (enunciado) sempre, sem redacao - e o que o usuario precisa ler
+pra responder. Ja `QuizOptions[].IsCorrect`, `ExpectedAnswer` e `RoleplayNodes[].TerminalQuality`
+(o gabarito propriamente dito) **so aparecem depois que a atividade tem ao menos uma
+`ActivityResponse` registrada** (Fase 3) - antes disso vem `null`. O gate e um unico booleano em
+`DailyStateMapper.ToActivityDto` (`hasAnswered = activity.Responses.Count > 0`), aplicado aos tres
+campos. Isso fecha a lacuna identificada na Fase 2 (gabarito visivel no DevTools antes de
+responder).
 
 ### GET /api/today assume exatamente um Course com Status = Active
 
@@ -271,13 +291,23 @@ usar `/api/courses/{courseId}` para desambiguar). Isso e seguro para o cenario a
 curso piloto, "Web Security"), mas para de funcionar sozinho se o produto crescer para varios
 cursos ativos ao mesmo tempo sem um conceito de usuario - ver pontos abertos da Fase 2.
 
-### POST .../responses ainda recebe o Score pronto
+### Score no servidor para Quiz/WordMatch (Fase 3)
 
-`SubmitActivityResponseUseCase` continua recebendo `Score` diretamente do chamador (nao computa
-a partir de qual `QuizOption`/`RoleplayOption` foi escolhida) - a Fase 2 nao alterou esse
-contrato, so adicionou validacao (`Score` obrigatorio, 0-100) e DTOs adequados. Calcular o Score
-a partir da escolha do usuario (sem IA, so para Quiz/WordMatch) ou via `IContentEvaluationService`
-(para Cloze/texto livre) continua em aberto - ver pontos abertos da Fase 2.
+`POST .../responses` recebe `SelectedOptionId` (Guid) para atividades `Quiz`/`WordMatch`, nao mais
+`Score` pronto - o `Score` e sempre calculado dentro de `SubmitActivityResponseUseCase.ResolveScore`
+(100 se a opcao escolhida existe nessa atividade e `IsCorrect = true`, 0 caso contrario). Qualquer
+`Score` que o cliente mande junto e ignorado para esses dois tipos. `Cloze`/`Roleplay` continuam
+recebendo `Score` pronto do chamador - comentario explicito no codigo (`ResolveScore`) explicando
+que isso e assim porque dependem de `IContentEvaluationService`, ainda sem adapter concreto.
+
+Validacao (`ValidationException`, mesmo envelope padrao de erro):
+
+| Code | Quando |
+|---|---|
+| `selected_option_id_obrigatorio` | Quiz/WordMatch sem `SelectedOptionId` no corpo |
+| `selected_option_id_invalido` | `SelectedOptionId` nao corresponde a uma `QuizOption` desta atividade |
+| `score_obrigatorio` | Cloze/Roleplay sem `Score` no corpo |
+| `score_invalido` | Cloze/Roleplay com `Score` fora de 0-100 |
 
 ### Tratamento de erro padronizado
 
@@ -331,36 +361,81 @@ de testes em vez de silenciosamente virar um 400 generico em producao.
   `{id:guid}`), parseados explicitamente via `RouteParsing.RequireGuid` - de proposito, para um
   Guid malformado tambem virar `{ error: "id_invalido", message: "..." }` (400) em vez do 404
   generico que uma constraint de rota do ASP.NET Core geraria sozinha.
-- `SubmitActivityResponseRequest.Score` e `int?` (nao `int`) para distinguir "campo ausente" de
-  "veio 0"; validado explicitamente (`score_obrigatorio` se nulo, `score_invalido` se fora de
-  0-100) antes de chamar o caso de uso.
+- `SubmitActivityResponseRequest` tem `SelectedOptionId` (Guid?) e `Score` (int?, legado para
+  Cloze/Roleplay) - qual e obrigatorio depende do `ActivityType`, validado dentro do caso de uso
+  (ver "Score no servidor" acima), nao mais em `Program.cs`.
 - Corpo de request malformado (JSON invalido) ainda pode gerar uma resposta de erro fora do
   formato padrao da Api, por vir do model binding do ASP.NET Core antes do endpoint rodar - ver
   pontos abertos da Fase 2.
 
+### CORS (Fase 3)
+
+A Api libera `http://localhost:5173` (e `127.0.0.1:5173`) via `AddCors`/`UseCors`, para o
+frontend Vite conseguir chamar a Api em dev - sem isso o navegador bloqueia toda chamada (portas
+diferentes contam como origens diferentes, mesmo os dois em `localhost`). Hardcoded e so-dev de
+proposito (unico usuario-teste, sem ambiente de deploy ainda) - ver pontos abertos.
+
+## Seed de conteudo (Fase 3)
+
+Nao ha endpoint de autoria de conteudo na Api (ver "Fora de escopo"), entao o unico jeito de
+popular Course/Monthly/Weekly/Daily/DailyActivity/CuratedContent e via
+`SeedWebSecurityCourseUseCase` (`Focadu.Application.Seed`) - idempotente por nome de Course
+("Web Security"), monta o grafo inteiro em memoria via API publica do dominio e persiste com uma
+unica chamada a `ICourseRepository.AddAsync` + `IUnitOfWork.SaveChangesAsync` (o `Add` do EF Core
+cascateia o grafo inteiro automaticamente, sem precisar de `IMonthlyRepository`/`IWeeklyRepository`
+separados). Popula a Semana 1 completa do curso "Web Security" (4 Dailies, CuratedContent por dia,
+1 DailyActivity Quiz por dia, WeeklyProject) - conteudo completo em
+`docs/fase-3/resumo-implementacao-fase-3.md`.
+
+Acionado via `dotnet run --project src/Focadu.Api -- seed` (checagem de `args` em `Program.cs`,
+antes de `app.Run()` - roda e encerra, sem subir o servidor HTTP).
+
 ## Persistencia (EF Core + Postgres)
 
-Sem mudancas de schema na Fase 2 (nenhuma migration nova) - so um metodo de leitura novo no
-repositorio (`IWeeklyRepository.GetByDateAsync`). Decisoes de design confirmadas na Fase 1
-continuam valendo integralmente (Guid como Id, tabela associativa real para
+Duas migrations ate agora: `InitialCreate` (Fase 1) e `AddPromptToDailyActivity` (Fase 3, coluna
+nova `DailyActivities.Prompt`, nullable). Decisoes de design confirmadas na Fase 1 continuam
+valendo integralmente (Guid como Id, tabela associativa real para
 `WeeklyReinforcement.WeakDailyIds`, enums como `string`, etc.) - ver
 `docs/fase-1/resumo-implementacao-fase-1.md` para o raciocinio completo de cada uma.
 
-**Pendencia conhecida (ainda nao bloqueante):** o schema nunca foi validado contra um Postgres
-real rodando - o ambiente de desenvolvimento usado nas Fases 1 e 2 nao tem Docker instalado. Na
-Fase 2, validamos que a Api sobe corretamente e trata erros de conexao com o banco de forma
-segura (500 com o envelope padrao, sem derrubar o processo), mas nenhum fluxo feliz (ler/escrever
-dados de verdade) foi exercitado ainda. Continua sinalizado aqui ate ser validado.
+**Schema validado contra Postgres real pela primeira vez na Fase 3** (Docker disponivel nesta
+sessao, diferente das Fases 1 e 2) - as duas migrations aplicam sem erro, e o fluxo completo
+(seed, leitura, e responder uma atividade) foi exercitado de ponta a ponta via `curl` e via
+navegador. Isso revelou um bug pre-existente:
+
+**Bug de concorrencia do EF Core, corrigido na Fase 3.** Toda `Entity` gera seu proprio `Id`
+(`Guid.NewGuid()`) no construtor, nunca o banco - mas nenhuma configuracao dizia isso ao EF Core
+explicitamente. A convencao padrao do EF Core para chave Guid e `ValueGeneratedOnAdd`, e o change
+tracker, ao descobrir uma entidade nova dentro de um grafo **ja rastreado** (carregado via query -
+exatamente o que acontece em `SubmitActivityResponseUseCase`, que adiciona uma `ActivityResponse`
+nova a uma `DailyActivity` ja carregada do banco), concluia erroneamente "ja tem Id, entao ja
+existe" e emitia `UPDATE` em vez de `INSERT` - o `UPDATE` nao afetava nenhuma linha e virava
+`DbUpdateConcurrencyException`. So aparece contra banco real (nunca em teste unitario de dominio
+puro), e so em fluxos que adicionam uma entidade filha a um grafo ja tracked - por isso nunca
+tinha aparecido: nenhum fluxo de escrita real tinha sido exercitado contra Postgres ate a Fase 3.
+Corrigido uma unica vez, centralizado em `FocaduDbContext.OnModelCreating`
+(`idProperty.ValueGenerated = ValueGenerated.Never` pra toda entidade) - sem migration nova, e so
+metadado do EF Core, nao muda schema.
 
 ## Como rodar localmente
 
 ```bash
 cd backend
-docker compose up -d                              # sobe Postgres em localhost:5432
-dotnet ef database update -p src/Focadu.Infrastructure  # aplica a migration InitialCreate
-dotnet build Focadu.slnx                            # build de toda a solucao
-dotnet test tests/Focadu.Tests/Focadu.Tests.csproj  # roda os testes de dominio
-dotnet run --project src/Focadu.Api                 # sobe a API completa
+docker compose up -d                                    # sobe Postgres em localhost:5432
+dotnet ef database update -p src/Focadu.Infrastructure --startup-project src/Focadu.Infrastructure  # aplica as migrations
+dotnet build Focadu.slnx                                # build de toda a solucao
+dotnet test tests/Focadu.Tests/Focadu.Tests.csproj      # roda os testes de dominio
+dotnet run --project src/Focadu.Api -- seed              # popula o curso "Web Security" (idempotente)
+dotnet run --project src/Focadu.Api                      # sobe a API completa
+```
+
+Frontend (numa outra aba de terminal, com a Api acima ja rodando):
+
+```bash
+cd frontend
+npm install
+cp .env.example .env.local   # ajusta VITE_API_BASE_URL se a Api nao estiver em localhost:5282
+npm run dev                  # http://localhost:5173
 ```
 
 Connection string default (dev): `Host=localhost;Port=5432;Database=focadu;Username=focadu;
@@ -369,21 +444,74 @@ Password=focadu` (definida em `backend/src/Focadu.Api/appsettings.json` e como f
 ferramentas de design-time do EF, ou por `ConnectionStrings:Focadu` / env var equivalente para a
 Api em runtime).
 
+## Frontend (Fase 3)
+
+```
+frontend/
+  index.html, vite.config.ts, package.json, tsconfig*.json
+  .env.example, .env.local (gitignorado - VITE_API_BASE_URL)
+  src/
+    main.tsx              <- BrowserRouter + Routes
+    App.tsx                <- shell com nav (Hoje / Inicio) + <Outlet/>
+    index.css               <- @import "tailwindcss" + tokens @theme (paleta da identidade visual)
+    api/
+      types.ts               <- espelha os DTOs de Focadu.Application (enums como numero)
+      client.ts               <- fetch tipado, ApiError, VITE_API_BASE_URL
+      useApiResource.ts        <- hook pra loading/error/cancelamento (usado pelas 4 sub-telas de /start)
+    routes/
+      TodayPage.tsx            <- /hoje
+      StartPage.tsx             <- /start (ramifica por query string)
+    components/
+      QuizActivity.tsx           <- a tela de Quiz de verdade (a mais validada no Figma)
+      Layout.tsx                  <- PageShell, Centered (compartilhados pelas telas de /start)
+```
+
+Roteamento exatamente como documentado (nao espelha as rotas REST da Api, que sao um recurso
+diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
+
+| Rota | Consome | Tela |
+|---|---|---|
+| `/hoje` | `GET /api/today` | Daily ativa de hoje - **Quiz implementado de ponta a ponta** |
+| `/start` | `GET /api/courses` | Lista de cursos |
+| `/start?course=` | `GET /api/courses/{courseId}` | Detalhe do curso |
+| `/start?course=&weekly=` | `GET /api/weeklies/{weeklyId}` | Detalhe da semana |
+| `/start?course=&weekly=&daily=` | `GET /api/dailies/{dailyId}` | Estado de uma Daily especifica |
+
+`/hoje` chama `GET /api/today` e, se `AccessMode` for `Start`/`Resume`, chama
+`POST .../start` antes de renderizar (a Daily precisa estar `InProgress` pra aceitar respostas -
+`daily_nao_iniciada` senao). So a atividade tipo `Quiz` tem tela real (`QuizActivity`); outros
+tipos mostram uma mensagem simples de "ainda nao implementado". `QuizActivity`: opcoes sem
+gabarito -> selecao -> `POST .../responses` com `SelectedOptionId` -> busca a Daily de novo (o
+resultado do submit nao traz as opcoes) pra pegar o gabarito ja revelado e mostrar
+certo/errado. As 4 variacoes de `/start` sao funcionais mas nao receberam o mesmo polimento
+visual que `/hoje` (fora de escopo explicito desta fase - so a tela de Quiz precisava estar
+"a mais validada no Figma").
+
+Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.config.js`):
+`--color-base` (`#0A0A0A`), `--color-surface` (`#151515`), `--color-surface-alt` (`#1E1E1E`),
+`--color-accent` (`#39FF6A`), `--color-alert` (`#FF3B3B`), `--color-primary`/`secondary`/`muted`
+(`#F5F5F5`/`#9A9A9A`/`#5C5C5C`).
+
 ## Fora de escopo ate agora
 
-- Frontend (`frontend/` e so placeholder ate o Passo 3).
+- Telas de WordMatch, Cloze e Roleplay no frontend - so Quiz esta implementado (Fase 3).
+- Tela de resumo falado/microfone, menu de configuracoes, captura de voz real no frontend.
+- `POST .../complete` nao e chamado pelo frontend ainda - a tela de Quiz cobre responder uma
+  atividade, nao concluir a Daily inteira.
 - Servico de WhatsApp (`whatsapp-service/` e so placeholder).
 - Autenticacao/autorizacao real (usuario fixo/hardcoded, unico usuario-teste) - **reconfirmado
   na Fase 2**: nenhuma entidade recebe `UserId`.
 - Captura, upload e transcricao de voz.
 - Integracao com GitHub (Octokit.NET) e exigencia de publicacao publica (LinkedIn/GitHub).
-- Geracao de conteudo/avaliacao via IA (Groq) - **reconfirmado na Fase 2**: so os ports
+- Geracao de conteudo/avaliacao via IA (Groq) - **reconfirmado na Fase 3**: `Cloze`/`Roleplay`
+  continuam recebendo `Score` pronto do chamador (ver "Score no servidor"); so os ports
   (`IContentEvaluationService`, `IAudioTranscriptionService`) existem, sem adapter concreto nem
   registro no DI.
 - Sistema de Gems/Marketplace/Ranking/Cosmeticos/Arcade/UGC.
 - Endpoints de autoria de conteudo (criar Course/Monthly/Weekly/Daily/DailyActivity/etc.) - a
-  Api da Fase 2 e so leitura + as 3 acoes de progresso do aluno (iniciar, responder, concluir).
-  Conteudo hoje so pode ser inserido via seed/script direto no banco.
+  Api e so leitura + as 3 acoes de progresso do aluno (iniciar, responder, concluir). Conteudo
+  hoje so pode ser inserido via `SeedWebSecurityCourseUseCase` (ver "Seed de conteudo" acima).
+- CORS liberado so para `http://localhost:5173` (hardcoded, dev apenas).
 
 ## Fases concluidas
 
@@ -391,30 +519,36 @@ Api em runtime).
 |---|---|---|
 | 1 | Dominio e Schema (Backend .NET) | `docs/fase-1/resumo-implementacao-fase-1.md` |
 | 2 | Monorepo Git + API Real (Backend .NET) | `docs/fase-2/resumo-implementacao-fase-2.md` |
+| 3 | Correcoes de Api, Seed de Conteudo e Inicio do Frontend | `docs/fase-3/resumo-implementacao-fase-3.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
 - O contrato da Api (rotas, DTOs, formato de erro) esta documentado na secao "Superficie da
-  API" acima - uma fase de frontend (Passo 3) pode consumir isso diretamente.
+  API" acima; o client tipado do frontend (`frontend/src/api/`) e o exemplo de referencia de
+  como consumi-lo.
 - `GET /api/today` e `GET /api/dailies/{dailyId}` retornam o mesmo `DailyStateDto` -
   `AccessMode` e o campo que decide se a tela deve ser editavel ou so leitura.
-- Nenhum endpoint de autoria de conteudo existe - popular Course/Monthly/Weekly/Daily/
-  DailyActivity para testar a Api manualmente exige um seed script direto no banco (nao
-  implementado ainda em nenhuma fase).
-- `SubmitActivityResponseUseCase` ainda recebe o `Score` pronto do chamador - uma fase futura
-  de avaliacao/IA provavelmente precisa decidir se o Score passa a ser calculado no backend
-  (a partir de `SelectedOptionId` para Quiz/WordMatch, e via `IContentEvaluationService` para
-  Cloze/texto livre e Roleplay) ou se o frontend continua responsavel por isso.
+- `SelectedOptionId` (Quiz/WordMatch) e `Score` (Cloze/Roleplay) sao mutuamente exclusivos no
+  corpo de `POST .../responses`, decidido pelo `ActivityType` da atividade - ver "Score no
+  servidor" acima.
+- Gabarito (`IsCorrect`/`ExpectedAnswer`/`TerminalQuality`) so aparece depois da primeira
+  resposta - o frontend precisa re-buscar o estado da Daily apos um submit pra ver o gabarito
+  revelado (o resultado do submit em si nao traz as opcoes atualizadas).
+- Toda `Entity` precisa de `ValueGenerated.Never` no `Id` pra funcionar corretamente com EF Core
+  quando adicionada a um grafo ja tracked (ver "Bug de concorrencia do EF Core") - se uma fase
+  futura adicionar uma entidade nova, isso ja esta coberto globalmente em
+  `FocaduDbContext.OnModelCreating`, nao precisa reconfigurar por entidade.
 - `GET /api/today` assume exatamente um Course `Active`; isso quebra se o produto crescer para
   multiplos cursos ativos sem antes resolver o conceito de usuario/"curso atual".
-- Continua pendente validar o schema contra um Postgres real rodando (ambiente sem Docker ate
-  agora).
-- O ambiente de desenvolvimento usado nas Fases 1 e 2 bloqueia comandos de mover/apagar arquivo
-  (`mv`, `Move-Item`, `rm`, `Remove-Item`) para o Claude Code - qualquer reorganizacao de pastas
-  precisa ser feita pelo Falves rodando os comandos manualmente. Ja funcionou assim uma vez (a
-  reorganizacao para monorepo desta fase), entao o padrao esta validado: entregar o script exato
-  (na sintaxe do shell que ele estiver usando de verdade - `cmd.exe` e PowerShell tem sintaxes
-  incompativeis entre si, vale confirmar qual antes de mandar o script) e conferir o resultado
-  depois. Ver `docs/fase-2/resumo-implementacao-fase-2.md` para o relato completo, incluindo uma
-  volta por causa disso (primeiro commit saiu com a mensagem certa e o conteudo errado, corrigido
-  com `git commit --amend`).
+- WordMatch, Cloze e Roleplay ainda nao tem tela no frontend - so a estrutura de dados e a Api
+  ja suportam esses tipos.
+- **Resolvido na Fase 3, nao e mais pendencia:** o schema ja foi validado contra um Postgres real
+  rodando (Docker disponivel nesta sessao) - ver "Persistencia" acima para o relato completo,
+  incluindo o bug de concorrencia do EF Core que essa validacao revelou e corrigiu.
+- **Resolvido na Fase 3, nao e mais pendencia:** o bloqueio de comandos de mover/apagar arquivo
+  que afetou as Fases 1 e 2 (`mv`, `Move-Item`, `rm`, `Remove-Item` negados, exigindo que o
+  Falves rodasse scripts manualmente) nao se aplicou nesta sessao - comandos de arquivo foram
+  executados diretamente sem problema. Nao ha garantia de que uma sessao futura tenha o mesmo
+  ambiente; se o bloqueio voltar, o padrao descrito em
+  `docs/fase-2/resumo-implementacao-fase-2.md` (entregar o script exato pro Falves rodar) ainda
+  vale.

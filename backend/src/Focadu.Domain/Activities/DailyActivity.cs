@@ -20,6 +20,9 @@ public class DailyActivity : Entity
     /// <summary>Referência ao CuratedContent de origem. Nulo quando a atividade não deriva de um conteúdo (ex: leitura/vídeo em si).</summary>
     public Guid? ContentId { get; private set; }
 
+    /// <summary>Enunciado da atividade (pergunta do Quiz, termo do WordMatch, contexto do Cloze/Roleplay). Sempre visível ao cliente, nunca redigido - é o que o usuário responde.</summary>
+    public string? Prompt { get; private set; }
+
     public ActivityStatus Status { get; private set; }
 
     /// <summary>Usado no Cloze em modo texto livre/código, para conferência da resposta esperada.</summary>
@@ -47,6 +50,7 @@ public class DailyActivity : Entity
         ActivityType type,
         int orderIndex,
         AnswerMode answerMode,
+        string? prompt,
         Guid? contentId,
         string? expectedAnswer)
     {
@@ -57,6 +61,7 @@ public class DailyActivity : Entity
         Type = type;
         OrderIndex = orderIndex;
         AnswerMode = answerMode;
+        Prompt = prompt;
         ContentId = contentId;
         ExpectedAnswer = expectedAnswer;
         Status = ActivityStatus.Pending;
@@ -69,7 +74,7 @@ public class DailyActivity : Entity
     /// </summary>
     internal DailyActivity CloneForReinforcement(Guid newDailyId, int orderIndex)
     {
-        var clone = new DailyActivity(newDailyId, Type, orderIndex, AnswerMode, ContentId, ExpectedAnswer);
+        var clone = new DailyActivity(newDailyId, Type, orderIndex, AnswerMode, Prompt, ContentId, ExpectedAnswer);
         foreach (var option in _quizOptions)
         {
             clone.AddQuizOption(option.Text, option.IsCorrect);

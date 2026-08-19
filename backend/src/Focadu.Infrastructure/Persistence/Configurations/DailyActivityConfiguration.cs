@@ -16,6 +16,7 @@ public class DailyActivityConfiguration : IEntityTypeConfiguration<DailyActivity
         builder.Property(a => a.AnswerMode).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(a => a.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(a => a.OrderIndex).IsRequired();
+        builder.Property(a => a.Prompt);
         builder.Property(a => a.ExpectedAnswer);
         builder.Property(a => a.DailyId).IsRequired();
 

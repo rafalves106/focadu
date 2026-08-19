@@ -91,10 +91,11 @@ public class Daily : Entity
         ActivityType type,
         int orderIndex,
         AnswerMode answerMode,
+        string? prompt = null,
         Guid? contentId = null,
         string? expectedAnswer = null)
     {
-        var activity = new DailyActivity(Id, type, orderIndex, answerMode, contentId, expectedAnswer);
+        var activity = new DailyActivity(Id, type, orderIndex, answerMode, prompt, contentId, expectedAnswer);
         _activities.Add(activity);
         return activity;
     }

@@ -25,13 +25,18 @@ internal static class DailyStateMapper
 
     private static DailyActivityDto ToActivityDto(DailyActivity activity)
     {
+        // Gabarito (IsCorrect / ExpectedAnswer / TerminalQuality) só é revelado depois que o
+        // usuário já tentou responder ao menos uma vez - antes disso, esses campos saem nulos,
+        // para não dar pra ver a resposta certa direto no corpo da resposta HTTP antes de jogar.
+        var hasAnswered = activity.Responses.Count > 0;
+
         var quizOptions = activity.QuizOptions
-            .Select(o => new QuizOptionDto(o.Id, o.Text, o.IsCorrect))
+            .Select(o => new QuizOptionDto(o.Id, o.Text, hasAnswered ? o.IsCorrect : null))
             .ToList();
 
         var roleplayNodes = activity.RoleplayNodes
             .Select(n => new RoleplayNodeDto(
-                n.Id, n.NodeKey, n.Text, n.IsTerminal, n.TerminalQuality,
+                n.Id, n.NodeKey, n.Text, n.IsTerminal, hasAnswered ? n.TerminalQuality : null,
                 n.Options.Select(o => new RoleplayOptionDto(o.Id, o.Text, o.NextNodeId)).ToList()))
             .ToList();
 
@@ -43,6 +48,7 @@ internal static class DailyStateMapper
 
         return new DailyActivityDto(
             activity.Id, activity.Type, activity.OrderIndex, activity.ContentId, activity.Status,
-            activity.AnswerMode, activity.ExpectedAnswer, quizOptions, roleplayNodes, responses);
+            activity.AnswerMode, activity.Prompt, hasAnswered ? activity.ExpectedAnswer : null,
+            quizOptions, roleplayNodes, responses);
     }
 }
