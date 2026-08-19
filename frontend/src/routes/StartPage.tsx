@@ -2,18 +2,22 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { Centered, PageShell } from '../components/Layout';
+import { WeeklyProjectPage } from './WeeklyProjectPage';
 
 /**
- * `/start` cobre 4 telas via query string (nao path params - ver docs/ARQUITETURA.md):
+ * `/start` cobre 5 telas via query string (nao path params - ver docs/ARQUITETURA.md):
  * sem params -> lista de cursos; ?course= -> detalhe do curso; ?course=&weekly= -> detalhe da
- * semana; ?course=&weekly=&daily= -> estado de uma Daily especifica.
+ * semana; ?course=&weekly=&daily= -> estado de uma Daily especifica; ?course=&weekly=&project=
+ * -> tela do projeto pratico da semana (Fase 7).
  */
 export function StartPage() {
   const [searchParams] = useSearchParams();
   const courseId = searchParams.get('course');
   const weeklyId = searchParams.get('weekly');
   const dailyId = searchParams.get('daily');
+  const showProject = searchParams.get('project') !== null;
 
+  if (showProject && weeklyId) return <WeeklyProjectPage weeklyId={weeklyId} courseId={courseId} />;
   if (dailyId) return <DailyView dailyId={dailyId} weeklyId={weeklyId} courseId={courseId} />;
   if (weeklyId) return <WeeklyView weeklyId={weeklyId} courseId={courseId} />;
   if (courseId) return <CourseView courseId={courseId} />;
@@ -122,10 +126,13 @@ function WeeklyView({ weeklyId, courseId }: { weeklyId: string; courseId: string
       </ul>
 
       {weekly.project && (
-        <div className="mt-6 rounded-xl border border-surface-alt bg-surface p-4">
-          <h2 className="font-semibold text-primary">Projeto da semana</h2>
-          <p className="mt-1 text-sm text-secondary">{weekly.project.specText}</p>
-        </div>
+        <Link
+          to={`/start?course=${courseId ?? ''}&weekly=${weeklyId}&project=1`}
+          className="mt-6 block rounded-xl border border-project bg-project/10 p-4 hover:bg-project/20"
+        >
+          <h2 className="font-semibold text-project">Projeto da semana</h2>
+          <p className="mt-1 line-clamp-2 text-sm text-secondary">{weekly.project.specText}</p>
+        </Link>
       )}
     </PageShell>
   );

@@ -12,6 +12,9 @@
   --color-surface-alt: #1e1e1e;
   --color-accent: #39ff6a;
   --color-alert: #ff3b3b;
+  /* Cor do tema "Projeto Semanal" (Fase 7, Figma) - separada de --color-accent porque o Figma usa
+     um tom proprio (ambar) so pra telas de projeto/"chefe de fase", nao o verde padrao. */
+  --color-project: #ffb800;
   --color-primary: #f5f5f5;
   --color-secondary: #9a9a9a;
   --color-muted: #5c5c5c;

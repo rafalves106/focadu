@@ -145,6 +145,22 @@ public class SubmitActivityResponseScoreTests
         Assert.Equal("selected_roleplay_node_id_obrigatorio", ex.Code);
     }
 
+    // Reading/Video (Fase 7): sem avaliacao - concluir a etapa sempre pontua 100 (sempre Passed,
+    // nunca penaliza). Ver SubmitActivityResponseUseCase.ResolveScore.
+    [Theory]
+    [InlineData(ActivityType.Reading)]
+    [InlineData(ActivityType.Video)]
+    public void ReadingOrVideo_AlwaysScoresFull(ActivityType type)
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var daily = weekly.AddDaily(1, DailyFixtures.Today);
+        var activity = daily.AddActivity(type, 0, AnswerMode.MultipleChoice, contentId: Guid.NewGuid());
+
+        var score = SubmitActivityResponseUseCase.ResolveScore(activity, null, null, null);
+
+        Assert.Equal(100, score);
+    }
+
     [Fact]
     public void Roleplay_SelectedNode_NotTerminal_Throws()
     {

@@ -85,18 +85,17 @@ public class SeedWebSecurityCourseUseCase
             "for HTTPS) e a troca de requisicao/resposta HTTP antes do navegador renderizar algo. " +
             "Cada peca desse caminho e um ponto onde a seguranca pode falhar.");
 
-        weekly.AddCuratedContent(CuratedContentType.Video, "How websites and HTTP work? Web Basics Crash Course",
+        var video = weekly.AddCuratedContent(CuratedContentType.Video, "How websites and HTTP work? Web Basics Crash Course",
             "https://www.youtube.com/watch?v=iD2fgC74ZtA");
 
         // TODO: mecanismo de servir/anexar arquivo estatico (SVG) ainda nao foi desenhado
         weekly.AddCuratedContent(CuratedContentType.Diagram, "Diagrama do dia", null,
             "Diagrama ja existe como SVG, mas ainda sem mecanismo definido para servi-lo pela Api.");
 
-        var quiz = daily.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice,
-            prompt: "O que acontece, em ordem, quando voce digita uma URL e aperta Enter no navegador?");
-        quiz.AddQuizOption("O navegador resolve o dominio via DNS, abre uma conexao com o servidor e troca requisicao/resposta HTTP", true);
-        quiz.AddQuizOption("O navegador baixa o site inteiro por FTP antes de exibir qualquer coisa", false);
-        quiz.AddQuizOption("O servidor envia a pagina via um socket UDP sem estabelecer conexao", false);
+        // Ordem da sequencia do dia (Fase 7): leitura -> resumo falado (sobre a leitura) -> video
+        // -> atividades avaliaveis. Reading/Video sao etapas de consumo (ContentId obrigatorio,
+        // sem QuizOption/ExpectedAnswer) - ver ActivityType.Reading/Video.
+        daily.AddActivity(ActivityType.Reading, 0, AnswerMode.MultipleChoice, contentId: reading.Id);
 
         // VoiceSummary (Fase 5): resposta e sempre a transcricao do audio, avaliada pela Groq
         // contra reading.BodyText - nao usa QuizOption nem ExpectedAnswer.
@@ -105,6 +104,14 @@ public class SeedWebSecurityCourseUseCase
                 "funciona - o ciclo requisicao-resposta, o papel do HTTP, e por que isso importa " +
                 "pra seguranca.",
             contentId: reading.Id);
+
+        daily.AddActivity(ActivityType.Video, 2, AnswerMode.MultipleChoice, contentId: video.Id);
+
+        var quiz = daily.AddActivity(ActivityType.Quiz, 3, AnswerMode.MultipleChoice,
+            prompt: "O que acontece, em ordem, quando voce digita uma URL e aperta Enter no navegador?");
+        quiz.AddQuizOption("O navegador resolve o dominio via DNS, abre uma conexao com o servidor e troca requisicao/resposta HTTP", true);
+        quiz.AddQuizOption("O navegador baixa o site inteiro por FTP antes de exibir qualquer coisa", false);
+        quiz.AddQuizOption("O servidor envia a pagina via um socket UDP sem estabelecer conexao", false);
     }
 
     private static void AddDay2(Weekly weekly, DateOnly date)
@@ -112,20 +119,24 @@ public class SeedWebSecurityCourseUseCase
         var daily = weekly.AddDaily(2, date);
 
         // TODO: substituir pelo texto completo curado
-        weekly.AddCuratedContent(CuratedContentType.Reading, "Headers: os bilhetes que viajam junto com cada pedido",
+        var reading = weekly.AddCuratedContent(CuratedContentType.Reading, "Headers: os bilhetes que viajam junto com cada pedido",
             "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers",
             "Headers sao metadados que viajam junto com toda requisicao e resposta HTTP - definem " +
             "tipo de conteudo, cache, autenticacao e boa parte do que faz (ou quebra) a seguranca " +
             "de uma aplicacao web.");
 
-        weekly.AddCuratedContent(CuratedContentType.Video, "HTTP Crash Course & Exploration",
+        var video = weekly.AddCuratedContent(CuratedContentType.Video, "HTTP Crash Course & Exploration",
             "https://www.youtube.com/watch?v=iYM2zFP3Zn0");
 
         // TODO: mecanismo de servir/anexar arquivo estatico (SVG) ainda nao foi desenhado
         weekly.AddCuratedContent(CuratedContentType.Diagram, "Diagrama do dia", null,
             "Diagrama ja existe como SVG, mas ainda sem mecanismo definido para servi-lo pela Api.");
 
-        var quiz = daily.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice,
+        // Ordem da sequencia do dia (Fase 7): leitura -> video -> atividades avaliaveis.
+        daily.AddActivity(ActivityType.Reading, 0, AnswerMode.MultipleChoice, contentId: reading.Id);
+        daily.AddActivity(ActivityType.Video, 1, AnswerMode.MultipleChoice, contentId: video.Id);
+
+        var quiz = daily.AddActivity(ActivityType.Quiz, 2, AnswerMode.MultipleChoice,
             prompt: "Qual header HTTP informa ao navegador o tipo de conteudo do corpo da resposta (ex: text/html, application/json)?");
         quiz.AddQuizOption("Content-Type", true);
         quiz.AddQuizOption("Content-Length", false);
@@ -134,12 +145,12 @@ public class SeedWebSecurityCourseUseCase
         // WordMatch (Fase 4): 1 termo por DailyActivity (Prompt = termo, QuizOptions = definicoes
         // candidatas) - as duas juntas, na mesma Daily, formam o exercicio de associacao que o
         // frontend renderiza como 1 tela so (ver docs/ARQUITETURA.md).
-        var wordMatch1 = daily.AddActivity(ActivityType.WordMatch, 1, AnswerMode.MultipleChoice, prompt: "Content-Type");
+        var wordMatch1 = daily.AddActivity(ActivityType.WordMatch, 3, AnswerMode.MultipleChoice, prompt: "Content-Type");
         wordMatch1.AddQuizOption("Diz ao destinatario qual e o formato do conteudo no corpo da mensagem (ex: text/html, application/json)", true);
         wordMatch1.AddQuizOption("Diz ao servidor quantos bytes o cliente aceita receber no corpo da resposta", false);
         wordMatch1.AddQuizOption("Indica se a conexao deve permanecer aberta apos a resposta", false);
 
-        var wordMatch2 = daily.AddActivity(ActivityType.WordMatch, 2, AnswerMode.MultipleChoice, prompt: "Cache-Control");
+        var wordMatch2 = daily.AddActivity(ActivityType.WordMatch, 4, AnswerMode.MultipleChoice, prompt: "Cache-Control");
         wordMatch2.AddQuizOption("Define por quanto tempo e de que forma a resposta pode ser armazenada em cache", true);
         wordMatch2.AddQuizOption("Define qual algoritmo de compressao foi usado no corpo da resposta", false);
         wordMatch2.AddQuizOption("Informa qual codificacao de caracteres o corpo usa", false);
@@ -150,28 +161,32 @@ public class SeedWebSecurityCourseUseCase
         var daily = weekly.AddDaily(3, date);
 
         // TODO: substituir pelo texto completo curado
-        weekly.AddCuratedContent(CuratedContentType.Reading, "Cookies e sessões: dando memória a um protocolo que esquece tudo",
+        var reading = weekly.AddCuratedContent(CuratedContentType.Reading, "Cookies e sessões: dando memória a um protocolo que esquece tudo",
             "https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies",
             "HTTP e stateless: cada requisicao chega sem memoria da anterior. Cookies sao o " +
             "mecanismo que o servidor usa pra reconhecer o mesmo usuario entre requisicoes, " +
             "sustentando sessoes de login.");
 
         // Curadoria de video ainda nao fechada para os dias 3 e 4.
-        weekly.AddCuratedContent(CuratedContentType.Video, "Vídeo a confirmar", null,
+        var video = weekly.AddCuratedContent(CuratedContentType.Video, "Vídeo a confirmar", null,
             "Curadoria pendente - video ainda nao definido para este dia.");
 
         // TODO: mecanismo de servir/anexar arquivo estatico (SVG) ainda nao foi desenhado
         weekly.AddCuratedContent(CuratedContentType.Diagram, "Diagrama do dia", null,
             "Diagrama ja existe como SVG, mas ainda sem mecanismo definido para servi-lo pela Api.");
 
-        var quiz = daily.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice,
+        // Ordem da sequencia do dia (Fase 7): leitura -> video -> atividades avaliaveis.
+        daily.AddActivity(ActivityType.Reading, 0, AnswerMode.MultipleChoice, contentId: reading.Id);
+        daily.AddActivity(ActivityType.Video, 1, AnswerMode.MultipleChoice, contentId: video.Id);
+
+        var quiz = daily.AddActivity(ActivityType.Quiz, 2, AnswerMode.MultipleChoice,
             prompt: "Por que HTTP precisa de cookies para manter uma sessao de login?");
         quiz.AddQuizOption("Porque HTTP e stateless - cada requisicao e independente, sem memoria da anterior", true);
         quiz.AddQuizOption("Porque HTTP exige certificado de cliente em toda requisicao", false);
         quiz.AddQuizOption("Porque o servidor mantem a conexao TCP aberta indefinidamente com o navegador", false);
 
         // Cloze/MultipleChoice (Fase 4): mesma mecanica do Quiz (SelectedOptionId), so reaproveitada.
-        var clozeChoice = daily.AddActivity(ActivityType.Cloze, 1, AnswerMode.MultipleChoice,
+        var clozeChoice = daily.AddActivity(ActivityType.Cloze, 3, AnswerMode.MultipleChoice,
             prompt: "Complete a frase: um cookie marcado como ___ nao pode ser lido via JavaScript, " +
                 "o que dificulta o roubo do cookie de sessao por um ataque de XSS.");
         clozeChoice.AddQuizOption("HttpOnly", true);
@@ -180,7 +195,7 @@ public class SeedWebSecurityCourseUseCase
 
         // Cloze/FreeText (Fase 4, "usado para codigo"): resposta comparada no servidor contra
         // ExpectedAnswer (ver SubmitActivityResponseUseCase.ScoreFromFreeTextAnswer).
-        daily.AddActivity(ActivityType.Cloze, 2, AnswerMode.FreeText,
+        daily.AddActivity(ActivityType.Cloze, 4, AnswerMode.FreeText,
             prompt: "Complete o codigo: document.___ = 'nome=valor; path=/'; " +
                 "(a propriedade do objeto document usada para definir um cookie via JavaScript)",
             expectedAnswer: "cookie");
@@ -191,21 +206,25 @@ public class SeedWebSecurityCourseUseCase
         var daily = weekly.AddDaily(4, date);
 
         // TODO: substituir pelo texto completo curado
-        weekly.AddCuratedContent(CuratedContentType.Reading, "HTTPS e TLS: o capacete da sua conexão",
+        var reading = weekly.AddCuratedContent(CuratedContentType.Reading, "HTTPS e TLS: o capacete da sua conexão",
             "https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Transport_Layer_Security",
             "TLS envolve a conexao HTTP numa camada de criptografia e autenticacao: garante que " +
             "ninguem no meio do caminho leia ou altere os dados, e que o servidor e realmente " +
             "quem diz ser.");
 
         // Curadoria de video ainda nao fechada para os dias 3 e 4.
-        weekly.AddCuratedContent(CuratedContentType.Video, "Vídeo a confirmar", null,
+        var video = weekly.AddCuratedContent(CuratedContentType.Video, "Vídeo a confirmar", null,
             "Curadoria pendente - video ainda nao definido para este dia.");
 
         // TODO: mecanismo de servir/anexar arquivo estatico (SVG) ainda nao foi desenhado
         weekly.AddCuratedContent(CuratedContentType.Diagram, "Diagrama do dia", null,
             "Diagrama ja existe como SVG, mas ainda sem mecanismo definido para servi-lo pela Api.");
 
-        var quiz = daily.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice,
+        // Ordem da sequencia do dia (Fase 7): leitura -> video -> atividades avaliaveis.
+        daily.AddActivity(ActivityType.Reading, 0, AnswerMode.MultipleChoice, contentId: reading.Id);
+        daily.AddActivity(ActivityType.Video, 1, AnswerMode.MultipleChoice, contentId: video.Id);
+
+        var quiz = daily.AddActivity(ActivityType.Quiz, 2, AnswerMode.MultipleChoice,
             prompt: "O que o TLS garante numa conexao HTTPS que o HTTP puro nao garante?");
         quiz.AddQuizOption("Confidencialidade e integridade dos dados em transito, alem de autenticar o servidor via certificado", true);
         quiz.AddQuizOption("Que o servidor nunca sofrera ataques de SQL Injection", false);
@@ -223,7 +242,7 @@ public class SeedWebSecurityCourseUseCase
     /// </summary>
     private static void AddTlsRoleplay(Daily daily)
     {
-        var roleplay = daily.AddActivity(ActivityType.Roleplay, 1, AnswerMode.FreeText,
+        var roleplay = daily.AddActivity(ActivityType.Roleplay, 3, AnswerMode.FreeText,
             prompt: "Voce e o dev responsavel por decidir a configuracao de TLS de um novo servico interno.");
 
         var start = roleplay.AddRoleplayNode("start",

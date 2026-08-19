@@ -3,6 +3,7 @@ import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto, RoleplayNodeDto } from '../api/types';
 import { TerminalQuality } from '../api/types';
 import { ActivityScreen } from './Layout';
+import { FeedbackPanel } from './FeedbackPanel';
 
 const TERMINAL_QUALITY_LABEL: Record<number, string> = {
   [TerminalQuality.Ideal]: 'Ideal',
@@ -108,23 +109,19 @@ export function RoleplayActivity({
       )}
 
       {answered && lastResponse && (
-        <div>
-          <p className={`font-semibold ${lastResponse.passed ? 'text-accent' : 'text-alert'}`}>
-            {lastResponse.passed ? 'Desfecho ideal! 🎉' : 'Desfecho não ideal - dá uma olhada no que rolou.'}
-          </p>
-          {displayNode.terminalQuality !== null && (
-            <p className="mt-1 text-sm text-secondary">
-              Qualidade do desfecho: {TERMINAL_QUALITY_LABEL[displayNode.terminalQuality]}
-            </p>
-          )}
-          <button
-            type="button"
-            onClick={onContinue}
-            className="mt-4 rounded-xl border border-surface-alt bg-surface px-4 py-3 font-semibold text-primary hover:border-accent"
-          >
-            Continuar
-          </button>
-        </div>
+        <FeedbackPanel
+          passed={lastResponse.passed}
+          score={lastResponse.score}
+          headline={{ pass: 'Desfecho ideal! 🎉', fail: 'Desfecho não ideal - dá uma olhada no que rolou.' }}
+          detail={
+            displayNode.terminalQuality !== null && (
+              <p className="text-sm text-secondary">
+                Qualidade do desfecho: {TERMINAL_QUALITY_LABEL[displayNode.terminalQuality]}
+              </p>
+            )
+          }
+          onContinue={onContinue}
+        />
       )}
     </ActivityScreen>
   );
