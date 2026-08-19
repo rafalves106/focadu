@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
 import { ActivityType, AnswerMode, ActivityStatus, DailyAccessMode, type DailyStateDto, type CompleteDailyResult } from '../api/types';
 import { ActivityScreen, Centered } from '../components/Layout';
-import { OptionsAnswer } from '../components/OptionsAnswer';
+import { QuizActivity } from '../components/QuizActivity';
+import { WordMatchActivity } from '../components/WordMatchActivity';
 import { ClozeFreeTextActivity } from '../components/ClozeFreeTextActivity';
 import { RoleplayActivity } from '../components/RoleplayActivity';
 import { VoiceSummaryActivity } from '../components/VoiceSummaryActivity';
@@ -197,30 +198,8 @@ export function TodayPage() {
       const group = [...daily.activities]
         .filter((a) => a.type === ActivityType.WordMatch)
         .sort((a, b) => a.orderIndex - b.orderIndex);
-      const allAnswered = group.every((a) => a.status === ActivityStatus.Completed);
 
-      return (
-        <ActivityScreen eyebrow="Associe os termos" title="Escolha a definição certa para cada termo.">
-          <div className="flex flex-col gap-8">
-            {group.map((activity) => (
-              <div key={activity.id}>
-                <h2 className="mb-3 text-lg font-semibold text-primary">{activity.prompt}</h2>
-                <OptionsAnswer dailyId={daily!.id} activity={activity} onDailyRefetched={setDaily} />
-              </div>
-            ))}
-          </div>
-
-          {allAnswered && (
-            <button
-              type="button"
-              onClick={handleContinue}
-              className="rounded-xl border border-surface-alt bg-surface px-4 py-3 font-semibold text-primary hover:border-accent"
-            >
-              Continuar
-            </button>
-          )}
-        </ActivityScreen>
-      );
+      return <WordMatchActivity group={group} dailyId={daily.id} onDailyRefetched={setDaily} onContinue={handleContinue} />;
     }
 
     const activity = daily.activities.find((a) => a.id === step.activityId);
@@ -293,15 +272,9 @@ export function TodayPage() {
       );
     }
 
-    // Quiz e Cloze/MultipleChoice: mesma mecanica de OptionsAnswer, so muda o rotulo.
+    // Quiz e Cloze/MultipleChoice: mesma mecanica de OptionsAnswer, so muda o rotulo (ver QuizActivity).
     return (
-      <ActivityScreen
-        key={activity.id}
-        eyebrow={activity.type === ActivityType.Quiz ? 'Quiz do dia' : 'Complete a frase'}
-        title={activity.prompt ?? ''}
-      >
-        <OptionsAnswer dailyId={daily.id} activity={activity} onDailyRefetched={setDaily} onContinue={handleContinue} />
-      </ActivityScreen>
+      <QuizActivity key={activity.id} dailyId={daily.id} activity={activity} onDailyRefetched={setDaily} onContinue={handleContinue} />
     );
   }
 }

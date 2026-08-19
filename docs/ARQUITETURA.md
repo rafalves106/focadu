@@ -4,8 +4,8 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 8 - Polimento das Telas de Navegacao (Start,
-> Visao Semanal, Detalhes do Curso)**.
+> Ultima fase que atualizou este documento: **Fase 9 - Polimento das Atividades Individuais (Quiz,
+> Cloze, Ligar Palavras, Roleplay)**.
 
 ## Visao geral do projeto
 
@@ -719,9 +719,15 @@ frontend/
       WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7)
       AdminContentPage.tsx       <- /admin/conteudo (autoria de CuratedContent, Fase 6)
     components/
-      OptionsAnswer.tsx          <- nucleo "escolher opcao" - Quiz, cada termo de WordMatch, Cloze/MultipleChoice
-      ClozeFreeTextActivity.tsx   <- Cloze/FreeText (resposta + justificativa)
-      RoleplayActivity.tsx        <- navega o grafo de RoleplayNode client-side
+      activities/                 <- primitivas visuais das atividades avaliaveis (Fase 9)
+        IntroCard.tsx                <- tela de intro (badge/titulo/descricao/regras/CTA) - gate local (`started`), nao e passo novo no Step do TodayPage
+        OptionCard.tsx                <- card de opcao (neutro/selecionado/correto/errado/esmaecido) - Quiz, termos do WordMatch, decisoes do Roleplay
+        CodeHighlight.tsx              <- realca a lacuna "___" do prompt de Cloze
+      QuizActivity.tsx             <- Quiz e Cloze/MultipleChoice (Intro + OptionsAnswer) (Fase 9)
+      WordMatchActivity.tsx         <- grupo de termos do WordMatch (Intro + progresso "X de Y termos") (Fase 9)
+      OptionsAnswer.tsx          <- nucleo "escolher opcao" - Quiz, cada termo de WordMatch, Cloze/MultipleChoice; usa OptionCard desde a Fase 9
+      ClozeFreeTextActivity.tsx   <- Cloze/FreeText (resposta + justificativa); Intro + CodeHighlight desde a Fase 9
+      RoleplayActivity.tsx        <- navega o grafo de RoleplayNode client-side; Intro + OptionCard desde a Fase 9
       VoiceSummaryActivity.tsx    <- grava audio (MediaRecorder), envia multipart, mostra transcricao+feedback (Fase 5)
       ReadingActivity.tsx         <- etapa de leitura de um CuratedContent (Fase 7)
       VideoActivity.tsx           <- etapa de video - embed real do YouTube (Fase 7)
@@ -733,7 +739,8 @@ frontend/
       StatusBadge.tsx              <- badge de status generico, so apresentacao (Fase 8)
       ProgressBar.tsx               <- barra de progresso generica, extraida de SessionTopBar (Fase 8)
       WeeklyProjectCard.tsx          <- card do projeto semanal, usado por StartDashboard e WeeklyDetailPage (Fase 8)
-      CompletionSummary.tsx       <- pos POST .../complete (reforco diario/semanal, se houver)
+      CompletionSummary.tsx       <- pos POST .../complete (reforco diario/semanal, se houver); resumo real +
+                                   badge "Conceito Dominado" (aprovacao >= 90%) + "Refazer este dia" desde a Fase 9
       Layout.tsx                  <- PageShell, Centered, ActivityScreen (shells compartilhados)
 ```
 
@@ -769,7 +776,17 @@ verificacao ao vivo desta fase). Cada componente de atividade (`OptionsAnswer`,
 
 **WordMatch, na tela:** todas as `DailyActivity` do tipo WordMatch da Daily sao renderizadas
 juntas (uma linha `OptionsAnswer` por termo, cada uma pontuando/revelando de forma independente);
-o botao "Continuar" do grupo so aparece quando todos os termos ja tem resposta.
+o botao "Continuar" do grupo so aparece quando todos os termos ja tem resposta. Desde a Fase 9 vive
+em `WordMatchActivity.tsx` (extraido de `TodayPage.renderStep`), com uma Intro e progresso real
+"X de Y termos conectados".
+
+**Intro por atividade (Fase 9):** Quiz/Cloze/WordMatch/Roleplay mostram uma tela de intro
+(`IntroCard`) antes da pergunta/desafio/cenario - `started` e um `useState` local em cada
+componente (`QuizActivity`, `ClozeFreeTextActivity`, `RoleplayActivity`, `WordMatchActivity`),
+**nao um passo novo no `Step` do `TodayPage`** - a maquina de estado nem sabe que a intro existe, a
+atividade so vira "concluida" quando o usuario responde de verdade. Pula automaticamente pra quem
+ja respondeu antes (`activity.responses.length > 0`), evitando reintro ao reabrir uma atividade ja
+feita (ex: `/hoje?daily=` num dia passado).
 
 **Roleplay, na tela:** navega o grafo inteiramente no cliente (todos os `RoleplayNode`/
 `RoleplayOption` ja vieram no `DailyActivityDto` inicial - nao ha ida-e-volta a cada escolha). O
@@ -887,12 +904,23 @@ de Projeto Semanal).
 | 6 | Tela de Autoria de Conteudo Curado | `docs/fase-6/resumo-implementacao-fase-6.md` |
 | 7 | Etapas de Conteudo, Projeto Semanal, Menu de Configuracoes e Feedback Unificado | `docs/fase-7/resumo-implementacao-fase-7.md` |
 | 8 | Polimento das Telas de Navegacao (Start, Visao Semanal, Detalhes do Curso) | `docs/fase-8/resumo-implementacao-fase-8.md` |
+| 9 | Polimento das Atividades Individuais (Quiz, Cloze, Ligar Palavras, Roleplay) | `docs/fase-9/resumo-implementacao-fase-9.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
 - O contrato da Api (rotas, DTOs, formato de erro) esta documentado na secao "Superficie da
   API" acima; o client tipado do frontend (`frontend/src/api/`) e o exemplo de referencia de
   como consumi-lo.
+- **Ligar Palavras ainda nao e um matcher visual de 2 colunas com drag-and-drop** (o design do
+  Figma mostra essa interacao) - cada termo continua sendo respondido como multipla escolha
+  independente (`OptionsAnswer`, decisao da Fase 4). Reconstruir a interacao pra bater com o Figma
+  e um pedido explicito pra uma fase futura, nao um ajuste de polimento (ver
+  `docs/fase-9/resumo-implementacao-fase-9.md`).
+- **Cloze e Roleplay nao foram exercitados ao vivo na Fase 9** (so Quiz e WordMatch) - os Dias 3/4
+  do seed sao datados no futuro e ficam fora do alcance de `EvaluateDailyAccess` sem manipular
+  datas/relogio. Usam os mesmos componentes ja validados nos outros dois fluxos
+  (`IntroCard`/`OptionCard`/`CodeHighlight`/`FeedbackPanel`), mas vale uma conferencia visual numa
+  proxima sessao.
 - **`Focadu.Tests` so testa dominio puro** (entidades, `Weekly`/`Daily`, `EvaluationPolicy`) e
   funcoes `internal static` da camada de aplicacao que nao dependem de repositorio
   (`SubmitActivityResponseUseCase.ResolveScore`, `DailyStateMapper.ToDto`) - **nao ha fakes de
