@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { api, ApiError } from '../api/client';
+import { api } from '../api/client';
 import { ActivityType, AnswerMode, ActivityStatus, DailyAccessMode, type DailyStateDto, type CompleteDailyResult } from '../api/types';
+import { classifyApiError, type ApiFailure } from '../lib/apiError';
 import { ActivityScreen, Centered } from '../components/Layout';
+import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { QuizActivity } from '../components/QuizActivity';
 import { WordMatchActivity } from '../components/WordMatchActivity';
 import { ClozeFreeTextActivity } from '../components/ClozeFreeTextActivity';
@@ -79,10 +81,11 @@ export function TodayPage() {
   const [daily, setDaily] = useState<DailyStateDto | null>(null);
   const [step, setStep] = useState<Step | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ApiFailure | null>(null);
   const [completion, setCompletion] = useState<CompleteDailyResult | null>(null);
   const [completing, setCompleting] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,9 +103,7 @@ export function TodayPage() {
         }
         if (!cancelled) setDaily(state);
       } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof ApiError ? err.message : 'Nao foi possivel carregar a Daily.');
-        }
+        if (!cancelled) setError(classifyApiError(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -112,7 +113,7 @@ export function TodayPage() {
     return () => {
       cancelled = true;
     };
-  }, [overrideDailyId]);
+  }, [overrideDailyId, attempt]);
 
   // So decide o proximo passo quando ninguem esta "pinado" - ou seja, no carregamento inicial e
   // depois que o usuario clica "Continuar" (ver handleContinue). Nunca no meio de uma atividade
@@ -140,14 +141,14 @@ export function TodayPage() {
       setCompletion(result);
       setDaily(result.daily);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Nao foi possivel concluir a sessao.');
+      setError(classifyApiError(err));
     } finally {
       setCompleting(false);
     }
   }
 
   if (loading) return <Centered text="Carregando..." />;
-  if (error) return <Centered text={error} tone="alert" />;
+  if (error) return <ApiErrorScreen error={error} onRetry={() => setAttempt((n) => n + 1)} />;
   if (!daily || !step) return null;
   if (completion) return <CompletionSummary result={completion} />;
 

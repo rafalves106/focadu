@@ -3,6 +3,7 @@ import { api, ApiError } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { ActivityStatus, type DailyActivityDto, type DailyStateDto } from '../api/types';
 import { Centered } from './Layout';
+import { ApiErrorScreen } from './errors/ApiErrorScreen';
 import { SessionTopBar, QuickQuestionOrb } from './SessionShell';
 import { MaterialSidebar } from './MaterialSidebar';
 import dotSmall from '../assets/reading/dot-small.svg';
@@ -29,14 +30,16 @@ export function ReadingActivity({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: content, error: contentError, loading } = useApiResource(
-    () => api.getCuratedContent(activity.contentId!),
-    [activity.contentId],
-  );
+  const {
+    data: content,
+    error: contentError,
+    loading,
+    retry,
+  } = useApiResource(() => api.getCuratedContent(activity.contentId!), [activity.contentId]);
   const { data: weekly } = useApiResource(() => api.getWeekly(daily.weeklyId), [daily.weeklyId]);
 
   if (loading) return <Centered text="Carregando leitura..." />;
-  if (contentError) return <Centered text={contentError} tone="alert" />;
+  if (contentError) return <ApiErrorScreen error={contentError} onRetry={retry} />;
   if (!content) return null;
 
   async function handleComplete() {

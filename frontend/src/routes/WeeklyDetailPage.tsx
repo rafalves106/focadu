@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { DailyStatus, type DailyOverviewDto } from '../api/types';
 import { Centered } from '../components/Layout';
+import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { StatusBadge } from '../components/StatusBadge';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
 import { ProgressBar } from '../components/ProgressBar';
@@ -29,12 +30,12 @@ function todayIso() {
  * atividades" em vez de uma nota inventada.
  */
 export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; courseId: string | null }) {
-  const { data: weekly, error, loading } = useApiResource(() => api.getWeekly(weeklyId), [weeklyId]);
+  const { data: weekly, error, loading, retry } = useApiResource(() => api.getWeekly(weeklyId), [weeklyId]);
   // So pra breadcrumb + navegacao entre semanas - se nao tiver courseId na URL, essas partes somem sem quebrar a tela.
   const { data: course } = useApiResource(() => (courseId ? api.getCourse(courseId) : Promise.resolve(null)), [courseId]);
 
   if (loading) return <Centered text="Carregando semana..." />;
-  if (error) return <Centered text={error} tone="alert" />;
+  if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
   if (!weekly) return null;
 
   const today = todayIso();

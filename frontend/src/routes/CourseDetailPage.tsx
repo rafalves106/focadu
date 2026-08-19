@@ -3,6 +3,8 @@ import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { CourseStatus, type DailyStatusSummaryDto, type WeeklyOverviewDto } from '../api/types';
 import { Centered } from '../components/Layout';
+import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
+import { EmptyStateError } from '../components/errors/EmptyStateError';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
 import { ProgressBar } from '../components/ProgressBar';
 
@@ -23,10 +25,10 @@ const DAY_MINI_TONE: Record<number, string> = {
  * docs/ARQUITETURA.md) - o resumo lateral mostra so numeros reais (dailies, reforcos).
  */
 export function CourseDetailPage({ courseId }: { courseId: string }) {
-  const { data: course, error, loading } = useApiResource(() => api.getCourse(courseId), [courseId]);
+  const { data: course, error, loading, retry } = useApiResource(() => api.getCourse(courseId), [courseId]);
 
   if (loading) return <Centered text="Carregando curso..." />;
-  if (error) return <Centered text={error} tone="alert" />;
+  if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
   if (!course) return null;
 
   const weeks = course.monthlies.flatMap((m) => m.weeklies);
@@ -60,8 +62,10 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
             {weeks.map((weekly) => (
               <WeekSummaryCard key={weekly.id} weekly={weekly} courseId={courseId} />
             ))}
-            {weeks.length === 0 && <p className="text-sm text-secondary">Nenhuma semana cadastrada ainda.</p>}
           </div>
+          {weeks.length === 0 && (
+            <EmptyStateError title="Nenhuma semana cadastrada" description="Este curso ainda não tem semanas cadastradas." />
+          )}
         </div>
       </div>
 

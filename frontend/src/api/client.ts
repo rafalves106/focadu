@@ -12,6 +12,15 @@ import type {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5282';
 
+// Fase 10: timeout padrao de 10s (sugerido no prompt) - alto o suficiente pra nao disparar em
+// requisicoes normais, baixo o suficiente pra nao deixar a TimeoutError demorar pra aparecer.
+// VoiceSummary e excecao: o endpoint de audio transcreve (Groq Whisper) e avalia (Groq chat
+// completion) em sequencia no backend, que ja tem seu proprio timeout de 60s pra Groq (ver
+// GroqContentEvaluationService/docs/ARQUITETURA.md) - o timeout do cliente aqui precisa ser maior
+// que esse, senao a TimeoutError apareceria antes do backend ter chance de responder de verdade.
+const DEFAULT_TIMEOUT_MS = 10_000;
+const VOICE_SUMMARY_TIMEOUT_MS = 70_000;
+
 /** Erro de Api com o mesmo { error, message } que Focadu.Api.ErrorHandling.ApiExceptionHandler sempre devolve. */
 export class ApiError extends Error {
   readonly status: number;
@@ -24,12 +33,13 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit & { timeoutMs?: number }): Promise<T> {
   // FormData (upload de audio) nunca leva Content-Type manual - o navegador define o boundary
   // do multipart sozinho; forcar 'application/json' aqui quebraria o parsing no backend.
   const isFormData = init?.body instanceof FormData;
   const res = await fetch(`${BASE_URL}${path}`, {
     ...init,
+    signal: AbortSignal.timeout(init?.timeoutMs ?? DEFAULT_TIMEOUT_MS),
     headers: isFormData ? init?.headers : { 'Content-Type': 'application/json', ...init?.headers },
   });
 
@@ -75,7 +85,7 @@ export const api = {
     formData.append('audio', audioBlob, 'recording.webm');
     return request<SubmitActivityResponseResult>(
       `/api/dailies/${dailyId}/activities/${activityId}/responses/audio`,
-      { method: 'POST', body: formData },
+      { method: 'POST', body: formData, timeoutMs: VOICE_SUMMARY_TIMEOUT_MS },
     );
   },
   // Autoria de conteudo curado (Fase 6) - unico tipo de conteudo com endpoint de escrita, ver

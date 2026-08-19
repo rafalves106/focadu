@@ -11,6 +11,7 @@ import {
   type WeeklyDetailDto,
 } from '../api/types';
 import { Centered } from '../components/Layout';
+import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { StatusBadge } from '../components/StatusBadge';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
 import { WeeklyProjectCard } from '../components/WeeklyProjectCard';
@@ -31,7 +32,7 @@ interface DashboardData {
  * Fase 6/7) - os cards abaixo so mostram numeros reais (dia da semana, status, progresso do curso).
  */
 export function StartDashboard() {
-  const { data, error, loading } = useApiResource<DashboardData>(
+  const { data, error, loading, retry } = useApiResource<DashboardData>(
     () =>
       api.getToday().then(async (daily) => {
         const [weekly, courses] = await Promise.all([api.getWeekly(daily.weeklyId), api.getCourses()]);
@@ -43,7 +44,7 @@ export function StartDashboard() {
   );
 
   if (loading) return <Centered text="Carregando..." />;
-  if (error) return <Centered text={error} tone="alert" />;
+  if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
   if (!data) return null;
 
   const { daily, weekly, course } = data;
