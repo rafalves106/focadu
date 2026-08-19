@@ -3,6 +3,7 @@ import type {
   CompleteDailyResult,
   CourseDetailDto,
   CourseSummaryDto,
+  CuratedContentDto,
   DailyStateDto,
   SubmitActivityResponseResult,
   WeeklyDetailDto,
@@ -75,4 +76,10 @@ export const api = {
       { method: 'POST', body: formData },
     );
   },
+  // Autoria de conteudo curado (Fase 6) - unico tipo de conteudo com endpoint de escrita, ver
+  // docs/ARQUITETURA.md. `type` so existe na criacao (nunca muda depois, ver CuratedContent.Update).
+  createCuratedContent: (body: { weeklyId: string; type: string; title: string; externalUrl: string | null; bodyText: string | null }) =>
+    request<CuratedContentDto>('/api/curated-content', { method: 'POST', body: JSON.stringify(body) }),
+  updateCuratedContent: (id: string, body: { title: string; externalUrl: string | null; bodyText: string | null }) =>
+    request<CuratedContentDto>(`/api/curated-content/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
 };

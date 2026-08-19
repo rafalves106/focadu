@@ -10,6 +10,9 @@ export function App() {
         <NavLink to="/start" className={({ isActive }) => navLinkClass(isActive)}>
           Início
         </NavLink>
+        <NavLink to="/admin/conteudo" className={({ isActive }) => navLinkClass(isActive)}>
+          Conteúdo
+        </NavLink>
       </nav>
       <Outlet />
     </div>
