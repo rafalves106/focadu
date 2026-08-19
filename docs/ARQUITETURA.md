@@ -403,9 +403,13 @@ JSON. Fluxo de `SubmitVoiceSummaryResponseUseCase`:
    `conteudo_referencia_ausente` (400).
 3. `IAudioTranscriptionService.TranscribeAsync` (Groq Whisper, `whisper-large-v3`) - transcricao
    vazia vira `ExternalServiceException` (`transcricao_vazia`, 502).
-4. `IContentEvaluationService.EvaluateAsync` (Groq chat completion, `llama-3.3-70b-versatile`,
-   JSON mode) com `ContentEvaluationRequest(ExpectedAnswer: BodyText, UserAnswer: transcricao,
-   ContextText: Prompt)` - retorna `ContentEvaluationResult(Score, Feedback)`.
+4. `IContentEvaluationService.EvaluateAsync` (Groq chat completion, `openai/gpt-oss-120b`, JSON
+   mode) com `ContentEvaluationRequest(ExpectedAnswer: BodyText, UserAnswer: transcricao,
+   ContextText: Prompt)` - retorna `ContentEvaluationResult(Score, Feedback)`. O modelo original
+   escolhido na Fase 5 (`llama-3.3-70b-versatile`) saiu do catalogo da Groq antes mesmo do
+   primeiro teste com chave real - corrigido pra `openai/gpt-oss-120b` nessa mesma validacao (ver
+   `ponytail:` no codigo de `GroqContentEvaluationService` - catalogo de modelos da Groq muda com
+   frequencia, checar `GET /v1/models` se `model_not_found` aparecer de novo).
 5. Grava a resposta e checa reforco via `ActivityResponseRecorder` (mesmo passo compartilhado com
    `SubmitActivityResponseUseCase`) - `Transcript` = transcricao, `AiFeedback` = feedback da IA,
    `Score` = nota da IA, `Justification` = nulo (nao se aplica a VoiceSummary).
@@ -759,10 +763,6 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
 - Tela de autoria de conteudo curado no frontend - os endpoints existem e foram usados via
   script/curl (Fase 4), mas nao ha UI pra isso ainda.
 - CORS liberado so para `http://localhost:5173` (hardcoded, dev apenas).
-- **Transcricao/avaliacao por voz nunca testadas contra a Groq real** (Fase 5 - sem
-  `GROQ_API_KEY` disponivel na sessao que implementou). Estruturalmente completo e com os
-  caminhos de erro validados, mas o comportamento real da IA (qualidade da transcricao, da
-  avaliacao, latencia) ainda precisa de validacao com uma chave de verdade.
 - Retry automatico em falha da chamada a Groq - se a transcricao/avaliacao falhar (rede, rate
   limit), o usuario precisa gravar de novo manualmente.
 
@@ -808,10 +808,11 @@ Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.con
   preocupar com isso individualmente.
 - **UI de autoria de conteudo curado ainda nao existe** - os endpoints `POST/PUT
   /api/curated-content` (Fase 4) funcionam, mas so foram usados via script/curl ate agora.
-- **Transcricao/avaliacao por voz (Groq) nunca testadas com uma chave real** (Fase 5, sem
-  `GROQ_API_KEY` disponivel na sessao que implementou) - prioridade alta pra validar antes de
-  considerar VoiceSummary pronto pra uso real, nao so estruturalmente correto. Ver "Como
-  configurar a chave da Groq" acima.
+- **Resolvido na Fase 5, nao e mais pendencia:** transcricao/avaliacao por voz validadas
+  end-to-end com uma chave Groq real - transcricao (`whisper-large-v3`) funcionou de primeira;
+  avaliacao expos que `llama-3.3-70b-versatile` (escolha original) tinha saido do catalogo da
+  Groq (`model_not_found`), corrigido pra `openai/gpt-oss-120b`. Resposta real obtida: score,
+  feedback em portugues e transcricao corretos. Ver `ponytail:` em `GroqContentEvaluationService`.
 - **Resolvido na Fase 5, nao e mais pendencia:** a ambiguidade de `/api/today` quando 2+ Dailies
   compartilham a mesma `Date` (Daily normal + Daily de reforco geradas no mesmo dia) - ver
   `Weekly.GetDailyByDate` acima.

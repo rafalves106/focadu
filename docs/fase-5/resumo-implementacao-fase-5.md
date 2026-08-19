@@ -16,9 +16,11 @@
 - `GroqAudioTranscriptionService` (`IAudioTranscriptionService`): `POST audio/transcriptions`
   (multipart/form-data), modelo `whisper-large-v3`.
 - `GroqContentEvaluationService` (`IContentEvaluationService`): `POST chat/completions`, modelo
-  `llama-3.3-70b-versatile`, JSON mode, 1 nota única (0-100, já ponderando conteúdo + clareza) +
+  `openai/gpt-oss-120b`, JSON mode, 1 nota única (0-100, já ponderando conteúdo + clareza) +
   1 feedback curto em PT-BR - formato do prompt confirmado com o Falves antes de implementar (ver
-  seção de decisões).
+  seção de decisões). Modelo escolhido originalmente (`llama-3.3-70b-versatile`) saiu do catálogo
+  da Groq antes do primeiro teste com chave real - corrigido durante a validação ao vivo (ver
+  "Validação com chave real" abaixo).
 - `GroqOptions` (chave de API) e os dois `HttpClient` tipados registrados em
   `Focadu.Infrastructure.DependencyInjection`, com a base URL da Groq e timeout de 60s.
 - Chave configurável via `Groq:ApiKey` (appsettings/user-secrets) ou env var `Groq__ApiKey` -
@@ -172,17 +174,18 @@ sequência sem erro - confirmado que a Fase 5 não precisou de nenhuma migration
   fluxo de permissão de microfone negada (only caminho testável neste ambiente, que não tem
   acesso real a dispositivo de audio) mostrando a mensagem de erro E mantendo o botão disponível
   pra tentar de novo, depois do fix do item 5 acima.
-- **Não testado**: transcrição/avaliação reais contra a Groq (nenhuma `GROQ_API_KEY` disponível
-  nesta sessão) - o caminho "chave ausente" foi validado ponta a ponta (DI, endpoint, exceção,
-  mensagem), mas o comportamento real da Groq (formato exato da resposta, latência, qualidade da
-  avaliação) fica como validação pendente pro Falves rodar com uma chave real.
+- **Validação com chave real** (feita pelo Falves após o fechamento inicial da fase, mesmo dia):
+  configurou `Groq:ApiKey` via `user-secrets` e gravou um resumo real do Dia 1. Transcrição
+  (`whisper-large-v3`) funcionou de primeira. Avaliação inicialmente falhou com
+  `502 groq_avaliacao_falhou` / `model_not_found` - `llama-3.3-70b-versatile` (modelo original)
+  tinha saído do catálogo da Groq. Diagnosticado via `GET /openai/v1/models`, corrigido pra
+  `openai/gpt-oss-120b` (ver `ponytail:` em `GroqContentEvaluationService`). Reenviado o mesmo
+  áudio: `HTTP 201`, transcrição fiel ao que foi falado, `score: 40`, `passed: false`, feedback em
+  PT-BR coerente e específico. Suite de 48 testes revalidada após a troca de modelo, sem
+  regressão.
 
 ## Dúvidas ou pontos abertos para a próxima fase
 
-- **Transcrição/avaliação nunca testadas contra a Groq real** (sem chave disponível nesta sessão)
-  - validar isso é o item mais importante antes de considerar a Parte 2/4/5/6 prontas pra uso
-    real, não só estruturalmente corretas. Ver "Como configurar a chave da Groq" em
-    `docs/ARQUITETURA.md`.
 - **Sem retry automático em falha da Groq** (decisão consciente, ver seção de decisões) - se a
   Groq falhar (rate limit, instabilidade), o usuário precisa gravar de novo manualmente. Pode
   valer a pena revisitar se isso se mostrar frequente na prática.

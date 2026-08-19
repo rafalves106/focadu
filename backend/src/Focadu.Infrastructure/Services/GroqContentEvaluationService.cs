@@ -14,7 +14,11 @@ namespace Focadu.Infrastructure.Services;
 /// </summary>
 public class GroqContentEvaluationService : IContentEvaluationService
 {
-    private const string Model = "llama-3.3-70b-versatile";
+    // ponytail: Groq muda o catalogo de modelos com frequencia - llama-3.3-70b-versatile (escolha
+    // original) saiu de linha e foi substituido por este apos validacao ao vivo com uma chave
+    // real (Fase 5). Se "model_not_found" voltar a aparecer, checar o catalogo atual em
+    // GET https://api.groq.com/openai/v1/models antes de trocar de novo.
+    private const string Model = "openai/gpt-oss-120b";
 
     private const string SystemPrompt =
         "Você é um avaliador pedagógico da Focadu, plataforma de estudo de segurança web. " +
