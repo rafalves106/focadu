@@ -2,6 +2,7 @@ using Focadu.Application.Content;
 using Focadu.Application.Courses;
 using Focadu.Application.Dailies;
 using Focadu.Application.Seed;
+using Focadu.Application.Users;
 using Focadu.Application.Weeklies;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -32,6 +33,9 @@ public static class DependencyInjection
         services.AddScoped<CreateCuratedContentUseCase>();
         services.AddScoped<UpdateCuratedContentUseCase>();
         services.AddScoped<GetCuratedContentUseCase>();
+        services.AddScoped<RegisterUserUseCase>();
+        services.AddScoped<LoginUserUseCase>();
+        services.AddScoped<GetCurrentUserUseCase>();
         return services;
     }
 }

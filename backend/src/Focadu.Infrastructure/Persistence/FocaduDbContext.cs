@@ -3,6 +3,7 @@ using Focadu.Domain.Content;
 using Focadu.Domain.Courses;
 using Focadu.Domain.Dailies;
 using Focadu.Domain.Monthlies;
+using Focadu.Domain.Users;
 using Focadu.Domain.Weeklies;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,6 +33,7 @@ public class FocaduDbContext : DbContext
     public DbSet<WeeklyProject> WeeklyProjects => Set<WeeklyProject>();
     public DbSet<WeeklyReinforcement> WeeklyReinforcements => Set<WeeklyReinforcement>();
     public DbSet<ModulePublication> ModulePublications => Set<ModulePublication>();
+    public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

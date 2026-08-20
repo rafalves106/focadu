@@ -7,9 +7,12 @@ import {
   type CuratedContentDto,
   type DailyStateDto,
   type GitHubRepoDto,
+  type LoginRequest,
   type ModulePublicationDto,
   type PublicationPlatform,
+  type RegisterRequest,
   type SubmitActivityResponseResult,
+  type UserDto,
   type WeeklyDetailDto,
   type WeeklyProjectDto,
 } from './types';
@@ -43,6 +46,9 @@ async function request<T>(path: string, init?: RequestInit & { timeoutMs?: numbe
   const isFormData = init?.body instanceof FormData;
   const res = await fetch(`${BASE_URL}${path}`, {
     ...init,
+    // Fase 12: sessao vai por cookie httpOnly (nunca por header) - sem isso o navegador nunca
+    // manda o cookie "focadu_auth" de volta pra Api, mesmo ja autenticado.
+    credentials: 'include',
     signal: AbortSignal.timeout(init?.timeoutMs ?? DEFAULT_TIMEOUT_MS),
     headers: isFormData ? init?.headers : { 'Content-Type': 'application/json', ...init?.headers },
   });
@@ -119,4 +125,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ platform: PUBLICATION_PLATFORM_NAMES[platform], url }),
     }),
+  // Autenticacao (Fase 12) - sessao via cookie httpOnly setado pela Api; nenhum destes devolve
+  // um token pro cliente guardar, so o UserDto.
+  register: (data: RegisterRequest) => request<UserDto>('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  login: (data: LoginRequest) => request<UserDto>('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
+  getCurrentUser: () => request<UserDto>('/api/auth/me'),
 };

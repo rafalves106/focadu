@@ -1,3 +1,6 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Focadu.Api.Contracts;
 using Focadu.Api.ErrorHandling;
 using Focadu.Application;
@@ -6,10 +9,13 @@ using Focadu.Application.Courses;
 using Focadu.Application.Dailies;
 using Focadu.Application.Exceptions;
 using Focadu.Application.Seed;
+using Focadu.Application.Users;
 using Focadu.Application.Weeklies;
 using Focadu.Domain.Enums;
 using Focadu.Infrastructure;
 using Focadu.Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,8 +38,19 @@ var gitHubOptions = new GitHubOptions(
     builder.Configuration["GitHub:Token"] ?? string.Empty,
     builder.Configuration["GitHub:Username"] ?? string.Empty);
 
+// Jwt:SecretKey (Fase 12): ao contrario de Groq/GitHub acima, esta e exigida no boot - a partir
+// desta fase, autenticacao e fundacao (nao uma integracao opcional), e sem a chave literalmente
+// nenhum login/registro/sessao funcionaria. Mesmo tratamento que a connection string (falha cedo,
+// com mensagem clara, em vez de um erro criptico na primeira tentativa de gerar um token).
+var jwtSecretKey = builder.Configuration["Jwt:SecretKey"];
+if (string.IsNullOrWhiteSpace(jwtSecretKey))
+    throw new InvalidOperationException("Jwt:SecretKey nao configurada (user-secrets ou variavel de ambiente Jwt__SecretKey) - necessaria pra autenticacao funcionar, ver docs/ARQUITETURA.md.");
+
+var jwtOptions = new JwtOptions(jwtSecretKey);
+const string AuthCookieName = "focadu_auth";
+
 builder.Services.AddFocaduApplication();
-builder.Services.AddFocaduInfrastructure(connectionString, groqApiKey, gitHubOptions);
+builder.Services.AddFocaduInfrastructure(connectionString, groqApiKey, gitHubOptions, jwtOptions);
 
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -41,13 +58,79 @@ builder.Services.AddProblemDetails();
 // CORS para o frontend Vite (Passo 3) - porta diferente da Api conta como origem diferente, o
 // navegador bloqueia sem isso mesmo os dois rodando em localhost. So dev por enquanto (unico
 // usuario-teste, sem deploy ainda) - ver docs/ARQUITETURA.md se isso precisar virar configuravel.
+// AllowCredentials (Fase 12, pro cookie de sessao ir junto nas requisicoes) exige origem explicita
+// - nao pode conviver com AllowAnyOrigin por especificacao do CORS; ja usavamos WithOrigins.
 const string FrontendDevCorsPolicy = "FrontendDev";
 builder.Services.AddCors(options => options.AddPolicy(FrontendDevCorsPolicy, policy => policy
     .WithOrigins("http://localhost:5173", "http://127.0.0.1:5173")
+    .AllowCredentials()
     .AllowAnyHeader()
     .AllowAnyMethod()));
 
+// Sessao via JWT em cookie httpOnly (Fase 12) - nunca acessivel via JS (mais seguro contra XSS que
+// localStorage). O token nunca chega via header Authorization; OnMessageReceived le direto do
+// cookie que os endpoints de login/registro setam (ver SetAuthCookie abaixo).
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        // Sem isso, o handler re-mapeia claims curtas ("sub") pra URIs longas de ClaimTypes.* por
+        // baixo dos panos (comportamento legado do JwtSecurityTokenHandler) - mantem exatamente os
+        // nomes de claim usados em JwtTokenService.GenerateToken ("sub", "email").
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)),
+            ClockSkew = TimeSpan.Zero,
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                context.Token = context.Request.Cookies[AuthCookieName];
+                return Task.CompletedTask;
+            },
+            // Sem isso, um 401 (sem cookie / token expirado) viria vazio - ApiExceptionHandler so
+            // cobre excecoes lancadas dentro do endpoint; o challenge de autenticacao acontece
+            // antes disso, no middleware, entao precisa do proprio envelope {error,message} aqui.
+            OnChallenge = async context =>
+            {
+                context.HandleResponse();
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new ErrorResponse("nao_autenticado", "Sessao invalida ou expirada."));
+            },
+        };
+    });
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
+
+// Cookie de sessao (Fase 12): Secure=true exige HTTPS - desligado so em dev local (http://localhost),
+// senao o navegador nunca gravaria o cookie. SameSite=Lax basta pro cenario atual (front e back em
+// portas diferentes do mesmo host, sem cross-site de verdade).
+void SetAuthCookie(HttpContext context, string token) =>
+    context.Response.Cookies.Append(AuthCookieName, token, new CookieOptions
+    {
+        HttpOnly = true,
+        Secure = !app.Environment.IsDevelopment(),
+        SameSite = SameSiteMode.Lax,
+        Expires = DateTimeOffset.UtcNow.AddDays(7),
+        Path = "/",
+    });
+
+void ClearAuthCookie(HttpContext context) =>
+    context.Response.Cookies.Append(AuthCookieName, string.Empty, new CookieOptions
+    {
+        HttpOnly = true,
+        Secure = !app.Environment.IsDevelopment(),
+        SameSite = SameSiteMode.Lax,
+        Expires = DateTimeOffset.UnixEpoch,
+        Path = "/",
+    });
 
 // `dotnet run --project src/Focadu.Api -- seed`: popula o curso piloto "Web Security" e encerra,
 // sem subir o servidor HTTP. Nao e um endpoint porque a Api ainda nao tem autoria de conteudo.
@@ -76,10 +159,49 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors(FrontendDevCorsPolicy);
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 var api = app.MapGroup("/api");
+
+// --- Autenticacao (Fase 12) ------------------------------------------------------------------
+// Fundacao de sessao - registro/login/logout/me. Endpoints de curso/weekly/daily abaixo
+// continuam abertos por enquanto (sem [Authorize]/RequireAuthorization) - isso e trabalho da
+// Fase 13, quando passarem a filtrar por usuario matriculado.
+
+api.MapPost("/auth/register", async (HttpContext http, RegisterRequest? request, RegisterUserUseCase useCase, CancellationToken ct) =>
+    {
+        var result = await useCase.ExecuteAsync(
+            request?.Email ?? string.Empty, request?.Password ?? string.Empty, request?.DisplayName ?? string.Empty, ct);
+        SetAuthCookie(http, result.Token);
+        return Results.Created("/api/auth/me", result.User);
+    })
+    .WithName("Register");
+
+api.MapPost("/auth/login", async (HttpContext http, LoginRequest? request, LoginUserUseCase useCase, CancellationToken ct) =>
+    {
+        var result = await useCase.ExecuteAsync(request?.Email ?? string.Empty, request?.Password ?? string.Empty, ct);
+        SetAuthCookie(http, result.Token);
+        return Results.Ok(result.User);
+    })
+    .WithName("Login");
+
+api.MapPost("/auth/logout", (HttpContext http) =>
+    {
+        ClearAuthCookie(http);
+        return Results.Ok();
+    })
+    .WithName("Logout");
+
+api.MapGet("/auth/me", async (ClaimsPrincipal principal, GetCurrentUserUseCase useCase, CancellationToken ct) =>
+    {
+        var userId = Guid.Parse(principal.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+        return Results.Ok(await useCase.ExecuteAsync(userId, ct));
+    })
+    .RequireAuthorization()
+    .WithName("GetCurrentUser");
 
 // --- Cursos --------------------------------------------------------------------------------
 

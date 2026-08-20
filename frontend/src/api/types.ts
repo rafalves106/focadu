@@ -275,3 +275,21 @@ export interface ApiErrorBody {
   error: string;
   message: string;
 }
+
+// Autenticacao (Fase 12) - sessao via cookie httpOnly, nunca via token acessivel a partir do JS.
+export interface UserDto {
+  id: string;
+  email: string;
+  displayName: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  displayName: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
