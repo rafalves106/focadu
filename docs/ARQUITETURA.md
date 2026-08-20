@@ -4,12 +4,15 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 11 - Sistema de Publicacao Publica**.
+> Ultima fase que atualizou este documento: **Fase 12 - Fundacao de Autenticacao (Backend) +
+> Splash & Login/Registro (UI)**.
 
 ## Visao geral do projeto
 
 Focadu e uma plataforma pessoal de estudo gamificada e multi-curso. O curso piloto e
-"Web Security", com um unico usuario-teste nesta fase (o proprio Falves). A plataforma forca
+"Web Security". **Desde a Fase 12, o app tem autenticacao real e multiusuario** (antes disso era
+mono-usuario hardcoded, sem login) - mas Course/Monthly/Weekly/Daily continuam globais (nao por
+usuario) ate a Fase 13, que introduz matricula. A plataforma forca
 compreensao real de fundamentos (nao resposta facil de IA) atraves de sessoes diarias com
 multiplas etapas, avaliacao por voz, sistema de pontuacao/reforco adaptativo, e atividades
 variadas (quiz, ligar-palavras, cloze test, roleplay).
@@ -94,6 +97,8 @@ src/
     Weeklies/WeeklyReinforcement.cs (+ WeakDailyLink interno, so para mapeamento EF)
     Weeklies/ModulePublication.cs   <- 1:1 com Weekly, publicacao publica exigida pra desbloquear
                                        o proximo modulo (Fase 11, ver secao propria)
+    Users/User.cs                    <- aggregate proprio, sem relacao com Course/Weekly/Daily
+                                       ainda (Fase 12, ver secao propria)
     Dailies/Daily.cs
     Activities/DailyActivity.cs
     Activities/ActivityResponse.cs
@@ -102,7 +107,7 @@ src/
     Activities/RoleplayOption.cs
     Content/CuratedContent.cs
     Repositories/                   <- ICourseRepository, IMonthlyRepository, IWeeklyRepository,
-                                       IUnitOfWork (ports)
+                                       IUserRepository (Fase 12), IUnitOfWork (ports)
   Focadu.Application/
     AssemblyInfo.cs                 <- InternalsVisibleTo("Focadu.Tests"), desde a Fase 3 - permite
                                        testar direto membros internal (DailyStateMapper.ToDto,
@@ -110,7 +115,8 @@ src/
                                        fakes de repositorio
     Ports/                          <- IClock, IContentEvaluationService, IAudioTranscriptionService
                                        (adapters concretos desde a Fase 5, ver Focadu.Infrastructure/Services),
-                                       IDraftGenerationService, IGitHubService (Fase 11, ver secao propria)
+                                       IDraftGenerationService, IGitHubService (Fase 11, ver secao propria),
+                                       IPasswordHasher, IJwtTokenService (Fase 12, ver secao propria)
     Exceptions/                     <- NotFoundException, ConflictException, ValidationException,
                                        ExternalServiceException (Fase 5 - erro de servico externo)
     Shared/                         <- DTOs reaproveitados entre modulos (ex: sessoes de reforco,
@@ -122,6 +128,8 @@ src/
                                        GetGitHubRepositoriesUseCase, CommitModuleSummaryUseCase,
                                        SubmitPublicationUseCase, PublicationDtos.cs (Fase 11)
     Content/                         <- CreateCuratedContentUseCase, UpdateCuratedContentUseCase (Fase 4)
+    Users/                            <- RegisterUserUseCase, LoginUserUseCase,
+                                       GetCurrentUserUseCase, Dtos.cs (Fase 12, ver secao propria)
     Dailies/                        <- GetDailyStateUseCase, GetTodayUseCase (usa
                                        Weekly.GetDailyByDate desde a Fase 5),
                                        StartOrResumeDailyUseCase (Fase 11: checa bloqueio por
@@ -141,10 +149,11 @@ src/
     Persistence/
       FocaduDbContext.cs
       FocaduDbContextFactory.cs    <- design-time factory p/ `dotnet ef migrations`
-      Configurations/               <- 1 IEntityTypeConfiguration por entidade (13 arquivos,
-                                       + ModulePublicationConfiguration na Fase 11)
+      Configurations/               <- 1 IEntityTypeConfiguration por entidade (14 arquivos,
+                                       + UserConfiguration na Fase 12)
       Repositories/                 <- CourseRepository, MonthlyRepository, WeeklyRepository
-                                       (FullGraph() inclui Publication desde a Fase 11)
+                                       (FullGraph() inclui Publication desde a Fase 11),
+                                       UserRepository (Fase 12)
       UnitOfWork.cs
       Migrations/                   <- InitialCreate (Fase 1), AddPromptToDailyActivity (Fase 3),
                                        Fase4SchemaChanges (Daily.ReinforcementDailyId,
@@ -153,7 +162,8 @@ src/
                                        valor de string dentro da coluna existente),
                                        Fase11ModulePublication (tabela ModulePublications) +
                                        Fase11ModulePublicationNavigation (FK que faltava - ver
-                                       "Bug real: navegacao 1:1 sem HasOne" abaixo)
+                                       "Bug real: navegacao 1:1 sem HasOne" abaixo),
+                                       Fase12Users (tabela Users, indice unico em Email)
     Services/
       SystemClock.cs                 <- implementacao real de IClock (hora local)
       GroqOptions.cs                  <- ApiKey da Groq (Fase 5)
@@ -163,22 +173,28 @@ src/
                                              de LinkedIn, mesmo HttpClient/erro do Groq, sem JSON mode)
       GitHubOptions.cs                    <- Token/Username do GitHub (Fase 11)
       GitHubService.cs                     <- adapter de IGitHubService (Fase 11, ver secao propria)
+      BCryptPasswordHasher.cs               <- adapter de IPasswordHasher via BCrypt.Net-Next (Fase 12)
+      JwtOptions.cs                          <- SecretKey de assinatura dos JWT (Fase 12)
+      JwtTokenService.cs                      <- adapter de IJwtTokenService (Fase 12, so gera - ver secao propria)
     DependencyInjection.cs
   Focadu.Api/
-    Program.cs                      <- composicao de DI + 19 endpoints reais sob /api, + /health (ver secao abaixo)
+    Program.cs                      <- composicao de DI + 23 endpoints reais sob /api, + /health (ver secao abaixo)
     ErrorHandling/                  <- ApiExceptionHandler (IExceptionHandler), ErrorResponse
     Contracts/                      <- RouteParsing (parse de Guid com erro padronizado),
                                        SubmitActivityResponseRequest, CuratedContentRequests (Fase 4),
-                                       PublicationRequests (Fase 11)
-    appsettings.json                <- connection string + Groq:ApiKey + GitHub:Token/Username
-                                       (todos vazios por padrao) default
-    Focadu.Api.csproj                <- UserSecretsId (Fase 5, ver "Como configurar a chave da Groq")
+                                       PublicationRequests (Fase 11), AuthRequests (Fase 12)
+    appsettings.json                <- connection string + Groq:ApiKey + GitHub:Token/Username +
+                                       Jwt:SecretKey (todos vazios por padrao) default
+    Focadu.Api.csproj                <- UserSecretsId (Fase 5, ver "Como configurar a chave da Groq"),
+                                       Microsoft.AspNetCore.Authentication.JwtBearer (Fase 12)
 tests/
   Focadu.Tests/
     Dailies/DailyTests.cs           <- + exigencia de ContentId pra VoiceSummary (Fase 5)
     Weeklies/WeeklyTests.cs         <- + Weekly.GetDailyByDate (Fase 5), + IsModuleComplete/
                                        RequiresPublicationToUnlock (Fase 11)
     Weeklies/ModulePublicationTests.cs  <- Submit/MarkValidated/MarkFailed/retry apos falha (Fase 11)
+    Users/UserTests.cs                    <- Create valido/formato de email/nome/hash (Fase 12)
+    Users/RegisterUserUseCaseTests.cs      <- ValidatePassword (internal static, Fase 12)
     Policies/EvaluationPolicyTests.cs
     Domain/DomainExceptionCodeTests.cs  <- trava os Code usados pela Api (ver abaixo)
     Dailies/SubmitActivityResponseScoreTests.cs  <- ResolveScore, cobre Quiz/WordMatch/Cloze/Roleplay
@@ -220,6 +236,12 @@ contem uma Daily datada em `date` dentro daquele curso - usado pelo atalho "/hoj
 `Course` e `Monthly` sao aggregates mais simples, com repositorio proprio
 (`ICourseRepository`, `IMonthlyRepository`), usados principalmente para navegacao/gestao de
 conteudo, nao para as regras de acesso/reforco do dia a dia.
+
+**`User` (Fase 12) e um aggregate totalmente separado** (`IUserRepository`, sem relacao nenhuma
+com Course/Monthly/Weekly/Daily ainda) - autenticacao existe, mas matricula (ligar um `User` a um
+`Course`/progresso) e trabalho da Fase 13. Ate la, `Course`/`Weekly`/`Daily` continuam globais:
+qualquer usuario autenticado ve os mesmos dados, sem filtro por usuario em nenhum endpoint. Ver
+"Autenticacao" abaixo.
 
 **`Weekly.GetDailyByDate(date)` (Fase 5):** resolve qual `Daily` desta Weekly esta datada em
 `date`, preferindo sempre a Daily **nao-reforco** quando houver mais de uma na mesma data (ex:
@@ -391,6 +413,10 @@ composicao da Fase 1). Todos sob `/api`, alem de `GET /health`:
 
 | Metodo | Rota | Caso de uso | Sucesso |
 |---|---|---|---|
+| POST | `/api/auth/register` | `RegisterUserUseCase` (Fase 12) | 201, seta cookie `focadu_auth`, 409/400 (ver "Autenticacao") |
+| POST | `/api/auth/login` | `LoginUserUseCase` (Fase 12) | 200, seta cookie, 401 `credenciais_invalidas` |
+| POST | `/api/auth/logout` | - (limpa o cookie direto no endpoint) | 200 |
+| GET | `/api/auth/me` | `GetCurrentUserUseCase` (Fase 12) | 200 (exige sessao - `RequireAuthorization()`), 401 `nao_autenticado` |
 | GET | `/api/courses` | `ListCoursesUseCase` | 200 |
 | GET | `/api/courses/{courseId}` | `GetCourseDetailUseCase` | 200, 404 se nao existe (Fase 8: `WeeklyOverviewDto.Days` traz status por dia, pro mini-grid de `CourseDetailPage`) |
 | GET | `/api/weeklies/{weeklyId}` | `GetWeeklyDetailUseCase` | 200, 404 se nao existe |
@@ -601,6 +627,7 @@ default (400):
 | `reforco_diario_condicoes_nao_atingidas` | 409 | guarda defensiva, nao alcancada pela Api hoje |
 | `modulo_bloqueado_por_publicacao` | 409 | `StartOrResumeDailyUseCase` quando a Weekly anterior (mesmo Monthly) ainda `RequiresPublicationToUnlock` (Fase 11) |
 | `publicacao_ja_validada` | 409 | `ModulePublication.Submit` chamado depois que a publicacao ja esta `Validated` (Fase 11) |
+| `credenciais_invalidas` | 401 | `LoginUserUseCase` - email nao existe OU senha errada (nunca diferenciado, ver "Autenticacao") (Fase 12) |
 
 Qualquer outro `DomainException.Code` (as validacoes de criacao de conteudo em `Course`,
 `Monthly`, `DailyActivity`, `QuizOption`, `RoleplayNode`, etc., que ainda nao tem endpoint de
@@ -788,6 +815,53 @@ de assumir que o commit funciona.
 | `github_timeout` | 503 | GitHub nao respondeu a tempo (timeout de 20s) |
 | `github_indisponivel` / `github_falhou` | 502 | Erro de rede ou status HTTP de erro vindo do GitHub |
 
+## Autenticacao (Fase 12)
+
+A partir desta fase o app deixa de ser mono-usuario hardcoded - `User` (email/senha/nome) e
+sessao real via JWT. Fundacao apenas: nenhum endpoint de curso/weekly/daily foi protegido ainda
+(ver "Fora de escopo" abaixo) - isso e trabalho da Fase 13, quando esses endpoints passarem a
+filtrar por usuario matriculado.
+
+- **Senha**: hash via `BCrypt.Net-Next` (`BCryptPasswordHasher`), nunca armazenada em texto puro.
+- **Sessao**: JWT (claims `sub`=userId, `email`; expira em 7 dias) entregue via **cookie
+  `focadu_auth`, `HttpOnly`** - nunca acessivel via JS (mais seguro contra XSS que guardar o token
+  em `localStorage` e mandar via header `Authorization`). `Secure=true` so fora de
+  `IsDevelopment()` (exige HTTPS - em dev local, `http://localhost`, isso quebraria o cookie).
+  `SameSite=Lax` (suficiente pro cenario atual: front e back em portas diferentes do mesmo host,
+  sem cross-site de verdade).
+- **Validacao do token**: feita inteiramente pelo middleware `JwtBearer` do ASP.NET Core
+  (`AddAuthentication().AddJwtBearer(...)`, `Program.cs`), configurado pra ler o token do cookie
+  (`OnMessageReceived`) em vez do header padrao `Authorization`. `IJwtTokenService` (Application/
+  Infrastructure) **so gera** o token - nao tem um metodo de validacao manual, porque o middleware
+  ja cobre isso antes de qualquer endpoint rodar.
+- **`options.MapInboundClaims = false`** (gotcha do .NET) - sem isso, o `JwtSecurityTokenHandler`
+  remapeia a claim curta `"sub"` pra uma URI longa de `ClaimTypes.NameIdentifier` por baixo dos
+  panos (comportamento legado da lib), quebrando `principal.FindFirstValue(JwtRegisteredClaimNames.Sub)`
+  no endpoint `/me` silenciosamente. Verificado ao vivo antes de fechar a fase.
+- **401 com o mesmo envelope de erro do resto da Api**: o challenge de autenticacao (sem cookie /
+  token expirado) acontece no middleware, antes do endpoint rodar - `ApiExceptionHandler` nunca
+  veria essa falha. Por isso `JwtBearerEvents.OnChallenge` escreve `{error:"nao_autenticado",
+  message:"..."}` manualmente, no mesmo formato de qualquer outro erro da Api.
+- **`credenciais_invalidas` nunca diferencia "email nao existe" de "senha errada"** (boa pratica
+  basica de seguranca - nao da pista de quais emails estao cadastrados). Usa `DomainException` com
+  `Code` proprio (mapeado pra 401 em `ApiExceptionHandler.DomainCodeStatusOverrides`) em vez de
+  `ValidationException`, que sempre mapeia pra 400 sem mecanismo de override por `Code`.
+- **CORS precisou de `AllowCredentials()`** - sem isso, o navegador nunca manda o cookie de volta
+  nas requisicoes, mesmo autenticado. Exige origem explicita (`WithOrigins`, ja era o caso aqui) -
+  nao pode conviver com `AllowAnyOrigin` por especificacao do CORS.
+
+### Como configurar a chave JWT
+
+Mesmo mecanismo de configuracao de `Groq:ApiKey`/`GitHub:Token` (user-secrets em dev, variavel de
+ambiente em producao/CI, nunca em `appsettings.json`) - **mas, diferente dos dois, ausente derruba
+o boot da Api** (mesmo tratamento que a connection string): autenticacao e fundacao a partir desta
+fase, nao uma integracao opcional - sem a chave, nenhum login/registro/sessao funcionaria.
+
+```bash
+cd backend/src/Focadu.Api
+dotnet user-secrets set "Jwt:SecretKey" "uma-chave-longa-e-aleatoria-aqui"
+```
+
 ## Como rodar localmente
 
 ```bash
@@ -798,6 +872,7 @@ dotnet build Focadu.slnx                                # build de toda a soluca
 dotnet test tests/Focadu.Tests/Focadu.Tests.csproj      # roda os testes de dominio
 dotnet user-secrets set "Groq:ApiKey" "sua-chave-aqui" --project src/Focadu.Api  # so necessario pra VoiceSummary/rascunho de LinkedIn funcionar de verdade
 dotnet user-secrets set "GitHub:Token" "seu-token-aqui" --project src/Focadu.Api  # so necessario pro commit de resumo do modulo funcionar de verdade
+dotnet user-secrets set "Jwt:SecretKey" "uma-chave-longa-aqui" --project src/Focadu.Api  # obrigatorio desde a Fase 12, a Api nao sobe sem isso
 dotnet run --project src/Focadu.Api -- seed              # popula o curso "Web Security" (idempotente)
 dotnet run --project src/Focadu.Api                      # sobe a API completa
 ```
@@ -824,7 +899,8 @@ frontend/
   index.html, vite.config.ts, package.json, tsconfig*.json
   .env.example, .env.local (gitignorado - VITE_API_BASE_URL)
   src/
-    main.tsx              <- BrowserRouter + Routes
+    main.tsx              <- BrowserRouter + AuthProvider + Routes ("/" Splash, "/login" fora do
+                              ProtectedRoute; hoje/start/admin/conteudo dentro dele - Fase 12)
     App.tsx                <- shell com nav (Hoje / Inicio / Conteudo) + <ErrorBoundary key={pathname}><Outlet/></ErrorBoundary> (Fase 10)
     index.css               <- @import "tailwindcss" + tokens @theme (paleta da identidade visual)
     assets/reading/          <- SVGs do design Figma (dots, play, check, orbe) - bytes exatos, Fase 7
@@ -833,6 +909,13 @@ frontend/
                                    pra nao co-exportar funcao junto com componente (fast refresh)
       apiError.ts               <- classifyApiError/ApiFailure (Fase 10) - classifica qualquer erro
                                    de fetch/Api numa das 5 categorias que as telas de erro sabem renderizar
+      validation.ts               <- isValidEmail/MIN_PASSWORD_LENGTH (Fase 12) - compartilhado por
+                                   LoginForm/RegisterForm, servidor nunca confia so nisso
+    contexts/
+      authContextObject.ts         <- createContext + AuthContextValue (Fase 12) - so o objeto/tipo,
+                                   separado do Provider e do hook pelo mesmo motivo de statusBadge.ts
+      AuthContext.tsx                <- AuthProvider (Fase 12) - carrega GET /api/auth/me 1x no mount
+      useAuth.ts                      <- hook useAuth() (Fase 12)
     api/
       types.ts               <- espelha os DTOs de Focadu.Application (enums como numero, com
                                    consts tipo ActivityType/AnswerMode/ActivityStatus/TerminalQuality/
@@ -843,10 +926,14 @@ frontend/
       client.ts               <- fetch tipado, ApiError, VITE_API_BASE_URL, suporte a FormData
                                    (upload de audio, Fase 5, sem forcar Content-Type json); request()
                                    usa AbortSignal.timeout() desde a Fase 10 (10s padrao, 70s pro
-                                   endpoint de audio - ver "Timeout de requisicoes")
+                                   endpoint de audio - ver "Timeout de requisicoes"); credentials:
+                                   'include' desde a Fase 12 (senao o cookie de sessao nunca vai/volta)
       useApiResource.ts        <- hook pra loading/error/cancelamento (usado pelas sub-telas de /start e /admin/conteudo);
                                    `error` e um `ApiFailure` classificado (nao string) + `retry()` desde a Fase 10
     routes/
+      SplashPage.tsx             <- "/" (Fase 12) - checa sessao (AuthProvider) e redireciona pra
+                                   /start ou /login, duracao minima de 700ms
+      LoginPage.tsx                <- "/login" (Fase 12) - abas Entrar/Criar Conta
       TodayPage.tsx            <- /hoje (orquestra os 7 tipos de atividade, o menu de configuracoes
                                    e o fluxo de conclusao - Fase 7)
       StartPage.tsx             <- /start (so o roteador por query string - Fase 8: as 3 telas
@@ -863,6 +950,12 @@ frontend/
       WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7)
       AdminContentPage.tsx       <- /admin/conteudo (autoria de CuratedContent, Fase 6)
     components/
+      ProtectedRoute.tsx           <- guarda de rota client-side (Fase 12) - so le AuthContext, nunca
+                                   busca sessao de novo sozinho; backend continua sem [Authorize]
+                                   nesses endpoints (ver "Autenticacao" acima)
+      auth/
+        LoginForm.tsx                <- email + senha (Fase 12)
+        RegisterForm.tsx              <- nome + email + senha + confirmacao (Fase 12)
       activities/                 <- primitivas visuais das atividades avaliaveis (Fase 9)
         IntroCard.tsx                <- tela de intro (badge/titulo/descricao/regras/CTA) - gate local (`started`), nao e passo novo no Step do TodayPage
         OptionCard.tsx                <- card de opcao (neutro/selecionado/correto/errado/esmaecido) - Quiz, termos do WordMatch, decisoes do Roleplay
@@ -905,6 +998,8 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 
 | Rota | Consome | Tela |
 |---|---|---|
+| `/` | `GET /api/auth/me` (via AuthProvider) | `SplashPage` (Fase 12) - decide entre `/start`/`/login` |
+| `/login` | `POST /api/auth/register` ou `/login` | `LoginPage` (Fase 12) - abas Entrar/Criar Conta |
 | `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7) |
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco; Fase 8: tambem usada como "reprise" de um dia ja concluido, clicado a partir da Visao Semanal) |
 | `/start` | `GET /api/today` + `GET /api/weeklies/{id}` + `GET /api/courses` + `GET /api/courses/{id}` | `StartDashboard` (Fase 8) - hub "Comecar Hoje"/"Projeto desta Semana"/"Trilha Completa" |
@@ -915,6 +1010,17 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/admin/conteudo` | `GET /api/courses` | Autoria (Fase 6) - lista de cursos |
 | `/admin/conteudo?course=` | `GET /api/courses/{courseId}` | Autoria - semanas do curso |
 | `/admin/conteudo?course=&weekly=` | `GET /api/weeklies/{weeklyId}` | Autoria - lista + formulario de `CuratedContent` da semana (`POST`/`PUT /api/curated-content`) |
+
+**Autenticacao no frontend (Fase 12):** `AuthProvider` (`contexts/AuthContext.tsx`) e a fonte
+unica de "quem esta logado" - chama `GET /api/auth/me` uma vez no mount e guarda `user`/`isLoading`
+em state; `SplashPage` e `ProtectedRoute` so leem esse mesmo state (nunca buscam de novo sozinhos).
+Um 401 em `/me` (sem cookie/expirado) e o caminho **esperado** de "ninguem logado ainda" - vira
+`user: null` silenciosamente, nunca um erro pra propagar (o contexto nao tem campo `error` de
+proposito). `ProtectedRoute` envolve `/hoje`, `/start`, `/admin/conteudo` (dentro do mesmo `<App/>`
+shell de antes) - mostra um spinner enquanto `isLoading`, `<Navigate to="/login"/>` se `!user`,
+`<Outlet/>` senao. **So do lado do cliente** - nenhum desses endpoints tem `[Authorize]` no
+backend ainda (ver "Autenticacao" acima). `LoginPage` redireciona pra `/start` se ja houver
+sessao (evita a tela de login ficar visivel/usavel por quem ja esta logado).
 
 `TodayPage` (`/hoje`) chama `GET /api/today` (ou `GET /api/dailies/{id}` se `?daily=` estiver
 presente) e, se `AccessMode` for `Start`/`Resume`, chama `POST .../start` antes de renderizar (a
@@ -1068,8 +1174,10 @@ de Projeto Semanal).
 ## Fora de escopo ate agora
 
 - Servico de WhatsApp (`whatsapp-service/` e so placeholder).
-- Autenticacao/autorizacao real (usuario fixo/hardcoded, unico usuario-teste) - **reconfirmado
-  na Fase 2**: nenhuma entidade recebe `UserId`.
+- **Parcialmente resolvido na Fase 12:** autenticacao real existe (`User`, registro/login/sessao
+  via JWT em cookie) - mas **nenhum endpoint de curso/weekly/daily foi protegido ainda**, e
+  nenhuma dessas entidades recebe `UserId`/matricula (Course/Weekly/Daily continuam globais,
+  compartilhados por qualquer usuario autenticado). Isso e trabalho da Fase 13.
 - **Resolvido na Fase 11, nao e mais pendencia:** integracao com GitHub (via `HttpClient` cru, sem
   Octokit.NET - a afirmacao do prompt de que "Octokit ja estava configurado desde a Fase 1" era
   falsa) e exigencia de publicacao publica (LinkedIn/GitHub) pra desbloquear o proximo modulo -
@@ -1130,6 +1238,7 @@ de Projeto Semanal).
 | 9 | Polimento das Atividades Individuais (Quiz, Cloze, Ligar Palavras, Roleplay) | `docs/fase-9/resumo-implementacao-fase-9.md` |
 | 10 | Estados de Erro | `docs/fase-10/resumo-implementacao-fase-10.md` |
 | 11 | Sistema de Publicacao Publica | `docs/fase-11/resumo-implementacao-fase-11.md` |
+| 12 | Fundacao de Autenticacao (Backend) + Splash & Login/Registro (UI) | `docs/fase-12/resumo-implementacao-fase-12.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
@@ -1244,4 +1353,21 @@ de Projeto Semanal).
   de Frontend) - o refetch precisa esperar o usuario decidir sair (`onClose`), nao disparar no
   meio do fluxo de sucesso/erro do modal.
 - **"Auditoria de Repositorios" (citada no prompt da Fase 11 como proxima fase) depende de uma
-  decisao de escopo (estatica vs. dinamica) antes de virar um prompt tecnico** - ainda em aberto.
+  decisao de escopo (estatica vs. dinamica) antes de virar um prompt tecnico** - ainda em aberto
+  (a Fase 12 acabou entrando antes, com a mudanca de direcao pra autenticacao real).
+- **Nenhum endpoint de curso/weekly/daily foi protegido na Fase 12** (de proposito) - qualquer
+  usuario autenticado ve os mesmos dados globais de sempre. A Fase 13 e quem decide como
+  Course/Weekly/Daily passam a ser por usuario (matricula) e so entao faz sentido adicionar
+  `[Authorize]`/filtro por usuario nesses endpoints - fazer isso antes, sem o filtro, quebraria o
+  app inteiro sem necessidade (mesmo raciocinio ja aplicado ao bloqueio por publicacao na Fase 11).
+- **Sem botao de logout na UI** (Fase 12) - fora do checklist desta fase (so splash + login/
+  registro); verificado ao vivo direto via `POST /api/auth/logout`. Uma fase futura de Perfil e
+  provavelmente o lugar certo.
+- **`IJwtTokenService` so gera token, nao valida** - a validacao de qualquer JWT recebido e feita
+  pelo middleware `JwtBearer` do ASP.NET Core (`Program.cs`), nao por um metodo do port. Se uma
+  fase futura precisar validar um token fora do pipeline HTTP normal (ex: um worker em background),
+  vale revisitar essa decisao.
+- **`Jwt:SecretKey` e a unica config nova que derruba o boot da Api se ausente** (mesmo tratamento
+  da connection string) - diferente do padrao "ausente e tolerado" usado por `Groq:ApiKey`/
+  `GitHub:Token`. Motivo: autenticacao virou fundacao a partir desta fase, no sentido literal de
+  que nada relacionado a sessao funciona sem essa chave.

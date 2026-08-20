@@ -29,6 +29,7 @@ public class ApiExceptionHandler : IExceptionHandler
         ["reforco_diario_condicoes_nao_atingidas"] = StatusCodes.Status409Conflict,
         ["modulo_bloqueado_por_publicacao"] = StatusCodes.Status409Conflict,
         ["publicacao_ja_validada"] = StatusCodes.Status409Conflict,
+        ["credenciais_invalidas"] = StatusCodes.Status401Unauthorized,
     };
 
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)

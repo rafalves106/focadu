@@ -16,15 +16,22 @@ public static class DependencyInjection
     private static readonly Uri GitHubBaseAddress = new("https://api.github.com/");
 
     public static IServiceCollection AddFocaduInfrastructure(
-        this IServiceCollection services, string connectionString, string groqApiKey, GitHubOptions gitHubOptions)
+        this IServiceCollection services, string connectionString, string groqApiKey, GitHubOptions gitHubOptions, JwtOptions jwtOptions)
     {
         services.AddDbContext<FocaduDbContext>(options => options.UseNpgsql(connectionString));
 
         services.AddScoped<ICourseRepository, CourseRepository>();
         services.AddScoped<IMonthlyRepository, MonthlyRepository>();
         services.AddScoped<IWeeklyRepository, WeeklyRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<IClock, SystemClock>();
+
+        // Autenticacao (Fase 12) - JwtOptions.SecretKey e exigida no boot (Program.cs falha antes
+        // de chegar aqui se estiver ausente, diferente de Groq/GitHub abaixo).
+        services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
+        services.AddSingleton(jwtOptions);
+        services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
         // Groq (Fase 5): transcricao (Whisper) e avaliacao (chat completion) de resumos falados.
         // ApiKey vazia nao impede o app de subir - so os dois adapters abaixo falham (com erro
