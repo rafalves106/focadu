@@ -1,3 +1,8 @@
+/* Fonte da identidade visual (Figma "Login/Registro", node 19:8) - Archivo (display/corpo) +
+   Fira Code (acentos "terminal": eyebrow, MOSTRAR/OCULTAR). So pesos usados no design.
+   Precisa vir ANTES de "@import tailwindcss" - regras @import tem que ficar todas no topo do
+   arquivo, antes de qualquer outra regra (Tailwind expande a propria import em conteudo real). */
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap");
 @import "tailwindcss";
 
 /*
@@ -18,6 +23,11 @@
   --color-primary: #f5f5f5;
   --color-secondary: #9a9a9a;
   --color-muted: #5c5c5c;
+  /* font-display/font-mono (utilitarios Tailwind v4 gerados automaticamente por --font-*) - por
+     enquanto so aplicados na tela de Login/Registro (fidelidade ao node 19:8); nao e uma troca de
+     fonte do app inteiro, so os 2 tokens ficam disponiveis globalmente. */
+  --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Fira Code", ui-monospace, "SFMono-Regular", monospace;
 }
 
 body {

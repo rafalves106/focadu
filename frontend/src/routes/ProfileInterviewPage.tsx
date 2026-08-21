@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
 import { InterestChip } from '../components/onboarding/InterestChip';
 import { OnboardingStepper } from '../components/onboarding/OnboardingStepper';
@@ -12,17 +12,29 @@ const INTEREST_OPTIONS = [
   'Cinema', 'Séries', 'Games', 'Música', 'Esportes', 'Anime', 'Livros', 'Culinária', 'Viagens', 'Artes', 'Natureza', 'Tecnologia',
 ];
 
-/** `/onboarding/perfil` - passo 2/3 (Fase 13b). Sem node Figma proprio validado nesta fase (so Boas-vindas/Seleção/Empty State foram conferidos) - segue a mesma estética das outras 2 telas de onboarding. */
+/**
+ * `/onboarding/perfil` - passo 2/3 (Fase 13b). Sem node Figma proprio validado nesta fase (so
+ * Boas-vindas/Seleção/Empty State foram conferidos) - segue a mesma estética das outras 2 telas
+ * de onboarding.
+ *
+ * `?edit=1` (Fase 18): mesma tela reaproveitada pra editar depois do onboarding, a partir da aba
+ * "Informações" do Perfil - PUT /api/users/me/profile ja aceita ser chamado de novo (sem guarda
+ * de "so uma vez", ver CompleteProfileUseCase), so faltava a UI de edicao. Pre-popula com o que ja
+ * foi salvo (UserDto.interests/additionalProfileNotes) e volta pro Perfil ao salvar, em vez de
+ * seguir pra Selecao de Curso.
+ */
 export function ProfileInterviewPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [interests, setInterests] = useState<string[]>([]);
-  const [notes, setNotes] = useState('');
+  const [searchParams] = useSearchParams();
+  const isEditing = searchParams.get('edit') !== null;
+  const [interests, setInterests] = useState<string[]>(user?.interests ?? []);
+  const [notes, setNotes] = useState(user?.additionalProfileNotes ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!user) return null;
-  if (user.profileCompletedAt) return <Navigate to="/selecionar-curso" replace />;
+  if (user.profileCompletedAt && !isEditing) return <Navigate to="/selecionar-curso" replace />;
 
   function toggleInterest(interest: string) {
     setInterests((current) => (current.includes(interest) ? current.filter((i) => i !== interest) : [...current, interest]));
@@ -33,7 +45,7 @@ export function ProfileInterviewPage() {
     setError(null);
     try {
       await api.completeProfile(interests, notes.trim() || null);
-      navigate('/selecionar-curso');
+      navigate(isEditing ? '/perfil' : '/selecionar-curso');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Não foi possível salvar seu perfil.');
     } finally {
@@ -48,10 +60,10 @@ export function ProfileInterviewPage() {
       </header>
 
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 p-8">
-        <OnboardingStepper step={2} />
+        {!isEditing && <OnboardingStepper step={2} />}
 
         <div>
-          <h1 className="text-3xl font-black text-primary">Conte um pouco sobre você</h1>
+          <h1 className="text-3xl font-black text-primary">{isEditing ? 'Editar seus interesses' : 'Conte um pouco sobre você'}</h1>
           <p className="mt-3 text-sm leading-relaxed text-secondary">
             Sem certo ou errado aqui - isso ajuda a montar analogias que fazem sentido pra você mais pra frente. Fica
             à vontade pra pular, se preferir.
@@ -78,7 +90,11 @@ export function ProfileInterviewPage() {
         {error && <p className="text-sm text-alert">{error}</p>}
 
         <div className="flex items-center justify-between pt-2">
-          <button type="button" onClick={() => navigate('/onboarding')} className="text-sm text-secondary hover:text-primary">
+          <button
+            type="button"
+            onClick={() => navigate(isEditing ? '/perfil' : '/onboarding')}
+            className="text-sm text-secondary hover:text-primary"
+          >
             ← Voltar
           </button>
           <button
@@ -87,7 +103,7 @@ export function ProfileInterviewPage() {
             disabled={saving}
             className="rounded-xl bg-accent px-6 py-3 text-sm font-bold tracking-wide text-base disabled:opacity-50"
           >
-            {saving ? 'Salvando...' : 'Próximo Passo →'}
+            {saving ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Próximo Passo →'}
           </button>
         </div>
       </div>

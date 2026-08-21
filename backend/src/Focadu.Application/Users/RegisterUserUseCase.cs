@@ -68,7 +68,7 @@ public class RegisterUserUseCase
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var token = _jwtTokenService.GenerateToken(user);
-        return new AuthResultDto(new UserDto(user.Id, user.Email, user.DisplayName, user.ProfileCompletedAt), token);
+        return new AuthResultDto(new UserDto(user.Id, user.Email, user.DisplayName, user.ProfileCompletedAt, user.Interests, user.AdditionalProfileNotes), token);
     }
 
     /// <summary>Minimo de 8 caracteres (pedido no prompt da fase) - validacao client-side existe tambem, mas o servidor nunca confia so nisso.</summary>

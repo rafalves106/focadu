@@ -608,14 +608,58 @@ resolvidos - mesmo padrao de `SubmitActivityResponseUseCase.ResolveScore`/`GetCo
 ComputeScore`. 5 badges, `code` estavel (`streak_7`/`streak_30`/`easy_weekly`/`embaixador`/
 `founder`) - label/icone/descricao sao so apresentacao no frontend (`BadgeGrid`).
 
-**Onde Badges/ReferralCard moram por enquanto.** Sem lar definitivo ainda - a aba "Conquistas" do
-Perfil so chega na Fase 18. Por ora, `/conquistas` (rota propria, `AchievementsPage` - `BadgeGrid`
-+ `ReferralCard` juntos) mais um link a partir de `CourseDetailPage`. `MarketplacePage` (`/loja`)
-acessivel clicando no `GemBadge` do header do `StartDashboard` (ficou clicavel nesta fase).
+**Onde Badges/ReferralCard moram.** `/conquistas` era rota propria (`AchievementsPage`) nesta fase -
+virou a aba "Conquistas" do Perfil na Fase 18 (`/conquistas` agora so redireciona).
+`MarketplacePage` (`/loja`) acessivel clicando no `GemBadge` do header do `StartDashboard` (ficou
+clicavel nesta fase).
 
-**Aplicacao visual dos cosmeticos equipados fica pra Fase 18** - esta fase so constroi comprar/
-equipar/guardar estado, nao "veste" o app inteiro ainda (cor do nome no Ranking, moldura no avatar
-do header, etc. - tudo isso ja vem pronto no dado, `UserEquippedCosmetics`, so falta consumir).
+**Aplicacao visual dos cosmeticos equipados** ficou pra Fase 18 (cor do nome no Ranking, moldura no
+avatar do header) - esta fase so constroi comprar/equipar/guardar estado.
+
+### Perfil, 3 Abas (Fase 18)
+
+Fase de consolidacao - nenhum sistema novo, so compoe dado que ja existia (`GetGamificationSummaryUseCase`/
+`GetUserBadgesUseCase`/`GetReferralInfoUseCase`/`GetMarketplaceCatalogUseCase`/`User.Interests`,
+Fases 14-17). `/perfil`, 3 abas via query string `?tab=info|customizacao|conquistas` (default
+`info` - mesmo padrao de `/start?weekly=`).
+
+**Sem endpoint consolidado novo** (`GET /api/users/me/profile-summary` era opcional no prompt) -
+`ProfilePage` faz `Promise.all([getGamification, getMarketplaceCatalog])` pro cabecalho, cada aba
+busca o resto sozinha (`InformationTab` cursos/ranking, `ConquestsTab` badges/indicacao) - mesmo
+padrao ja usado em `StartDashboard`/`AchievementsPage`, mais simples que orquestrar isso no backend
+pra uma fase que e so composicao de leitura.
+
+**`UserDto` ganhou `Interests`/`AdditionalProfileNotes`** (Fase 18) - a aba Informacoes le direto do
+`user` do `AuthContext` (ja carregado via `GET /api/auth/me`), sem precisar de uma chamada nova.
+`PUT /api/users/me/profile` (`CompleteProfileUseCase`) ja aceitava ser chamado de novo desde a Fase
+13 (sem guarda de "so uma vez") - so faltava UI de edicao: `ProfileInterviewPage` ganhou `?edit=1`
+(pre-popula com o que ja foi salvo, volta pro `/perfil` em vez de `/selecionar-curso` ao salvar, em
+vez de virar uma tela nova).
+
+**`EquippedNameColor` no Ranking - token estavel, nao hex.** `GetCourseRankingUseCase` resolve, por
+Enrollment, o `Name` do `CosmeticItem` equipado no slot `NameColor` (ex: "Verde Neon") e devolve em
+`RankingEntryDto.EquippedNameColor`. O frontend mapeia token -> cor de verdade
+(`lib/cosmeticStyle.ts`, `nameColorClass`) - mesmo padrao ja estabelecido de `BadgeDto.code` ->
+label/icone (`BadgeGrid`) e `CosmeticRarity` -> swatch (`CosmeticItemCard`). Decisao: nenhum campo
+de cor/hex foi adicionado ao dominio (`CosmeticItem` continua so com `Name`/`Slot`/`Rarity`) -
+adicionar um "de verdade" seria inventar dado que a arte real (`AssetUrl`) ainda nao define.
+
+**Avatar/moldura - so um placeholder, de proposito.** Escopo controlado (confirmado no prompt): sem
+upload de foto/avatar de verdade. `EquippedFramePreview` (`components/`) mostra as iniciais do nome
+num circulo, com um anel colorido por raridade (`RARITY_STYLE`, mesma cor do swatch da loja) quando
+uma Moldura esta equipada - reaproveitado no cabecalho do Perfil (`ProfileHeader`) e no nav global
+(`HeaderUserBadge`, unico jeito de chegar em `/perfil` pela UI - antes o app nao tinha nenhum lugar
+mostrando o nome do usuario logado fora do Perfil).
+
+**Divergencias deliberadas do Figma (3 nodes conferidos - Informacoes/Customizacao/Conquistas)** -
+nenhuma tem dado real por tras, mesmo criterio ja usado em outras telas (ver `OnboardingWelcomePage`):
+upload de foto, "Apelido/Username", "Sua frase de guerra" e toda a secao "Analogias de Aprendizado"
+(preview de IA) nao existem no dominio - omitidos. Nivel/XP, "Sessoes completas" e Platinas por
+curso (troféu por 100% de conclusao) tambem nao existem - confirmado fora de escopo ate Squad/PvP
+existir (mesma decisao ja tomada nas fases anteriores pra Elo/Patente). "Recorde de Streak" do
+mockup virou dado real (`GamificationSummaryDto.longestStreak`). O 4o grupo de customizacao do
+mockup ("Avatar", a ilustracao do personagem) nao existe como slot compravel - so os 3 slots reais
+de `CosmeticSlot` (Moldura/Cor do Nome/Banner) aparecem na aba Customizacao.
 
 ## Regras de negocio centralizadas
 
@@ -748,8 +792,8 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | POST | `/api/auth/register` | `RegisterUserUseCase` (Fase 12) | 201, seta cookie `focadu_auth`, 409/400 (ver "Autenticacao") - Fase 17: aceita `referralCode` opcional |
 | POST | `/api/auth/login` | `LoginUserUseCase` (Fase 12) | 200, seta cookie, 401 `credenciais_invalidas` |
 | POST | `/api/auth/logout` | - (limpa o cookie direto no endpoint) | 200 |
-| 🔒 GET | `/api/auth/me` | `GetCurrentUserUseCase` (Fase 12) | 200, 401 `nao_autenticado` |
-| 🔒 PUT | `/api/users/me/profile` | `CompleteProfileUseCase` (Fase 13) | 200 - Entrevista de Perfil (Onboarding), so persiste |
+| 🔒 GET | `/api/auth/me` | `GetCurrentUserUseCase` (Fase 12) | 200, 401 `nao_autenticado` - Fase 18: `UserDto` ganhou `interests`/`additionalProfileNotes` (aba Informações do Perfil le direto daqui, sem endpoint novo) |
+| 🔒 PUT | `/api/users/me/profile` | `CompleteProfileUseCase` (Fase 13) | 200 - Entrevista de Perfil (Onboarding); sem guarda de "so uma vez", Fase 18 reaproveita pra editar depois |
 | 🔒 GET | `/api/users/me/gamification` | `GetGamificationSummaryUseCase` (Fase 14) | 200 (`GamificationSummaryDto`) - nunca 404, `UserGemBalance`/`UserStreak` sao lazy |
 | 🔒 GET | `/api/courses/available` | `GetAvailableCoursesUseCase` (Fase 13) | 200 - so cursos `Active` em que o usuario ainda nao esta matriculado |
 | 🔒 POST | `/api/enrollments` | `EnrollUserInCourseUseCase` (Fase 13) | 201, 409 `ja_matriculado` - gera Weekly/Daily/WeeklyProject-instancia pra todo o curriculo do curso |
@@ -770,7 +814,7 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | 🔒 PUT | `/api/curated-content/{id}` | `UpdateCuratedContentUseCase` (Fase 4) | 200, 400/404 |
 | 🔒 POST | `/api/weeklies/{weeklyId}/project/submit` | `SubmitWeeklyProjectUseCase` (Fase 7) | 200, 400/404 - `WeeklyProject.Submit` existia desde a Fase 1, so faltava endpoint |
 | 🔒 PUT | `/api/weeklies/{weeklyId}/project/evaluate` | `EvaluateWeeklyProjectUseCase` (Fase 11) | 200, 400/404 - `WeeklyProject.Evaluate` existia desde a Fase 1, so faltava endpoint (so backend, sem UI). Fase 16: virou PUT (era POST) e o corpo `{score, feedback}` passou a ser obrigatorio (`score` alimenta o Score de Estudo) |
-| 🔒 GET | `/api/courses/{courseId}/ranking?scope=` | `GetCourseRankingUseCase` (Fase 16) | 200 (`RankingResultDto`) - `scope` = `weekly`\|`monthly`\|`course`, default `course` se omitido |
+| 🔒 GET | `/api/courses/{courseId}/ranking?scope=` | `GetCourseRankingUseCase` (Fase 16) | 200 (`RankingResultDto`) - `scope` = `weekly`\|`monthly`\|`course`, default `course` se omitido. Fase 18: `RankingEntryDto` ganhou `EquippedNameColor` (Name do cosmetico equipado, nao hex - ver secao abaixo) |
 | 🔒 GET | `/api/users/me/badges` | `GetUserBadgesUseCase` (Fase 17) | 200 (`UserBadgesDto`, 5 badges calculados sob demanda) |
 | 🔒 GET | `/api/users/me/referral` | `GetReferralInfoUseCase` (Fase 17) | 200 (`ReferralInfoDto`) - gera o `ReferralCode` na 1a consulta |
 | 🔒 GET | `/api/marketplace/catalog` | `GetMarketplaceCatalogUseCase` (Fase 17) | 200 (`MarketplaceCatalogDto`) |
@@ -1283,9 +1327,12 @@ frontend/
   src/
     main.tsx              <- BrowserRouter + AuthProvider + Routes ("/" Splash, "/login" fora do
                               ProtectedRoute; onboarding/onboarding/perfil/selecionar-curso/hoje/
-                              start/admin/conteudo dentro dele - Fase 12; onboarding/*/
-                              selecionar-curso ficam fora do <App/> (sem o nav), Fase 13b)
-    App.tsx                <- shell com nav (Hoje / Inicio / Conteudo) + <ErrorBoundary key={pathname}><Outlet/></ErrorBoundary> (Fase 10)
+                              start/perfil/admin/conteudo dentro dele - Fase 12; onboarding/*/
+                              selecionar-curso ficam fora do <App/> (sem o nav), Fase 13b; /conquistas
+                              vira <Navigate to="/perfil?tab=conquistas"/> desde a Fase 18)
+    App.tsx                <- shell com nav (Hoje / Inicio / Conteudo) + HeaderUserBadge (nome+
+                              moldura equipados, link pra /perfil - Fase 18) +
+                              <ErrorBoundary key={pathname}><Outlet/></ErrorBoundary> (Fase 10)
     index.css               <- @import "tailwindcss" + tokens @theme (paleta da identidade visual)
     assets/reading/          <- SVGs do design Figma (dots, play, check, orbe) - bytes exatos, Fase 7
     lib/
@@ -1298,6 +1345,10 @@ frontend/
       onboarding.ts                <- resolveLandingPath(user) (Fase 13b) - unico lugar que decide
                                    /onboarding vs /selecionar-curso vs /start; usado por SplashPage
                                    e pelo onSuccess de login/registro (LoginPage), nunca duplicado
+      cosmeticStyle.ts               <- RARITY_STYLE (Fase 18, movido de CosmeticItemCard - fonte
+                                   unica pra "raridade -> cor", reaproveitado por
+                                   EquippedFramePreview) + nameColorClass(token) - token do
+                                   CosmeticItem equipado (Name, nao hex) -> classe de cor de verdade
     contexts/
       authContextObject.ts         <- createContext + AuthContextValue (Fase 12) - so o objeto/tipo,
                                    separado do Provider e do hook pelo mesmo motivo de statusBadge.ts;
@@ -1330,7 +1381,11 @@ frontend/
                                    vazia) e pula direto pra /selecionar-curso
       ProfileInterviewPage.tsx    <- /onboarding/perfil (Fase 13b, passo 2/3) - Entrevista de
                                    Perfil, InterestChip multi-select + notas livres, salva via
-                                   PUT /api/users/me/profile (CompleteProfileUseCase)
+                                   PUT /api/users/me/profile (CompleteProfileUseCase). `?edit=1`
+                                   (Fase 18): mesma tela reaproveitada pra editar depois do
+                                   onboarding (pre-popula com UserDto.interests/
+                                   additionalProfileNotes, volta pro /perfil ao salvar em vez de
+                                   seguir pra /selecionar-curso)
       CourseSelectionPage.tsx     <- /selecionar-curso (Fase 13b, passo 3/3) - GET
                                    /api/courses/available, matricula via POST /api/enrollments
       EmptyStateStartPage.tsx     <- guarda de seguranca em /start (Fase 13b) - renderizada por
@@ -1372,8 +1427,12 @@ frontend/
                                    comprar/equipar/desequipar cada um devolve o catalogo inteiro
                                    recalculado, guardado em `catalogOverride` (derivado no render,
                                    nunca via effect) - cai pro `data` original ate a 1a acao
-      AchievementsPage.tsx       <- /conquistas (Fase 17) - BadgeGrid + ReferralCard juntos, sem
-                                   lar definitivo ainda (fica pra aba "Conquistas" do Perfil, Fase 18)
+      ProfilePage.tsx            <- /perfil (Fase 18) - 3 abas via ?tab= (Informacoes/Customizacao/
+                                   Conquistas, default Informacoes); ProfileHeader (nome+moldura+
+                                   Gems+Streak) acima das abas, sempre visivel; catalogo (pra
+                                   equipar/desequipar na aba Customizacao) guardado em
+                                   `catalogOverride`, mesmo padrao derivado-no-render de
+                                   MarketplacePage
       WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7)
       AdminContentPage.tsx       <- /admin/conteudo (autoria de CuratedContent, Fase 6) - navega
                                    com WeeklyTemplateId desde a Fase 13b (getCourseCurriculum/
@@ -1382,6 +1441,13 @@ frontend/
       ProtectedRoute.tsx           <- guarda de rota client-side (Fase 12) - so le AuthContext, nunca
                                    busca sessao de novo sozinho; backend exige [Authorize] em tudo
                                    isso desde a Fase 13a
+      EquippedFramePreview.tsx      <- Fase 18 - placeholder de avatar (iniciais do nome + anel
+                                   colorido por raridade quando uma Moldura esta equipada, sem
+                                   upload/ilustracao real); reaproveitado por ProfileHeader e
+                                   HeaderUserBadge
+      HeaderUserBadge.tsx            <- Fase 18 - nome+moldura equipados no nav global (App.tsx),
+                                   link pra /perfil; busca o catalogo sozinho, cai pro nome sem
+                                   cor/moldura se ainda nao carregou (nao bloqueia o nav)
       auth/
         LoginForm.tsx                <- email + senha (Fase 12); onSuccess recebe o UserDto (Fase 13b)
         RegisterForm.tsx              <- nome + email + senha + confirmacao (Fase 12); onSuccess
@@ -1407,9 +1473,13 @@ frontend/
         CurrentUserRankingCard.tsx           <- posicao do usuario sempre visivel, mesmo fora do
                                    top N; null quando o usuario nao tem matricula no curso
       marketplace/                  <- Fase 17
-        CosmeticItemCard.tsx              <- swatch de cor por raridade (sem arte real ainda) +
-                                   nome + preco/comprar OU equipar/desequipar (Owned/Equipped ja
-                                   resolvidos pelo backend)
+        CosmeticItemCard.tsx              <- swatch de cor por raridade (sem arte real ainda,
+                                   RARITY_STYLE em lib/cosmeticStyle.ts desde a Fase 18) + nome +
+                                   preco/comprar OU equipar/desequipar (Owned/Equipped ja
+                                   resolvidos pelo backend). `onPurchase` opcional (Fase 18): sem
+                                   ele, item nao possuido mostra "Ver na Loja" (link pra /loja) em
+                                   vez do botao de comprar - reaproveitado tal como esta pela aba
+                                   Customizacao do Perfil (inventario, nao vende nada por la)
         CosmeticSlotFilter.tsx             <- filtro Tudo/Molduras/Cores/Banners, mesmo padrao das
                                    abas do RankingScopeTabs
       badges/
@@ -1419,6 +1489,21 @@ frontend/
       referral/
         ReferralCard.tsx                   <- Fase 17 - codigo + copiar link (clipboard) + contador
                                    de indicacoes confirmadas
+      profile/                      <- Fase 18
+        ProfileHeader.tsx                  <- cabecalho do /perfil - EquippedFramePreview + nome
+                                   colorido (nameColorClass) + GemBadge/StreakIndicator reaproveitados
+        ProfileTabs.tsx                     <- abas Informacoes/Customizacao/Conquistas, mesmo
+                                   padrao de RankingScopeTabs/CosmeticSlotFilter
+        InformationTab.tsx                   <- nome/email so leitura, interesses/notas salvos
+                                   (UserDto), link "Editar meus interesses" (-> /onboarding/
+                                   perfil?edit=1), estatisticas basicas (cursos, Recorde de
+                                   Streak, Score no curso ativo)
+        CustomizationTab.tsx                  <- inventario agrupado pelos 3 slots reais
+                                   (CosmeticSlot), reaproveita CosmeticItemCard tal como esta
+                                   (sem onPurchase); preview ao vivo e o ProfileHeader acima, nao
+                                   duplicado aqui
+        ConquestsTab.tsx                       <- BadgeGrid + ReferralCard movidos de
+                                   AchievementsPage.tsx (removido) - mesmo conteudo, novo lar
       activities/                 <- primitivas visuais das atividades avaliaveis (Fase 9)
         IntroCard.tsx                <- tela de intro (badge/titulo/descricao/regras/CTA) - gate local (`started`), nao e passo novo no Step do TodayPage
         OptionCard.tsx                <- card de opcao (neutro/selecionado/correto/errado/esmaecido) - Quiz, termos do WordMatch, decisoes do Roleplay
@@ -1467,7 +1552,7 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/` | `GET /api/auth/me` (via AuthProvider) | `SplashPage` (Fase 12) - decide entre `/login` e `resolveLandingPath(user)` (Fase 13b) |
 | `/login` | `POST /api/auth/register` ou `/login` | `LoginPage` (Fase 12) - abas Entrar/Criar Conta; `?ref=CODIGO` (Fase 17) pula pra Criar Conta com o codigo pre-preenchido |
 | `/onboarding` | `PUT /api/users/me/profile` (so no "Pular tour") | `OnboardingWelcomePage` (Fase 13b) - passo 1/3 |
-| `/onboarding/perfil` | `PUT /api/users/me/profile` | `ProfileInterviewPage` (Fase 13b) - passo 2/3, Entrevista de Perfil |
+| `/onboarding/perfil` | `PUT /api/users/me/profile` | `ProfileInterviewPage` (Fase 13b) - passo 2/3, Entrevista de Perfil. `?edit=1` (Fase 18) - mesma tela em modo edicao, pre-populada, volta pro `/perfil` |
 | `/selecionar-curso` | `GET /api/courses/available` + `POST /api/enrollments` | `CourseSelectionPage` (Fase 13b) - passo 3/3 |
 | `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7) |
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco; Fase 8: tambem usada como "reprise" de um dia ja concluido, clicado a partir da Visao Semanal) |
@@ -1475,7 +1560,8 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/start?course=` | `GET /api/courses/{courseId}` | `CourseDetailPage` (Fase 8) - trilha completa do curso |
 | `/start?course=&ranking=1` | `GET /api/courses/{courseId}/ranking?scope=` | `RankingPage` (Fase 16) - Score de Estudo, top 10 + posicao do usuario |
 | `/loja` | `GET /api/marketplace/catalog` + `POST .../purchase`\|`/equip`\|`/unequip` | `MarketplacePage` (Fase 17) - catalogo de cosmeticos |
-| `/conquistas` | `GET /api/users/me/badges` + `GET /api/users/me/referral` | `AchievementsPage` (Fase 17) - BadgeGrid + ReferralCard |
+| `/perfil` (`?tab=info`\|`customizacao`\|`conquistas`) | `GET /api/users/me/gamification` + `GET /api/marketplace/catalog` (+ `GET /api/courses`/`.../ranking` na aba Informacoes, `GET /api/users/me/badges`/`referral` na aba Conquistas) | `ProfilePage` (Fase 18) - 3 abas, ver secao "Perfil, 3 Abas" acima |
+| `/conquistas` | - (so redireciona) | `<Navigate to="/perfil?tab=conquistas"/>` (Fase 18, era `AchievementsPage` na Fase 17 - mantido como redirect pra nao quebrar links/favoritos antigos) |
 | `/start?course=&weekly=` | `GET /api/weeklies/{weeklyId}` (+ `GET /api/courses/{courseId}` pra navegacao entre semanas) | `WeeklyDetailPage` (Fase 8) - dias da semana + projeto |
 | `/start?course=&weekly=&daily=` | `GET /api/dailies/{dailyId}` | Estado de uma Daily especifica (somente leitura) |
 | `/start?course=&weekly=&project=1` | `GET /api/weeklies/{weeklyId}` | Projeto pratico da semana (`WeeklyProjectPage`, Fase 7 - submissao via `POST .../project/submit`) |
@@ -1735,6 +1821,7 @@ de Projeto Semanal).
 | 15 | Conta-Giros Visual + Bonus de Superacao | `docs/fase-15/resumo-implementacao-fase-15.md` |
 | 16 | Score de Estudo + Ranking | `docs/fase-16/resumo-implementacao-fase-16.md` |
 | 17 | Marketplace de Cosmeticos + Trofeus/Badges + Sistema de Indicacao | `docs/fase-17/resumo-implementacao-fase-17.md` |
+| 18 | Perfil, 3 Abas | `docs/fase-18/resumo-implementacao-fase-18.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 

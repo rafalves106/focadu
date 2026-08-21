@@ -1,4 +1,5 @@
 import type { RankingEntryDto } from '../../api/types';
+import { nameColorClass } from '../../lib/cosmeticStyle';
 
 const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
@@ -18,7 +19,7 @@ export function RankingTable({ entries, highlightUserId }: { entries: RankingEnt
           }`}
         >
           <span className="w-8 shrink-0 text-center text-sm font-bold text-secondary">{MEDAL[entry.position] ?? entry.position}</span>
-          <span className="min-w-0 flex-1 truncate font-semibold text-primary">
+          <span className={`min-w-0 flex-1 truncate font-semibold ${nameColorClass(entry.equippedNameColor)}`}>
             {entry.displayName}
             {entry.userId === highlightUserId && <span className="ml-2 text-xs font-normal text-accent">(você)</span>}
           </span>
