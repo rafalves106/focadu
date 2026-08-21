@@ -92,6 +92,14 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
         >
           🏆 VER RANKING
         </Link>
+        {/* Fase 17: sem lar definitivo ainda (fica pra aba "Conquistas" do Perfil, Fase 18) - por
+            ora, so mais um link daqui, mesmo padrao do Ranking acima. */}
+        <Link
+          to="/conquistas"
+          className="block rounded-xl border border-surface-alt py-3 text-center text-sm font-bold tracking-wide text-secondary hover:border-accent hover:text-primary"
+        >
+          🎖️ CONQUISTAS
+        </Link>
       </div>
     </div>
   );

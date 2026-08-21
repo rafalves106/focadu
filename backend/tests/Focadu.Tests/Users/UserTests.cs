@@ -90,4 +90,33 @@ public class UserTests
 
         Assert.Null(user.AdditionalProfileNotes);
     }
+
+    // Fase 17: codigo de indicacao.
+
+    [Fact]
+    public void AssignReferralCode_SetsCode()
+    {
+        var user = User.Create("falves@example.com", "hash123", "Falves");
+
+        user.AssignReferralCode("ABC12345");
+
+        Assert.Equal("ABC12345", user.ReferralCode);
+    }
+
+    [Fact]
+    public void AssignReferralCode_CalledTwice_Throws()
+    {
+        var user = User.Create("falves@example.com", "hash123", "Falves");
+        user.AssignReferralCode("ABC12345");
+
+        Assert.Throws<DomainException>(() => user.AssignReferralCode("OUTRO123"));
+    }
+
+    [Fact]
+    public void AssignReferralCode_Blank_Throws()
+    {
+        var user = User.Create("falves@example.com", "hash123", "Falves");
+
+        Assert.Throws<DomainException>(() => user.AssignReferralCode("  "));
+    }
 }

@@ -28,6 +28,10 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserGemBalanceRepository, UserGemBalanceRepository>();
         services.AddScoped<IUserStreakRepository, UserStreakRepository>();
+        services.AddScoped<ICosmeticItemRepository, CosmeticItemRepository>();
+        services.AddScoped<IUserCosmeticInventoryRepository, UserCosmeticInventoryRepository>();
+        services.AddScoped<IUserEquippedCosmeticsRepository, UserEquippedCosmeticsRepository>();
+        services.AddScoped<IReferralRepository, ReferralRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<IClock, SystemClock>();
 

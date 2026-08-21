@@ -211,6 +211,96 @@ namespace Focadu.Infrastructure.Migrations
                     b.ToTable("CuratedContents", (string)null);
                 });
 
+            modelBuilder.Entity("Focadu.Domain.Cosmetics.CosmeticItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AssetUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("IsAnimated")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("PriceGems")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Rarity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Slot")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CosmeticItems", (string)null);
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Cosmetics.UserCosmeticInventory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AcquiredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CosmeticItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CosmeticItemId");
+
+                    b.HasIndex("UserId", "CosmeticItemId")
+                        .IsUnique();
+
+                    b.ToTable("UserCosmeticInventories", (string)null);
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Cosmetics.UserEquippedCosmetics", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("EquippedBannerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("EquippedFrameId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("EquippedNameColorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EquippedBannerId");
+
+                    b.HasIndex("EquippedFrameId");
+
+                    b.HasIndex("EquippedNameColorId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserEquippedCosmetics", (string)null);
+                });
+
             modelBuilder.Entity("Focadu.Domain.Courses.Course", b =>
                 {
                     b.Property<Guid>("Id")
@@ -407,6 +497,33 @@ namespace Focadu.Infrastructure.Migrations
                     b.ToTable("Monthlies", (string)null);
                 });
 
+            modelBuilder.Entity("Focadu.Domain.Referrals.Referral", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ReferredUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ReferrerUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReferredUserId")
+                        .IsUnique();
+
+                    b.HasIndex("ReferrerUserId");
+
+                    b.ToTable("Referrals", (string)null);
+                });
+
             modelBuilder.Entity("Focadu.Domain.Users.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -440,9 +557,16 @@ namespace Focadu.Infrastructure.Migrations
                     b.Property<DateTime?>("ProfileCompletedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ReferralCode")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("ReferralCode")
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
@@ -658,6 +782,45 @@ namespace Focadu.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Focadu.Domain.Cosmetics.UserCosmeticInventory", b =>
+                {
+                    b.HasOne("Focadu.Domain.Cosmetics.CosmeticItem", null)
+                        .WithMany()
+                        .HasForeignKey("CosmeticItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Focadu.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Cosmetics.UserEquippedCosmetics", b =>
+                {
+                    b.HasOne("Focadu.Domain.Cosmetics.CosmeticItem", null)
+                        .WithMany()
+                        .HasForeignKey("EquippedBannerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Focadu.Domain.Cosmetics.CosmeticItem", null)
+                        .WithMany()
+                        .HasForeignKey("EquippedFrameId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Focadu.Domain.Cosmetics.CosmeticItem", null)
+                        .WithMany()
+                        .HasForeignKey("EquippedNameColorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Focadu.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Focadu.Domain.Dailies.Daily", b =>
                 {
                     b.HasOne("Focadu.Domain.Dailies.DailyTemplate", "Template")
@@ -727,6 +890,21 @@ namespace Focadu.Infrastructure.Migrations
                         .WithMany("Monthlies")
                         .HasForeignKey("CourseId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Referrals.Referral", b =>
+                {
+                    b.HasOne("Focadu.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReferredUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Focadu.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReferrerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

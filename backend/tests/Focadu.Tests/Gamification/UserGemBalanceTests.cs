@@ -1,3 +1,4 @@
+using Focadu.Domain.Exceptions;
 using Focadu.Domain.Gamification;
 using Xunit;
 
@@ -6,6 +7,53 @@ namespace Focadu.Tests.Gamification;
 public class UserGemBalanceTests
 {
     private static readonly DateOnly Today = new(2026, 8, 21);
+
+    // Fase 17: TrySpend (Marketplace).
+
+    [Fact]
+    public void TrySpend_WithSufficientBalance_DeductsAndReturnsTrue()
+    {
+        var balance = new UserGemBalance(Guid.NewGuid(), Today);
+        balance.CreditDaily(Today); // +1
+
+        var spent = balance.TrySpend(1);
+
+        Assert.True(spent);
+        Assert.Equal(0, balance.TotalGems);
+    }
+
+    [Fact]
+    public void TrySpend_WithInsufficientBalance_ReturnsFalseAndChangesNothing()
+    {
+        var balance = new UserGemBalance(Guid.NewGuid(), Today);
+        balance.CreditDaily(Today); // +1
+
+        var spent = balance.TrySpend(15);
+
+        Assert.False(spent);
+        Assert.Equal(1, balance.TotalGems);
+    }
+
+    [Fact]
+    public void TrySpend_NeverAffectsMonthlyCapCounters()
+    {
+        var balance = new UserGemBalance(Guid.NewGuid(), Today);
+        balance.CreditDaily(Today); // +1, GemsFromDailiesThisMonth = 1
+
+        balance.TrySpend(1);
+
+        // Gasto e saldo, nao "ganho do mes" - o contador de cap continua intacto mesmo o saldo
+        // tendo ido a zero (caps controlam quanto se GANHA, nao quanto se GASTA).
+        Assert.Equal(1, balance.GemsFromDailiesThisMonth);
+    }
+
+    [Fact]
+    public void TrySpend_NonPositiveAmount_Throws()
+    {
+        var balance = new UserGemBalance(Guid.NewGuid(), Today);
+
+        Assert.Throws<DomainException>(() => balance.TrySpend(0));
+    }
 
     [Fact]
     public void CreditDaily_AddsOneGem()

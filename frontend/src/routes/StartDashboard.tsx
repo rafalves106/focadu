@@ -74,7 +74,10 @@ export function StartDashboard() {
           <h1 className="mt-1 text-3xl font-bold text-primary">Olá! 👋</h1>
         </div>
         <div className="flex items-center gap-2">
-          <GemBadge totalGems={gamification.totalGems} />
+          {/* Fase 17: clicavel de proposito - "faz sentido clicar nele pra ir direto a loja". */}
+          <Link to="/loja">
+            <GemBadge totalGems={gamification.totalGems} />
+          </Link>
           <StreakIndicator currentStreak={gamification.currentStreak} />
         </div>
       </div>

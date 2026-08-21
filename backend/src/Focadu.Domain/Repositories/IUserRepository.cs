@@ -9,5 +9,11 @@ public interface IUserRepository
 
     Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>Fase 17: resolve quem indicou (RegisterUserUseCase) - null se o codigo informado nao existe.</summary>
+    Task<User?> GetByReferralCodeAsync(string referralCode, CancellationToken cancellationToken = default);
+
+    /// <summary>Fase 17, badge Founder: true se `userId` esta entre os `count` primeiros User registrados (ordem total deterministica por CreatedAt, empate por Id).</summary>
+    Task<bool> IsAmongFirstRegisteredAsync(Guid userId, int count, CancellationToken cancellationToken = default);
+
     Task AddAsync(User user, CancellationToken cancellationToken = default);
 }

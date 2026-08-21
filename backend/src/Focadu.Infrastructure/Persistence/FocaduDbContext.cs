@@ -1,10 +1,12 @@
 using Focadu.Domain.Activities;
 using Focadu.Domain.Content;
+using Focadu.Domain.Cosmetics;
 using Focadu.Domain.Courses;
 using Focadu.Domain.Dailies;
 using Focadu.Domain.Enrollments;
 using Focadu.Domain.Gamification;
 using Focadu.Domain.Monthlies;
+using Focadu.Domain.Referrals;
 using Focadu.Domain.Users;
 using Focadu.Domain.Weeklies;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +49,12 @@ public class FocaduDbContext : DbContext
     // Gamificacao (Fase 14) - 1:1 com User, sempre criadas lazy (ver GamificationCreditor).
     public DbSet<UserGemBalance> UserGemBalances => Set<UserGemBalance>();
     public DbSet<UserStreak> UserStreaks => Set<UserStreak>();
+
+    // Marketplace de Cosmeticos + Indicacao (Fase 17).
+    public DbSet<CosmeticItem> CosmeticItems => Set<CosmeticItem>();
+    public DbSet<UserCosmeticInventory> UserCosmeticInventories => Set<UserCosmeticInventory>();
+    public DbSet<UserEquippedCosmetics> UserEquippedCosmetics => Set<UserEquippedCosmetics>();
+    public DbSet<Referral> Referrals => Set<Referral>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

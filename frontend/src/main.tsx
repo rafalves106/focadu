@@ -5,9 +5,11 @@ import './index.css';
 import { App } from './App';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
+import { AchievementsPage } from './routes/AchievementsPage';
 import { AdminContentPage } from './routes/AdminContentPage';
 import { CourseSelectionPage } from './routes/CourseSelectionPage';
 import { LoginPage } from './routes/LoginPage';
+import { MarketplacePage } from './routes/MarketplacePage';
 import { OnboardingWelcomePage } from './routes/OnboardingWelcomePage';
 import { ProfileInterviewPage } from './routes/ProfileInterviewPage';
 import { SplashPage } from './routes/SplashPage';
@@ -31,6 +33,8 @@ createRoot(document.getElementById('root')!).render(
             <Route element={<App />}>
               <Route path="hoje" element={<TodayPage />} />
               <Route path="start" element={<StartPage />} />
+              <Route path="loja" element={<MarketplacePage />} />
+              <Route path="conquistas" element={<AchievementsPage />} />
               <Route path="admin/conteudo" element={<AdminContentPage />} />
             </Route>
           </Route>
