@@ -20,9 +20,9 @@ public class GetPublicationStatusUseCase
         _weeklyRepository = weeklyRepository;
     }
 
-    public async Task<ModulePublicationDto> ExecuteAsync(Guid weeklyId, CancellationToken cancellationToken = default)
+    public async Task<ModulePublicationDto> ExecuteAsync(Guid userId, Guid weeklyId, CancellationToken cancellationToken = default)
     {
-        var weekly = await _weeklyRepository.GetByIdAsync(weeklyId, cancellationToken)
+        var weekly = await _weeklyRepository.GetByIdAsync(weeklyId, userId, cancellationToken)
             ?? throw new NotFoundException("semana_nao_encontrada", "Semana nao encontrada.");
 
         if (weekly.Publication is null)

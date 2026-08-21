@@ -55,7 +55,7 @@ public class WeeklyTests
     {
         var weekly = DailyFixtures.NewWeekly();
         var today = DailyFixtures.Today;
-        var futureDaily = weekly.AddDaily(1, today.AddDays(1));
+        var futureDaily = DailyFixtures.NewDaily(weekly, 1, today.AddDays(1));
 
         Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(futureDaily.Id, today));
     }
@@ -65,7 +65,7 @@ public class WeeklyTests
     {
         var weekly = DailyFixtures.NewWeekly();
         var today = DailyFixtures.Today;
-        var daily = weekly.AddDaily(1, today);
+        var daily = DailyFixtures.NewDaily(weekly, 1, today);
 
         Assert.Equal(DailyAccessMode.Start, weekly.EvaluateDailyAccess(daily.Id, today));
     }
@@ -75,8 +75,8 @@ public class WeeklyTests
     {
         var weekly = DailyFixtures.NewWeekly();
         var today = DailyFixtures.Today;
-        var daily1 = weekly.AddDaily(1, today);
-        var daily2 = weekly.AddDaily(2, today);
+        var daily1 = DailyFixtures.NewDaily(weekly, 1, today);
+        var daily2 = DailyFixtures.NewDaily(weekly, 2, today);
 
         weekly.StartOrResumeDaily(daily1.Id, today);
 
@@ -119,7 +119,7 @@ public class WeeklyTests
         pastDaily.SubmitActivityResponse(pastActivity.Id, 100);
         pastDaily.Complete();
 
-        var todayDaily = weekly.AddDaily(2, today);
+        var todayDaily = DailyFixtures.NewDaily(weekly, 2, today);
         weekly.StartOrResumeDaily(todayDaily.Id, today);
 
         Assert.Equal(DailyAccessMode.ReadOnly, weekly.EvaluateDailyAccess(pastDaily.Id, today));
@@ -130,7 +130,7 @@ public class WeeklyTests
     {
         var weekly = DailyFixtures.NewWeekly();
         var today = DailyFixtures.Today;
-        var pastDaily = weekly.AddDaily(1, today.AddDays(-3));
+        var pastDaily = DailyFixtures.NewDaily(weekly, 1, today.AddDays(-3));
 
         Assert.Equal(DailyAccessMode.ReadOnly, weekly.EvaluateDailyAccess(pastDaily.Id, today));
     }
@@ -162,7 +162,7 @@ public class WeeklyTests
     {
         var weekly = DailyFixtures.NewWeekly();
         var today = DailyFixtures.Today;
-        weekly.AddDaily(1, today.AddDays(-1));
+        DailyFixtures.NewDaily(weekly, 1, today.AddDays(-1));
 
         Assert.Null(weekly.GetDailyByDate(today));
     }
@@ -183,7 +183,7 @@ public class WeeklyTests
     public void IsModuleComplete_False_WhenProjectNotEvaluated()
     {
         var weekly = CompleteWeeklyDailies(DailyFixtures.NewWeekly());
-        weekly.DefineProject("Faca X.");
+        weekly.InitializeProject();
         // Nunca submetido/avaliado.
 
         Assert.False(weekly.IsModuleComplete());
@@ -249,6 +249,15 @@ public class WeeklyTests
         Assert.True(weekly.RequiresPublicationToUnlock());
     }
 
+    [Fact]
+    public void InitializeProject_CalledTwice_Throws()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        weekly.InitializeProject();
+
+        Assert.Throws<DomainException>(() => weekly.InitializeProject());
+    }
+
     /// <summary>Completa (Start+Submit 100+Complete) todas as Dailies ja existentes na Weekly - helper local so pros testes de modulo completo acima.</summary>
     private static Weekly CompleteWeeklyDailies(Weekly weekly)
     {
@@ -263,7 +272,7 @@ public class WeeklyTests
     /// <summary>DefineProject/Submit/Evaluate sao void (nao encadeaveis) - helper so pra nao repetir as 3 linhas em cada teste acima.</summary>
     private static void DefineEvaluatedProject(Weekly weekly)
     {
-        var project = weekly.DefineProject("Faca X.");
+        var project = weekly.InitializeProject();
         project.Submit("https://github.com/x");
         project.Evaluate();
     }

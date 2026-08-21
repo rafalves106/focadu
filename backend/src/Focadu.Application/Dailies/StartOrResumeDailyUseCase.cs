@@ -11,13 +11,13 @@ namespace Focadu.Application.Dailies;
 /// resultante (mesmo shape usado pela consulta de estado), para o cliente já ter tudo que precisa
 /// para renderizar a tela de estudo sem uma segunda chamada.
 ///
-/// Fase 11: antes de iniciar, checa se a Weekly ANTERIOR (mesma Monthly, Number menor, a mais
-/// proxima) ainda exige publicacao (Weekly.RequiresPublicationToUnlock) - se sim, bloqueia. So
-/// olha pra Weekly anterior dentro da mesma Monthly (nao atravessa fronteira de Monthly ainda -
-/// ponytail: o curso seedado hoje so tem 1 Monthly/1 Weekly, atravessar Monthlies exigiria
-/// tambem ICourseRepository so pra um cenario que ainda nao existe nos dados reais; upgrade
-/// natural quando houver mais de 1 Monthly). Nunca bloqueia reabrir uma Daily ja vista/concluida -
-/// so a entrada nova (Start/Resume) de uma Daily cuja Weekly ainda nao pode comecar.
+/// Fase 11: antes de iniciar, checa se a Weekly ANTERIOR (mesma matricula, Number menor, a mais
+/// proxima) ainda exige publicacao (Weekly.RequiresPublicationToUnlock) - se sim, bloqueia.
+/// Fase 13: o escopo virou "mesma Enrollment" (era "mesma Monthly") ao trocar
+/// GetByMonthlyIdAsync por GetByEnrollmentIdAsync - isso fecha de graca a limitacao documentada
+/// desde a Fase 11 ("nao atravessa Monthly"), ja que uma Enrollment cobre o Course inteiro,
+/// nao um Monthly especifico. Nunca bloqueia reabrir uma Daily ja vista/concluida - so a entrada
+/// nova (Start/Resume) de uma Daily cuja Weekly ainda nao pode comecar.
 /// </summary>
 public class StartOrResumeDailyUseCase
 {
@@ -32,12 +32,12 @@ public class StartOrResumeDailyUseCase
         _clock = clock;
     }
 
-    public async Task<DailyStateDto> ExecuteAsync(Guid dailyId, CancellationToken cancellationToken = default)
+    public async Task<DailyStateDto> ExecuteAsync(Guid userId, Guid dailyId, CancellationToken cancellationToken = default)
     {
-        var weekly = await _weeklyRepository.GetByDailyIdAsync(dailyId, cancellationToken)
+        var weekly = await _weeklyRepository.GetByDailyIdAsync(dailyId, userId, cancellationToken)
             ?? throw new NotFoundException("daily_nao_encontrada", "Daily nao encontrada.");
 
-        var siblingWeeklies = await _weeklyRepository.GetByMonthlyIdAsync(weekly.MonthlyId, cancellationToken);
+        var siblingWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(weekly.EnrollmentId, cancellationToken);
         var previousWeekly = siblingWeeklies
             .Where(w => w.Number < weekly.Number)
             .OrderByDescending(w => w.Number)

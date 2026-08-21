@@ -10,7 +10,8 @@ namespace Focadu.Application.Dailies;
 /// estiver sendo repetida (Replay), o cliente recebe o estado completo (tela de estudo imersiva);
 /// se for uma Daily de dia anterior (ReadOnly), o mesmo shape sai preenchido do mesmo jeito, mas
 /// o AccessMode = ReadOnly sinaliza para o frontend renderizar como resumo/gabarito, sem permitir
-/// nova submissao.
+/// nova submissao. Fase 13: userId (do JWT) filtra a busca pela Enrollment do dono - dailyId de
+/// outro usuario vira 404, nunca vaza dado de progresso de ninguem.
 /// </summary>
 public class GetDailyStateUseCase
 {
@@ -23,9 +24,9 @@ public class GetDailyStateUseCase
         _clock = clock;
     }
 
-    public async Task<DailyStateDto> ExecuteAsync(Guid dailyId, CancellationToken cancellationToken = default)
+    public async Task<DailyStateDto> ExecuteAsync(Guid userId, Guid dailyId, CancellationToken cancellationToken = default)
     {
-        var weekly = await _weeklyRepository.GetByDailyIdAsync(dailyId, cancellationToken)
+        var weekly = await _weeklyRepository.GetByDailyIdAsync(dailyId, userId, cancellationToken)
             ?? throw new NotFoundException("daily_nao_encontrada", "Daily nao encontrada.");
 
         var daily = weekly.Dailies.First(d => d.Id == dailyId);

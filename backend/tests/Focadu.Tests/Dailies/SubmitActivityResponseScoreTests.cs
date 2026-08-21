@@ -10,7 +10,8 @@ namespace Focadu.Tests.Dailies;
 /// SubmitActivityResponseUseCase.ResolveScore e a unica logica que decide o Score de uma resposta
 /// (todo tipo de atividade, desde a Fase 4) - testada direto (internal, via InternalsVisibleTo em
 /// Focadu.Application) sem precisar de fakes de repositorio, ja que so depende de objetos de
-/// dominio.
+/// dominio. Fase 13: DailyActivity so existe dentro de um DailyTemplate agora (curriculo) - estes
+/// testes nunca precisaram de uma Daily-instancia de verdade, so da definicao da atividade.
 /// </summary>
 public class SubmitActivityResponseScoreTests
 {
@@ -18,8 +19,8 @@ public class SubmitActivityResponseScoreTests
     public void Quiz_SelectedCorrectOption_ScoresFull()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var activity = daily.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
         var correct = activity.AddQuizOption("Certa", true);
         activity.AddQuizOption("Errada", false);
 
@@ -32,8 +33,8 @@ public class SubmitActivityResponseScoreTests
     public void WordMatch_SelectedWrongOption_ScoresZero()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var activity = daily.AddActivity(ActivityType.WordMatch, 0, AnswerMode.MultipleChoice);
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(ActivityType.WordMatch, 0, AnswerMode.MultipleChoice);
         activity.AddQuizOption("Certa", true);
         var wrong = activity.AddQuizOption("Errada", false);
 
@@ -46,8 +47,8 @@ public class SubmitActivityResponseScoreTests
     public void Quiz_WithoutSelectedOptionId_Throws()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var activity = daily.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
         activity.AddQuizOption("Certa", true);
 
         var ex = Assert.Throws<ValidationException>(
@@ -60,10 +61,10 @@ public class SubmitActivityResponseScoreTests
     public void Quiz_SelectedOptionId_FromAnotherActivity_Throws()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var activity = daily.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
         activity.AddQuizOption("Certa", true);
-        var otherActivity = daily.AddActivity(ActivityType.Quiz, 1, AnswerMode.MultipleChoice);
+        var otherActivity = template.AddActivity(ActivityType.Quiz, 1, AnswerMode.MultipleChoice);
         var otherOption = otherActivity.AddQuizOption("De outra atividade", true);
 
         var ex = Assert.Throws<ValidationException>(
@@ -76,8 +77,8 @@ public class SubmitActivityResponseScoreTests
     public void ClozeMultipleChoice_UsesSameSelectedOptionPathAsQuiz()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var activity = daily.AddActivity(ActivityType.Cloze, 0, AnswerMode.MultipleChoice);
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(ActivityType.Cloze, 0, AnswerMode.MultipleChoice);
         var correct = activity.AddQuizOption("GET", true);
         activity.AddQuizOption("DELETE", false);
 
@@ -94,8 +95,8 @@ public class SubmitActivityResponseScoreTests
     public void ClozeFreeText_ComparesTranscriptAgainstExpectedAnswer_TrimmedAndCaseInsensitive(string transcript, bool expectedCorrect)
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var activity = daily.AddActivity(ActivityType.Cloze, 0, AnswerMode.FreeText, expectedAnswer: "console.log(x)");
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(ActivityType.Cloze, 0, AnswerMode.FreeText, expectedAnswer: "console.log(x)");
 
         var score = SubmitActivityResponseUseCase.ResolveScore(activity, null, null, transcript);
 
@@ -106,8 +107,8 @@ public class SubmitActivityResponseScoreTests
     public void ClozeFreeText_WithoutTranscript_Throws()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var activity = daily.AddActivity(ActivityType.Cloze, 0, AnswerMode.FreeText, expectedAnswer: "x");
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(ActivityType.Cloze, 0, AnswerMode.FreeText, expectedAnswer: "x");
 
         var ex = Assert.Throws<ValidationException>(
             () => SubmitActivityResponseUseCase.ResolveScore(activity, null, null, null));
@@ -122,8 +123,8 @@ public class SubmitActivityResponseScoreTests
     public void Roleplay_TerminalNodeReached_ScoresFromTerminalQuality(TerminalQuality quality, int expectedScore)
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var activity = daily.AddActivity(ActivityType.Roleplay, 0, AnswerMode.FreeText);
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(ActivityType.Roleplay, 0, AnswerMode.FreeText);
         var terminalNode = activity.AddRoleplayNode("end", "Fim de papo.", isTerminal: true, terminalQuality: quality);
 
         var score = SubmitActivityResponseUseCase.ResolveScore(activity, null, terminalNode.Id, null);
@@ -135,8 +136,8 @@ public class SubmitActivityResponseScoreTests
     public void Roleplay_WithoutSelectedNodeId_Throws()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var activity = daily.AddActivity(ActivityType.Roleplay, 0, AnswerMode.FreeText);
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(ActivityType.Roleplay, 0, AnswerMode.FreeText);
         activity.AddRoleplayNode("end", "Fim.", isTerminal: true, terminalQuality: TerminalQuality.Ideal);
 
         var ex = Assert.Throws<ValidationException>(
@@ -153,8 +154,8 @@ public class SubmitActivityResponseScoreTests
     public void ReadingOrVideo_AlwaysScoresFull(ActivityType type)
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var activity = daily.AddActivity(type, 0, AnswerMode.MultipleChoice, contentId: Guid.NewGuid());
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(type, 0, AnswerMode.MultipleChoice, contentId: Guid.NewGuid());
 
         var score = SubmitActivityResponseUseCase.ResolveScore(activity, null, null, null);
 
@@ -165,8 +166,8 @@ public class SubmitActivityResponseScoreTests
     public void Roleplay_SelectedNode_NotTerminal_Throws()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var activity = daily.AddActivity(ActivityType.Roleplay, 0, AnswerMode.FreeText);
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(ActivityType.Roleplay, 0, AnswerMode.FreeText);
         var startNode = activity.AddRoleplayNode("start", "Ola.");
 
         var ex = Assert.Throws<ValidationException>(

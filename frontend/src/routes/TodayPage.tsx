@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
+import { useAuth } from '../contexts/useAuth';
 import { ActivityType, AnswerMode, ActivityStatus, DailyAccessMode, type DailyStateDto, type CompleteDailyResult } from '../api/types';
 import { classifyApiError, type ApiFailure } from '../lib/apiError';
 import { ActivityScreen, Centered } from '../components/Layout';
@@ -77,6 +78,8 @@ function useSessionExitGuard(active: boolean, onIntercept: () => void) {
 export function TodayPage() {
   const [searchParams] = useSearchParams();
   const overrideDailyId = searchParams.get('daily');
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const [daily, setDaily] = useState<DailyStateDto | null>(null);
   const [step, setStep] = useState<Step | null>(null);
@@ -168,6 +171,9 @@ export function TodayPage() {
         onClose={() => setShowSettings(false)}
         onExit={() => {
           window.location.href = '/start';
+        }}
+        onLogout={() => {
+          void logout().then(() => navigate('/login'));
         }}
       />
     </>

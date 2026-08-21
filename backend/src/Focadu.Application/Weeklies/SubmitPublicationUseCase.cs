@@ -39,9 +39,9 @@ public class SubmitPublicationUseCase
     }
 
     public async Task<ModulePublicationDto> ExecuteAsync(
-        Guid weeklyId, PublicationPlatform platform, string url, CancellationToken cancellationToken = default)
+        Guid userId, Guid weeklyId, PublicationPlatform platform, string url, CancellationToken cancellationToken = default)
     {
-        var weekly = await _weeklyRepository.GetByIdAsync(weeklyId, cancellationToken)
+        var weekly = await _weeklyRepository.GetByIdAsync(weeklyId, userId, cancellationToken)
             ?? throw new NotFoundException("semana_nao_encontrada", "Semana nao encontrada.");
 
         var publication = weekly.StartPublication();

@@ -15,9 +15,9 @@ public class MonthlyConfiguration : IEntityTypeConfiguration<Monthly>
         builder.Property(m => m.Number).IsRequired();
         builder.Property(m => m.CourseId).IsRequired();
 
-        builder.HasMany(m => m.Weeklies)
+        builder.HasMany(m => m.WeeklyTemplates)
             .WithOne()
-            .HasForeignKey("MonthlyId")
+            .HasForeignKey(w => w.MonthlyId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(m => new { m.CourseId, m.Number }).IsUnique();

@@ -15,7 +15,7 @@ public class MonthlyRepository : IMonthlyRepository
 
     public async Task<Monthly?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         await _context.Monthlies
-            .Include(m => m.Weeklies)
+            .Include(m => m.WeeklyTemplates)
             .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
     public async Task<IReadOnlyCollection<Monthly>> GetByCourseIdAsync(Guid courseId, CancellationToken cancellationToken = default) =>

@@ -44,7 +44,7 @@ public class SubmitVoiceSummaryResponseUseCase
     }
 
     public async Task<SubmitActivityResponseResult> ExecuteAsync(
-        Guid dailyId, Guid activityId, Stream audioStream, long audioLength, CancellationToken cancellationToken = default)
+        Guid userId, Guid dailyId, Guid activityId, Stream audioStream, long audioLength, CancellationToken cancellationToken = default)
     {
         if (audioLength <= 0)
             throw new ValidationException("audio_obrigatorio", "O arquivo de audio e obrigatorio.");
@@ -55,7 +55,7 @@ public class SubmitVoiceSummaryResponseUseCase
                 $"O arquivo de audio excede o tamanho maximo permitido ({MaxAudioSizeBytes / (1024 * 1024)}MB).");
         }
 
-        var weekly = await _weeklyRepository.GetByDailyIdAsync(dailyId, cancellationToken)
+        var weekly = await _weeklyRepository.GetByDailyIdAsync(dailyId, userId, cancellationToken)
             ?? throw new NotFoundException("daily_nao_encontrada", "Daily nao encontrada.");
 
         var daily = weekly.Dailies.First(d => d.Id == dailyId);
@@ -71,7 +71,7 @@ public class SubmitVoiceSummaryResponseUseCase
         // Garantido pelo dominio na criacao (DailyActivity exige ContentId pra VoiceSummary), mas
         // o texto de referencia em si (BodyText) e responsabilidade da curadoria de conteudo -
         // esse sim pode faltar (ex: video sem BodyText), entao validamos aqui.
-        var referenceContent = weekly.CuratedContents.FirstOrDefault(c => c.Id == activity.ContentId);
+        var referenceContent = weekly.Template.CuratedContents.FirstOrDefault(c => c.Id == activity.ContentId);
         if (referenceContent?.BodyText is null)
         {
             throw new DomainException(

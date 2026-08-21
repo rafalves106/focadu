@@ -4,10 +4,10 @@ using Focadu.Domain.Exceptions;
 
 namespace Focadu.Domain.Content;
 
-/// <summary>Conteúdo curado (leitura, vídeo ou diagrama) associado a uma Weekly.</summary>
+/// <summary>Conteúdo curado (leitura, vídeo ou diagrama) associado a uma WeeklyTemplate - curriculo (Fase 13), compartilhado por todo mundo matriculado no Course.</summary>
 public class CuratedContent : Entity
 {
-    public Guid WeeklyId { get; private set; }
+    public Guid WeeklyTemplateId { get; private set; }
     public CuratedContentType Type { get; private set; }
     public string Title { get; private set; }
 
@@ -22,11 +22,11 @@ public class CuratedContent : Entity
         Title = string.Empty;
     }
 
-    public CuratedContent(Guid weeklyId, CuratedContentType type, string title, string? externalUrl, string? bodyText)
+    public CuratedContent(Guid weeklyTemplateId, CuratedContentType type, string title, string? externalUrl, string? bodyText)
     {
         Validate(title, externalUrl, bodyText);
 
-        WeeklyId = weeklyId;
+        WeeklyTemplateId = weeklyTemplateId;
         Type = type;
         Title = title;
         ExternalUrl = externalUrl;
@@ -36,7 +36,7 @@ public class CuratedContent : Entity
     /// <summary>
     /// Atualiza Title/ExternalUrl/BodyText - usado pela autoria de conteudo (Fase 4) para
     /// carregar o texto completo por cima de um placeholder de seed, por exemplo. Type e
-    /// WeeklyId nunca mudam depois de criado.
+    /// WeeklyTemplateId nunca mudam depois de criado.
     /// </summary>
     public void Update(string title, string? externalUrl, string? bodyText)
     {

@@ -2,6 +2,7 @@ using Focadu.Domain.Activities;
 using Focadu.Domain.Content;
 using Focadu.Domain.Courses;
 using Focadu.Domain.Dailies;
+using Focadu.Domain.Enrollments;
 using Focadu.Domain.Monthlies;
 using Focadu.Domain.Users;
 using Focadu.Domain.Weeklies;
@@ -22,9 +23,16 @@ public class FocaduDbContext : DbContext
 
     public DbSet<Course> Courses => Set<Course>();
     public DbSet<Monthly> Monthlies => Set<Monthly>();
+
+    // Template (curriculo, Fase 13) - ver docs/ARQUITETURA.md "Template vs Instancia".
+    public DbSet<WeeklyTemplate> WeeklyTemplates => Set<WeeklyTemplate>();
+    public DbSet<DailyTemplate> DailyTemplates => Set<DailyTemplate>();
+    public DbSet<DailyActivity> DailyActivities => Set<DailyActivity>();
+
+    // Instancia (progresso por usuario, Fase 13).
+    public DbSet<Enrollment> Enrollments => Set<Enrollment>();
     public DbSet<Weekly> Weeklies => Set<Weekly>();
     public DbSet<Daily> Dailies => Set<Daily>();
-    public DbSet<DailyActivity> DailyActivities => Set<DailyActivity>();
     public DbSet<ActivityResponse> ActivityResponses => Set<ActivityResponse>();
     public DbSet<QuizOption> QuizOptions => Set<QuizOption>();
     public DbSet<RoleplayNode> RoleplayNodes => Set<RoleplayNode>();

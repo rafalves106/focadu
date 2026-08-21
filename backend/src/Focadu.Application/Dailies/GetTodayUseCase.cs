@@ -1,46 +1,46 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
-using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
 
 namespace Focadu.Application.Dailies;
 
 /// <summary>
 /// Caso de uso: atalho "/hoje" - resolve direto a Daily de hoje, sem o cliente precisar informar
-/// course/weekly/daily. Como o dominio ainda nao tem conceito de usuario/curso "atual" (fora de
-/// escopo ate agora), a resolucao assume exatamente um Course com Status = Active; zero ou mais
-/// de um curso ativo e tratado como erro (ver docs/ARQUITETURA.md para o raciocinio completo).
+/// weekly/daily. Fase 13: agora resolve pela Enrollment do usuario logado (userId vem do JWT),
+/// nao mais por "1 Course com Status = Active" global - fecha a limitacao documentada desde a
+/// Fase 2. Hoje, no maximo 1 Enrollment por usuario (so existe 1 Course); mais de uma vira erro
+/// (mesmo tratamento defensivo que "multiplos cursos ativos" tinha antes), preparado pro dia em
+/// que multiplos cursos existirem de verdade.
 /// </summary>
 public class GetTodayUseCase
 {
-    private readonly ICourseRepository _courseRepository;
+    private readonly IEnrollmentRepository _enrollmentRepository;
     private readonly IWeeklyRepository _weeklyRepository;
     private readonly IClock _clock;
 
-    public GetTodayUseCase(ICourseRepository courseRepository, IWeeklyRepository weeklyRepository, IClock clock)
+    public GetTodayUseCase(IEnrollmentRepository enrollmentRepository, IWeeklyRepository weeklyRepository, IClock clock)
     {
-        _courseRepository = courseRepository;
+        _enrollmentRepository = enrollmentRepository;
         _weeklyRepository = weeklyRepository;
         _clock = clock;
     }
 
-    public async Task<DailyStateDto> ExecuteAsync(CancellationToken cancellationToken = default)
+    public async Task<DailyStateDto> ExecuteAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var courses = await _courseRepository.GetAllAsync(cancellationToken);
-        var activeCourses = courses.Where(c => c.Status == CourseStatus.Active).ToList();
+        var enrollments = await _enrollmentRepository.GetByUserIdAsync(userId, cancellationToken);
 
-        if (activeCourses.Count == 0)
-            throw new NotFoundException("nenhum_curso_ativo", "Nenhum curso ativo encontrado.");
+        if (enrollments.Count == 0)
+            throw new NotFoundException("nenhuma_matricula_ativa", "Usuario nao esta matriculado em nenhum curso.");
 
-        if (activeCourses.Count > 1)
+        if (enrollments.Count > 1)
         {
             throw new ConflictException(
-                "multiplos_cursos_ativos",
-                "Mais de um curso ativo encontrado; use /api/courses/{courseId} para escolher qual.");
+                "multiplas_matriculas_ativas",
+                "Mais de uma matricula ativa encontrada; use /api/weeklies/{weeklyId} para escolher qual.");
         }
 
         var today = _clock.Today();
-        var weekly = await _weeklyRepository.GetByDateAsync(activeCourses[0].Id, today, cancellationToken)
+        var weekly = await _weeklyRepository.GetByEnrollmentAndDateAsync(enrollments.First().Id, today, cancellationToken)
             ?? throw new NotFoundException("daily_hoje_nao_encontrada", "Nenhuma Daily cadastrada para hoje.");
 
         var daily = weekly.GetDailyByDate(today)

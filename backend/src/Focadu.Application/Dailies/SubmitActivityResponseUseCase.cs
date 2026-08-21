@@ -30,6 +30,7 @@ public class SubmitActivityResponseUseCase
     }
 
     public async Task<SubmitActivityResponseResult> ExecuteAsync(
+        Guid userId,
         Guid dailyId,
         Guid activityId,
         Guid? selectedOptionId,
@@ -39,7 +40,7 @@ public class SubmitActivityResponseUseCase
         string? aiFeedback,
         CancellationToken cancellationToken = default)
     {
-        var weekly = await _weeklyRepository.GetByDailyIdAsync(dailyId, cancellationToken)
+        var weekly = await _weeklyRepository.GetByDailyIdAsync(dailyId, userId, cancellationToken)
             ?? throw new NotFoundException("daily_nao_encontrada", "Daily nao encontrada.");
 
         var daily = weekly.Dailies.First(d => d.Id == dailyId);

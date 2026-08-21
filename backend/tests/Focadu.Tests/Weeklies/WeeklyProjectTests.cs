@@ -5,13 +5,14 @@ using Xunit;
 
 namespace Focadu.Tests.Weeklies;
 
+/// <summary>Fase 13: WeeklyProject (instancia) so rastreia Status/SubmissionUrl - SpecText virou curriculo (WeeklyTemplate.WeeklyProjectSpecText), InitializeProject substitui o antigo DefineProject(specText).</summary>
 public class WeeklyProjectTests
 {
     [Fact]
     public void Submit_SetsSubmissionUrlAndStatus()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var project = weekly.DefineProject("Faca X.");
+        var project = weekly.InitializeProject();
 
         project.Submit("https://github.com/falves/projeto");
 
@@ -23,7 +24,7 @@ public class WeeklyProjectTests
     public void Submit_WithoutUrl_Throws()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var project = weekly.DefineProject("Faca X.");
+        var project = weekly.InitializeProject();
 
         Assert.Throws<DomainException>(() => project.Submit(""));
     }
@@ -32,7 +33,7 @@ public class WeeklyProjectTests
     public void Submit_AfterEvaluated_Throws()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var project = weekly.DefineProject("Faca X.");
+        var project = weekly.InitializeProject();
         project.Submit("https://github.com/falves/projeto");
         project.Evaluate();
 

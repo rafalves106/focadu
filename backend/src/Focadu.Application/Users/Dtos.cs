@@ -1,6 +1,7 @@
 namespace Focadu.Application.Users;
 
-public record UserDto(Guid Id, string Email, string DisplayName);
+/// <summary>ProfileCompletedAt (Fase 13): nulo ate a Entrevista de Perfil ser concluida - o frontend usa isso pra decidir se redireciona pra /onboarding (SplashPage/pos-login, ver AuthContext).</summary>
+public record UserDto(Guid Id, string Email, string DisplayName, DateTime? ProfileCompletedAt);
 
 /// <summary>
 /// Resultado interno de Register/Login (Fase 12) - o token nunca sai da Api em JSON (so via

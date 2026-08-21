@@ -1,6 +1,7 @@
 using Focadu.Application.Content;
 using Focadu.Application.Courses;
 using Focadu.Application.Dailies;
+using Focadu.Application.Enrollments;
 using Focadu.Application.Seed;
 using Focadu.Application.Users;
 using Focadu.Application.Weeklies;
@@ -36,6 +37,10 @@ public static class DependencyInjection
         services.AddScoped<RegisterUserUseCase>();
         services.AddScoped<LoginUserUseCase>();
         services.AddScoped<GetCurrentUserUseCase>();
+        services.AddScoped<CompleteProfileUseCase>();
+        services.AddScoped<EnrollUserInCourseUseCase>();
+        services.AddScoped<GetAvailableCoursesUseCase>();
+        services.AddScoped<GetMyEnrollmentsUseCase>();
         return services;
     }
 }

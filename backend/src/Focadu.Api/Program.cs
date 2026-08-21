@@ -7,6 +7,7 @@ using Focadu.Application;
 using Focadu.Application.Content;
 using Focadu.Application.Courses;
 using Focadu.Application.Dailies;
+using Focadu.Application.Enrollments;
 using Focadu.Application.Exceptions;
 using Focadu.Application.Seed;
 using Focadu.Application.Users;
@@ -132,6 +133,10 @@ void ClearAuthCookie(HttpContext context) =>
         Path = "/",
     });
 
+// Fase 13: todo endpoint protegido extrai o userId assim - claim "sub" do JWT, ja validado pelo
+// middleware JwtBearer antes do endpoint rodar (nunca decodificado de novo aqui).
+Guid CurrentUserId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+
 // `dotnet run --project src/Focadu.Api -- seed`: popula o curso piloto "Web Security" e encerra,
 // sem subir o servidor HTTP. Nao e um endpoint porque a Api ainda nao tem autoria de conteudo.
 if (args.Contains("seed"))
@@ -196,56 +201,88 @@ api.MapPost("/auth/logout", (HttpContext http) =>
     .WithName("Logout");
 
 api.MapGet("/auth/me", async (ClaimsPrincipal principal, GetCurrentUserUseCase useCase, CancellationToken ct) =>
-    {
-        var userId = Guid.Parse(principal.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
-        return Results.Ok(await useCase.ExecuteAsync(userId, ct));
-    })
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
     .RequireAuthorization()
     .WithName("GetCurrentUser");
+
+// PUT (nao POST): idempotente - concluir a Entrevista de Perfil de novo so substitui a lista de
+// interesses inteira, nunca acumula (ver User.CompleteProfile).
+api.MapPut("/users/me/profile", async (ClaimsPrincipal principal, CompleteProfileRequest? request, CompleteProfileUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), request?.Interests ?? [], request?.AdditionalNotes, ct)))
+    .RequireAuthorization()
+    .WithName("CompleteProfile");
+
+// --- Matricula (Fase 13) ---------------------------------------------------------------------
+
+api.MapGet("/courses/available", async (ClaimsPrincipal principal, GetAvailableCoursesUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
+    .RequireAuthorization()
+    .WithName("GetAvailableCourses");
+
+api.MapPost("/enrollments", async (ClaimsPrincipal principal, CreateEnrollmentRequest? request, EnrollUserInCourseUseCase useCase, CancellationToken ct) =>
+    {
+        if (request?.CourseId is null)
+            throw new ValidationException("course_id_obrigatorio", "O campo 'courseId' e obrigatorio.");
+
+        var result = await useCase.ExecuteAsync(CurrentUserId(principal), request.CourseId.Value, ct);
+        return Results.Created("/api/enrollments/me", result);
+    })
+    .RequireAuthorization()
+    .WithName("CreateEnrollment");
+
+api.MapGet("/enrollments/me", async (ClaimsPrincipal principal, GetMyEnrollmentsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
+    .RequireAuthorization()
+    .WithName("GetMyEnrollments");
 
 // --- Cursos --------------------------------------------------------------------------------
 
 api.MapGet("/courses", async (ListCoursesUseCase useCase, CancellationToken ct) =>
         Results.Ok(await useCase.ExecuteAsync(ct)))
+    .RequireAuthorization()
     .WithName("ListCourses");
 
-api.MapGet("/courses/{courseId}", async (string courseId, GetCourseDetailUseCase useCase, CancellationToken ct) =>
+api.MapGet("/courses/{courseId}", async (ClaimsPrincipal principal, string courseId, GetCourseDetailUseCase useCase, CancellationToken ct) =>
     {
         var id = RouteParsing.RequireGuid(courseId, "courseId");
-        return Results.Ok(await useCase.ExecuteAsync(id, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
     })
+    .RequireAuthorization()
     .WithName("GetCourseDetail");
 
 // --- Semanas ---------------------------------------------------------------------------------
 
-api.MapGet("/weeklies/{weeklyId}", async (string weeklyId, GetWeeklyDetailUseCase useCase, CancellationToken ct) =>
+api.MapGet("/weeklies/{weeklyId}", async (ClaimsPrincipal principal, string weeklyId, GetWeeklyDetailUseCase useCase, CancellationToken ct) =>
     {
         var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
-        return Results.Ok(await useCase.ExecuteAsync(id, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
     })
+    .RequireAuthorization()
     .WithName("GetWeeklyDetail");
 
 // Submissao do projeto pratico da semana (Fase 7) - WeeklyProject.Submit ja existia no dominio
 // desde a Fase 1, so faltava endpoint. SubmissionUrl e a unica entrada do cliente; Status muda
 // pra Submitted dentro do proprio dominio (WeeklyProject.Submit).
-api.MapPost("/weeklies/{weeklyId}/project/submit", async (string weeklyId, SubmitWeeklyProjectRequest? request, SubmitWeeklyProjectUseCase useCase, CancellationToken ct) =>
+api.MapPost("/weeklies/{weeklyId}/project/submit", async (ClaimsPrincipal principal, string weeklyId, SubmitWeeklyProjectRequest? request, SubmitWeeklyProjectUseCase useCase, CancellationToken ct) =>
     {
         var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
         if (string.IsNullOrWhiteSpace(request?.SubmissionUrl))
             throw new ValidationException("submission_url_obrigatoria", "O campo 'submissionUrl' e obrigatorio.");
 
-        return Results.Ok(await useCase.ExecuteAsync(id, request.SubmissionUrl, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, request.SubmissionUrl, ct));
     })
+    .RequireAuthorization()
     .WithName("SubmitWeeklyProject");
 
 // Avaliacao do projeto (Fase 11) - WeeklyProject.Evaluate() existia no dominio desde a Fase 1 sem
 // endpoint (gap documentado na Fase 7); precisou ganhar um porque Weekly.IsModuleComplete() exige
 // Project Evaluated. Sem tela propria - ver EvaluateWeeklyProjectUseCase.
-api.MapPost("/weeklies/{weeklyId}/project/evaluate", async (string weeklyId, EvaluateWeeklyProjectUseCase useCase, CancellationToken ct) =>
+api.MapPost("/weeklies/{weeklyId}/project/evaluate", async (ClaimsPrincipal principal, string weeklyId, EvaluateWeeklyProjectUseCase useCase, CancellationToken ct) =>
     {
         var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
-        return Results.Ok(await useCase.ExecuteAsync(id, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
     })
+    .RequireAuthorization()
     .WithName("EvaluateWeeklyProject");
 
 // --- Publicacao publica do modulo (Fase 11) -------------------------------------------------
@@ -254,33 +291,36 @@ api.MapPost("/weeklies/{weeklyId}/project/evaluate", async (string weeklyId, Eva
 // validado no proprio commit). /submit cobre tanto a primeira submissao quanto "tentar de novo"
 // (resubmete a mesma URL/platform).
 
-api.MapGet("/weeklies/{weeklyId}/publication/status", async (string weeklyId, GetPublicationStatusUseCase useCase, CancellationToken ct) =>
+api.MapGet("/weeklies/{weeklyId}/publication/status", async (ClaimsPrincipal principal, string weeklyId, GetPublicationStatusUseCase useCase, CancellationToken ct) =>
     {
         var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
-        return Results.Ok(await useCase.ExecuteAsync(id, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
     })
+    .RequireAuthorization()
     .WithName("GetPublicationStatus");
 
-api.MapPost("/weeklies/{weeklyId}/publication/draft", async (string weeklyId, GenerateLinkedInDraftUseCase useCase, CancellationToken ct) =>
+api.MapPost("/weeklies/{weeklyId}/publication/draft", async (ClaimsPrincipal principal, string weeklyId, GenerateLinkedInDraftUseCase useCase, CancellationToken ct) =>
     {
         var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
-        return Results.Ok(await useCase.ExecuteAsync(id, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
     })
+    .RequireAuthorization()
     .WithName("GenerateLinkedInDraft");
 
 api.MapPost("/weeklies/{weeklyId}/publication/github-commit",
-        async (string weeklyId, GitHubCommitRequest? request, CommitModuleSummaryUseCase useCase, CancellationToken ct) =>
+        async (ClaimsPrincipal principal, string weeklyId, GitHubCommitRequest? request, CommitModuleSummaryUseCase useCase, CancellationToken ct) =>
         {
             var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
             if (string.IsNullOrWhiteSpace(request?.RepoName))
                 throw new ValidationException("repo_name_obrigatorio", "O campo 'repoName' e obrigatorio.");
 
-            return Results.Ok(await useCase.ExecuteAsync(id, request.RepoName, request.IsNewRepo, ct));
+            return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, request.RepoName, request.IsNewRepo, ct));
         })
+    .RequireAuthorization()
     .WithName("CommitModuleSummary");
 
 api.MapPost("/weeklies/{weeklyId}/publication/submit",
-        async (string weeklyId, SubmitPublicationRequest? request, SubmitPublicationUseCase useCase, CancellationToken ct) =>
+        async (ClaimsPrincipal principal, string weeklyId, SubmitPublicationRequest? request, SubmitPublicationUseCase useCase, CancellationToken ct) =>
         {
             var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
             if (string.IsNullOrWhiteSpace(request?.Url))
@@ -288,39 +328,45 @@ api.MapPost("/weeklies/{weeklyId}/publication/submit",
             if (!Enum.TryParse<PublicationPlatform>(request.Platform, ignoreCase: true, out var platform) || !Enum.IsDefined(platform))
                 throw new ValidationException("platform_invalida", "O campo 'platform' precisa ser LinkedIn ou GitHub.");
 
-            return Results.Ok(await useCase.ExecuteAsync(id, platform, request.Url, ct));
+            return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, platform, request.Url, ct));
         })
+    .RequireAuthorization()
     .WithName("SubmitPublication");
 
 api.MapGet("/github/repositories", async (GetGitHubRepositoriesUseCase useCase, CancellationToken ct) =>
         Results.Ok(await useCase.ExecuteAsync(ct)))
+    .RequireAuthorization()
     .WithName("GetGitHubRepositories");
 
 // --- Conteudo curado (autoria) ---------------------------------------------------------------
-// Unico tipo de conteudo com endpoint de criacao/edicao ate agora - Course/Monthly/Weekly/Daily/
-// DailyActivity continuam so via seed (estrutura muda raramente; conteudo curado muda toda
-// semana, ver docs/ARQUITETURA.md). WeeklyId/Type/Title sao exigidos aqui (formato de request,
-// nao depende de nenhum dado de dominio); "Type invalido" e "falta ExternalUrl/BodyText" moram
-// no caso de uso, que e quem sabe validar contra o enum e as regras de CuratedContent.
+// Unico tipo de conteudo com endpoint de criacao/edicao ate agora - Course/Monthly/WeeklyTemplate/
+// DailyTemplate/DailyActivity continuam so via seed (estrutura muda raramente; conteudo curado
+// muda toda semana, ver docs/ARQUITETURA.md). WeeklyTemplateId/Type/Title sao exigidos aqui
+// (formato de request, nao depende de nenhum dado de dominio); "Type invalido" e "falta
+// ExternalUrl/BodyText" moram no caso de uso, que e quem sabe validar contra o enum e as regras
+// de CuratedContent. Exige login (RequireAuthorization) mas nao filtra por usuario - curriculo e
+// compartilhado, nao ha papel de "admin" separado neste app de usuario unico ainda.
 
 api.MapGet("/curated-content/{id}", async (string id, GetCuratedContentUseCase useCase, CancellationToken ct) =>
     {
         var contentId = RouteParsing.RequireGuid(id, "id");
         return Results.Ok(await useCase.ExecuteAsync(contentId, ct));
     })
+    .RequireAuthorization()
     .WithName("GetCuratedContent");
 
 api.MapPost("/curated-content", async (CreateCuratedContentRequest? request, CreateCuratedContentUseCase useCase, CancellationToken ct) =>
     {
-        if (request?.WeeklyId is null)
-            throw new ValidationException("weekly_id_obrigatorio", "O campo 'weeklyId' e obrigatorio.");
+        if (request?.WeeklyTemplateId is null)
+            throw new ValidationException("weekly_template_id_obrigatorio", "O campo 'weeklyTemplateId' e obrigatorio.");
         if (string.IsNullOrWhiteSpace(request.Title))
             throw new ValidationException("titulo_obrigatorio", "O campo 'title' e obrigatorio.");
 
         var result = await useCase.ExecuteAsync(
-            request.WeeklyId.Value, request.Type, request.Title, request.ExternalUrl, request.BodyText, ct);
+            request.WeeklyTemplateId.Value, request.Type, request.Title, request.ExternalUrl, request.BodyText, ct);
         return Results.Created($"/api/curated-content/{result.Id}", result);
     })
+    .RequireAuthorization()
     .WithName("CreateCuratedContent");
 
 api.MapPut("/curated-content/{id}", async (string id, UpdateCuratedContentRequest? request, UpdateCuratedContentUseCase useCase, CancellationToken ct) =>
@@ -332,50 +378,56 @@ api.MapPut("/curated-content/{id}", async (string id, UpdateCuratedContentReques
         var result = await useCase.ExecuteAsync(contentId, request.Title, request.ExternalUrl, request.BodyText, ct);
         return Results.Ok(result);
     })
+    .RequireAuthorization()
     .WithName("UpdateCuratedContent");
 
 // --- Dailies -------------------------------------------------------------------------------
 
-api.MapGet("/dailies/{dailyId}", async (string dailyId, GetDailyStateUseCase useCase, CancellationToken ct) =>
+api.MapGet("/dailies/{dailyId}", async (ClaimsPrincipal principal, string dailyId, GetDailyStateUseCase useCase, CancellationToken ct) =>
     {
         var id = RouteParsing.RequireGuid(dailyId, "dailyId");
-        return Results.Ok(await useCase.ExecuteAsync(id, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
     })
+    .RequireAuthorization()
     .WithName("GetDailyState");
 
-// Atalho "/hoje": resolve a Daily de hoje sem o cliente precisar informar course/weekly/daily.
-api.MapGet("/today", async (GetTodayUseCase useCase, CancellationToken ct) =>
-        Results.Ok(await useCase.ExecuteAsync(ct)))
+// Atalho "/hoje": resolve a Daily de hoje pra Enrollment do usuario logado (Fase 13 - nao mais
+// "1 Course Active" global, ver GetTodayUseCase).
+api.MapGet("/today", async (ClaimsPrincipal principal, GetTodayUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
+    .RequireAuthorization()
     .WithName("GetToday");
 
-api.MapPost("/dailies/{dailyId}/start", async (string dailyId, StartOrResumeDailyUseCase useCase, CancellationToken ct) =>
+api.MapPost("/dailies/{dailyId}/start", async (ClaimsPrincipal principal, string dailyId, StartOrResumeDailyUseCase useCase, CancellationToken ct) =>
     {
         var id = RouteParsing.RequireGuid(dailyId, "dailyId");
-        return Results.Ok(await useCase.ExecuteAsync(id, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
     })
+    .RequireAuthorization()
     .WithName("StartOrResumeDaily");
 
 // Qual campo e obrigatorio/valido depende do tipo (e, pro Cloze, do AnswerMode) da atividade -
 // essa decisao mora dentro do caso de uso, que e quem enxerga o ActivityType/AnswerMode
 // (ver SubmitActivityResponseUseCase.ResolveScore). O Score nunca vem do cliente.
 api.MapPost("/dailies/{dailyId}/activities/{activityId}/responses",
-        async (string dailyId, string activityId, SubmitActivityResponseRequest? request, SubmitActivityResponseUseCase useCase, CancellationToken ct) =>
+        async (ClaimsPrincipal principal, string dailyId, string activityId, SubmitActivityResponseRequest? request, SubmitActivityResponseUseCase useCase, CancellationToken ct) =>
         {
             var dId = RouteParsing.RequireGuid(dailyId, "dailyId");
             var aId = RouteParsing.RequireGuid(activityId, "activityId");
 
             var result = await useCase.ExecuteAsync(
-                dId, aId, request?.SelectedOptionId, request?.SelectedRoleplayNodeId,
+                CurrentUserId(principal), dId, aId, request?.SelectedOptionId, request?.SelectedRoleplayNodeId,
                 request?.Transcript, request?.Justification, request?.AiFeedback, ct);
             return Results.Created($"/api/dailies/{dailyId}/activities/{activityId}/responses/{result.Response.Id}", result);
         })
+    .RequireAuthorization()
     .WithName("SubmitActivityResponse");
 
 // Endpoint separado do texto (POST .../responses) porque o corpo aqui e binario (multipart/
 // form-data), nao JSON. Fluxo: transcreve (Groq Whisper) -> avalia contra o CuratedContent de
 // referencia (Groq chat completion) -> Score/Passed vem da avaliacao, nunca do cliente.
 api.MapPost("/dailies/{dailyId}/activities/{activityId}/responses/audio",
-        async (string dailyId, string activityId, IFormFile? audio, SubmitVoiceSummaryResponseUseCase useCase, CancellationToken ct) =>
+        async (ClaimsPrincipal principal, string dailyId, string activityId, IFormFile? audio, SubmitVoiceSummaryResponseUseCase useCase, CancellationToken ct) =>
         {
             var dId = RouteParsing.RequireGuid(dailyId, "dailyId");
             var aId = RouteParsing.RequireGuid(activityId, "activityId");
@@ -384,17 +436,19 @@ api.MapPost("/dailies/{dailyId}/activities/{activityId}/responses/audio",
                 throw new ValidationException("audio_obrigatorio", "O arquivo de audio e obrigatorio.");
 
             await using var stream = audio.OpenReadStream();
-            var result = await useCase.ExecuteAsync(dId, aId, stream, audio.Length, ct);
+            var result = await useCase.ExecuteAsync(CurrentUserId(principal), dId, aId, stream, audio.Length, ct);
             return Results.Created($"/api/dailies/{dailyId}/activities/{activityId}/responses/{result.Response.Id}", result);
         })
+    .RequireAuthorization()
     .WithName("SubmitVoiceSummaryResponse")
     .DisableAntiforgery();
 
-api.MapPost("/dailies/{dailyId}/complete", async (string dailyId, CompleteDailyUseCase useCase, CancellationToken ct) =>
+api.MapPost("/dailies/{dailyId}/complete", async (ClaimsPrincipal principal, string dailyId, CompleteDailyUseCase useCase, CancellationToken ct) =>
     {
         var id = RouteParsing.RequireGuid(dailyId, "dailyId");
-        return Results.Ok(await useCase.ExecuteAsync(id, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
     })
+    .RequireAuthorization()
     .WithName("CompleteDaily");
 
 app.Run();
