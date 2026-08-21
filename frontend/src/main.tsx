@@ -5,13 +5,13 @@ import './index.css';
 import { App } from './App';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
-import { AchievementsPage } from './routes/AchievementsPage';
 import { AdminContentPage } from './routes/AdminContentPage';
 import { CourseSelectionPage } from './routes/CourseSelectionPage';
 import { LoginPage } from './routes/LoginPage';
 import { MarketplacePage } from './routes/MarketplacePage';
 import { OnboardingWelcomePage } from './routes/OnboardingWelcomePage';
 import { ProfileInterviewPage } from './routes/ProfileInterviewPage';
+import { ProfilePage } from './routes/ProfilePage';
 import { SplashPage } from './routes/SplashPage';
 import { StartPage } from './routes/StartPage';
 import { TodayPage } from './routes/TodayPage';
@@ -34,7 +34,10 @@ createRoot(document.getElementById('root')!).render(
               <Route path="hoje" element={<TodayPage />} />
               <Route path="start" element={<StartPage />} />
               <Route path="loja" element={<MarketplacePage />} />
-              <Route path="conquistas" element={<AchievementsPage />} />
+              <Route path="perfil" element={<ProfilePage />} />
+              {/* Fase 18: /conquistas virou a aba "Conquistas" do Perfil - redirect em vez de
+                  quebrar links/favoritos antigos (decisao documentada em docs/fase-18). */}
+              <Route path="conquistas" element={<Navigate to="/perfil?tab=conquistas" replace />} />
               <Route path="admin/conteudo" element={<AdminContentPage />} />
             </Route>
           </Route>

@@ -26,6 +26,8 @@ public class GetCourseRankingUseCase
     private readonly IEnrollmentRepository _enrollmentRepository;
     private readonly IWeeklyRepository _weeklyRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IUserEquippedCosmeticsRepository _equippedCosmeticsRepository;
+    private readonly ICosmeticItemRepository _cosmeticItemRepository;
     private readonly IClock _clock;
 
     public GetCourseRankingUseCase(
@@ -33,12 +35,16 @@ public class GetCourseRankingUseCase
         IEnrollmentRepository enrollmentRepository,
         IWeeklyRepository weeklyRepository,
         IUserRepository userRepository,
+        IUserEquippedCosmeticsRepository equippedCosmeticsRepository,
+        ICosmeticItemRepository cosmeticItemRepository,
         IClock clock)
     {
         _courseRepository = courseRepository;
         _enrollmentRepository = enrollmentRepository;
         _weeklyRepository = weeklyRepository;
         _userRepository = userRepository;
+        _equippedCosmeticsRepository = equippedCosmeticsRepository;
+        _cosmeticItemRepository = cosmeticItemRepository;
         _clock = clock;
     }
 
@@ -50,15 +56,25 @@ public class GetCourseRankingUseCase
 
         var enrollments = await _enrollmentRepository.GetByCourseIdAsync(courseId, cancellationToken);
         var today = _clock.Today();
+        // Nome do item de cor equipado (Fase 18) - so o Name (token estavel do seed, ex: "Verde
+        // Neon"), nao um hex: o frontend mapeia token -> cor de verdade, mesmo padrao ja
+        // estabelecido de BadgeDto.code -> label/icone (BADGE_INFO) e CosmeticRarity -> swatch
+        // (RARITY_STYLE). Catalogo inteiro (8 itens) cabe numa unica consulta, sem N+1.
+        var itemNameById = (await _cosmeticItemRepository.GetAllAsync(cancellationToken))
+            .ToDictionary(i => i.Id, i => i.Name);
 
         var scored = new List<ScoredEnrollment>();
         foreach (var enrollment in enrollments)
         {
             var weeklies = await _weeklyRepository.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken);
             var user = await _userRepository.GetByIdAsync(enrollment.UserId, cancellationToken);
+            var equipped = await _equippedCosmeticsRepository.GetByUserIdAsync(enrollment.UserId, cancellationToken);
+            var nameColor = equipped?.EquippedNameColorId is { } colorId && itemNameById.TryGetValue(colorId, out var name)
+                ? name
+                : null;
 
             scored.Add(new ScoredEnrollment(
-                enrollment.UserId, user?.DisplayName ?? "Usuario", ComputeScore(weeklies, scope, today), enrollment.EnrolledAt));
+                enrollment.UserId, user?.DisplayName ?? "Usuario", ComputeScore(weeklies, scope, today), enrollment.EnrolledAt, nameColor));
         }
 
         var ranked = RankEntries(scored);
@@ -112,13 +128,14 @@ public class GetCourseRankingUseCase
         scored
             .OrderByDescending(x => x.Score)
             .ThenBy(x => x.EnrolledAt)
-            .Select((x, index) => new RankingEntryDto(x.UserId, x.DisplayName, x.Score, index + 1))
+            .Select((x, index) => new RankingEntryDto(x.UserId, x.DisplayName, x.Score, index + 1, x.EquippedNameColor))
             .ToList();
 }
 
-internal readonly record struct ScoredEnrollment(Guid UserId, string DisplayName, double Score, DateTime EnrolledAt);
+internal readonly record struct ScoredEnrollment(
+    Guid UserId, string DisplayName, double Score, DateTime EnrolledAt, string? EquippedNameColor = null);
 
-public record RankingEntryDto(Guid UserId, string DisplayName, double Score, int Position);
+public record RankingEntryDto(Guid UserId, string DisplayName, double Score, int Position, string? EquippedNameColor = null);
 
 /// <summary>CurrentUserEntry e null so quando o usuario chamador nao tem Enrollment neste Course.</summary>
 public record RankingResultDto(IReadOnlyCollection<RankingEntryDto> TopEntries, RankingEntryDto? CurrentUserEntry);

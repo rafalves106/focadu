@@ -1,12 +1,6 @@
-import { CosmeticRarity, CosmeticSlot, type CosmeticItemDto } from '../../api/types';
-
-// Sem Figma validado pra este componente (Fase 17) - cor por raridade como placeholder visual,
-// mesma paleta escura/neon ja estabelecida. Sem ilustracao nenhuma, so o bloco de cor + nome.
-const RARITY_STYLE: Record<CosmeticRarity, { swatch: string; label: string; text: string }> = {
-  [CosmeticRarity.Common]: { swatch: 'bg-slate-400', label: 'Comum', text: 'text-slate-400' },
-  [CosmeticRarity.Rare]: { swatch: 'bg-sky-400', label: 'Raro', text: 'text-sky-400' },
-  [CosmeticRarity.Epic]: { swatch: 'bg-purple-400', label: 'Épico', text: 'text-purple-400' },
-};
+import { Link } from 'react-router-dom';
+import { CosmeticSlot, type CosmeticItemDto } from '../../api/types';
+import { RARITY_STYLE } from '../../lib/cosmeticStyle';
 
 const SLOT_LABEL: Record<CosmeticSlot, string> = {
   [CosmeticSlot.AvatarFrame]: 'Moldura',
@@ -18,6 +12,11 @@ const SLOT_LABEL: Record<CosmeticSlot, string> = {
  * Card de um item da loja (Fase 17) - swatch de cor por raridade (sem arte real ainda, ver
  * docs/fase-17) + nome + preço/comprar ou equipar/desequipar, dependendo de `item.owned`/
  * `item.equipped` (já resolvidos pelo backend).
+ *
+ * `onPurchase` opcional (Fase 18): a aba Customização do Perfil reaproveita este mesmo card pro
+ * inventário, mas não vende nada por lá - sem `onPurchase`, um item não possuído mostra "Ver na
+ * Loja" (link pra /loja) em vez do botão de comprar. MarketplacePage continua passando
+ * `onPurchase` normalmente.
  */
 export function CosmeticItemCard({
   item,
@@ -28,7 +27,7 @@ export function CosmeticItemCard({
 }: {
   item: CosmeticItemDto;
   busy: boolean;
-  onPurchase: () => void;
+  onPurchase?: () => void;
   onEquip: () => void;
   onUnequip: () => void;
 }) {
@@ -64,7 +63,7 @@ export function CosmeticItemCard({
             EQUIPAR
           </button>
         )
-      ) : (
+      ) : onPurchase ? (
         <button
           type="button"
           onClick={onPurchase}
@@ -73,6 +72,13 @@ export function CosmeticItemCard({
         >
           💎 {item.priceGems}
         </button>
+      ) : (
+        <Link
+          to="/loja"
+          className="flex items-center justify-center rounded-xl bg-surface-alt py-2.5 text-sm font-bold text-secondary hover:bg-accent/10 hover:text-accent"
+        >
+          Ver na Loja →
+        </Link>
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import type { RankingEntryDto } from '../../api/types';
+import { nameColorClass } from '../../lib/cosmeticStyle';
 
 /**
  * Destaque fixo da posição do usuário logado (Fase 16) - sempre visível mesmo fora do top N
@@ -21,7 +22,7 @@ export function CurrentUserRankingCard({ entry }: { entry: RankingEntryDto | nul
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted">Sua posição</p>
-        <p className="truncate font-bold text-primary">{entry.displayName}</p>
+        <p className={`truncate font-bold ${nameColorClass(entry.equippedNameColor)}`}>{entry.displayName}</p>
       </div>
       <span className="shrink-0 font-mono text-lg font-bold text-accent">{entry.score.toFixed(1)}</span>
     </div>

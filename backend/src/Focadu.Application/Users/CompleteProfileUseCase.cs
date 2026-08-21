@@ -8,6 +8,8 @@ namespace Focadu.Application.Users;
 /// Secao 2.2). So captura e persiste os interesses - nao usa isso em nenhum prompt de IA ainda
 /// (fora de escopo desta fase, ver docs/fase-13). Marca User.ProfileCompletedAt, que e o que
 /// SplashPage/pos-login usam pra decidir se o usuario ainda precisa passar pelo onboarding.
+/// Sem guarda de "so uma vez": chamar de novo so substitui a lista inteira (ver
+/// User.CompleteProfile) - Fase 18 reaproveita este mesmo endpoint pra editar interesses depois.
 /// </summary>
 public class CompleteProfileUseCase
 {
@@ -29,6 +31,6 @@ public class CompleteProfileUseCase
         user.CompleteProfile(interests, additionalNotes);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new UserDto(user.Id, user.Email, user.DisplayName, user.ProfileCompletedAt);
+        return new UserDto(user.Id, user.Email, user.DisplayName, user.ProfileCompletedAt, user.Interests, user.AdditionalProfileNotes);
     }
 }

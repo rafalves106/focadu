@@ -35,6 +35,22 @@ public class GetCourseRankingUseCaseTests
         Assert.Equal([1, 2, 3], ranked.Select(r => r.Position));
     }
 
+    /// <summary>Fase 18: EquippedNameColor so atravessa RankEntries (projecao pura) - resolvido de verdade em ExecuteAsync, fora do escopo internal-static testado aqui.</summary>
+    [Fact]
+    public void RankEntries_PassesThroughEquippedNameColor()
+    {
+        var scored = new[]
+        {
+            new ScoredEnrollment(Guid.NewGuid(), "Com Cor", 10, DateTime.UtcNow, "Verde Neon"),
+            new ScoredEnrollment(Guid.NewGuid(), "Sem Cor", 5, DateTime.UtcNow),
+        };
+
+        var ranked = GetCourseRankingUseCase.RankEntries(scored);
+
+        Assert.Equal("Verde Neon", ranked[0].EquippedNameColor);
+        Assert.Null(ranked[1].EquippedNameColor);
+    }
+
     [Fact]
     public void RankEntries_TiesBrokenByEarlierEnrollment()
     {

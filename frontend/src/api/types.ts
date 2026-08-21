@@ -280,11 +280,15 @@ export interface WeeklyDetailDto {
 // WeeklyTemplate/Monthly atual, nao calendario real) - ver GetCourseRankingUseCase no backend.
 export type RankingScope = 'weekly' | 'monthly' | 'course';
 
+// equippedNameColor (Fase 18): token estavel (Name do CosmeticItem equipado, ex: "Verde Neon"),
+// nao um hex - o frontend mapeia token -> cor de verdade (ver lib/cosmeticStyle.ts), mesmo padrao
+// de BadgeDto.code -> label/icone. Nulo quando o usuario nao tem nenhuma cor de nome equipada.
 export interface RankingEntryDto {
   userId: string;
   displayName: string;
   score: number;
   position: number;
+  equippedNameColor: string | null;
 }
 
 /** currentUserEntry e null so quando o usuario logado nao tem matricula neste curso. */
@@ -368,11 +372,16 @@ export interface ApiErrorBody {
 // Autenticacao (Fase 12) - sessao via cookie httpOnly, nunca via token acessivel a partir do JS.
 // profileCompletedAt (Fase 13): nulo ate a Entrevista de Perfil ser concluida - SplashPage/pos-
 // login usam isso pra decidir se redirecionam pra /onboarding (ver lib/onboarding.ts).
+// interests/additionalProfileNotes (Fase 18): o que ja foi salvo na Entrevista de Perfil - usado
+// pela aba "Informações" do Perfil, sem precisar de um endpoint novo (UserDto ja e buscado em
+// /auth/me pelo AuthContext).
 export interface UserDto {
   id: string;
   email: string;
   displayName: string;
   profileCompletedAt: string | null;
+  interests: string[];
+  additionalProfileNotes: string | null;
 }
 
 // referralCode (Fase 17): opcional - codigo invalido/de ninguem so e ignorado no backend, nunca bloqueia o registro.
