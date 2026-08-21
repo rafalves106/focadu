@@ -9,6 +9,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
 import { ProgressBar } from '../components/ProgressBar';
 import { WeeklyProjectCard } from '../components/WeeklyProjectCard';
+import { WeeklyReinforcementBadge } from '../components/WeeklyReinforcementBadge';
 import { PublicationModal } from '../components/publication/PublicationModal';
 
 const WEEKDAY_LABEL = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -74,6 +75,11 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
           {allWeeks.length > 0 ? ` de ${allWeeks.length}` : ''}
         </h1>
         {weekly.theme && <p className="text-secondary">{weekly.theme}</p>}
+        {weekly.hasPendingWeeklyReinforcement && (
+          <div className="mt-1">
+            <WeeklyReinforcementBadge />
+          </div>
+        )}
       </div>
 
       {weekly.requiresPublicationToUnlock && (

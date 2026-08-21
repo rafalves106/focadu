@@ -22,4 +22,13 @@ public static class EvaluationPolicy
     /// Weekly que dispara a criação de um WeeklyReinforcement.
     /// </summary>
     public const int WeeklyWeakDaysThreshold = 2;
+
+    /// <summary>
+    /// Bônus de Superação (Fase 15): Gems creditadas ao concluir uma Daily de reforço com TODAS
+    /// as atividades aprovadas - o dobro do valor normal de uma Daily (UserGemBalance.
+    /// DailyGemAmount = 1), reconhecendo o esforço extra de superar a dificuldade. Substitui o
+    /// crédito normal (nunca soma aos dois), mas conta na mesma categoria/cap mensal de Dailies -
+    /// não ganhou cap próprio de propósito, mantém a arquitetura da Fase 14 simples.
+    /// </summary>
+    public const int ReinforcementBonusGems = 2;
 }

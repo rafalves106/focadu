@@ -12,6 +12,10 @@ import type { CompleteDailyResult } from '../api/types';
  * fora (XP e conceito reservado pra Squad/PvP, fora de escopo ate nova ordem). Resumo real (X de Y
  * atividades aprovadas, derivado de ActivityResponse.Passed) e um badge "Conceito Dominado" quando
  * a taxa de aprovacao do dia bate >= 90%.
+ *
+ * Fase 15: `wasReinforcementBonus` troca a copy padrao de Gems por "Bonus de Superacao" quando
+ * esta conclusao era de uma Daily de reforco com tudo aprovado - mesmo texto pequeno, discreto,
+ * sem popup/confete (so a copy muda, nao o tratamento visual).
  */
 export function CompletionSummary({ result }: { result: CompleteDailyResult }) {
   const lastResponses = result.daily.activities.flatMap((a) => (a.responses.length > 0 ? [a.responses.at(-1)!] : []));
@@ -27,8 +31,14 @@ export function CompletionSummary({ result }: { result: CompleteDailyResult }) {
 
       {/* Discreto de proposito - texto pequeno, sem popup/confete (minimalismo do produto, ver
           docs/fase-14). Pode ser +1 (Daily), +5 (tambem fechou a Weekly) ou +30 (tambem fechou o
-          Monthly) - sempre o total creditado por ESTA conclusao, nunca o saldo inteiro. */}
-      {result.gemsEarned > 0 && <p className="text-sm font-semibold text-primary">+{result.gemsEarned} 💎</p>}
+          Monthly) - sempre o total creditado por ESTA conclusao, nunca o saldo inteiro. Fase 15:
+          "Bonus de Superacao" no lugar do texto padrao quando veio de um reforco bem-sucedido. */}
+      {result.gemsEarned > 0 &&
+        (result.wasReinforcementBonus ? (
+          <p className="text-sm font-semibold text-accent">🎯 Bônus de Superação: +{result.gemsEarned} 💎</p>
+        ) : (
+          <p className="text-sm font-semibold text-primary">+{result.gemsEarned} 💎</p>
+        ))}
 
       {approvalRate !== null && (
         <div className="flex w-full items-center justify-between rounded-2xl border border-surface-alt bg-surface p-6 text-left">

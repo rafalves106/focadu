@@ -6,7 +6,8 @@ namespace Focadu.Application.Dailies;
 /// Estado completo de uma Daily. AccessMode indica o que o cliente pode fazer com ela agora
 /// (Start/Resume/Replay = tela de estudo imersiva; ReadOnly = so resumo/gabarito). O mesmo shape
 /// e usado nos dois casos - quem decide como renderizar (editavel vs. so leitura) e o frontend,
-/// olhando para AccessMode.
+/// olhando para AccessMode. PenaltyThreshold (Fase 15) e sempre EvaluationPolicy.
+/// DailyPenaltyThreshold - exposto pro frontend nunca hardcodar o valor (PenaltyGauge).
 /// </summary>
 public record DailyStateDto(
     Guid Id,
@@ -16,6 +17,7 @@ public record DailyStateDto(
     DailyStatus Status,
     bool IsReinforcement,
     int PenaltyPoints,
+    int PenaltyThreshold,
     DailyAccessMode AccessMode,
     IReadOnlyCollection<DailyActivityDto> Activities);
 
@@ -76,6 +78,12 @@ public record SubmitActivityResponseResult(
 /// "credito pendente"). StreakAfterCompletion e sempre o streak "ao vivo" (CurrentStreakAsOf),
 /// mesmo quando esta conclusao nao mexeu nele (ex: replay) - o frontend sempre tem um numero
 /// correto pra mostrar, sem precisar de uma 2a chamada a GET /api/users/me/gamification.
+///
+/// WasReinforcementBonus (Fase 15): true quando esta conclusao era elegivel ao Bonus de Superacao
+/// (Daily de reforco, 1a conclusao, todas as atividades aprovadas) - independente de quantas Gems
+/// o cap mensal efetivamente permitiu creditar (GemsEarned pode ser menor que
+/// EvaluationPolicy.ReinforcementBonusGems perto do cap, ou ate 0). O frontend so usa isto pra
+/// decidir qual COPY mostrar ("Bonus de Superacao" vs. texto padrao) quando GemsEarned > 0.
 /// </summary>
 public record CompleteDailyResult(
     DailyStateDto Daily,
@@ -84,4 +92,5 @@ public record CompleteDailyResult(
     bool WeeklyReinforcementTriggered,
     Guid? WeeklyReinforcementId,
     int GemsEarned,
-    int StreakAfterCompletion);
+    int StreakAfterCompletion,
+    bool WasReinforcementBonus);

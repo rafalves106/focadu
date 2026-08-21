@@ -14,7 +14,9 @@ import { VoiceSummaryActivity } from '../components/VoiceSummaryActivity';
 import { ReadingActivity } from '../components/ReadingActivity';
 import { VideoActivity } from '../components/VideoActivity';
 import { CompletionSummary } from '../components/CompletionSummary';
+import { ReinforcementIntroScreen } from '../components/ReinforcementIntroScreen';
 import { SettingsMenu } from '../components/SettingsMenu';
+import { PenaltyGauge } from '../components/gamification/PenaltyGauge';
 
 // "Pino" do passo atual - so identifica QUAL atividade/grupo mostrar, nunca guarda uma copia dos
 // dados (que vem sempre fresca de `daily.activities`). Isso evita 2 problemas: (1) trocar de tela
@@ -89,6 +91,11 @@ export function TodayPage() {
   const [completing, setCompleting] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  // Fase 15: gate local da ReinforcementIntroScreen - mesmo padrao de "started" das intros de
+  // atividade (QuizActivity, etc), so no nivel da Daily inteira em vez de uma Activity. So mostra
+  // a intro numa sessao de reforco genuinamente nova (nenhuma atividade respondida ainda) - evita
+  // reexibir a cada reload de uma sessao ja em andamento/replay.
+  const [reinforcementIntroDismissed, setReinforcementIntroDismissed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,7 +111,10 @@ export function TodayPage() {
         if (state.accessMode === DailyAccessMode.Start || state.accessMode === DailyAccessMode.Resume) {
           state = await api.startDaily(state.id);
         }
-        if (!cancelled) setDaily(state);
+        if (!cancelled) {
+          setDaily(state);
+          setReinforcementIntroDismissed(state.activities.some((a) => a.responses.length > 0));
+        }
       } catch (err) {
         if (!cancelled) setError(classifyApiError(err));
       } finally {
@@ -154,10 +164,16 @@ export function TodayPage() {
   if (error) return <ApiErrorScreen error={error} onRetry={() => setAttempt((n) => n + 1)} />;
   if (!daily || !step) return null;
   if (completion) return <CompletionSummary result={completion} />;
+  if (daily.isReinforcement && !reinforcementIntroDismissed) {
+    return <ReinforcementIntroScreen onStart={() => setReinforcementIntroDismissed(true)} />;
+  }
 
   return (
     <>
       {renderStep()}
+      <div className="fixed left-6 top-6 z-40">
+        <PenaltyGauge penaltyPoints={daily.penaltyPoints} penaltyThreshold={daily.penaltyThreshold} />
+      </div>
       <button
         type="button"
         onClick={() => setShowSettings(true)}

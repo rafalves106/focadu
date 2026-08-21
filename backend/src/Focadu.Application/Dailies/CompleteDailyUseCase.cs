@@ -20,6 +20,11 @@ namespace Focadu.Application.Dailies;
 /// uso, a abordagem mais simples que ja se encaixa no estilo do projeto (mesmo raciocinio de
 /// "onde a decisao de negocio realmente mora" ja usado em GetCourseDetailUseCase, que tambem cruza
 /// aggregates na camada de aplicacao).
+///
+/// Fase 15 (Bonus de Superacao): 1a conclusao de uma Daily de reforco com TODAS as atividades
+/// aprovadas (Daily.AllActivitiesPassed) credita UserGemBalance.CreditReinforcementBonus (+2) em
+/// vez do CreditDaily normal (+1) - nunca os dois juntos. Reforco concluido sem sucesso total
+/// continua ganhando o credito normal (so sem o bonus), exatamente como uma Daily comum.
 /// </summary>
 public class CompleteDailyUseCase
 {
@@ -57,12 +62,15 @@ public class CompleteDailyUseCase
         daily.Complete();
 
         var gemsEarned = 0;
+        var wasReinforcementBonus = false;
         var streak = await _streakRepository.GetByUserIdAsync(userId, cancellationToken);
 
         if (isFirstCompletion)
         {
             var gemBalance = await _gamificationCreditor.GetOrCreateGemBalanceAsync(userId, today, cancellationToken);
-            gemsEarned += gemBalance.CreditDaily(today);
+
+            wasReinforcementBonus = daily.IsReinforcement && daily.AllActivitiesPassed();
+            gemsEarned += wasReinforcementBonus ? gemBalance.CreditReinforcementBonus(today) : gemBalance.CreditDaily(today);
             gemsEarned += await _gamificationCreditor.CreditWeeklyAndMonthlyIfPerfectAsync(gemBalance, weekly, today, cancellationToken);
 
             // So conta pro streak se a Daily e de hoje mesmo (ver Especificacao Funcional, item 2)
@@ -97,6 +105,7 @@ public class CompleteDailyUseCase
             weeklyReinforcement is not null,
             weeklyReinforcement?.Id,
             gemsEarned,
-            streakAfterCompletion);
+            streakAfterCompletion,
+            wasReinforcementBonus);
     }
 }

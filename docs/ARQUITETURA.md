@@ -396,7 +396,7 @@ mesmo pipeline de conclusao), so que nunca reprova (Score 100 >= `PassingScore`)
 (nenhum campo de `SubmitActivityResponseRequest` e usado). Preencheu a lacuna que existia desde a
 Fase 3: antes so havia tela pras atividades avaliaveis, nunca pro texto/video em si.
 
-### Gamificacao: Gems e Streak (Fase 14)
+### Gamificacao: Gems e Streak (Fase 14, Bonus de Superacao na Fase 15)
 
 Primeira fase real de gamificacao - ate aqui, todo elemento de Gems/Streak que apareceu nos
 designs do Figma (Fases 8, 9, 13b) foi deliberadamente descartado por nao ter dado real por
@@ -458,6 +458,37 @@ aluno segue. Seguro contra credito duplicado: `WeeklyProject.Evaluate()` ja reje
 entao, pra qualquer Weekly, so existe 1 momento em que `IsPerfect()` vira `true` pela primeira
 vez, nao importa qual dos 2 chamadores observa esse momento (verificado ao vivo, ver "Testes"
 abaixo).
+
+**Bonus de Superacao (Fase 15).** Concluir uma Daily de reforco (`IsReinforcement`) com **todas**
+as atividades aprovadas (`Daily.AllActivitiesPassed()` - usa a tentativa MAIS RECENTE de cada
+Activity, nunca a primeira, permitindo corrigir por retry) credita
+`UserGemBalance.CreditReinforcementBonus` (`EvaluationPolicy.ReinforcementBonusGems = 2`) **em vez
+de** `CreditDaily` normal (nunca os dois juntos) - substitui, nao soma. Um reforco concluido sem
+sucesso total continua ganhando o credito normal de Daily (so sem o bonus) - "reforco nunca gera
+penalidade adicional, so deixa de dar o bonus". A categoria/cap e a MESMA de Dailies normais
+(`GemsFromDailiesThisMonth`, 20/mes) - de proposito, pra nao criar uma 4a categoria de cap so pra
+isso. Isso expos um caso que `UserGemBalance.Credit` (privado, compartilhado pelas 4 chamadas
+publicas desde a Fase 15) precisou passar a **clampar** em vez de tudo-ou-nada: com 2 valores
+diferentes (+1 Daily, +2 bonus) na mesma categoria, um usuario a 19/20 no mes pode legitimamente
+receber so +1 de um bonus de +2 (nunca estourar o cap por 1) - antes da Fase 15, os 3 valores
+(1/5/30) sempre dividiam exatamente os proprios caps (20/20/30), entao tudo-ou-nada e clamping
+davam o mesmo resultado; a partir de agora nao dariam mais.
+
+**`WeeklyReinforcement.IsResolved(dailies)`/`Weekly.HasPendingWeeklyReinforcement()` (Fase 15) -
+so leitura, nao mudam a logica de disparo existente (Fase 4).** Um `WeeklyReinforcement` (2+ dias
+fracos) esta "atendido" quando toda Daily fraca que o disparou (`WeakDailyIds`) ja tem sua Daily
+de reforco (`Daily.ReinforcementDailyId`) com `Status == Completed`. `WeeklyReinforcement` nao
+navega pra `Daily` diretamente (so guarda `Guid`s) - `IsResolved` recebe a colecao `Weekly.Dailies`
+de quem chama como parametro. Usado so pro indicador visual "Revisao semanal disponivel"
+(`WeeklyReinforcementBadge`, sem bloquear nada).
+
+**Conta-giros de penalidade (Fase 15) - sem node Figma.** O "conta-giros" nunca apareceu desenhado
+no inventario original de telas - reaproveitada a linguagem visual ja estabelecida (`ProgressBar`,
+Fase 8: trilho + preenchimento arredondado), so com a cor subindo por faixa de risco em vez de uma
+tonalidade fixa por chamador (`PenaltyGauge`, `components/gamification/`): neutro (0) -> amarelo
+(1) -> laranja (2, `--color-project`) -> vermelho (limite atingido, `--color-alert`). Alimentado
+pelo `PenaltyPoints`/`PenaltyThreshold` que ja vem no `DailyStateDto` - nenhum dado novo do
+backend so pra isso, so exibicao.
 
 ## Regras de negocio centralizadas
 
@@ -599,14 +630,14 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | 🔒 GET | `/api/courses` | `ListCoursesUseCase` | 200 |
 | 🔒 GET | `/api/courses/{courseId}` | `GetCourseDetailUseCase` | 200, 404 se nao existe/usuario nao matriculado (Fase 8: `WeeklyOverviewDto.Days` traz status por dia, pro mini-grid de `CourseDetailPage`) |
 | 🔒 GET | `/api/courses/{courseId}/curriculum` | `GetCourseCurriculumUseCase` (Fase 13b) | 200, 404 - curriculo (Course -> Monthly -> WeeklyTemplate), sem exigir matricula; so `/admin/conteudo` usa isso |
-| 🔒 GET | `/api/weeklies/{weeklyId}` | `GetWeeklyDetailUseCase` | 200, 404 se nao existe/nao e do usuario |
+| 🔒 GET | `/api/weeklies/{weeklyId}` | `GetWeeklyDetailUseCase` | 200, 404 se nao existe/nao e do usuario - Fase 15: `WeeklyDetailDto` ganhou `HasPendingWeeklyReinforcement` |
 | 🔒 GET | `/api/weekly-templates/{id}` | `GetWeeklyTemplateDetailUseCase` (Fase 13b) | 200, 404 - WeeklyTemplate (curriculo), sem exigir matricula; so `/admin/conteudo` usa isso |
 | 🔒 GET | `/api/dailies/{dailyId}` | `GetDailyStateUseCase` | 200, 404/400/409 (ver abaixo) |
 | 🔒 GET | `/api/today` | `GetTodayUseCase` | 200, 404/409 (ver "GET /api/today" abaixo) |
 | 🔒 POST | `/api/dailies/{dailyId}/start` | `StartOrResumeDailyUseCase` | 200 |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses` | `SubmitActivityResponseUseCase` | 201 (cria uma nova `ActivityResponse`) |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/audio` | `SubmitVoiceSummaryResponseUseCase` (Fase 5) | 201, `multipart/form-data`, so pra `VoiceSummary` |
-| 🔒 POST | `/api/dailies/{dailyId}/complete` | `CompleteDailyUseCase` | 200 (`CompleteDailyResult`, ver abaixo - Fase 14: ganhou `GemsEarned`/`StreakAfterCompletion`) |
+| 🔒 POST | `/api/dailies/{dailyId}/complete` | `CompleteDailyUseCase` | 200 (`CompleteDailyResult`, ver abaixo - Fase 14: ganhou `GemsEarned`/`StreakAfterCompletion`; Fase 15: ganhou `WasReinforcementBonus`) |
 | 🔒 GET | `/api/curated-content/{id}` | `GetCuratedContentUseCase` (Fase 7) | 200, 404 - exige login, mas nao filtra por usuario (curriculo compartilhado) |
 | 🔒 POST | `/api/curated-content` | `CreateCuratedContentUseCase` (Fase 4) | 201, 400/404 - Fase 13: campo `weeklyTemplateId` (era `weeklyId`) |
 | 🔒 PUT | `/api/curated-content/{id}` | `UpdateCuratedContentUseCase` (Fase 4) | 200, 400/404 |
@@ -762,7 +793,8 @@ CompleteDailyResult(
   WeeklyReinforcementTriggered: bool,     <- existe algum WeeklyReinforcement cobrindo esta Daily
   WeeklyReinforcementId: Guid?,
   GemsEarned: int,                        <- Fase 14: 0 em replay ou cap mensal atingido
-  StreakAfterCompletion: int)             <- Fase 14: sempre o streak "ao vivo" (CurrentStreakAsOf)
+  StreakAfterCompletion: int,             <- Fase 14: sempre o streak "ao vivo" (CurrentStreakAsOf)
+  WasReinforcementBonus: bool)            <- Fase 15: elegibilidade ao bonus, independente do cap
 ```
 
 `WeeklyReinforcementTriggered`/`WeeklyReinforcementId` sao calculados procurando, em
@@ -1172,7 +1204,9 @@ frontend/
                                    `nenhuma_matricula_ativa`; StreakIndicator fixo em 0 (Fase 14,
                                    sem chamada a API - quem nao se matriculou nunca tem streak)
       TodayPage.tsx            <- /hoje (orquestra os 7 tipos de atividade, o menu de configuracoes
-                                   e o fluxo de conclusao - Fase 7)
+                                   e o fluxo de conclusao - Fase 7); PenaltyGauge fixo no HUD +
+                                   ReinforcementIntroScreen como gate quando `daily.isReinforcement`
+                                   e nenhuma atividade ainda respondida (Fase 15)
       StartPage.tsx             <- /start (so o roteador por query string - Fase 8: as 3 telas
                                    viraram arquivos proprios abaixo, StartPage so decide qual mostrar);
                                    `<WeeklyDetailPage key={weeklyId} .../>` desde a Fase 11 (ver
@@ -1181,10 +1215,13 @@ frontend/
                                    renderiza EmptyStateStartPage no lugar do erro generico quando
                                    `error.code === 'nenhuma_matricula_ativa'` (Fase 13b);
                                    GemBadge/StreakIndicator no header via GET /api/users/me/
-                                   gamification (Fase 14)
+                                   gamification (Fase 14); WeeklyReinforcementBadge (linkado pra
+                                   /start?weekly=) quando `weekly.hasPendingWeeklyReinforcement`
+                                   (Fase 15)
       WeeklyDetailPage.tsx        <- /start?weekly= - dias da semana + projeto + navegacao entre semanas
                                    (Fase 8); banner + trigger do PublicationModal quando
-                                   `requiresPublicationToUnlock` (Fase 11)
+                                   `requiresPublicationToUnlock` (Fase 11); WeeklyReinforcementBadge
+                                   no cabecalho quando `hasPendingWeeklyReinforcement` (Fase 15)
       CourseDetailPage.tsx        <- /start?course= - trilha completa (semanas + mini-grid de dias)
                                    (Fase 8); badge "🔒 Bloqueado" na Weekly seguinte a uma que ainda
                                    precisa de publicacao (Fase 11)
@@ -1206,6 +1243,12 @@ frontend/
       gamification/                 <- Fase 14
         GemBadge.tsx                     <- icone + contador de Gems, mesmo padrao pill de StatusBadge
         StreakIndicator.tsx               <- "🔥 N dias" - StartDashboard (real) e EmptyStateStartPage (fixo em 0)
+        PenaltyGauge.tsx                   <- Fase 15, "conta-giros" - PenaltyPoints/PenaltyThreshold,
+                                   cor por faixa (neutro/amarelo/laranja/vermelho); mesma linguagem
+                                   visual do ProgressBar (Fase 8), sem node Figma pra este componente
+      ReinforcementIntroScreen.tsx  <- Fase 15 - transicao pra Daily de reforco, reaproveita IntroCard
+      WeeklyReinforcementBadge.tsx   <- Fase 15 - so apresentacao ("📋 Revisao semanal disponivel"),
+                                   sem link embutido, sem bloquear nada
       activities/                 <- primitivas visuais das atividades avaliaveis (Fase 9)
         IntroCard.tsx                <- tela de intro (badge/titulo/descricao/regras/CTA) - gate local (`started`), nao e passo novo no Step do TodayPage
         OptionCard.tsx                <- card de opcao (neutro/selecionado/correto/errado/esmaecido) - Quiz, termos do WordMatch, decisoes do Roleplay
@@ -1229,7 +1272,8 @@ frontend/
       CompletionSummary.tsx       <- pos POST .../complete (reforco diario/semanal, se houver); resumo real +
                                    badge "Conceito Dominado" (aprovacao >= 90%) + "Refazer este dia" desde a Fase 9;
                                    "+N 💎" discreto quando `gemsEarned > 0` (Fase 14 - texto pequeno,
-                                   sem popup/confete, alinhado ao minimalismo do produto)
+                                   sem popup/confete, alinhado ao minimalismo do produto); troca pra
+                                   "🎯 Bonus de Superacao: +N 💎" quando `wasReinforcementBonus` (Fase 15)
       ErrorBoundary.tsx            <- class component, pega excecoes de render (Fase 10) - montado em App.tsx
       publication/
         PublicationModal.tsx          <- modal de publicacao publica (Fase 11) - maquina de passo local
@@ -1515,6 +1559,7 @@ de Projeto Semanal).
 | 13a | Template vs Instancia, Matricula e Logout (Backend) | `docs/fase-13a/resumo-implementacao-fase-13a.md` |
 | 13b | Onboarding (UI) + Correcao do /admin/conteudo | `docs/fase-13b/resumo-implementacao-fase-13b.md` |
 | 14 | Motor de Gems + Streak | `docs/fase-14/resumo-implementacao-fase-14.md` |
+| 15 | Conta-Giros Visual + Bonus de Superacao | `docs/fase-15/resumo-implementacao-fase-15.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
