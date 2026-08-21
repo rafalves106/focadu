@@ -16,7 +16,9 @@ public static class DependencyInjection
     {
         services.AddScoped<ListCoursesUseCase>();
         services.AddScoped<GetCourseDetailUseCase>();
+        services.AddScoped<GetCourseCurriculumUseCase>();
         services.AddScoped<GetWeeklyDetailUseCase>();
+        services.AddScoped<GetWeeklyTemplateDetailUseCase>();
         services.AddScoped<SubmitWeeklyProjectUseCase>();
         services.AddScoped<EvaluateWeeklyProjectUseCase>();
         services.AddScoped<GenerateLinkedInDraftUseCase>();

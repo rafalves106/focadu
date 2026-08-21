@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../../api/client';
+import type { UserDto } from '../../api/types';
 import { useAuth } from '../../contexts/useAuth';
 import { isValidEmail, MIN_PASSWORD_LENGTH } from '../../lib/validation';
 
-export function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
+export function RegisterForm({ onSuccess }: { onSuccess: (user: UserDto) => void }) {
   const { register } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -36,8 +37,7 @@ export function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
 
     setBusy(true);
     try {
-      await register({ email: email.trim(), password, displayName: displayName.trim() });
-      onSuccess();
+      onSuccess(await register({ email: email.trim(), password, displayName: displayName.trim() }));
     } catch (err) {
       // email_ja_cadastrado (409) e senha_muito_curta (400, redundante com a checagem acima, mas
       // o servidor nunca confia so no client-side) chegam aqui com a mensagem pronta do backend.

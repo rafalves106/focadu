@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
+import { resolveLandingPath } from '../lib/onboarding';
 
 // Sugerido no prompt: mesmo com a checagem de sessao instantanea, uma duracao minima evita o
 // "flash" desconfortavel de uma tela que aparece e some quase no mesmo frame.
@@ -8,8 +9,11 @@ const MIN_SPLASH_DURATION_MS = 700;
 
 /**
  * Tela de boot (Fase 12, design Figma "Splash / Loading") - unico lugar do app que decide entre
- * /start e /login a partir da sessao (AuthProvider.getCurrentUser, ja disparado no mount do
- * provider - esta tela so espera o mesmo resultado, nunca busca de novo sozinha).
+ * /login, /onboarding, /selecionar-curso e /start a partir da sessao (AuthProvider.getCurrentUser,
+ * ja disparado no mount do provider - esta tela so espera o mesmo resultado, nunca busca de novo
+ * sozinha). A ordem onboarding -> selecao de curso -> /start mora em lib/onboarding.ts
+ * (resolveLandingPath), reaproveitada aqui e no onSuccess de login/registro (LoginPage) - nunca
+ * duplicada.
  */
 export function SplashPage() {
   const { user, isLoading } = useAuth();
@@ -28,10 +32,20 @@ export function SplashPage() {
   useEffect(() => {
     if (isLoading) return;
 
+    let cancelled = false;
     const elapsed = Date.now() - mountedAt;
     const remaining = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
-    const timer = setTimeout(() => navigate(user ? '/start' : '/login', { replace: true }), remaining);
-    return () => clearTimeout(timer);
+
+    const timer = setTimeout(() => {
+      (user ? resolveLandingPath(user) : Promise.resolve('/login')).then((destination) => {
+        if (!cancelled) navigate(destination, { replace: true });
+      });
+    }, remaining);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [isLoading, user, navigate, mountedAt]);
 
   return (

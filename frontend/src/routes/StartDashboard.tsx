@@ -15,6 +15,7 @@ import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { StatusBadge } from '../components/StatusBadge';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
 import { WeeklyProjectCard } from '../components/WeeklyProjectCard';
+import { EmptyStateStartPage } from './EmptyStateStartPage';
 
 interface DashboardData {
   daily: DailyStateDto;
@@ -44,6 +45,10 @@ export function StartDashboard() {
   );
 
   if (loading) return <Centered text="Carregando..." />;
+  // Guarda de seguranca (Fase 13b) - usuario logado, perfil completo, mas sem nenhuma matricula
+  // ainda (ver docs/fase-13a, "Consequencia direta"). SplashPage ja evita a maioria desses casos
+  // via resolveLandingPath, mas /start continua acessivel direto pela URL/back-button.
+  if (error?.code === 'nenhuma_matricula_ativa') return <EmptyStateStartPage />;
   if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
   if (!data) return null;
 

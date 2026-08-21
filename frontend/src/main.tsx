@@ -6,7 +6,10 @@ import { App } from './App';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
 import { AdminContentPage } from './routes/AdminContentPage';
+import { CourseSelectionPage } from './routes/CourseSelectionPage';
 import { LoginPage } from './routes/LoginPage';
+import { OnboardingWelcomePage } from './routes/OnboardingWelcomePage';
+import { ProfileInterviewPage } from './routes/ProfileInterviewPage';
 import { SplashPage } from './routes/SplashPage';
 import { StartPage } from './routes/StartPage';
 import { TodayPage } from './routes/TodayPage';
@@ -18,9 +21,13 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route index element={<SplashPage />} />
           <Route path="login" element={<LoginPage />} />
-          {/* Fase 12: so o frontend exige sessao pra estas rotas por enquanto - os endpoints que
-              elas consomem continuam abertos no backend, ver docs/ARQUITETURA.md. */}
           <Route element={<ProtectedRoute />}>
+            {/* Onboarding (Fase 13b): fora do <App/> de proposito - sem o nav de Hoje/Início/
+                Conteúdo, mesmo tratamento full-bleed de LoginPage/SplashPage. */}
+            <Route path="onboarding" element={<OnboardingWelcomePage />} />
+            <Route path="onboarding/perfil" element={<ProfileInterviewPage />} />
+            <Route path="selecionar-curso" element={<CourseSelectionPage />} />
+            {/* Backend continua exigindo [Authorize] em tudo desde a Fase 13a, ver docs/ARQUITETURA.md. */}
             <Route element={<App />}>
               <Route path="hoje" element={<TodayPage />} />
               <Route path="start" element={<StartPage />} />

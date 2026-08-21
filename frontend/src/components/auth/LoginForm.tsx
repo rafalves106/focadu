@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../../api/client';
+import type { UserDto } from '../../api/types';
 import { useAuth } from '../../contexts/useAuth';
 import { isValidEmail } from '../../lib/validation';
 
-export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
+export function LoginForm({ onSuccess }: { onSuccess: (user: UserDto) => void }) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,8 +27,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
 
     setBusy(true);
     try {
-      await login({ email: email.trim(), password });
-      onSuccess();
+      onSuccess(await login({ email: email.trim(), password }));
     } catch (err) {
       // credenciais_invalidas (401) chega aqui com a mensagem generica que o backend ja escolheu
       // de proposito (nunca diz se foi o email ou a senha) - so repassamos.
