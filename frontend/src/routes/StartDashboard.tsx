@@ -8,10 +8,13 @@ import {
   ACTIVITY_TYPE_LABEL,
   type CourseDetailDto,
   type DailyStateDto,
+  type GamificationSummaryDto,
   type WeeklyDetailDto,
 } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
+import { GemBadge } from '../components/gamification/GemBadge';
+import { StreakIndicator } from '../components/gamification/StreakIndicator';
 import { StatusBadge } from '../components/StatusBadge';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
 import { WeeklyProjectCard } from '../components/WeeklyProjectCard';
@@ -21,6 +24,7 @@ interface DashboardData {
   daily: DailyStateDto;
   weekly: WeeklyDetailDto;
   course: CourseDetailDto | null;
+  gamification: GamificationSummaryDto;
 }
 
 /**
@@ -29,17 +33,22 @@ interface DashboardData {
  * docs/ARQUITETURA.md), a tela vai direto pro "hoje" em vez de fazer o usuario escolher um curso
  * de uma lista de 1 item so. O cabecalho global (logo/nav) ja vem de App.tsx - nao duplicado aqui.
  *
- * Gems/XP/streak/niveis do mockup do Figma nao existem no dominio (sistema em standby desde a
- * Fase 6/7) - os cards abaixo so mostram numeros reais (dia da semana, status, progresso do curso).
+ * Fase 14: Gems/Streak do mockup do Figma ganharam dado real (GemBadge/StreakIndicator no header,
+ * via GET /api/users/me/gamification) - XP/Level/badges de conquista continuam de fora (nao
+ * existem no dominio ainda, ver docs/fase-14).
  */
 export function StartDashboard() {
   const { data, error, loading, retry } = useApiResource<DashboardData>(
     () =>
       api.getToday().then(async (daily) => {
-        const [weekly, courses] = await Promise.all([api.getWeekly(daily.weeklyId), api.getCourses()]);
+        const [weekly, courses, gamification] = await Promise.all([
+          api.getWeekly(daily.weeklyId),
+          api.getCourses(),
+          api.getGamification(),
+        ]);
         const activeSummary = courses.find((c) => c.status === CourseStatus.Active) ?? courses[0] ?? null;
         const course = activeSummary ? await api.getCourse(activeSummary.id) : null;
-        return { daily, weekly, course };
+        return { daily, weekly, course, gamification };
       }),
     [],
   );
@@ -52,15 +61,21 @@ export function StartDashboard() {
   if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
   if (!data) return null;
 
-  const { daily, weekly, course } = data;
+  const { daily, weekly, course, gamification } = data;
   const weeks = course?.monthlies.flatMap((m) => m.weeklies) ?? [];
   const weeksCompleted = weeks.filter((w) => w.totalDailies > 0 && w.completedDailies === w.totalDailies).length;
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6 p-8">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[2px] text-muted">{course?.name ?? 'Focadu'}</p>
-        <h1 className="mt-1 text-3xl font-bold text-primary">Olá! 👋</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[2px] text-muted">{course?.name ?? 'Focadu'}</p>
+          <h1 className="mt-1 text-3xl font-bold text-primary">Olá! 👋</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <GemBadge totalGems={gamification.totalGems} />
+          <StreakIndicator currentStreak={gamification.currentStreak} />
+        </div>
       </div>
 
       <TodayCard daily={daily} weekly={weekly} />

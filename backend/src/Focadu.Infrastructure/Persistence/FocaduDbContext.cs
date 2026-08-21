@@ -3,6 +3,7 @@ using Focadu.Domain.Content;
 using Focadu.Domain.Courses;
 using Focadu.Domain.Dailies;
 using Focadu.Domain.Enrollments;
+using Focadu.Domain.Gamification;
 using Focadu.Domain.Monthlies;
 using Focadu.Domain.Users;
 using Focadu.Domain.Weeklies;
@@ -42,6 +43,10 @@ public class FocaduDbContext : DbContext
     public DbSet<WeeklyReinforcement> WeeklyReinforcements => Set<WeeklyReinforcement>();
     public DbSet<ModulePublication> ModulePublications => Set<ModulePublication>();
     public DbSet<User> Users => Set<User>();
+
+    // Gamificacao (Fase 14) - 1:1 com User, sempre criadas lazy (ver GamificationCreditor).
+    public DbSet<UserGemBalance> UserGemBalances => Set<UserGemBalance>();
+    public DbSet<UserStreak> UserStreaks => Set<UserStreak>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

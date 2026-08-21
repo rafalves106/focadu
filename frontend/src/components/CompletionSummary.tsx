@@ -7,9 +7,11 @@ import type { CompleteDailyResult } from '../api/types';
  * navegar ate a sessao de reforco (via /hoje?daily=, ver TodayPage).
  *
  * Fase 9 (design Figma "Resultado Final", uniformizado nas 4 atividades): o mockup mostra XP/
- * Gemas/tempo total - descartado, o dominio nao tem esses campos (ver docs/fase-9). Em vez disso,
- * um resumo real (X de Y atividades aprovadas, derivado de ActivityResponse.Passed) e um badge
- * "Conceito Dominado" quando a taxa de aprovacao do dia bate >= 90%.
+ * Gemas/tempo total - Gemas descartado na Fase 9 (dominio nao tinha o campo ainda, ver
+ * docs/fase-9), reativado na Fase 14 com dado real (`gemsEarned`); XP/tempo total continuam de
+ * fora (XP e conceito reservado pra Squad/PvP, fora de escopo ate nova ordem). Resumo real (X de Y
+ * atividades aprovadas, derivado de ActivityResponse.Passed) e um badge "Conceito Dominado" quando
+ * a taxa de aprovacao do dia bate >= 90%.
  */
 export function CompletionSummary({ result }: { result: CompleteDailyResult }) {
   const lastResponses = result.daily.activities.flatMap((a) => (a.responses.length > 0 ? [a.responses.at(-1)!] : []));
@@ -22,6 +24,11 @@ export function CompletionSummary({ result }: { result: CompleteDailyResult }) {
     <div className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-4 p-6 text-center">
       <p className="text-4xl">✅</p>
       <h1 className="text-2xl font-semibold text-primary">Sessão concluída!</h1>
+
+      {/* Discreto de proposito - texto pequeno, sem popup/confete (minimalismo do produto, ver
+          docs/fase-14). Pode ser +1 (Daily), +5 (tambem fechou a Weekly) ou +30 (tambem fechou o
+          Monthly) - sempre o total creditado por ESTA conclusao, nunca o saldo inteiro. */}
+      {result.gemsEarned > 0 && <p className="text-sm font-semibold text-primary">+{result.gemsEarned} 💎</p>}
 
       {approvalRate !== null && (
         <div className="flex w-full items-center justify-between rounded-2xl border border-surface-alt bg-surface p-6 text-left">

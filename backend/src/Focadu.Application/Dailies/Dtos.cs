@@ -70,10 +70,18 @@ public record SubmitActivityResponseResult(
 /// antes - durante alguma SubmitActivityResponse anterior, nao neste momento - mas so aqui o
 /// cliente tem certeza de ter visto todas as atividades da Daily, entao e o ponto natural pra
 /// reportar "voce precisa saber disso" antes de sair da tela.
+///
+/// GemsEarned/StreakAfterCompletion (Fase 14): GemsEarned e quanto ESTA conclusao especifica
+/// gerou (0 em replay, ou se o cap mensal da categoria ja foi atingido - nunca negativo, nunca
+/// "credito pendente"). StreakAfterCompletion e sempre o streak "ao vivo" (CurrentStreakAsOf),
+/// mesmo quando esta conclusao nao mexeu nele (ex: replay) - o frontend sempre tem um numero
+/// correto pra mostrar, sem precisar de uma 2a chamada a GET /api/users/me/gamification.
 /// </summary>
 public record CompleteDailyResult(
     DailyStateDto Daily,
     bool DailyReinforcementTriggered,
     Guid? ReinforcementDailyId,
     bool WeeklyReinforcementTriggered,
-    Guid? WeeklyReinforcementId);
+    Guid? WeeklyReinforcementId,
+    int GemsEarned,
+    int StreakAfterCompletion);

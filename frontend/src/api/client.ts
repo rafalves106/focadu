@@ -9,6 +9,7 @@ import {
   type CuratedContentDto,
   type DailyStateDto,
   type EnrollmentDto,
+  type GamificationSummaryDto,
   type GitHubRepoDto,
   type LoginRequest,
   type ModulePublicationDto,
@@ -147,4 +148,6 @@ export const api = {
   getMyEnrollments: () => request<EnrollmentDto[]>('/api/enrollments/me'),
   createEnrollment: (courseId: string) =>
     request<EnrollmentDto>('/api/enrollments', { method: 'POST', body: JSON.stringify({ courseId }) }),
+  // Gamificacao (Fase 14) - Gems + Streak.
+  getGamification: () => request<GamificationSummaryDto>('/api/users/me/gamification'),
 };

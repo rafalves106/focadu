@@ -132,12 +132,23 @@ export interface SubmitActivityResponseResult {
 
 // Reforco (diario/semanal), quando existe, ja foi disparado antes (durante alguma resposta
 // anterior) - so aqui o cliente tem certeza de ter visto todas as atividades da Daily.
+// gemsEarned/streakAfterCompletion (Fase 14): gemsEarned e 0 em replay/cap mensal atingido;
+// streakAfterCompletion e sempre o streak "ao vivo", mesmo quando esta conclusao nao mexeu nele.
 export interface CompleteDailyResult {
   daily: DailyStateDto;
   dailyReinforcementTriggered: boolean;
   reinforcementDailyId: string | null;
   weeklyReinforcementTriggered: boolean;
   weeklyReinforcementId: string | null;
+  gemsEarned: number;
+  streakAfterCompletion: number;
+}
+
+/** GET /api/users/me/gamification (Fase 14) - Gems acumuladas + streak atual/recorde do usuario logado. */
+export interface GamificationSummaryDto {
+  totalGems: number;
+  currentStreak: number;
+  longestStreak: number;
 }
 
 export interface CourseSummaryDto {

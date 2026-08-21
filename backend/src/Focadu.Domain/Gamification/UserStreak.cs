@@ -1,0 +1,72 @@
+using Focadu.Domain.Common;
+
+namespace Focadu.Domain.Gamification;
+
+/// <summary>
+/// Streak de dias consecutivos de um usuario (Fase 14) - 1:1 com User, criada sob demanda na
+/// primeira conclusao de Daily (mesma logica lazy de UserGemBalance).
+///
+/// "Quebrar por inatividade" e deteccao de AUSENCIA de evento, nao presenca - sem job/cron no
+/// projeto (mesmo principio ja usado pra DailyStatus.Locked, resolvido sob demanda comparando
+/// datas na hora do acesso, ver Weekly.EvaluateDailyAccess). Aqui, a quebra e resolvida em 2
+/// pontos: (a) na proxima RegisterCompletion, que reinicia a contagem em vez de incrementar se
+/// detectar que ja tinha quebrado; (b) em qualquer LEITURA via CurrentStreakAsOf(today), que
+/// nunca precisa esperar uma escrita futura pra reportar 0 corretamente - o campo persistido
+/// (CurrentStreak) pode ficar "desatualizado" (nao reescrito) ate a proxima conclusao real, mas
+/// nenhuma leitura enxerga esse valor stale.
+///
+/// ponytail: a janela de tolerancia usa "1 dia util" como proxy pro calendario real do curriculo
+/// (fins de semana nao quebram), nao uma consulta real as Dailies agendadas do usuario - um hiato
+/// legitimo maior que 1 dia util no curriculo (ex: gap entre Weeklies) quebraria o streak
+/// incorretamente. Upgrade natural, se isso importar: checar contra as datas de Daily agendadas de
+/// verdade (IWeeklyRepository) em vez do heuristico de dia util.
+/// </summary>
+public class UserStreak : Entity
+{
+    public Guid UserId { get; private set; }
+    public int CurrentStreak { get; private set; }
+    public int LongestStreak { get; private set; }
+    public DateOnly? LastCompletedDate { get; private set; }
+
+    private UserStreak()
+    {
+    }
+
+    public UserStreak(Guid userId)
+    {
+        UserId = userId;
+    }
+
+    /// <summary>
+    /// Registra a conclusao de uma Daily no dia correto (Date == hoje) - so chamada na primeira
+    /// conclusao de uma Daily, nunca em replay (replay nao afeta streak). Idempotente pra 2
+    /// conclusoes na mesma data (ex: Daily original + reforco no mesmo dia) - a 2a chamada com a
+    /// mesma data e um no-op, nao soma streak duas vezes.
+    /// </summary>
+    public void RegisterCompletion(DateOnly completionDate)
+    {
+        if (LastCompletedDate == completionDate) return;
+
+        if (HasBrokenAsOf(completionDate))
+        {
+            CurrentStreak = 0;
+        }
+
+        CurrentStreak++;
+        LongestStreak = Math.Max(LongestStreak, CurrentStreak);
+        LastCompletedDate = completionDate;
+    }
+
+    /// <summary>Streak "ao vivo": aplica a quebra por inatividade silenciosa antes de expor o valor, sem precisar de uma escrita real pra refletir isso (ver nota de design acima).</summary>
+    public int CurrentStreakAsOf(DateOnly today) => HasBrokenAsOf(today) ? 0 : CurrentStreak;
+
+    private bool HasBrokenAsOf(DateOnly asOfDate) =>
+        LastCompletedDate is { } last && NextBusinessDay(last) < asOfDate;
+
+    private static DateOnly NextBusinessDay(DateOnly date) => (date.AddDays(1)).DayOfWeek switch
+    {
+        DayOfWeek.Saturday => date.AddDays(3),
+        DayOfWeek.Sunday => date.AddDays(2),
+        _ => date.AddDays(1),
+    };
+}
