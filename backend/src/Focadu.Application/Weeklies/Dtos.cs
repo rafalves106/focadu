@@ -35,4 +35,7 @@ public record WeeklyProjectDto(
     Guid Id,
     string SpecText,
     WeeklyProjectStatus Status,
-    string? SubmissionUrl);
+    string? SubmissionUrl,
+    /// <summary>Fase 16: nota (0-100) da avaliacao, preenchida junto com Status=Evaluated. Nulo ate entao.</summary>
+    int? Score,
+    string? Feedback);

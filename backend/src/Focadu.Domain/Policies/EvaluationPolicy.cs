@@ -1,3 +1,5 @@
+using Focadu.Domain.Enums;
+
 namespace Focadu.Domain.Policies;
 
 /// <summary>
@@ -31,4 +33,27 @@ public static class EvaluationPolicy
     /// não ganhou cap próprio de propósito, mantém a arquitetura da Fase 14 simples.
     /// </summary>
     public const int ReinforcementBonusGems = 2;
+
+    // Score de Estudo (Fase 16) - metrica de QUALIDADE (o quao bem), diferente de Gems (que
+    // recompensa consistencia/conclusao). Pesos por tipo de atividade avaliavel na media
+    // ponderada de Daily.CalculateScore() - VoiceSummary/Roleplay/Cloze pesam mais porque exigem
+    // producao/raciocinio proprio (mais dificeis de acertar por sorte) do que escolher entre
+    // opcoes prontas (Quiz/WordMatch). Reading/Video ficam de fora (sempre 100, ruido artificial).
+    public const double VoiceSummaryWeight = 2.0;
+    public const double RoleplayWeight = 1.5;
+    public const double ClozeWeight = 1.5;
+    public const double DefaultActivityWeight = 1.0; // Quiz, WordMatch
+
+    /// <summary>Peso de cada Activity na media ponderada de Daily.CalculateScore() - Reading/Video nunca chegam aqui (excluidos antes, ver Daily.CalculateScore).</summary>
+    public static double ActivityScoreWeight(ActivityType type) => type switch
+    {
+        ActivityType.VoiceSummary => VoiceSummaryWeight,
+        ActivityType.Roleplay => RoleplayWeight,
+        ActivityType.Cloze => ClozeWeight,
+        _ => DefaultActivityWeight,
+    };
+
+    /// <summary>Score da Weekly = WeeklyDailyAverageWeight * media(Daily.CalculateScore()) + WeeklyProjectScoreWeight * WeeklyProject.Score. Somam 1.0 de proposito.</summary>
+    public const double WeeklyDailyAverageWeight = 0.7;
+    public const double WeeklyProjectScoreWeight = 0.3;
 }

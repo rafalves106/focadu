@@ -14,6 +14,8 @@ import {
   type LoginRequest,
   type ModulePublicationDto,
   type PublicationPlatform,
+  type RankingResultDto,
+  type RankingScope,
   type RegisterRequest,
   type SubmitActivityResponseResult,
   type UserDto,
@@ -82,6 +84,9 @@ export const api = {
   getToday: () => request<DailyStateDto>('/api/today'),
   getCourses: () => request<CourseSummaryDto[]>('/api/courses'),
   getCourse: (courseId: string) => request<CourseDetailDto>(`/api/courses/${courseId}`),
+  // Ranking (Fase 16) - Score de Estudo, por Course.
+  getCourseRanking: (courseId: string, scope: RankingScope) =>
+    request<RankingResultDto>(`/api/courses/${courseId}/ranking?scope=${scope}`),
   // Curriculo sem exigir matricula (Fase 13b) - so `/admin/conteudo` usa estes dois.
   getCourseCurriculum: (courseId: string) => request<CourseCurriculumDto>(`/api/courses/${courseId}/curriculum`),
   getWeeklyTemplate: (id: string) => request<WeeklyTemplateDetailDto>(`/api/weekly-templates/${id}`),

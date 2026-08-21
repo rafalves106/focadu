@@ -254,6 +254,9 @@ export interface WeeklyProjectDto {
   specText: string;
   status: WeeklyProjectStatus;
   submissionUrl: string | null;
+  /** Fase 16: nota (0-100) da avaliação, preenchida junto com Status Evaluated. Nulo até então. */
+  score: number | null;
+  feedback: string | null;
 }
 
 export interface WeeklyDetailDto {
@@ -270,6 +273,24 @@ export interface WeeklyDetailDto {
   requiresPublicationToUnlock: boolean;
   /** Fase 15: true quando existe um reforco semanal (2+ dias fracos) ainda nao totalmente atendido - so indicador, nunca bloqueia nada. */
   hasPendingWeeklyReinforcement: boolean;
+}
+
+// Ranking (Fase 16) - Score de Estudo, metrica de QUALIDADE (diferente de Gems, que recompensa
+// consistencia/conclusao). "weekly"/"monthly" sao por POSICAO no curriculo de cada matricula (a
+// WeeklyTemplate/Monthly atual, nao calendario real) - ver GetCourseRankingUseCase no backend.
+export type RankingScope = 'weekly' | 'monthly' | 'course';
+
+export interface RankingEntryDto {
+  userId: string;
+  displayName: string;
+  score: number;
+  position: number;
+}
+
+/** currentUserEntry e null so quando o usuario logado nao tem matricula neste curso. */
+export interface RankingResultDto {
+  topEntries: RankingEntryDto[];
+  currentUserEntry: RankingEntryDto | null;
 }
 
 export interface ModulePublicationDto {

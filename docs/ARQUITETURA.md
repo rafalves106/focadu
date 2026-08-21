@@ -490,6 +490,74 @@ tonalidade fixa por chamador (`PenaltyGauge`, `components/gamification/`): neutr
 pelo `PenaltyPoints`/`PenaltyThreshold` que ja vem no `DailyStateDto` - nenhum dado novo do
 backend so pra isso, so exibicao.
 
+### Score de Estudo e Ranking (Fase 16)
+
+Diferenca fundamental de Gems: Gems recompensam CONSISTENCIA (concluir - Fase 14), Score
+recompensa QUALIDADE (o quao bem). Um usuario pode ter Gems altas (estuda todo dia) e Score baixo
+(entende mal), e vice-versa - as duas metricas convivem sem se misturar.
+
+**Composicao (tudo calculado sob demanda, nunca persistido - mesmo padrao ja estabelecido pra
+`DailyStatus`/`Weekly.Number` desde a Fase 13a, reforcado explicitamente no prompt desta fase):**
+
+```
+Daily.CalculateScore()   = media ponderada de ActivityResponse.Score (tentativa MAIS RECENTE de
+                            cada Activity avaliavel) - pesos em EvaluationPolicy.ActivityScoreWeight:
+                            VoiceSummary 2x, Roleplay 1.5x, Cloze 1.5x, Quiz/WordMatch 1x.
+                            Reading/Video excluidos (sempre 100, ruido artificial). Dailies de
+                            reforco (IsReinforcement) SEMPRE null - ja tem recompensa propria em
+                            Gems (Bonus de Superacao, Fase 15); contar no Score incentivaria errar
+                            de proposito pra "score duplo".
+
+Weekly.CalculateScore()  = 0.7 * media(Daily.CalculateScore() das Dailies originais) +
+                            0.3 * WeeklyProject.Score - null enquanto o modulo nao esta completo
+                            (mesmo criterio de IsModuleComplete()) - NUNCA um score parcial de
+                            semana em andamento (evita rankear quem ainda esta no meio da semana
+                            como se tivesse tirado nota zero).
+
+Score do Course (Ranking) = soma cumulativa (snowball) de Weekly.CalculateScore() de cada Weekly
+                            completa da Enrollment - so no escopo "course" (ver abaixo).
+```
+
+**`WeeklyProject` ganhou `Score`/`Feedback`.** Antes da Fase 16, `WeeklyProject.Evaluate()` nao
+tinha parametro nenhum (so aprovar por status). Passou a exigir `Evaluate(int score, string?
+feedback)` - `score` (0-100) alimenta 30% do Score da Weekly; `feedback` so armazenado, sem uso em
+calculo nenhum. `PUT /api/weeklies/{weeklyId}/project/evaluate` (era `POST`) - o corpo agora
+carrega o estado final da avaliacao, nao so uma acao vazia. Continua sem UI propria (app nao tem
+papel de "revisor").
+
+**Ranking - 3 recortes, "Weekly"/"Monthly" por POSICAO no curriculo, nao calendario real
+(decisao confirmada com o usuario).** Como cada Course tem 1 curriculo compartilhado mas cada
+Enrollment se matricula em dias diferentes, "a semana atual" de um aluno pode cair numa data bem
+diferente da de outro - comparar por posicao relativa (ex: "semana 1 de cada um") e o que faz um
+ranking justo, sem exigir nenhuma logica de corte por calendario:
+
+- `course`: soma TODAS as Weeklies completas da Enrollment (snowball completo, sem depender de
+  posicao nenhuma) - o unico recorte "definitivo".
+- `monthly`: soma as Weeklies completas que pertencem ao MESMO Monthly da "Weekly atual" da
+  Enrollment.
+- `weekly`: so o Score da "Weekly atual" da Enrollment.
+- **"Weekly atual"** (`GetCourseRankingUseCase.ResolveCurrentWeekly`): a de maior `Number` que ja
+  tem ao menos 1 `Daily` datada em hoje-ou-antes (mesmo criterio de "hoje" que `GetTodayUseCase`/
+  `EvaluateDailyAccess` usam no resto do app) - cai pra Weekly de menor Number se nenhuma comecou
+  ainda (defensivo).
+- **Weekly incompleta conta como `0` no ranking (nunca `null`)** - unica excecao deliberada ao
+  "nunca mostrar score parcial": um ranking PRECISA de um numero ordenavel; "ainda nao pontuou
+  neste recorte" e razoavelmente `0` aqui, diferente do aviso que vale pras telas de progresso do
+  proprio usuario (`Weekly.CalculateScore()` continua `null` em qualquer outro contexto).
+
+**`GetCourseRankingUseCase`**: busca todas as `Enrollment` do Course (`IEnrollmentRepository.
+GetByCourseIdAsync`, novo), calcula o Score de cada uma no recorte pedido, ordena decrescente
+(empate: quem matriculou primeiro), devolve os 10 primeiros + a posicao real do usuario chamador
+(mesmo se fora do top 10 - `CurrentUserEntry` so e `null` se o chamador nao tem Enrollment neste
+Course). `ComputeScore`/`ResolveCurrentWeekly`/`RankEntries` sao `internal static` e testados
+direto, sem repositorio nenhum (mesmo padrao de `SubmitActivityResponseUseCase.ResolveScore`).
+
+**Tela: `RankingPage` (Fase 16, tela 13 do inventario original - finalmente ganha funcao real).**
+Ancorada em `CourseDetailPage` ("🏆 Ver Ranking"), de proposito - o Documento Mestre original ja
+dizia "ranking fica ancorado na visualizacao global do Course, pra nao distrair o aluno durante a
+Daily". `/start?course=&ranking=1` (mais um flag na query string do `/start`, mesmo padrao de
+`?project=`).
+
 ## Regras de negocio centralizadas
 
 Todas as constantes de negocio ficam em `Focadu.Domain.Policies.EvaluationPolicy` - unico lugar
@@ -642,7 +710,8 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | 🔒 POST | `/api/curated-content` | `CreateCuratedContentUseCase` (Fase 4) | 201, 400/404 - Fase 13: campo `weeklyTemplateId` (era `weeklyId`) |
 | 🔒 PUT | `/api/curated-content/{id}` | `UpdateCuratedContentUseCase` (Fase 4) | 200, 400/404 |
 | 🔒 POST | `/api/weeklies/{weeklyId}/project/submit` | `SubmitWeeklyProjectUseCase` (Fase 7) | 200, 400/404 - `WeeklyProject.Submit` existia desde a Fase 1, so faltava endpoint |
-| 🔒 POST | `/api/weeklies/{weeklyId}/project/evaluate` | `EvaluateWeeklyProjectUseCase` (Fase 11) | 200, 404 - `WeeklyProject.Evaluate` existia desde a Fase 1, so faltava endpoint (so backend, sem UI) |
+| 🔒 PUT | `/api/weeklies/{weeklyId}/project/evaluate` | `EvaluateWeeklyProjectUseCase` (Fase 11) | 200, 400/404 - `WeeklyProject.Evaluate` existia desde a Fase 1, so faltava endpoint (so backend, sem UI). Fase 16: virou PUT (era POST) e o corpo `{score, feedback}` passou a ser obrigatorio (`score` alimenta o Score de Estudo) |
+| 🔒 GET | `/api/courses/{courseId}/ranking?scope=` | `GetCourseRankingUseCase` (Fase 16) | 200 (`RankingResultDto`) - `scope` = `weekly`\|`monthly`\|`course`, default `course` se omitido |
 | 🔒 GET | `/api/weeklies/{weeklyId}/publication/status` | `GetPublicationStatusUseCase` (Fase 11) | 200, 404 |
 | 🔒 POST | `/api/weeklies/{weeklyId}/publication/draft` | `GenerateLinkedInDraftUseCase` (Fase 11) | 200, 404, 502 (Groq) |
 | 🔒 POST | `/api/weeklies/{weeklyId}/publication/github-commit` | `CommitModuleSummaryUseCase` (Fase 11) | 200, 400/404, 502 (GitHub) |
@@ -1210,7 +1279,8 @@ frontend/
       StartPage.tsx             <- /start (so o roteador por query string - Fase 8: as 3 telas
                                    viraram arquivos proprios abaixo, StartPage so decide qual mostrar);
                                    `<WeeklyDetailPage key={weeklyId} .../>` desde a Fase 11 (ver
-                                   "Bug real: modal preso ao trocar de Weekly" abaixo)
+                                   "Bug real: modal preso ao trocar de Weekly" abaixo); `?ranking=1`
+                                   -> RankingPage (Fase 16, mesmo padrao de flag de `?project=`)
       StartDashboard.tsx         <- /start sem params - hub "Comecar Hoje"/"Projeto"/"Trilha" (Fase 8);
                                    renderiza EmptyStateStartPage no lugar do erro generico quando
                                    `error.code === 'nenhuma_matricula_ativa'` (Fase 13b);
@@ -1224,7 +1294,12 @@ frontend/
                                    no cabecalho quando `hasPendingWeeklyReinforcement` (Fase 15)
       CourseDetailPage.tsx        <- /start?course= - trilha completa (semanas + mini-grid de dias)
                                    (Fase 8); badge "🔒 Bloqueado" na Weekly seguinte a uma que ainda
-                                   precisa de publicacao (Fase 11)
+                                   precisa de publicacao (Fase 11); link "🏆 Ver Ranking" ->
+                                   /start?course=&ranking=1 (Fase 16)
+      RankingPage.tsx            <- /start?course=&ranking=1 (Fase 16, tela 13 do inventario
+                                   original) - abas Semana/Mes/Curso (RankingScopeTabs), top 10
+                                   (RankingTable) + posicao do usuario sempre visivel
+                                   (CurrentUserRankingCard)
       WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7)
       AdminContentPage.tsx       <- /admin/conteudo (autoria de CuratedContent, Fase 6) - navega
                                    com WeeklyTemplateId desde a Fase 13b (getCourseCurriculum/
@@ -1249,6 +1324,13 @@ frontend/
       ReinforcementIntroScreen.tsx  <- Fase 15 - transicao pra Daily de reforco, reaproveita IntroCard
       WeeklyReinforcementBadge.tsx   <- Fase 15 - so apresentacao ("📋 Revisao semanal disponivel"),
                                    sem link embutido, sem bloquear nada
+      ranking/                     <- Fase 16
+        RankingScopeTabs.tsx              <- abas Semana/Mes/Curso, mesmo padrao das abas Entrar/
+                                   Criar Conta do LoginPage
+        RankingTable.tsx                   <- top N (medalha nos 3 primeiros), destaca o proprio
+                                   usuario quando ele aparece na lista
+        CurrentUserRankingCard.tsx           <- posicao do usuario sempre visivel, mesmo fora do
+                                   top N; null quando o usuario nao tem matricula no curso
       activities/                 <- primitivas visuais das atividades avaliaveis (Fase 9)
         IntroCard.tsx                <- tela de intro (badge/titulo/descricao/regras/CTA) - gate local (`started`), nao e passo novo no Step do TodayPage
         OptionCard.tsx                <- card de opcao (neutro/selecionado/correto/errado/esmaecido) - Quiz, termos do WordMatch, decisoes do Roleplay
@@ -1303,6 +1385,7 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco; Fase 8: tambem usada como "reprise" de um dia ja concluido, clicado a partir da Visao Semanal) |
 | `/start` | `GET /api/today` + `GET /api/weeklies/{id}` + `GET /api/courses` + `GET /api/courses/{id}` + `GET /api/users/me/gamification` (Fase 14) | `StartDashboard` (Fase 8) - hub "Comecar Hoje"/"Projeto desta Semana"/"Trilha Completa" |
 | `/start?course=` | `GET /api/courses/{courseId}` | `CourseDetailPage` (Fase 8) - trilha completa do curso |
+| `/start?course=&ranking=1` | `GET /api/courses/{courseId}/ranking?scope=` | `RankingPage` (Fase 16) - Score de Estudo, top 10 + posicao do usuario |
 | `/start?course=&weekly=` | `GET /api/weeklies/{weeklyId}` (+ `GET /api/courses/{courseId}` pra navegacao entre semanas) | `WeeklyDetailPage` (Fase 8) - dias da semana + projeto |
 | `/start?course=&weekly=&daily=` | `GET /api/dailies/{dailyId}` | Estado de uma Daily especifica (somente leitura) |
 | `/start?course=&weekly=&project=1` | `GET /api/weeklies/{weeklyId}` | Projeto pratico da semana (`WeeklyProjectPage`, Fase 7 - submissao via `POST .../project/submit`) |
@@ -1560,6 +1643,7 @@ de Projeto Semanal).
 | 13b | Onboarding (UI) + Correcao do /admin/conteudo | `docs/fase-13b/resumo-implementacao-fase-13b.md` |
 | 14 | Motor de Gems + Streak | `docs/fase-14/resumo-implementacao-fase-14.md` |
 | 15 | Conta-Giros Visual + Bonus de Superacao | `docs/fase-15/resumo-implementacao-fase-15.md` |
+| 16 | Score de Estudo + Ranking | `docs/fase-16/resumo-implementacao-fase-16.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 

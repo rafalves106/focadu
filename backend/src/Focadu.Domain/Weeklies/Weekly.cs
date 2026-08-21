@@ -119,6 +119,36 @@ public class Weekly : Entity
     /// </summary>
     public bool HasPendingWeeklyReinforcement() => _reinforcements.Any(r => !r.IsResolved(_dailies));
 
+    /// <summary>
+    /// Score de Estudo desta Weekly (Fase 16) - 0.7 * média(Daily.CalculateScore() das Dailies
+    /// originais) + 0.3 * WeeklyProject.Score. Null enquanto o módulo não está completo (mesmo
+    /// critério de IsModuleComplete - todas as Dailies originais Completed E o projeto avaliado):
+    /// nunca calcula um score parcial de semana em andamento, pra não rankear alguém no meio da
+    /// semana como se já tivesse terminado (ver GetCourseRankingUseCase).
+    /// </summary>
+    public double? CalculateScore()
+    {
+        if (!IsModuleComplete()) return null;
+
+        var dailyScores = _dailies
+            .Where(d => !d.IsReinforcement)
+            .Select(d => d.CalculateScore())
+            .Where(s => s.HasValue)
+            .Select(s => s!.Value)
+            .ToList();
+
+        // Defensivo - IsModuleComplete() ja garante todas Completed, mas uma Weekly feita so de
+        // Reading/Video (sem nenhuma atividade avaliavel) nunca teria Daily.CalculateScore() != null.
+        if (dailyScores.Count == 0) return null;
+
+        // IsModuleComplete() ja garante Project.Status == Evaluated, e Evaluate(score, ...) sempre
+        // seta Status e Score juntos - Score nunca fica null aqui.
+        var projectScore = _project!.Score!.Value;
+
+        return EvaluationPolicy.WeeklyDailyAverageWeight * dailyScores.Average()
+            + EvaluationPolicy.WeeklyProjectScoreWeight * projectScore;
+    }
+
     public IReadOnlyCollection<Daily> GetWeakDailies() =>
         _dailies.Where(d => d.IsWeakDay).ToList();
 

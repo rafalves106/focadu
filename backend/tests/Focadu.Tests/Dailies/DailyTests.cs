@@ -226,6 +226,99 @@ public class DailyTests
         Assert.False(daily.AllActivitiesPassed());
     }
 
+    // Fase 16: CalculateScore (Score de Estudo).
+
+    [Fact]
+    public void CalculateScore_Null_WhenNoEvaluableActivityHasAResponseYet()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var template = weekly.Template.AddDailyTemplate(1);
+        var daily = weekly.AddDaily(template, DailyFixtures.Today);
+        template.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
+
+        Assert.Null(daily.CalculateScore());
+    }
+
+    [Fact]
+    public void CalculateScore_SimpleAverage_ForEquallyWeightedActivities()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var template = weekly.Template.AddDailyTemplate(1);
+        var daily = weekly.AddDaily(template, DailyFixtures.Today);
+        var quiz = template.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
+        var wordMatch = template.AddActivity(ActivityType.WordMatch, 1, AnswerMode.MultipleChoice);
+        daily.Start();
+
+        daily.SubmitActivityResponse(quiz.Id, 100);
+        daily.SubmitActivityResponse(wordMatch.Id, 60);
+
+        // Quiz e WordMatch pesam igual (DefaultActivityWeight) - media simples.
+        Assert.Equal(80, daily.CalculateScore());
+    }
+
+    [Fact]
+    public void CalculateScore_WeighsVoiceSummaryDouble()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var template = weekly.Template.AddDailyTemplate(1);
+        var daily = weekly.AddDaily(template, DailyFixtures.Today);
+        var quiz = template.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice); // peso 1
+        var voice = template.AddActivity(
+            ActivityType.VoiceSummary, 1, AnswerMode.FreeText, prompt: "Resuma.", contentId: Guid.NewGuid()); // peso 2
+        daily.Start();
+
+        daily.SubmitActivityResponse(quiz.Id, 100);
+        daily.SubmitActivityResponse(voice.Id, 40);
+
+        // (1*100 + 2*40) / (1+2) = 180/3 = 60.
+        Assert.Equal(60, daily.CalculateScore());
+    }
+
+    [Fact]
+    public void CalculateScore_ExcludesReadingAndVideo()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var template = weekly.Template.AddDailyTemplate(1);
+        var daily = weekly.AddDaily(template, DailyFixtures.Today);
+        var reading = template.AddActivity(ActivityType.Reading, 0, AnswerMode.MultipleChoice, contentId: Guid.NewGuid());
+        var quiz = template.AddActivity(ActivityType.Quiz, 1, AnswerMode.MultipleChoice);
+        daily.Start();
+
+        daily.SubmitActivityResponse(reading.Id, 100); // sempre 100, mas nao deveria contar
+        daily.SubmitActivityResponse(quiz.Id, 40);
+
+        // Se Reading contasse, a media seria 70 - so o Quiz deve contar.
+        Assert.Equal(40, daily.CalculateScore());
+    }
+
+    [Fact]
+    public void CalculateScore_UsesLatestAttempt_NotFirst()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var (daily, activity) = DailyFixtures.NewDailyWithOneActivity(weekly, 1, DailyFixtures.Today);
+        daily.Start();
+
+        daily.SubmitActivityResponse(activity.Id, 20);
+        daily.SubmitActivityResponse(activity.Id, 90);
+
+        Assert.Equal(90, daily.CalculateScore());
+    }
+
+    [Fact]
+    public void CalculateScore_Null_ForReinforcementDaily()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var weakDaily = DailyFixtures.NewWeakDaily(weekly, 1, DailyFixtures.Today);
+        var reinforcementDaily = weekly.CreateDailyReinforcement(weakDaily.Id, DailyFixtures.Today.AddDays(1));
+        reinforcementDaily.Start();
+        foreach (var activity in reinforcementDaily.Activities)
+        {
+            reinforcementDaily.SubmitActivityResponse(activity.Id, 100);
+        }
+
+        Assert.Null(reinforcementDaily.CalculateScore());
+    }
+
     [Fact]
     public void Replay_AfterFirstCompletion_NeverAddsNewPenalty()
     {

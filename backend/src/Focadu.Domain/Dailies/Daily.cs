@@ -165,6 +165,35 @@ public class Daily : Entity
         && Activities.All(a => _responses.Where(r => r.ActivityId == a.Id).OrderBy(r => r.AttemptNumber).LastOrDefault()?.Passed == true);
 
     /// <summary>
+    /// Score de Estudo desta Daily (Fase 16, métrica de QUALIDADE - diferente de Gems, que
+    /// recompensa consistência) - média ponderada de ActivityResponse.Score (tentativa MAIS
+    /// RECENTE de cada Activity, mesmo critério de AllActivitiesPassed) usando os pesos de
+    /// EvaluationPolicy.ActivityScoreWeight. Reading/Video ficam de fora (sempre 100, ruído
+    /// artificial - nunca avaliam nada de verdade). Dailies de reforço nunca pontuam (null) - já
+    /// têm sua própria recompensa em Gems (Bônus de Superação, Fase 15); incluir no Score
+    /// incentivaria errar de propósito pra "score duplo". Null também quando nenhuma atividade
+    /// avaliável ainda tem resposta - nunca 0 (evita simular uma nota que ninguém tirou).
+    /// </summary>
+    public double? CalculateScore()
+    {
+        if (IsReinforcement) return null;
+
+        var scored = Activities
+            .Where(a => a.Type is not (ActivityType.Reading or ActivityType.Video))
+            .Select(a => _responses.Where(r => r.ActivityId == a.Id).OrderBy(r => r.AttemptNumber).LastOrDefault() is { } latest
+                ? (Weight: EvaluationPolicy.ActivityScoreWeight(a.Type), Score: latest.Score)
+                : ((double Weight, int Score)?)null)
+            .Where(x => x is not null)
+            .Select(x => x!.Value)
+            .ToList();
+
+        if (scored.Count == 0) return null;
+
+        var totalWeight = scored.Sum(x => x.Weight);
+        return scored.Sum(x => x.Weight * x.Score) / totalWeight;
+    }
+
+    /// <summary>
     /// Conclui a Daily. Na primeira conclusão, registra CompletedAt (a partir daí a penalidade
     /// para de contar). Em conclusões seguintes (replay), é só um hook — propositalmente vazio —
     /// para uma futura lógica de recompensa/streak; nunca dá recompensa duplicada.

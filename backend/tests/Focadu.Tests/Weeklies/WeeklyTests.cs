@@ -285,6 +285,61 @@ public class WeeklyTests
         Assert.False(weekly.IsPerfect());
     }
 
+    // Fase 16: CalculateScore (Score de Estudo).
+
+    [Fact]
+    public void CalculateScore_Combines70PercentDailyAverageAnd30PercentProjectScore()
+    {
+        var weekly = CompleteWeeklyDailies(DailyFixtures.NewWeekly()); // 1 Daily, score 100
+        DefineEvaluatedProject(weekly, score: 80);
+
+        // 0.7*100 + 0.3*80 = 70 + 24 = 94.
+        Assert.Equal(94, weekly.CalculateScore());
+    }
+
+    [Fact]
+    public void CalculateScore_Null_WhenModuleNotComplete()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        DailyFixtures.NewDailyWithOneActivity(weekly, 1, DailyFixtures.Today);
+        DefineEvaluatedProject(weekly);
+
+        Assert.Null(weekly.CalculateScore());
+    }
+
+    [Fact]
+    public void CalculateScore_Null_WhenProjectNotEvaluated()
+    {
+        var weekly = CompleteWeeklyDailies(DailyFixtures.NewWeekly());
+        weekly.InitializeProject();
+        // Nunca submetido/avaliado.
+
+        Assert.Null(weekly.CalculateScore());
+    }
+
+    [Fact]
+    public void CalculateScore_ExcludesReinforcementDailies_FromTheAverage()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var weakDaily = DailyFixtures.NewWeakDaily(weekly, 1, DailyFixtures.Today); // 3 quizzes, todos score 0
+        // CreateDailyReinforcement so aceita antes da 1a conclusao (ShouldTriggerDailyReinforcement
+        // exige !HasEverCompleted) - por isso o reforco vem antes do Complete() aqui.
+        var reinforcementDaily = weekly.CreateDailyReinforcement(weakDaily.Id, DailyFixtures.Today.AddDays(1));
+        weakDaily.Complete();
+
+        reinforcementDaily.Start();
+        foreach (var activity in reinforcementDaily.Activities)
+        {
+            reinforcementDaily.SubmitActivityResponse(activity.Id, 100); // reforco "perfeito" - nunca deveria contar
+        }
+        reinforcementDaily.Complete();
+        DefineEvaluatedProject(weekly, score: 50);
+
+        // So a Daily original conta pra media (3 quizzes com score 0 -> media 0).
+        // 0.7*0 + 0.3*50 = 15.
+        Assert.Equal(15, weekly.CalculateScore());
+    }
+
     // Fase 15: HasPendingWeeklyReinforcement / WeeklyReinforcement.IsResolved.
 
     [Fact]
@@ -361,10 +416,11 @@ public class WeeklyTests
     }
 
     /// <summary>DefineProject/Submit/Evaluate sao void (nao encadeaveis) - helper so pra nao repetir as 3 linhas em cada teste acima.</summary>
-    private static void DefineEvaluatedProject(Weekly weekly)
+    /// <summary>Score default (90) so importa pra quem quer controlar o Score da Weekly de proposito (ver CalculateScore abaixo) - os outros testes so precisam do projeto Evaluated.</summary>
+    private static void DefineEvaluatedProject(Weekly weekly, int score = 90)
     {
         var project = weekly.InitializeProject();
         project.Submit("https://github.com/x");
-        project.Evaluate();
+        project.Evaluate(score, "Bom trabalho.");
     }
 }
