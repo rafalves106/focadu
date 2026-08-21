@@ -7,13 +7,14 @@ import { WeeklyProjectPage } from './WeeklyProjectPage';
 import { StartDashboard } from './StartDashboard';
 import { CourseDetailPage } from './CourseDetailPage';
 import { WeeklyDetailPage } from './WeeklyDetailPage';
+import { RankingPage } from './RankingPage';
 
 /**
- * `/start` cobre 5 telas via query string (nao path params - ver docs/ARQUITETURA.md):
+ * `/start` cobre 6 telas via query string (nao path params - ver docs/ARQUITETURA.md):
  * sem params -> StartDashboard (hub "hoje/projeto/trilha", Fase 8); ?course= -> CourseDetailPage;
- * ?course=&weekly= -> WeeklyDetailPage; ?course=&weekly=&daily= -> estado de uma Daily especifica
- * (recapitulacao simples, sem polimento - fora do escopo da Fase 8); ?course=&weekly=&project=
- * -> projeto pratico da semana (Fase 7).
+ * ?course=&ranking= -> RankingPage (Fase 16); ?course=&weekly= -> WeeklyDetailPage;
+ * ?course=&weekly=&daily= -> estado de uma Daily especifica (recapitulacao simples, sem polimento
+ * - fora do escopo da Fase 8); ?course=&weekly=&project= -> projeto pratico da semana (Fase 7).
  *
  * A antiga CourseListView (lista de cursos) saiu na Fase 8: como so existe 1 Course Active nesta
  * fase (mesma premissa de GET /api/today - ver docs/ARQUITETURA.md), StartDashboard vai direto pro
@@ -25,8 +26,10 @@ export function StartPage() {
   const weeklyId = searchParams.get('weekly');
   const dailyId = searchParams.get('daily');
   const showProject = searchParams.get('project') !== null;
+  const showRanking = searchParams.get('ranking') !== null;
 
   if (showProject && weeklyId) return <WeeklyProjectPage weeklyId={weeklyId} courseId={courseId} />;
+  if (showRanking && courseId) return <RankingPage courseId={courseId} />;
   if (dailyId) return <DailyView dailyId={dailyId} weeklyId={weeklyId} courseId={courseId} />;
   // key={weeklyId}: sem isso, "Proximo Modulo" no PublicationModal (Fase 11) so troca a query
   // string - o componente continuaria montado com o modal ainda aberto (mostrando o sucesso da

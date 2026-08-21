@@ -10,6 +10,7 @@ using Focadu.Application.Dailies;
 using Focadu.Application.Enrollments;
 using Focadu.Application.Exceptions;
 using Focadu.Application.Gamification;
+using Focadu.Application.Ranking;
 using Focadu.Application.Seed;
 using Focadu.Application.Users;
 using Focadu.Application.Weeklies;
@@ -137,6 +138,16 @@ void ClearAuthCookie(HttpContext context) =>
 // Fase 13: todo endpoint protegido extrai o userId assim - claim "sub" do JWT, ja validado pelo
 // middleware JwtBearer antes do endpoint rodar (nunca decodificado de novo aqui).
 Guid CurrentUserId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+
+// Fase 16: scope ausente/vazio vira "course" (recorte mais completo) - so string invalida vira erro.
+RankingScope ParseRankingScope(string? scope)
+{
+    if (string.IsNullOrWhiteSpace(scope)) return RankingScope.Course;
+    if (!Enum.TryParse<RankingScope>(scope, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed))
+        throw new ValidationException("scope_invalido", "O parametro 'scope' precisa ser 'weekly', 'monthly' ou 'course'.");
+
+    return parsed;
+}
 
 // `dotnet run --project src/Focadu.Api -- seed`: popula o curso piloto "Web Security" e encerra,
 // sem subir o servidor HTTP. Nao e um endpoint porque a Api ainda nao tem autoria de conteudo.
@@ -270,6 +281,18 @@ api.MapGet("/courses/{courseId}/curriculum", async (string courseId, GetCourseCu
     .RequireAuthorization()
     .WithName("GetCourseCurriculum");
 
+// Ranking (Fase 16) - scope opcional na query string, default "course" (o recorte mais seguro/
+// completo - snowball desde o inicio). Guid|nome invalido em "scope" vira 400 padronizado, mesmo
+// tratamento de CreateCuratedContentUseCase.ParseType (Enum.TryParse + IsDefined).
+api.MapGet("/courses/{courseId}/ranking", async (ClaimsPrincipal principal, string courseId, string? scope, GetCourseRankingUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(courseId, "courseId");
+        var rankingScope = ParseRankingScope(scope);
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, rankingScope, ct));
+    })
+    .RequireAuthorization()
+    .WithName("GetCourseRanking");
+
 // --- Semanas ---------------------------------------------------------------------------------
 
 api.MapGet("/weeklies/{weeklyId}", async (ClaimsPrincipal principal, string weeklyId, GetWeeklyDetailUseCase useCase, CancellationToken ct) =>
@@ -306,11 +329,15 @@ api.MapPost("/weeklies/{weeklyId}/project/submit", async (ClaimsPrincipal princi
 
 // Avaliacao do projeto (Fase 11) - WeeklyProject.Evaluate() existia no dominio desde a Fase 1 sem
 // endpoint (gap documentado na Fase 7); precisou ganhar um porque Weekly.IsModuleComplete() exige
-// Project Evaluated. Sem tela propria - ver EvaluateWeeklyProjectUseCase.
-api.MapPost("/weeklies/{weeklyId}/project/evaluate", async (ClaimsPrincipal principal, string weeklyId, EvaluateWeeklyProjectUseCase useCase, CancellationToken ct) =>
+// Project Evaluated. Sem tela propria - ver EvaluateWeeklyProjectUseCase. PUT (nao POST, Fase 16):
+// o corpo agora carrega o estado final da avaliacao (Score+Feedback), nao so uma acao vazia.
+api.MapPut("/weeklies/{weeklyId}/project/evaluate", async (ClaimsPrincipal principal, string weeklyId, EvaluateWeeklyProjectRequest? request, EvaluateWeeklyProjectUseCase useCase, CancellationToken ct) =>
     {
         var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
-        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
+        if (request?.Score is not { } score)
+            throw new ValidationException("score_obrigatorio", "O campo 'score' e obrigatorio.");
+
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, score, request.Feedback, ct));
     })
     .RequireAuthorization()
     .WithName("EvaluateWeeklyProject");

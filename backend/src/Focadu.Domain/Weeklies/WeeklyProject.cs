@@ -16,6 +16,12 @@ public class WeeklyProject : Entity
     public WeeklyProjectStatus Status { get; private set; }
     public string? SubmissionUrl { get; private set; }
 
+    /// <summary>Nota (0-100) da avaliação, preenchida junto com Status=Evaluated (Fase 16) - alimenta 30% do Score da Weekly (Weekly.CalculateScore). Nulo até então.</summary>
+    public int? Score { get; private set; }
+
+    /// <summary>Comentário livre do avaliador sobre o projeto (Fase 16) - só armazenado, sem uso em cálculo nenhum.</summary>
+    public string? Feedback { get; private set; }
+
     private WeeklyProject()
     {
     }
@@ -37,11 +43,16 @@ public class WeeklyProject : Entity
         Status = WeeklyProjectStatus.Submitted;
     }
 
-    public void Evaluate()
+    /// <summary>Fase 16: passou a exigir uma nota (0-100), não só aprovar/reprovar por texto livre - é o que alimenta o Score de Estudo da Weekly.</summary>
+    public void Evaluate(int score, string? feedback)
     {
         if (Status != WeeklyProjectStatus.Submitted)
             throw new DomainException("Só é possível avaliar um projeto que foi submetido.");
+        if (score < 0 || score > 100)
+            throw new DomainException("Score deve estar entre 0 e 100.");
 
         Status = WeeklyProjectStatus.Evaluated;
+        Score = score;
+        Feedback = string.IsNullOrWhiteSpace(feedback) ? null : feedback.Trim();
     }
 }

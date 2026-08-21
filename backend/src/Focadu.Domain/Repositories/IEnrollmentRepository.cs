@@ -10,5 +10,8 @@ public interface IEnrollmentRepository
     /// <summary>Hoje, no maximo 1 por usuario (so existe 1 Course) - retorna lista pra ja preparar pra multiplos cursos no futuro (ver docs/fase-13).</summary>
     Task<IReadOnlyCollection<Enrollment>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
 
+    /// <summary>Todas as matriculas de um Course, de qualquer usuario (Fase 16) - quem alimenta o ranking (GetCourseRankingUseCase).</summary>
+    Task<IReadOnlyCollection<Enrollment>> GetByCourseIdAsync(Guid courseId, CancellationToken cancellationToken = default);
+
     Task AddAsync(Enrollment enrollment, CancellationToken cancellationToken = default);
 }

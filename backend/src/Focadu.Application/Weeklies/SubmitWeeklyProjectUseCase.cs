@@ -33,6 +33,8 @@ public class SubmitWeeklyProjectUseCase
         project.Submit(submissionUrl);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new WeeklyProjectDto(project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty, project.Status, project.SubmissionUrl);
+        return new WeeklyProjectDto(
+            project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty, project.Status, project.SubmissionUrl,
+            project.Score, project.Feedback);
     }
 }

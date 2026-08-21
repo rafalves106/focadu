@@ -35,8 +35,68 @@ public class WeeklyProjectTests
         var weekly = DailyFixtures.NewWeekly();
         var project = weekly.InitializeProject();
         project.Submit("https://github.com/falves/projeto");
-        project.Evaluate();
+        project.Evaluate(90, "Bom trabalho.");
 
         Assert.Throws<DomainException>(() => project.Submit("https://github.com/falves/outro"));
+    }
+
+    // Fase 16: Score de Estudo - Evaluate agora exige uma nota.
+
+    [Fact]
+    public void Evaluate_SetsScoreFeedbackAndStatus()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var project = weekly.InitializeProject();
+        project.Submit("https://github.com/falves/projeto");
+
+        project.Evaluate(85, "Faltou tratar erros.");
+
+        Assert.Equal(WeeklyProjectStatus.Evaluated, project.Status);
+        Assert.Equal(85, project.Score);
+        Assert.Equal("Faltou tratar erros.", project.Feedback);
+    }
+
+    [Fact]
+    public void Evaluate_WithoutFeedback_LeavesFeedbackNull()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var project = weekly.InitializeProject();
+        project.Submit("https://github.com/falves/projeto");
+
+        project.Evaluate(70, null);
+
+        Assert.Null(project.Feedback);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(101)]
+    public void Evaluate_ScoreOutOfRange_Throws(int score)
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var project = weekly.InitializeProject();
+        project.Submit("https://github.com/falves/projeto");
+
+        Assert.Throws<DomainException>(() => project.Evaluate(score, "x"));
+    }
+
+    [Fact]
+    public void Evaluate_BeforeSubmit_Throws()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var project = weekly.InitializeProject();
+
+        Assert.Throws<DomainException>(() => project.Evaluate(90, "x"));
+    }
+
+    [Fact]
+    public void Evaluate_CalledTwice_Throws()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var project = weekly.InitializeProject();
+        project.Submit("https://github.com/falves/projeto");
+        project.Evaluate(90, "x");
+
+        Assert.Throws<DomainException>(() => project.Evaluate(50, "y"));
     }
 }

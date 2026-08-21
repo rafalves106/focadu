@@ -19,6 +19,10 @@ namespace Focadu.Application.Weeklies;
 /// CompleteDailyUseCase credita-se esse bonus, ele nunca dispararia nesse fluxo (a Weekly so vira
 /// IsPerfect() depois que o projeto ja foi avaliado, momento em que nenhuma Daily esta completando
 /// mais nada). Ver GamificationCreditor para o porque isso e seguro contra credito duplicado.
+///
+/// Fase 16 (Score de Estudo): Evaluate() passou a exigir uma nota (0-100), nao so aprovar por
+/// texto livre - WeeklyProject.Score alimenta 30% de Weekly.CalculateScore(), usado pelo ranking
+/// (GetCourseRankingUseCase). Continua sem UI propria.
 /// </summary>
 public class EvaluateWeeklyProjectUseCase
 {
@@ -36,7 +40,8 @@ public class EvaluateWeeklyProjectUseCase
         _clock = clock;
     }
 
-    public async Task<WeeklyProjectDto> ExecuteAsync(Guid userId, Guid weeklyId, CancellationToken cancellationToken = default)
+    public async Task<WeeklyProjectDto> ExecuteAsync(
+        Guid userId, Guid weeklyId, int score, string? feedback, CancellationToken cancellationToken = default)
     {
         var weekly = await _weeklyRepository.GetByIdAsync(weeklyId, userId, cancellationToken)
             ?? throw new NotFoundException("semana_nao_encontrada", "Semana nao encontrada.");
@@ -44,7 +49,7 @@ public class EvaluateWeeklyProjectUseCase
         var project = weekly.Project
             ?? throw new NotFoundException("projeto_nao_encontrado", "Esta semana nao tem projeto definido.");
 
-        project.Evaluate();
+        project.Evaluate(score, feedback);
 
         // So resolve/cria o UserGemBalance se a Weekly de fato fechou perfeita agora - avaliar um
         // projeto de uma Weekly imperfeita (o caso comum) nao deveria criar uma linha de saldo
@@ -58,6 +63,8 @@ public class EvaluateWeeklyProjectUseCase
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new WeeklyProjectDto(project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty, project.Status, project.SubmissionUrl);
+        return new WeeklyProjectDto(
+            project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty, project.Status, project.SubmissionUrl,
+            project.Score, project.Feedback);
     }
 }

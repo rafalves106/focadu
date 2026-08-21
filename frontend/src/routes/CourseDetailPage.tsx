@@ -84,6 +84,14 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
         <Link to="/hoje" className="mt-auto block rounded-xl bg-accent py-3 text-center text-sm font-bold tracking-wide text-base">
           CONTINUAR ESTUDANDO
         </Link>
+        {/* Fase 16: ranking ancorado aqui de proposito (Documento Mestre original - "fica na
+            visualizacao global do Course, pra nao distrair o aluno durante a Daily"). */}
+        <Link
+          to={`/start?course=${courseId}&ranking=1`}
+          className="block rounded-xl border border-surface-alt py-3 text-center text-sm font-bold tracking-wide text-secondary hover:border-accent hover:text-primary"
+        >
+          🏆 VER RANKING
+        </Link>
       </div>
     </div>
   );
