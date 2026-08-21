@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import type { UserDto } from '../api/types';
 import { LoginForm } from '../components/auth/LoginForm';
 import { RegisterForm } from '../components/auth/RegisterForm';
 import { useAuth } from '../contexts/useAuth';
+import { resolveLandingPath } from '../lib/onboarding';
 
 type Mode = 'login' | 'register';
 
@@ -24,7 +26,14 @@ export function LoginPage() {
   // Evita a tela de login "piscar" atras da splash - so mostra o formulario depois que
   // AuthProvider ja sabe se ha sessao ou nao.
   if (isLoading) return null;
-  if (user) return <Navigate to="/start" replace />;
+  // Sessao ja ativa (ex: voltou pro /login pelo navegador) - manda pra Splash em vez de assumir
+  // /start direto, pra passar pela mesma resolveLandingPath (onboarding/selecao de curso podem
+  // ainda estar pendentes).
+  if (user) return <Navigate to="/" replace />;
+
+  function handleAuthSuccess(authedUser: UserDto) {
+    resolveLandingPath(authedUser).then((destination) => navigate(destination));
+  }
 
   return (
     <div className="flex min-h-screen bg-base">
@@ -52,7 +61,7 @@ export function LoginPage() {
           {mode === 'login' ? (
             <>
               <p className="text-sm text-secondary">Bem-vindo de volta. Autentique-se para continuar o treinamento.</p>
-              <LoginForm onSuccess={() => navigate('/start')} />
+              <LoginForm onSuccess={handleAuthSuccess} />
               <p className="text-center text-sm text-secondary">
                 Primeira vez?{' '}
                 <button type="button" onClick={() => setMode('register')} className="font-semibold text-accent hover:underline">
@@ -63,7 +72,7 @@ export function LoginPage() {
           ) : (
             <>
               <p className="text-sm text-secondary">Leva menos de um minuto.</p>
-              <RegisterForm onSuccess={() => navigate('/start')} />
+              <RegisterForm onSuccess={handleAuthSuccess} />
               <p className="text-center text-sm text-secondary">
                 Já tem conta?{' '}
                 <button type="button" onClick={() => setMode('login')} className="font-semibold text-accent hover:underline">

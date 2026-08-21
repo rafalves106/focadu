@@ -7,8 +7,11 @@ import type { LoginRequest, RegisterRequest, UserDto } from '../api/types';
 export interface AuthContextValue {
   user: UserDto | null;
   isLoading: boolean;
-  login: (data: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
+  // Devolvem o UserDto (Fase 13b) - quem chama (LoginForm/RegisterForm) precisa dele na hora pra
+  // decidir a rota de destino (ver lib/onboarding.ts); esperar o proximo render do contexto
+  // atualizar `user` seria uma corrida desnecessaria com a propria navegacao.
+  login: (data: LoginRequest) => Promise<UserDto>;
+  register: (data: RegisterRequest) => Promise<UserDto>;
   logout: () => Promise<void>;
 }
 

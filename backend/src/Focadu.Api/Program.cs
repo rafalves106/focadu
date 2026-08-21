@@ -250,6 +250,17 @@ api.MapGet("/courses/{courseId}", async (ClaimsPrincipal principal, string cours
     .RequireAuthorization()
     .WithName("GetCourseDetail");
 
+// Curriculo (Course -> Monthly -> WeeklyTemplate), sem exigir matricula (Fase 13b) - so
+// `/admin/conteudo` usa isso, pra navegar ate uma WeeklyTemplate sem depender de Enrollment como
+// GetCourseDetail acima exige (ver docs/fase-13a, "Pendencia conhecida").
+api.MapGet("/courses/{courseId}/curriculum", async (string courseId, GetCourseCurriculumUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(courseId, "courseId");
+        return Results.Ok(await useCase.ExecuteAsync(id, ct));
+    })
+    .RequireAuthorization()
+    .WithName("GetCourseCurriculum");
+
 // --- Semanas ---------------------------------------------------------------------------------
 
 api.MapGet("/weeklies/{weeklyId}", async (ClaimsPrincipal principal, string weeklyId, GetWeeklyDetailUseCase useCase, CancellationToken ct) =>
@@ -259,6 +270,16 @@ api.MapGet("/weeklies/{weeklyId}", async (ClaimsPrincipal principal, string week
     })
     .RequireAuthorization()
     .WithName("GetWeeklyDetail");
+
+// WeeklyTemplate (curriculo), sem exigir matricula (Fase 13b) - mesma motivacao do curriculum
+// acima, so pra `/admin/conteudo` listar/curar CuratedContent de uma semana.
+api.MapGet("/weekly-templates/{id}", async (string id, GetWeeklyTemplateDetailUseCase useCase, CancellationToken ct) =>
+    {
+        var templateId = RouteParsing.RequireGuid(id, "id");
+        return Results.Ok(await useCase.ExecuteAsync(templateId, ct));
+    })
+    .RequireAuthorization()
+    .WithName("GetWeeklyTemplateDetail");
 
 // Submissao do projeto pratico da semana (Fase 7) - WeeklyProject.Submit ja existia no dominio
 // desde a Fase 1, so faltava endpoint. SubmissionUrl e a unica entrada do cliente; Status muda

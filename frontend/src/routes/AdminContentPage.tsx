@@ -11,6 +11,11 @@ import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
  * padrao de query string de `/start` (sem params -> cursos, ?course= -> semanas, ?course=&weekly=
  * -> conteudo da semana), mas sem o path de Daily - autoria e so no nivel de Weekly/CuratedContent.
  * Sem autenticacao, sem polimento visual - mesmo padrao funcional de /start.
+ *
+ * Fase 13b: `weekly` na query string e sempre um WeeklyTemplateId agora (curriculo), nunca um id
+ * de Weekly-instancia - CourseView/WeeklyContentView usam os endpoints novos
+ * (getCourseCurriculum/getWeeklyTemplate) que nao exigem matricula, ver docs/fase-13a
+ * ("Pendencia conhecida: /admin/conteudo quebrou").
  */
 export function AdminContentPage() {
   const [searchParams] = useSearchParams();
@@ -48,7 +53,7 @@ function CourseListView() {
 }
 
 function CourseView({ courseId }: { courseId: string }) {
-  const { data: course, error, loading, retry } = useApiResource(() => api.getCourse(courseId), [courseId]);
+  const { data: course, error, loading, retry } = useApiResource(() => api.getCourseCurriculum(courseId), [courseId]);
 
   if (loading) return <Centered text="Carregando curso..." />;
   if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
@@ -63,14 +68,14 @@ function CourseView({ courseId }: { courseId: string }) {
               Mes {monthly.number}: {monthly.title}
             </h2>
             <ul className="mt-2 flex flex-col gap-2">
-              {monthly.weeklies.map((weekly) => (
-                <li key={weekly.id}>
+              {monthly.weeklyTemplates.map((weeklyTemplate) => (
+                <li key={weeklyTemplate.id}>
                   <Link
-                    to={`/admin/conteudo?course=${courseId}&weekly=${weekly.id}`}
+                    to={`/admin/conteudo?course=${courseId}&weekly=${weeklyTemplate.id}`}
                     className="block rounded-xl border border-surface-alt bg-surface px-4 py-3 hover:border-accent"
                   >
                     <p className="text-primary">
-                      Semana {weekly.number}: {weekly.title}
+                      Semana {weeklyTemplate.number}: {weeklyTemplate.title}
                     </p>
                   </Link>
                 </li>
@@ -88,7 +93,7 @@ function WeeklyContentView({ weeklyId, courseId }: { weeklyId: string; courseId:
   // Bump pra forcar o useApiResource a refazer a busca apos salvar - mais simples do que dar ao
   // hook compartilhado um metodo de refetch que mais nenhuma outra tela usa ainda.
   const [refreshKey, setRefreshKey] = useState(0);
-  const { data: weekly, error, loading, retry } = useApiResource(() => api.getWeekly(weeklyId), [weeklyId, refreshKey]);
+  const { data: weekly, error, loading, retry } = useApiResource(() => api.getWeeklyTemplate(weeklyId), [weeklyId, refreshKey]);
 
   if (loading) return <Centered text="Carregando semana..." />;
   if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
@@ -145,18 +150,18 @@ function WeeklyContentView({ weeklyId, courseId }: { weeklyId: string; courseId:
             &larr; Cancelar edição / novo conteúdo
           </button>
         )}
-        <CuratedContentForm key={editingId ?? 'new'} weeklyId={weeklyId} existing={editing} onSaved={handleSaved} />
+        <CuratedContentForm key={editingId ?? 'new'} weeklyTemplateId={weeklyId} existing={editing} onSaved={handleSaved} />
       </div>
     </PageShell>
   );
 }
 
 function CuratedContentForm({
-  weeklyId,
+  weeklyTemplateId,
   existing,
   onSaved,
 }: {
-  weeklyId: string;
+  weeklyTemplateId: string;
   existing: CuratedContentDto | null;
   onSaved: (content: CuratedContentDto) => void;
 }) {
@@ -179,7 +184,7 @@ function CuratedContentForm({
             bodyText: bodyText || null,
           })
         : await api.createCuratedContent({
-            weeklyId,
+            weeklyTemplateId,
             type: CURATED_CONTENT_TYPE_NAMES[type],
             title,
             externalUrl: externalUrl || null,

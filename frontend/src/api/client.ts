@@ -1,11 +1,14 @@
 import {
   PUBLICATION_PLATFORM_NAMES,
   type ApiErrorBody,
+  type AvailableCourseDto,
   type CompleteDailyResult,
+  type CourseCurriculumDto,
   type CourseDetailDto,
   type CourseSummaryDto,
   type CuratedContentDto,
   type DailyStateDto,
+  type EnrollmentDto,
   type GitHubRepoDto,
   type LoginRequest,
   type ModulePublicationDto,
@@ -15,6 +18,7 @@ import {
   type UserDto,
   type WeeklyDetailDto,
   type WeeklyProjectDto,
+  type WeeklyTemplateDetailDto,
 } from './types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5282';
@@ -77,6 +81,9 @@ export const api = {
   getToday: () => request<DailyStateDto>('/api/today'),
   getCourses: () => request<CourseSummaryDto[]>('/api/courses'),
   getCourse: (courseId: string) => request<CourseDetailDto>(`/api/courses/${courseId}`),
+  // Curriculo sem exigir matricula (Fase 13b) - so `/admin/conteudo` usa estes dois.
+  getCourseCurriculum: (courseId: string) => request<CourseCurriculumDto>(`/api/courses/${courseId}/curriculum`),
+  getWeeklyTemplate: (id: string) => request<WeeklyTemplateDetailDto>(`/api/weekly-templates/${id}`),
   getWeekly: (weeklyId: string) => request<WeeklyDetailDto>(`/api/weeklies/${weeklyId}`),
   getDaily: (dailyId: string) => request<DailyStateDto>(`/api/dailies/${dailyId}`),
   getCuratedContent: (id: string) => request<CuratedContentDto>(`/api/curated-content/${id}`),
@@ -100,7 +107,9 @@ export const api = {
   },
   // Autoria de conteudo curado (Fase 6) - unico tipo de conteudo com endpoint de escrita, ver
   // docs/ARQUITETURA.md. `type` so existe na criacao (nunca muda depois, ver CuratedContent.Update).
-  createCuratedContent: (body: { weeklyId: string; type: string; title: string; externalUrl: string | null; bodyText: string | null }) =>
+  // weeklyTemplateId (Fase 13b, era weeklyId): CuratedContent virou curriculo, ver
+  // CreateCuratedContentRequest no backend.
+  createCuratedContent: (body: { weeklyTemplateId: string; type: string; title: string; externalUrl: string | null; bodyText: string | null }) =>
     request<CuratedContentDto>('/api/curated-content', { method: 'POST', body: JSON.stringify(body) }),
   updateCuratedContent: (id: string, body: { title: string; externalUrl: string | null; bodyText: string | null }) =>
     request<CuratedContentDto>(`/api/curated-content/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
@@ -131,4 +140,11 @@ export const api = {
   login: (data: LoginRequest) => request<UserDto>('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
   getCurrentUser: () => request<UserDto>('/api/auth/me'),
+  // Onboarding (Fase 13b) - Entrevista de Perfil + Selecao de Curso.
+  completeProfile: (interests: string[], additionalNotes: string | null) =>
+    request<UserDto>('/api/users/me/profile', { method: 'PUT', body: JSON.stringify({ interests, additionalNotes }) }),
+  getAvailableCourses: () => request<AvailableCourseDto[]>('/api/courses/available'),
+  getMyEnrollments: () => request<EnrollmentDto[]>('/api/enrollments/me'),
+  createEnrollment: (courseId: string) =>
+    request<EnrollmentDto>('/api/enrollments', { method: 'POST', body: JSON.stringify({ courseId }) }),
 };

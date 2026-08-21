@@ -277,10 +277,13 @@ export interface ApiErrorBody {
 }
 
 // Autenticacao (Fase 12) - sessao via cookie httpOnly, nunca via token acessivel a partir do JS.
+// profileCompletedAt (Fase 13): nulo ate a Entrevista de Perfil ser concluida - SplashPage/pos-
+// login usam isso pra decidir se redirecionam pra /onboarding (ver lib/onboarding.ts).
 export interface UserDto {
   id: string;
   email: string;
   displayName: string;
+  profileCompletedAt: string | null;
 }
 
 export interface RegisterRequest {
@@ -292,4 +295,51 @@ export interface RegisterRequest {
 export interface LoginRequest {
   email: string;
   password: string;
+}
+
+// Matricula (Fase 13) - Onboarding/Selecao de Curso.
+export interface AvailableCourseDto {
+  id: string;
+  title: string;
+  description: string;
+  estimatedDuration: string;
+}
+
+export interface EnrollmentDto {
+  id: string;
+  courseId: string;
+  courseName: string;
+  enrolledAt: string;
+}
+
+// Curriculo de um curso (Course -> Monthly -> WeeklyTemplate), sem exigir matricula (Fase 13b) -
+// so `/admin/conteudo` usa isso, ver GetCourseCurriculumUseCase.
+export interface WeeklyTemplateSummaryDto {
+  id: string;
+  number: number;
+  title: string;
+  theme: string | null;
+}
+
+export interface MonthlyCurriculumDto {
+  id: string;
+  number: number;
+  title: string;
+  weeklyTemplates: WeeklyTemplateSummaryDto[];
+}
+
+export interface CourseCurriculumDto {
+  id: string;
+  name: string;
+  monthlies: MonthlyCurriculumDto[];
+}
+
+/** WeeklyTemplate (curriculo), sem exigir matricula (Fase 13b) - ver GetWeeklyTemplateDetailUseCase. */
+export interface WeeklyTemplateDetailDto {
+  id: string;
+  monthlyId: string;
+  number: number;
+  title: string;
+  theme: string | null;
+  curatedContents: CuratedContentDto[];
 }

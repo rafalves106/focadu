@@ -534,7 +534,9 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | 🔒 GET | `/api/enrollments/me` | `GetMyEnrollmentsUseCase` (Fase 13) | 200 (lista - hoje no maximo 1) |
 | 🔒 GET | `/api/courses` | `ListCoursesUseCase` | 200 |
 | 🔒 GET | `/api/courses/{courseId}` | `GetCourseDetailUseCase` | 200, 404 se nao existe/usuario nao matriculado (Fase 8: `WeeklyOverviewDto.Days` traz status por dia, pro mini-grid de `CourseDetailPage`) |
+| 🔒 GET | `/api/courses/{courseId}/curriculum` | `GetCourseCurriculumUseCase` (Fase 13b) | 200, 404 - curriculo (Course -> Monthly -> WeeklyTemplate), sem exigir matricula; so `/admin/conteudo` usa isso |
 | 🔒 GET | `/api/weeklies/{weeklyId}` | `GetWeeklyDetailUseCase` | 200, 404 se nao existe/nao e do usuario |
+| 🔒 GET | `/api/weekly-templates/{id}` | `GetWeeklyTemplateDetailUseCase` (Fase 13b) | 200, 404 - WeeklyTemplate (curriculo), sem exigir matricula; so `/admin/conteudo` usa isso |
 | 🔒 GET | `/api/dailies/{dailyId}` | `GetDailyStateUseCase` | 200, 404/400/409 (ver abaixo) |
 | 🔒 GET | `/api/today` | `GetTodayUseCase` | 200, 404/409 (ver "GET /api/today" abaixo) |
 | 🔒 POST | `/api/dailies/{dailyId}/start` | `StartOrResumeDailyUseCase` | 200 |
@@ -790,13 +792,16 @@ semana e o conteudo curado (leituras/videos/diagramas) em si.
 - Codes: `weekly_template_id_obrigatorio` (renomeado de `weekly_id_obrigatorio`),
   `titulo_obrigatorio` (400, `Program.cs`), `tipo_invalido`, `conteudo_obrigatorio` (400, caso de
   uso), `semana_nao_encontrada`, `conteudo_nao_encontrado` (404).
-- **Pendencia da Fase 13a: `/admin/conteudo` (frontend) quebrou.** Ate a Fase 12, `GET
-  /api/weeklies/{weeklyId}` bastava pra popular a tela de autoria (`curatedContents:
-  CuratedContentDto[]` completo). Desde a Fase 13, esse endpoint e instancia (exige Enrollment) -
-  o front ainda navega/envia com ids de Weekly-instancia (vindos de `GET /api/courses/{id}`,
-  tambem virou instancia). Falta um endpoint de leitura pro lado TEMPLATE (Course -> Monthly ->
-  WeeklyTemplate, sem depender de matricula) - hoje so existe `IWeeklyTemplateRepository.
-  GetByIdAsync` (sem rota HTTP ainda). Ver `docs/fase-13a/resumo-implementacao-fase-13a.md`.
+- **Resolvido na Fase 13b: `/admin/conteudo` (frontend) voltou a funcionar.** A quebra da Fase
+  13a (`GET /api/weeklies/{weeklyId}`/`GET /api/courses/{id}` viraram instancia, exigem
+  Enrollment) foi consertada por 2 endpoints TEMPLATE novos, sem exigir matricula:
+  `GET /api/courses/{courseId}/curriculum` (Course -> Monthly -> WeeklyTemplate, so
+  id/number/title/theme) e `GET /api/weekly-templates/{id}` (`WeeklyTemplateDetailDto`, com
+  `curatedContents` - reaproveita `IWeeklyTemplateRepository.GetByIdAsync`, que
+  `CreateCuratedContentUseCase` ja usava). `AdminContentPage.tsx` passou a navegar com
+  `WeeklyTemplateId` (nunca mais id de Weekly-instancia), e `createCuratedContent` no client
+  passou a mandar `weeklyTemplateId` no corpo (era `weeklyId` - mismatch silencioso com o contrato
+  do backend desde a Fase 13a). Ver `docs/fase-13b/resumo-implementacao-fase-13b.md`.
 - **UI (`/admin/conteudo`, Fase 6)**: `frontend/src/routes/AdminContentPage.tsx` - mesmo padrao de
   navegacao por query string do `/start` (curso -> semana), lista o conteudo da semana com
   indicador Completo/Pendente (`externalUrl || bodyText` preenchido), formulario unico serve
@@ -1038,7 +1043,9 @@ frontend/
   .env.example, .env.local (gitignorado - VITE_API_BASE_URL)
   src/
     main.tsx              <- BrowserRouter + AuthProvider + Routes ("/" Splash, "/login" fora do
-                              ProtectedRoute; hoje/start/admin/conteudo dentro dele - Fase 12)
+                              ProtectedRoute; onboarding/onboarding/perfil/selecionar-curso/hoje/
+                              start/admin/conteudo dentro dele - Fase 12; onboarding/*/
+                              selecionar-curso ficam fora do <App/> (sem o nav), Fase 13b)
     App.tsx                <- shell com nav (Hoje / Inicio / Conteudo) + <ErrorBoundary key={pathname}><Outlet/></ErrorBoundary> (Fase 10)
     index.css               <- @import "tailwindcss" + tokens @theme (paleta da identidade visual)
     assets/reading/          <- SVGs do design Figma (dots, play, check, orbe) - bytes exatos, Fase 7
@@ -1049,9 +1056,14 @@ frontend/
                                    de fetch/Api numa das 5 categorias que as telas de erro sabem renderizar
       validation.ts               <- isValidEmail/MIN_PASSWORD_LENGTH (Fase 12) - compartilhado por
                                    LoginForm/RegisterForm, servidor nunca confia so nisso
+      onboarding.ts                <- resolveLandingPath(user) (Fase 13b) - unico lugar que decide
+                                   /onboarding vs /selecionar-curso vs /start; usado por SplashPage
+                                   e pelo onSuccess de login/registro (LoginPage), nunca duplicado
     contexts/
       authContextObject.ts         <- createContext + AuthContextValue (Fase 12) - so o objeto/tipo,
-                                   separado do Provider e do hook pelo mesmo motivo de statusBadge.ts
+                                   separado do Provider e do hook pelo mesmo motivo de statusBadge.ts;
+                                   login/register devolvem o UserDto (Fase 13b), pra quem chama nao
+                                   depender do proximo render do contexto pra saber quem logou
       AuthContext.tsx                <- AuthProvider (Fase 12) - carrega GET /api/auth/me 1x no mount
       useAuth.ts                      <- hook useAuth() (Fase 12)
     api/
@@ -1070,15 +1082,30 @@ frontend/
                                    `error` e um `ApiFailure` classificado (nao string) + `retry()` desde a Fase 10
     routes/
       SplashPage.tsx             <- "/" (Fase 12) - checa sessao (AuthProvider) e redireciona pra
-                                   /start ou /login, duracao minima de 700ms
-      LoginPage.tsx                <- "/login" (Fase 12) - abas Entrar/Criar Conta
+                                   /login, ou resolveLandingPath(user) (onboarding/selecao de
+                                   curso/start - Fase 13b), duracao minima de 700ms
+      LoginPage.tsx                <- "/login" (Fase 12) - abas Entrar/Criar Conta; onSuccess de
+                                   ambos os forms passa pelo mesmo resolveLandingPath (Fase 13b)
+      OnboardingWelcomePage.tsx   <- /onboarding (Fase 13b, passo 1/3) - "Pular tour" conclui o
+                                   perfil com interesses vazios (User.CompleteProfile aceita lista
+                                   vazia) e pula direto pra /selecionar-curso
+      ProfileInterviewPage.tsx    <- /onboarding/perfil (Fase 13b, passo 2/3) - Entrevista de
+                                   Perfil, InterestChip multi-select + notas livres, salva via
+                                   PUT /api/users/me/profile (CompleteProfileUseCase)
+      CourseSelectionPage.tsx     <- /selecionar-curso (Fase 13b, passo 3/3) - GET
+                                   /api/courses/available, matricula via POST /api/enrollments
+      EmptyStateStartPage.tsx     <- guarda de seguranca em /start (Fase 13b) - renderizada por
+                                   StartDashboard quando GET /api/today devolve 404
+                                   `nenhuma_matricula_ativa`
       TodayPage.tsx            <- /hoje (orquestra os 7 tipos de atividade, o menu de configuracoes
                                    e o fluxo de conclusao - Fase 7)
       StartPage.tsx             <- /start (so o roteador por query string - Fase 8: as 3 telas
                                    viraram arquivos proprios abaixo, StartPage so decide qual mostrar);
                                    `<WeeklyDetailPage key={weeklyId} .../>` desde a Fase 11 (ver
                                    "Bug real: modal preso ao trocar de Weekly" abaixo)
-      StartDashboard.tsx         <- /start sem params - hub "Comecar Hoje"/"Projeto"/"Trilha" (Fase 8)
+      StartDashboard.tsx         <- /start sem params - hub "Comecar Hoje"/"Projeto"/"Trilha" (Fase 8);
+                                   renderiza EmptyStateStartPage no lugar do erro generico quando
+                                   `error.code === 'nenhuma_matricula_ativa'` (Fase 13b)
       WeeklyDetailPage.tsx        <- /start?weekly= - dias da semana + projeto + navegacao entre semanas
                                    (Fase 8); banner + trigger do PublicationModal quando
                                    `requiresPublicationToUnlock` (Fase 11)
@@ -1086,14 +1113,20 @@ frontend/
                                    (Fase 8); badge "🔒 Bloqueado" na Weekly seguinte a uma que ainda
                                    precisa de publicacao (Fase 11)
       WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7)
-      AdminContentPage.tsx       <- /admin/conteudo (autoria de CuratedContent, Fase 6)
+      AdminContentPage.tsx       <- /admin/conteudo (autoria de CuratedContent, Fase 6) - navega
+                                   com WeeklyTemplateId desde a Fase 13b (getCourseCurriculum/
+                                   getWeeklyTemplate, sem exigir matricula)
     components/
       ProtectedRoute.tsx           <- guarda de rota client-side (Fase 12) - so le AuthContext, nunca
-                                   busca sessao de novo sozinho; backend continua sem [Authorize]
-                                   nesses endpoints (ver "Autenticacao" acima)
+                                   busca sessao de novo sozinho; backend exige [Authorize] em tudo
+                                   isso desde a Fase 13a
       auth/
-        LoginForm.tsx                <- email + senha (Fase 12)
-        RegisterForm.tsx              <- nome + email + senha + confirmacao (Fase 12)
+        LoginForm.tsx                <- email + senha (Fase 12); onSuccess recebe o UserDto (Fase 13b)
+        RegisterForm.tsx              <- nome + email + senha + confirmacao (Fase 12); onSuccess
+                                   recebe o UserDto (Fase 13b)
+      onboarding/                  <- Fase 13b
+        InterestChip.tsx                <- chip de interesse multi-select (Entrevista de Perfil)
+        OnboardingStepper.tsx             <- "Passo X de 3" + pontinhos, compartilhado pelas 3 telas
       activities/                 <- primitivas visuais das atividades avaliaveis (Fase 9)
         IntroCard.tsx                <- tela de intro (badge/titulo/descricao/regras/CTA) - gate local (`started`), nao e passo novo no Step do TodayPage
         OptionCard.tsx                <- card de opcao (neutro/selecionado/correto/errado/esmaecido) - Quiz, termos do WordMatch, decisoes do Roleplay
@@ -1136,8 +1169,11 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 
 | Rota | Consome | Tela |
 |---|---|---|
-| `/` | `GET /api/auth/me` (via AuthProvider) | `SplashPage` (Fase 12) - decide entre `/start`/`/login` |
+| `/` | `GET /api/auth/me` (via AuthProvider) | `SplashPage` (Fase 12) - decide entre `/login` e `resolveLandingPath(user)` (Fase 13b) |
 | `/login` | `POST /api/auth/register` ou `/login` | `LoginPage` (Fase 12) - abas Entrar/Criar Conta |
+| `/onboarding` | `PUT /api/users/me/profile` (so no "Pular tour") | `OnboardingWelcomePage` (Fase 13b) - passo 1/3 |
+| `/onboarding/perfil` | `PUT /api/users/me/profile` | `ProfileInterviewPage` (Fase 13b) - passo 2/3, Entrevista de Perfil |
+| `/selecionar-curso` | `GET /api/courses/available` + `POST /api/enrollments` | `CourseSelectionPage` (Fase 13b) - passo 3/3 |
 | `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7) |
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco; Fase 8: tambem usada como "reprise" de um dia ja concluido, clicado a partir da Visao Semanal) |
 | `/start` | `GET /api/today` + `GET /api/weeklies/{id}` + `GET /api/courses` + `GET /api/courses/{id}` | `StartDashboard` (Fase 8) - hub "Comecar Hoje"/"Projeto desta Semana"/"Trilha Completa" |
@@ -1146,19 +1182,23 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/start?course=&weekly=&daily=` | `GET /api/dailies/{dailyId}` | Estado de uma Daily especifica (somente leitura) |
 | `/start?course=&weekly=&project=1` | `GET /api/weeklies/{weeklyId}` | Projeto pratico da semana (`WeeklyProjectPage`, Fase 7 - submissao via `POST .../project/submit`) |
 | `/admin/conteudo` | `GET /api/courses` | Autoria (Fase 6) - lista de cursos |
-| `/admin/conteudo?course=` | `GET /api/courses/{courseId}` | Autoria - semanas do curso |
-| `/admin/conteudo?course=&weekly=` | `GET /api/weeklies/{weeklyId}` | Autoria - lista + formulario de `CuratedContent` da semana (`POST`/`PUT /api/curated-content`) |
+| `/admin/conteudo?course=` | `GET /api/courses/{courseId}/curriculum` (Fase 13b, era `GET /api/courses/{courseId}`) | Autoria - semanas (WeeklyTemplate) do curso |
+| `/admin/conteudo?course=&weekly=` | `GET /api/weekly-templates/{id}` (Fase 13b, era `GET /api/weeklies/{weeklyId}`) | Autoria - lista + formulario de `CuratedContent` da semana (`POST`/`PUT /api/curated-content`, corpo com `weeklyTemplateId`) |
 
 **Autenticacao no frontend (Fase 12):** `AuthProvider` (`contexts/AuthContext.tsx`) e a fonte
 unica de "quem esta logado" - chama `GET /api/auth/me` uma vez no mount e guarda `user`/`isLoading`
 em state; `SplashPage` e `ProtectedRoute` so leem esse mesmo state (nunca buscam de novo sozinhos).
 Um 401 em `/me` (sem cookie/expirado) e o caminho **esperado** de "ninguem logado ainda" - vira
 `user: null` silenciosamente, nunca um erro pra propagar (o contexto nao tem campo `error` de
-proposito). `ProtectedRoute` envolve `/hoje`, `/start`, `/admin/conteudo` (dentro do mesmo `<App/>`
-shell de antes) - mostra um spinner enquanto `isLoading`, `<Navigate to="/login"/>` se `!user`,
-`<Outlet/>` senao. **So do lado do cliente** - nenhum desses endpoints tem `[Authorize]` no
-backend ainda (ver "Autenticacao" acima). `LoginPage` redireciona pra `/start` se ja houver
-sessao (evita a tela de login ficar visivel/usavel por quem ja esta logado).
+proposito). `ProtectedRoute` envolve `/onboarding`, `/onboarding/perfil`, `/selecionar-curso`,
+`/hoje`, `/start`, `/admin/conteudo` (Fase 13b: as 3 primeiras ficam fora do `<App/>` shell, sem o
+nav Hoje/Inicio/Conteudo - mesmo tratamento full-bleed de `LoginPage`/`SplashPage`) - mostra um
+spinner enquanto `isLoading`, `<Navigate to="/login"/>` se `!user`, `<Outlet/>` senao. Backend exige
+`[Authorize]` em tudo isso desde a Fase 13a (ver "Autenticacao" acima). `LoginPage` redireciona pra
+`/` (nao mais direto pra `/start`) se ja houver sessao - passa pela `SplashPage`, que roda o mesmo
+`resolveLandingPath` (`lib/onboarding.ts`, Fase 13b: `!profileCompletedAt` -> `/onboarding`;
+sem `Enrollment` (`GET /api/enrollments/me`) -> `/selecionar-curso`; senao -> `/start`) usado no
+`onSuccess` de `LoginForm`/`RegisterForm` - nunca duas implementacoes da mesma decisao.
 
 `TodayPage` (`/hoje`) chama `GET /api/today` (ou `GET /api/dailies/{id}` se `?daily=` estiver
 presente) e, se `AccessMode` for `Start`/`Resume`, chama `POST .../start` antes de renderizar (a
@@ -1320,9 +1360,11 @@ de Projeto Semanal).
 - Servico de WhatsApp (`whatsapp-service/` e so placeholder).
 - **Resolvido na Fase 13a, nao e mais pendencia:** autenticacao real (`User`, Fase 12) +
   matricula (`Enrollment`, Fase 13) + protecao (`.RequireAuthorization()` + filtro por dono) em
-  todo endpoint de curso/weekly/daily/publicacao. **Ainda pendente (Fase 13b):** UI de
-  onboarding/selecao de curso - sem ela, um usuario novo trava em `/start` (ver
-  `docs/fase-13a/resumo-implementacao-fase-13a.md`, "Consequencia direta").
+  todo endpoint de curso/weekly/daily/publicacao.
+- **Resolvido na Fase 13b, nao e mais pendencia:** UI de onboarding/selecao de curso
+  (`OnboardingWelcomePage`/`ProfileInterviewPage`/`CourseSelectionPage`/`EmptyStateStartPage`,
+  ver secao de Frontend) - um usuario novo agora e guiado do registro ate `/start` sem travar em
+  nenhum ponto, sem precisar de `curl` manual.
 - **Resolvido na Fase 11, nao e mais pendencia:** integracao com GitHub (via `HttpClient` cru, sem
   Octokit.NET - a afirmacao do prompt de que "Octokit ja estava configurado desde a Fase 1" era
   falsa) e exigencia de publicacao publica (LinkedIn/GitHub) pra desbloquear o proximo modulo -
@@ -1337,11 +1379,9 @@ de Projeto Semanal).
   `CuratedContent` tem autoria via Api desde a Fase 4 (ver "Autoria de conteudo curado"); o resto
   da estrutura continua so via `SeedWebSecurityCourseUseCase` (estrutural, muda com pouca
   frequencia).
-- **Resolvido na Fase 6, quebrado de novo na Fase 13a:** tela de autoria de conteudo curado no
-  frontend (`/admin/conteudo`) - os endpoints continuam existindo e funcionando (curl/script), mas
-  a UI ainda navega com ids de Weekly-instancia (que agora exigem matricula), nao de
-  WeeklyTemplate. Falta um endpoint de leitura pro lado curriculo pra consertar de verdade - ver
-  "Autoria de conteudo curado" acima.
+- **Resolvido na Fase 6, quebrado de novo na Fase 13a, reconsertado na Fase 13b:** tela de
+  autoria de conteudo curado no frontend (`/admin/conteudo`) - ver "Autoria de conteudo curado"
+  acima.
 - Renderizacao de `CuratedContentType.Diagram` na experiencia do aluno (`/hoje`) - os 4 SVGs
   reais da Semana 1 existem desde a Fase 6 (carregados via `/admin/conteudo`), mas nenhuma
   `DailyActivity` referencia `Diagram` ainda, entao nao ha onde/como exibi-los pro aluno.
@@ -1390,6 +1430,7 @@ de Projeto Semanal).
 | 11 | Sistema de Publicacao Publica | `docs/fase-11/resumo-implementacao-fase-11.md` |
 | 12 | Fundacao de Autenticacao (Backend) + Splash & Login/Registro (UI) | `docs/fase-12/resumo-implementacao-fase-12.md` |
 | 13a | Template vs Instancia, Matricula e Logout (Backend) | `docs/fase-13a/resumo-implementacao-fase-13a.md` |
+| 13b | Onboarding (UI) + Correcao do /admin/conteudo | `docs/fase-13b/resumo-implementacao-fase-13b.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
@@ -1541,12 +1582,13 @@ de Projeto Semanal).
   Esse bug foi pego em design, nunca chegou a rodar - qualquer indice unico novo que referencie
   uma entidade do lado Template precisa da mesma pergunta ("2 usuarios diferentes podem bater
   nesse mesmo par de valores?").
-- **Fase 13b (onboarding, selecao de curso, empty state, redirect pos-login) ainda nao comecou.**
-  A Fase 13a fechou so o refactor de dominio (Template/Instance), a matricula
-  (`EnrollUserInCourseUseCase`), a protecao dos endpoints existentes e o botao "Sair da Conta" -
-  ver a divisao de escopo documentada em `docs/fase-13a/resumo-implementacao-fase-13a.md`. Ate a
-  13b existir, um usuario recem-registrado nao tem nenhuma tela pra completar o perfil
-  (`PUT /api/users/me/profile`) nem pra se matricular (`POST /api/enrollments`) - `SplashPage`/
-  `AuthContext` continuam sem a logica de redirect por `profileCompletedAt`/Enrollment descrita no
-  prompt da Fase 13, entao `/start` sem matricula hoje so funciona via chamada direta a Api
-  (curl/script), nao pela UI.
+- **Matricula em mais de um Course quebra `/hoje` (`GetTodayUseCase`, Fase 13a) - nao corrigido na
+  Fase 13b.** `CourseSelectionPage` so filtra cursos em que o usuario ainda nao esta matriculado
+  (via `GetAvailableCoursesUseCase`), mas nao impede matricular-se num 2° curso enquanto ja tem 1
+  ativo - hoje isso nunca acontece na pratica (so existe 1 Course seedado), mas assim que um
+  2° Course real existir, um usuario que se matricule em ambos passa a receber
+  `409 multiplas_matriculas_ativas` em `/hoje` pra sempre (`GetTodayUseCase` so aceita exatamente
+  1 Enrollment). *ponytail: guarda client-side ausente de proposito (YAGNI - sem 2° curso real
+  pra exercitar o caminho); se/quando um 2° Course for seedado, adicionar o guard em
+  `CourseSelectionPage` (ou resolver `/hoje` pra aceitar N enrollments, escolhendo 1) antes disso
+  virar alcancavel de verdade.*

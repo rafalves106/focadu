@@ -11,6 +11,10 @@ export interface ApiFailure {
   type: ApiFailureType;
   message: string;
   status?: number;
+  /** Codigo de erro do backend (ApiError.code, ex: "nenhuma_matricula_ativa") - Fase 13b, so
+   * pra quem chama precisar distinguir um 404 especifico (ver EmptyStateStartPage) sem duplicar
+   * a classificacao acima em cada tela. */
+  code?: string;
 }
 
 /**
@@ -33,9 +37,9 @@ export function classifyApiError(err: unknown): ApiFailure {
   }
 
   if (err instanceof ApiError) {
-    if (err.status >= 500) return { type: 'serverError', message: err.message, status: err.status };
-    if (err.status === 404) return { type: 'notFound', message: err.message, status: err.status };
-    return { type: 'generic', message: err.message, status: err.status };
+    if (err.status >= 500) return { type: 'serverError', message: err.message, status: err.status, code: err.code };
+    if (err.status === 404) return { type: 'notFound', message: err.message, status: err.status, code: err.code };
+    return { type: 'generic', message: err.message, status: err.status, code: err.code };
   }
 
   return { type: 'generic', message: err instanceof Error ? err.message : 'Erro inesperado.' };
