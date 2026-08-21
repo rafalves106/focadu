@@ -15,6 +15,6 @@ public class CuratedContentConfiguration : IEntityTypeConfiguration<CuratedConte
         builder.Property(c => c.Title).IsRequired().HasMaxLength(200);
         builder.Property(c => c.ExternalUrl).HasMaxLength(2000);
         builder.Property(c => c.BodyText);
-        builder.Property(c => c.WeeklyId).IsRequired();
+        builder.Property(c => c.WeeklyTemplateId).IsRequired();
     }
 }

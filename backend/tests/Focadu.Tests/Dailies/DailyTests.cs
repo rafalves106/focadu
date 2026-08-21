@@ -12,20 +12,20 @@ public class DailyTests
     public void AddActivity_VoiceSummary_WithoutContentId_Throws()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
+        var template = weekly.Template.AddDailyTemplate(1);
 
         Assert.Throws<DomainException>(
-            () => daily.AddActivity(ActivityType.VoiceSummary, 0, AnswerMode.FreeText, prompt: "Resuma o texto."));
+            () => template.AddActivity(ActivityType.VoiceSummary, 0, AnswerMode.FreeText, prompt: "Resuma o texto."));
     }
 
     [Fact]
     public void AddActivity_VoiceSummary_WithContentId_Succeeds()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
+        var template = weekly.Template.AddDailyTemplate(1);
         var contentId = Guid.NewGuid();
 
-        var activity = daily.AddActivity(
+        var activity = template.AddActivity(
             ActivityType.VoiceSummary, 0, AnswerMode.FreeText, prompt: "Resuma o texto.", contentId: contentId);
 
         Assert.Equal(ActivityType.VoiceSummary, activity.Type);
@@ -40,9 +40,9 @@ public class DailyTests
     public void AddActivity_ReadingOrVideo_WithoutContentId_Throws(ActivityType type)
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
+        var template = weekly.Template.AddDailyTemplate(1);
 
-        Assert.Throws<DomainException>(() => daily.AddActivity(type, 0, AnswerMode.MultipleChoice));
+        Assert.Throws<DomainException>(() => template.AddActivity(type, 0, AnswerMode.MultipleChoice));
     }
 
     [Theory]
@@ -51,10 +51,10 @@ public class DailyTests
     public void AddActivity_ReadingOrVideo_WithContentId_Succeeds(ActivityType type)
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
+        var template = weekly.Template.AddDailyTemplate(1);
         var contentId = Guid.NewGuid();
 
-        var activity = daily.AddActivity(type, 0, AnswerMode.MultipleChoice, contentId: contentId);
+        var activity = template.AddActivity(type, 0, AnswerMode.MultipleChoice, contentId: contentId);
 
         Assert.Equal(type, activity.Type);
         Assert.Equal(contentId, activity.ContentId);
@@ -87,18 +87,20 @@ public class DailyTests
         daily.SubmitActivityResponse(activity.Id, 40);
         daily.SubmitActivityResponse(activity.Id, 90);
 
-        Assert.Equal(2, activity.Responses.Count);
-        Assert.Equal(1, activity.Responses.First().AttemptNumber);
-        Assert.Equal(2, activity.Responses.Last().AttemptNumber);
+        var responses = DailyFixtures.ResponsesFor(daily, activity.Id).ToList();
+        Assert.Equal(2, responses.Count);
+        Assert.Equal(1, responses.First().AttemptNumber);
+        Assert.Equal(2, responses.Last().AttemptNumber);
     }
 
     [Fact]
     public void SubmitActivityResponse_FailingResponses_IncrementPenaltyPoints()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var a1 = daily.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
-        var a2 = daily.AddActivity(ActivityType.Quiz, 1, AnswerMode.MultipleChoice);
+        var template = weekly.Template.AddDailyTemplate(1);
+        var daily = weekly.AddDaily(template, DailyFixtures.Today);
+        var a1 = template.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
+        var a2 = template.AddActivity(ActivityType.Quiz, 1, AnswerMode.MultipleChoice);
         daily.Start();
 
         daily.SubmitActivityResponse(a1.Id, 100); // passou, nao penaliza
@@ -111,10 +113,11 @@ public class DailyTests
     public void ShouldTriggerDailyReinforcement_BecomesTrue_AtThreePenaltyPoints()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var a1 = daily.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
-        var a2 = daily.AddActivity(ActivityType.Quiz, 1, AnswerMode.MultipleChoice);
-        var a3 = daily.AddActivity(ActivityType.Quiz, 2, AnswerMode.MultipleChoice);
+        var template = weekly.Template.AddDailyTemplate(1);
+        var daily = weekly.AddDaily(template, DailyFixtures.Today);
+        var a1 = template.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
+        var a2 = template.AddActivity(ActivityType.Quiz, 1, AnswerMode.MultipleChoice);
+        var a3 = template.AddActivity(ActivityType.Quiz, 2, AnswerMode.MultipleChoice);
         daily.Start();
 
         daily.SubmitActivityResponse(a1.Id, 0);
@@ -132,11 +135,12 @@ public class DailyTests
     public void CreateDailyReinforcement_OnlyClonesActivitiesThatFailed_AndMarksSourceAsTriggered()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
-        var passed = daily.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
-        var failed1 = daily.AddActivity(ActivityType.Quiz, 1, AnswerMode.MultipleChoice);
-        var failed2 = daily.AddActivity(ActivityType.Quiz, 2, AnswerMode.MultipleChoice);
-        var failed3 = daily.AddActivity(ActivityType.Quiz, 3, AnswerMode.MultipleChoice);
+        var template = weekly.Template.AddDailyTemplate(1);
+        var daily = weekly.AddDaily(template, DailyFixtures.Today);
+        var passed = template.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
+        var failed1 = template.AddActivity(ActivityType.Quiz, 1, AnswerMode.MultipleChoice);
+        var failed2 = template.AddActivity(ActivityType.Quiz, 2, AnswerMode.MultipleChoice);
+        var failed3 = template.AddActivity(ActivityType.Quiz, 3, AnswerMode.MultipleChoice);
         daily.Start();
 
         daily.SubmitActivityResponse(passed.Id, 100);
@@ -148,7 +152,6 @@ public class DailyTests
 
         Assert.True(reinforcementDaily.IsReinforcement);
         Assert.Equal(3, reinforcementDaily.Activities.Count);
-        Assert.All(reinforcementDaily.Activities, a => Assert.Equal(ActivityStatus.Pending, a.Status));
         Assert.True(daily.ReinforcementTriggered);
         Assert.Equal(reinforcementDaily.Id, daily.ReinforcementDailyId);
     }
@@ -180,7 +183,7 @@ public class DailyTests
         daily.SubmitActivityResponse(activity.Id, 10);
 
         Assert.Equal(0, daily.PenaltyPoints);
-        Assert.Equal(2, activity.Responses.Count);
+        Assert.Equal(2, DailyFixtures.ResponsesFor(daily, activity.Id).Count());
         Assert.False(daily.ShouldTriggerDailyReinforcement());
     }
 }

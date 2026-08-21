@@ -20,6 +20,16 @@ public class ActivityResponseConfiguration : IEntityTypeConfiguration<ActivityRe
         builder.Property(r => r.CreatedAt).IsRequired();
         builder.Property(r => r.ActivityId).IsRequired();
 
-        builder.HasIndex(r => new { r.ActivityId, r.AttemptNumber }).IsUnique();
+        // Fase 13: "DailyId" e shadow property (dono real da resposta, configurado do lado de
+        // Daily.Responses - ver DailyConfiguration) - nunca exposta como propriedade de dominio,
+        // ActivityResponse so guarda ActivityId (a definicao curricular que ela responde, agora
+        // compartilhada entre todos os usuarios matriculados).
+        //
+        // O indice unico PRECISA incluir DailyId: como ActivityId aponta pra uma DailyActivity de
+        // curriculo (WeeklyTemplate/DailyTemplate), o MESMO ActivityId e respondido por N usuarios
+        // diferentes - um indice unico so em (ActivityId, AttemptNumber) rejeitaria a 1a tentativa
+        // do 2o usuario, achando que ja existe (era inofensivo antes da Fase 13, quando so havia
+        // 1 usuario/1 instancia global). Bug pego em design, nunca chegou a rodar em producao.
+        builder.HasIndex("DailyId", nameof(ActivityResponse.ActivityId), nameof(ActivityResponse.AttemptNumber)).IsUnique();
     }
 }

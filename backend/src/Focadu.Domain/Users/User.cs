@@ -22,6 +22,16 @@ public class User : Entity
     public string DisplayName { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
+    private readonly List<string> _interests = new();
+
+    /// <summary>Hobbies/interesses/referencias culturais (Fase 13, Entrevista de Perfil - Documento Mestre Secao 2.2). Fonte de futuras analogias personalizadas - so captura/persiste nesta fase, uso automatico em prompts de IA fica pra uma fase futura.</summary>
+    public IReadOnlyCollection<string> Interests => _interests.AsReadOnly();
+
+    public string? AdditionalProfileNotes { get; private set; }
+
+    /// <summary>Nulo ate o usuario concluir a Entrevista de Perfil (CompleteProfile) - AuthContext/SplashPage usam isso pra decidir se redirecionam pra /onboarding.</summary>
+    public DateTime? ProfileCompletedAt { get; private set; }
+
     private User()
     {
         Email = string.Empty;
@@ -49,5 +59,19 @@ public class User : Entity
             throw new DomainException("Nome e obrigatorio.", "nome_obrigatorio");
 
         return new User(email.Trim().ToLowerInvariant(), passwordHash, displayName.Trim());
+    }
+
+    /// <summary>
+    /// Salva o resultado da Entrevista de Perfil e marca ProfileCompletedAt (Fase 13). Sem minimo
+    /// de interesses exigido - o campo de texto livre sozinho ja e uma resposta valida. Pode ser
+    /// chamado de novo no futuro (ex: editar interesses) - sempre substitui a lista inteira, nunca
+    /// mescla, pra nao acumular entradas obsoletas silenciosamente.
+    /// </summary>
+    public void CompleteProfile(IEnumerable<string> interests, string? additionalNotes)
+    {
+        _interests.Clear();
+        _interests.AddRange(interests.Select(i => i.Trim()).Where(i => i.Length > 0).Distinct());
+        AdditionalProfileNotes = string.IsNullOrWhiteSpace(additionalNotes) ? null : additionalNotes.Trim();
+        ProfileCompletedAt = DateTime.UtcNow;
     }
 }

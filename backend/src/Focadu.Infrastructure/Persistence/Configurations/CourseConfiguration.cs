@@ -13,6 +13,7 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
 
         builder.Property(c => c.Name).IsRequired().HasMaxLength(200);
         builder.Property(c => c.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(c => c.Description).HasMaxLength(1000);
 
         builder.HasMany(c => c.Monthlies)
             .WithOne()

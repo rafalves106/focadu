@@ -30,9 +30,9 @@ public class CommitModuleSummaryUseCase
     }
 
     public async Task<ModulePublicationDto> ExecuteAsync(
-        Guid weeklyId, string repoName, bool isNewRepo, CancellationToken cancellationToken = default)
+        Guid userId, Guid weeklyId, string repoName, bool isNewRepo, CancellationToken cancellationToken = default)
     {
-        var weekly = await _weeklyRepository.GetByIdAsync(weeklyId, cancellationToken)
+        var weekly = await _weeklyRepository.GetByIdAsync(weeklyId, userId, cancellationToken)
             ?? throw new NotFoundException("semana_nao_encontrada", "Semana nao encontrada.");
 
         var repo = isNewRepo
@@ -62,7 +62,7 @@ public class CommitModuleSummaryUseCase
         sb.AppendLine("## O que estudei");
         sb.AppendLine();
 
-        var contents = weekly.CuratedContents.Where(c => c.Type is CuratedContentType.Reading or CuratedContentType.Video).ToList();
+        var contents = weekly.Template.CuratedContents.Where(c => c.Type is CuratedContentType.Reading or CuratedContentType.Video).ToList();
         if (contents.Count == 0)
         {
             sb.AppendLine("_Nenhum material curado registrado para este módulo._");
@@ -73,12 +73,12 @@ public class CommitModuleSummaryUseCase
                 sb.AppendLine($"- {content.Title}");
         }
 
-        if (weekly.Project is not null)
+        if (weekly.Project is not null && weekly.Template.WeeklyProjectSpecText is not null)
         {
             sb.AppendLine();
             sb.AppendLine("## Projeto prático");
             sb.AppendLine();
-            sb.AppendLine(weekly.Project.SpecText);
+            sb.AppendLine(weekly.Template.WeeklyProjectSpecText);
         }
 
         sb.AppendLine();

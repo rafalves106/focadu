@@ -4,26 +4,25 @@ using Focadu.Domain.Exceptions;
 
 namespace Focadu.Domain.Weeklies;
 
-/// <summary>Projeto prático de uma Weekly, com especificação e submissão do aluno.</summary>
+/// <summary>
+/// Progresso do aluno no projeto prático de uma Weekly (instância, Fase 13) - a especificação em
+/// si (SpecText) virou curriculo, mora em `WeeklyTemplate.WeeklyProjectSpecText` (compartilhada
+/// por todo mundo); este objeto só rastreia Status/SubmissionUrl, que são por usuário. Criado
+/// eagerly (Pending) na matrícula, junto com a Weekly - ver EnrollUserInCourseUseCase.
+/// </summary>
 public class WeeklyProject : Entity
 {
     public Guid WeeklyId { get; private set; }
-    public string SpecText { get; private set; }
     public WeeklyProjectStatus Status { get; private set; }
     public string? SubmissionUrl { get; private set; }
 
     private WeeklyProject()
     {
-        SpecText = string.Empty;
     }
 
-    public WeeklyProject(Guid weeklyId, string specText)
+    internal WeeklyProject(Guid weeklyId)
     {
-        if (string.IsNullOrWhiteSpace(specText))
-            throw new DomainException("Especificação do projeto é obrigatória.");
-
         WeeklyId = weeklyId;
-        SpecText = specText;
         Status = WeeklyProjectStatus.Pending;
     }
 

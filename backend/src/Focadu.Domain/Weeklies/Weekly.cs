@@ -1,5 +1,4 @@
 using Focadu.Domain.Common;
-using Focadu.Domain.Content;
 using Focadu.Domain.Dailies;
 using Focadu.Domain.Enums;
 using Focadu.Domain.Exceptions;
@@ -8,22 +7,33 @@ using Focadu.Domain.Policies;
 namespace Focadu.Domain.Weeklies;
 
 /// <summary>
-/// Uma semana de estudo dentro de um Monthly. E o aggregate root que enxerga todas as Dailies
-/// da semana ao mesmo tempo, por isso concentra as regras de negocio que precisam comparar
-/// Dailies entre si: acesso a Daily passada/futura, reforco diario e reforco semanal.
+/// Fase 13: uma semana de estudo - progresso de UM usuário matriculado (instância; era o dono de
+/// Number/Title/Theme/CuratedContents/DailyActivity antes do split - isso virou curriculo, agora
+/// referenciado via <see cref="Template"/>). Continua sendo o aggregate root "operacional": quem
+/// enxerga todas as Dailies da semana ao mesmo tempo, por isso concentra as regras de negócio que
+/// precisam compará-las entre si (acesso a Daily passada/futura, reforço diário e semanal) -
+/// migrou praticamente inalterada do antigo `Weekly`, só trocando a fonte dos dados estruturais.
 /// </summary>
 public class Weekly : Entity
 {
-    public Guid MonthlyId { get; private set; }
-    public int Number { get; private set; }
-    public string Title { get; private set; }
-    public string? Theme { get; private set; }
+    public Guid EnrollmentId { get; private set; }
+    public Guid WeeklyTemplateId { get; private set; }
+    public DateOnly StartDate { get; private set; }
+
+    private WeeklyTemplate? _template;
+
+    /// <summary>Definição curricular desta semana (Number/Title/Theme/CuratedContents/DailyProjectSpec) - populada via Include pelo repositório.</summary>
+    public WeeklyTemplate Template => _template
+        ?? throw new InvalidOperationException("WeeklyTemplate nao carregado - falta Include no repositorio.");
+
+    // Pass-through de identidade curricular - nunca difere por usuário, nunca armazenado 2x.
+    public Guid MonthlyId => Template.MonthlyId;
+    public int Number => Template.Number;
+    public string Title => Template.Title;
+    public string? Theme => Template.Theme;
 
     private readonly List<Daily> _dailies = new();
     public IReadOnlyCollection<Daily> Dailies => _dailies.AsReadOnly();
-
-    private readonly List<CuratedContent> _curatedContents = new();
-    public IReadOnlyCollection<CuratedContent> CuratedContents => _curatedContents.AsReadOnly();
 
     private WeeklyProject? _project;
     public WeeklyProject? Project => _project;
@@ -36,45 +46,35 @@ public class Weekly : Entity
 
     private Weekly()
     {
-        Title = string.Empty;
     }
 
-    public Weekly(Guid monthlyId, int number, string title, string? theme = null)
+    /// <summary>Publico (nao internal) de proposito: EnrollUserInCourseUseCase (Focadu.Application, assembly diferente) e quem cria Weekly-instancia - nao ha nenhuma entidade de dominio "dona" da criacao (diferente de Daily, sempre criada via Weekly.AddDaily).</summary>
+    public Weekly(Guid enrollmentId, WeeklyTemplate template, DateOnly startDate)
     {
-        if (string.IsNullOrWhiteSpace(title))
-            throw new DomainException("Titulo da semana e obrigatorio.");
-        if (number < 1)
-            throw new DomainException("Number deve ser maior que zero.");
-
-        MonthlyId = monthlyId;
-        Number = number;
-        Title = title;
-        Theme = theme;
+        EnrollmentId = enrollmentId;
+        _template = template;
+        WeeklyTemplateId = template.Id;
+        StartDate = startDate;
     }
 
-    public Daily AddDaily(int dayNumber, DateOnly date)
+    /// <summary>Cria a Daily-instância correspondente a um DailyTemplate curricular desta Weekly. Usado por EnrollUserInCourseUseCase, um por DailyTemplate.</summary>
+    public Daily AddDaily(DailyTemplate dailyTemplate, DateOnly date)
     {
-        if (_dailies.Any(d => d.DayNumber == dayNumber))
+        if (_dailies.Any(d => d.DayNumber == dailyTemplate.DayNumber))
             throw new DomainException("Ja existe uma Daily com esse DayNumber nesta Weekly.");
 
-        var daily = new Daily(Id, dayNumber, date);
+        var daily = new Daily(Id, dailyTemplate, dailyTemplate.DayNumber, date);
         _dailies.Add(daily);
         return daily;
     }
 
-    public CuratedContent AddCuratedContent(CuratedContentType type, string title, string? externalUrl = null, string? bodyText = null)
-    {
-        var content = new CuratedContent(Id, type, title, externalUrl, bodyText);
-        _curatedContents.Add(content);
-        return content;
-    }
-
-    public WeeklyProject DefineProject(string specText)
+    /// <summary>Cria o WeeklyProject-instância (Pending) - chamado uma vez, na matrícula (EnrollUserInCourseUseCase), junto com as Dailies.</summary>
+    public WeeklyProject InitializeProject()
     {
         if (_project is not null)
-            throw new DomainException("Esta Weekly ja tem um projeto definido.");
+            throw new DomainException("Esta Weekly ja tem um projeto inicializado.");
 
-        _project = new WeeklyProject(Id, specText);
+        _project = new WeeklyProject(Id);
         return _project;
     }
 
@@ -147,7 +147,9 @@ public class Weekly : Entity
 
     /// <summary>
     /// Cria a Daily de reforco diario para sourceDailyId (IsReinforcement = true, vinculada a esta
-    /// mesma Weekly), copiando apenas as atividades onde houve falha na Daily de origem.
+    /// mesma Weekly), copiando apenas as atividades onde houve falha na Daily de origem. As
+    /// atividades clonadas moram num DailyTemplate "sintetico" (nunca no curriculo compartilhado -
+    /// ver DailyTemplate.CreateSynthetic), ja que reforco e progresso individual, nao curriculo.
     /// </summary>
     public Daily CreateDailyReinforcement(Guid sourceDailyId, DateOnly date)
     {
@@ -162,13 +164,15 @@ public class Weekly : Entity
         }
 
         var nextDayNumber = _dailies.Max(d => d.DayNumber) + 1;
-        var reinforcementDaily = new Daily(Id, nextDayNumber, date, isReinforcement: true);
+        var reinforcementTemplate = DailyTemplate.CreateSynthetic(nextDayNumber);
 
         var orderIndex = 0;
         foreach (var activity in source.GetFailedActivities())
         {
-            reinforcementDaily.AddClonedActivity(activity, orderIndex++);
+            reinforcementTemplate.AddClonedActivity(activity, orderIndex++);
         }
+
+        var reinforcementDaily = new Daily(Id, reinforcementTemplate, nextDayNumber, date, isReinforcement: true);
 
         source.MarkReinforcementTriggered(reinforcementDaily.Id);
         _dailies.Add(reinforcementDaily);

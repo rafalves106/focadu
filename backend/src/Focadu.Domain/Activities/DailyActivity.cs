@@ -5,16 +5,18 @@ using Focadu.Domain.Exceptions;
 namespace Focadu.Domain.Activities;
 
 /// <summary>
-/// Uma atividade dentro de uma Daily (Quiz, WordMatch, Cloze ou Roleplay), na posição OrderIndex
-/// da sequência do dia. Concentra as tentativas de resposta (ActivityResponse) e, quando aplicável,
-/// as opções de quiz/roleplay que a compõem.
+/// Uma atividade dentro de um DailyTemplate (Quiz, WordMatch, Cloze, Roleplay, Reading, Video ou
+/// VoiceSummary), na posição OrderIndex da sequência do dia. Curriculo (template) - Fase 13:
+/// nunca mais dono de ActivityResponse nem de Status "Pending/Completed" (isso é progresso por
+/// usuário, agora vive em `Daily` - instância - que referencia esta atividade por Id). Ainda dono
+/// das opções de quiz/roleplay, que são definição, não progresso.
 /// </summary>
 public class DailyActivity : Entity
 {
-    public Guid DailyId { get; private set; }
+    public Guid DailyTemplateId { get; private set; }
     public ActivityType Type { get; private set; }
 
-    /// <summary>Define a sequência da atividade dentro da Daily.</summary>
+    /// <summary>Define a sequência da atividade dentro do dia.</summary>
     public int OrderIndex { get; private set; }
 
     /// <summary>Referência ao CuratedContent de origem. Nulo quando a atividade não deriva de um conteúdo (ex: leitura/vídeo em si).</summary>
@@ -23,17 +25,10 @@ public class DailyActivity : Entity
     /// <summary>Enunciado da atividade (pergunta do Quiz, termo do WordMatch, contexto do Cloze/Roleplay). Sempre visível ao cliente, nunca redigido - é o que o usuário responde.</summary>
     public string? Prompt { get; private set; }
 
-    public ActivityStatus Status { get; private set; }
-
     /// <summary>Usado no Cloze em modo texto livre/código, para conferência da resposta esperada.</summary>
     public string? ExpectedAnswer { get; private set; }
 
     public AnswerMode AnswerMode { get; private set; }
-
-    private readonly List<ActivityResponse> _responses = new();
-
-    /// <summary>Histórico completo de tentativas, da mais antiga para a mais recente. Nunca sobrescrito.</summary>
-    public IReadOnlyCollection<ActivityResponse> Responses => _responses.AsReadOnly();
 
     private readonly List<QuizOption> _quizOptions = new();
     public IReadOnlyCollection<QuizOption> QuizOptions => _quizOptions.AsReadOnly();
@@ -46,7 +41,7 @@ public class DailyActivity : Entity
     }
 
     internal DailyActivity(
-        Guid dailyId,
+        Guid dailyTemplateId,
         ActivityType type,
         int orderIndex,
         AnswerMode answerMode,
@@ -63,24 +58,25 @@ public class DailyActivity : Entity
                 $"DailyActivity do tipo {type} precisa de um ContentId (o CuratedContent associado).");
         }
 
-        DailyId = dailyId;
+        DailyTemplateId = dailyTemplateId;
         Type = type;
         OrderIndex = orderIndex;
         AnswerMode = answerMode;
         Prompt = prompt;
         ContentId = contentId;
         ExpectedAnswer = expectedAnswer;
-        Status = ActivityStatus.Pending;
     }
 
     /// <summary>
     /// Clona a definição desta atividade (tipo, ordem, modo de resposta, conteúdo de origem e
-    /// opções de quiz) para uso em uma Daily de reforço. Não copia respostas nem roleplay nodes
-    /// já percorridos — a atividade de reforço começa do zero (Pending).
+    /// opções de quiz) para uso num DailyTemplate sintético de reforço (ver DailyTemplate). Não
+    /// copia roleplay nodes - reforco so acontece hoje pra Quiz/WordMatch/Cloze (ver
+    /// Daily.GetFailedActivities + o tipo das atividades do seed); se um Roleplay reprovado
+    /// precisar de reforco no futuro, RoleplayNode/Options tambem precisam ser clonados aqui.
     /// </summary>
-    internal DailyActivity CloneForReinforcement(Guid newDailyId, int orderIndex)
+    internal DailyActivity CloneForReinforcement(Guid newDailyTemplateId, int orderIndex)
     {
-        var clone = new DailyActivity(newDailyId, Type, orderIndex, AnswerMode, Prompt, ContentId, ExpectedAnswer);
+        var clone = new DailyActivity(newDailyTemplateId, Type, orderIndex, AnswerMode, Prompt, ContentId, ExpectedAnswer);
         foreach (var option in _quizOptions)
         {
             clone.AddQuizOption(option.Text, option.IsCorrect);
@@ -119,21 +115,4 @@ public class DailyActivity : Entity
         _roleplayNodes.Add(node);
         return node;
     }
-
-    /// <summary>
-    /// Registra uma nova tentativa de resposta. Só pode ser chamado pela Daily dona da atividade
-    /// (via Daily.SubmitActivityResponse), que é quem decide se a tentativa conta para penalidade
-    /// (primeira rodada) ou é uma repetição (replay, sem efeito em PenaltyPoints).
-    /// </summary>
-    internal ActivityResponse RecordResponse(int score, string? transcript, string? justification, string? aiFeedback)
-    {
-        var attemptNumber = _responses.Count + 1;
-        var response = new ActivityResponse(Id, attemptNumber, score, transcript, justification, aiFeedback);
-        _responses.Add(response);
-        Status = ActivityStatus.Completed;
-        return response;
-    }
-
-    /// <summary>True se ao menos uma tentativa registrada para esta atividade não atingiu o critério de aprovação.</summary>
-    public bool HasFailedAtLeastOnce => _responses.Any(r => !r.Passed);
 }

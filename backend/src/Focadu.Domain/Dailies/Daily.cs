@@ -7,13 +7,18 @@ using Focadu.Domain.Policies;
 namespace Focadu.Domain.Dailies;
 
 /// <summary>
-/// Um dia de estudo dentro de uma Weekly. Concentra as regras de acesso/penalidade que dependem
+/// Fase 13: um dia de estudo dentro de uma Weekly - progresso de UM usuário (instância; era o
+/// dono de DailyActivity/Status/PenaltyPoints/etc antes do split, agora referencia
+/// <see cref="DailyTemplateId"/> pra saber quais atividades existem, e é dono de
+/// <see cref="Responses"/> (moveu de DailyActivity pra cá, já que "respondida ou não" é progresso
+/// por usuário, nunca dado de curriculo). Concentra as regras de acesso/penalidade que dependem
 /// só do próprio dia; as regras que dependem dos dias irmãos (ex: "já existe outra Daily em
-/// andamento hoje") vivem em Weekly, que é quem enxerga a coleção inteira de Dailies.
+/// andamento hoje") vivem em Weekly (instância), que é quem enxerga a coleção inteira.
 /// </summary>
 public class Daily : Entity
 {
     public Guid WeeklyId { get; private set; }
+    public Guid DailyTemplateId { get; private set; }
     public int DayNumber { get; private set; }
     public DateOnly Date { get; private set; }
     public DailyStatus Status { get; private set; }
@@ -34,19 +39,32 @@ public class Daily : Entity
     /// <summary>Id da Daily de reforço gerada a partir desta Daily, quando ReinforcementTriggered = true - preenchido junto, nunca separadamente (ver MarkReinforcementTriggered).</summary>
     public Guid? ReinforcementDailyId { get; private set; }
 
-    private readonly List<DailyActivity> _activities = new();
-    public IReadOnlyCollection<DailyActivity> Activities => _activities.AsReadOnly();
+    private DailyTemplate? _template;
+
+    /// <summary>Definição curricular deste dia (quais atividades existem) - populada via Include pelo repositório; nunca null num objeto carregado do banco ou construído por Weekly.AddDaily.</summary>
+    public DailyTemplate Template => _template
+        ?? throw new InvalidOperationException("DailyTemplate nao carregado - falta Include no repositorio.");
+
+    /// <summary>Pass-through pra Template.Activities - mantém os call-sites que liam `daily.Activities` antes do split funcionando sem mudança.</summary>
+    public IReadOnlyCollection<DailyActivity> Activities => Template.Activities;
+
+    private readonly List<ActivityResponse> _responses = new();
+
+    /// <summary>Todas as tentativas de resposta desta Daily, de qualquer atividade - filtre por ActivityId pra ver o histórico de uma atividade específica.</summary>
+    public IReadOnlyCollection<ActivityResponse> Responses => _responses.AsReadOnly();
 
     private Daily()
     {
     }
 
-    internal Daily(Guid weeklyId, int dayNumber, DateOnly date, bool isReinforcement = false)
+    internal Daily(Guid weeklyId, DailyTemplate template, int dayNumber, DateOnly date, bool isReinforcement = false)
     {
         if (dayNumber < 1)
             throw new DomainException("DayNumber deve ser maior que zero.");
 
         WeeklyId = weeklyId;
+        _template = template;
+        DailyTemplateId = template.Id;
         DayNumber = dayNumber;
         Date = date;
         Status = DailyStatus.Locked;
@@ -90,32 +108,11 @@ public class Daily : Entity
         }
     }
 
-    public DailyActivity AddActivity(
-        ActivityType type,
-        int orderIndex,
-        AnswerMode answerMode,
-        string? prompt = null,
-        Guid? contentId = null,
-        string? expectedAnswer = null)
-    {
-        var activity = new DailyActivity(Id, type, orderIndex, answerMode, prompt, contentId, expectedAnswer);
-        _activities.Add(activity);
-        return activity;
-    }
-
-    /// <summary>Usado por Weekly.CreateDailyReinforcement para copiar uma atividade que falhou na Daily de origem.</summary>
-    internal DailyActivity AddClonedActivity(DailyActivity source, int orderIndex)
-    {
-        var clone = source.CloneForReinforcement(Id, orderIndex);
-        _activities.Add(clone);
-        return clone;
-    }
-
     /// <summary>
-    /// Registra uma tentativa de resposta para uma atividade desta Daily. Antes da primeira
-    /// conclusão, uma resposta reprovada incrementa PenaltyPoints — a regra central que alimenta
-    /// o gatilho de reforço diário. Depois da primeira conclusão (replay), a resposta é guardada
-    /// no histórico normalmente, mas não mexe em PenaltyPoints nem dispara reforço de novo.
+    /// Registra uma tentativa de resposta para uma atividade do Template desta Daily. Antes da
+    /// primeira conclusão, uma resposta reprovada incrementa PenaltyPoints — a regra central que
+    /// alimenta o gatilho de reforço diário. Depois da primeira conclusão (replay), a resposta é
+    /// guardada no histórico normalmente, mas não mexe em PenaltyPoints nem dispara reforço de novo.
     /// </summary>
     public ActivityResponse SubmitActivityResponse(
         Guid activityId, int score, string? transcript = null, string? justification = null, string? aiFeedback = null)
@@ -123,10 +120,12 @@ public class Daily : Entity
         if (Status is DailyStatus.Locked or DailyStatus.Available)
             throw new DomainException("A Daily precisa ser iniciada antes de registrar respostas.", "daily_nao_iniciada");
 
-        var activity = _activities.FirstOrDefault(a => a.Id == activityId)
-            ?? throw new DomainException("Atividade não encontrada nesta Daily.", "atividade_nao_encontrada");
+        if (Activities.All(a => a.Id != activityId))
+            throw new DomainException("Atividade não encontrada nesta Daily.", "atividade_nao_encontrada");
 
-        var response = activity.RecordResponse(score, transcript, justification, aiFeedback);
+        var attemptNumber = _responses.Count(r => r.ActivityId == activityId) + 1;
+        var response = new ActivityResponse(activityId, attemptNumber, score, transcript, justification, aiFeedback);
+        _responses.Add(response);
 
         if (!HasEverCompleted && !response.Passed)
         {
@@ -146,9 +145,12 @@ public class Daily : Entity
         ReinforcementDailyId = reinforcementDailyId;
     }
 
-    /// <summary>Atividades com ao menos uma resposta reprovada nesta Daily — usadas para montar a Daily de reforço.</summary>
+    /// <summary>Atividades do Template com ao menos uma resposta reprovada nesta Daily — usadas para montar a Daily de reforço.</summary>
     public IReadOnlyCollection<DailyActivity> GetFailedActivities() =>
-        _activities.Where(a => a.HasFailedAtLeastOnce).OrderBy(a => a.OrderIndex).ToList();
+        Activities
+            .Where(a => _responses.Any(r => r.ActivityId == a.Id && !r.Passed))
+            .OrderBy(a => a.OrderIndex)
+            .ToList();
 
     /// <summary>
     /// Conclui a Daily. Na primeira conclusão, registra CompletedAt (a partir daí a penalidade

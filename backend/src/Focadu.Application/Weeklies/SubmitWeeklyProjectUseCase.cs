@@ -22,9 +22,9 @@ public class SubmitWeeklyProjectUseCase
     }
 
     public async Task<WeeklyProjectDto> ExecuteAsync(
-        Guid weeklyId, string submissionUrl, CancellationToken cancellationToken = default)
+        Guid userId, Guid weeklyId, string submissionUrl, CancellationToken cancellationToken = default)
     {
-        var weekly = await _weeklyRepository.GetByIdAsync(weeklyId, cancellationToken)
+        var weekly = await _weeklyRepository.GetByIdAsync(weeklyId, userId, cancellationToken)
             ?? throw new NotFoundException("semana_nao_encontrada", "Semana nao encontrada.");
 
         var project = weekly.Project
@@ -33,6 +33,6 @@ public class SubmitWeeklyProjectUseCase
         project.Submit(submissionUrl);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new WeeklyProjectDto(project.Id, project.SpecText, project.Status, project.SubmissionUrl);
+        return new WeeklyProjectDto(project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty, project.Status, project.SubmissionUrl);
     }
 }

@@ -4,15 +4,15 @@ using Focadu.Domain.Weeklies;
 
 namespace Focadu.Domain.Monthlies;
 
-/// <summary>Um mes dentro de um Course, agrupando Weeklies.</summary>
+/// <summary>Um mes dentro de um Course, agrupando WeeklyTemplates (Fase 13: renomeado de "Weeklies" - ver WeeklyTemplate).</summary>
 public class Monthly : Entity
 {
     public Guid CourseId { get; private set; }
     public int Number { get; private set; }
     public string Title { get; private set; }
 
-    private readonly List<Weekly> _weeklies = new();
-    public IReadOnlyCollection<Weekly> Weeklies => _weeklies.AsReadOnly();
+    private readonly List<WeeklyTemplate> _weeklyTemplates = new();
+    public IReadOnlyCollection<WeeklyTemplate> WeeklyTemplates => _weeklyTemplates.AsReadOnly();
 
     private Monthly()
     {
@@ -31,13 +31,13 @@ public class Monthly : Entity
         Title = title;
     }
 
-    public Weekly AddWeekly(int number, string title, string? theme = null)
+    public WeeklyTemplate AddWeeklyTemplate(int number, string title, string? theme = null)
     {
-        if (_weeklies.Any(w => w.Number == number))
-            throw new DomainException("Ja existe uma Weekly com esse Number neste Monthly.");
+        if (_weeklyTemplates.Any(w => w.Number == number))
+            throw new DomainException("Ja existe uma WeeklyTemplate com esse Number neste Monthly.");
 
-        var weekly = new Weekly(Id, number, title, theme);
-        _weeklies.Add(weekly);
-        return weekly;
+        var weeklyTemplate = new WeeklyTemplate(Id, number, title, theme);
+        _weeklyTemplates.Add(weeklyTemplate);
+        return weeklyTemplate;
     }
 }

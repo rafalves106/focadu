@@ -14,18 +14,10 @@ public class DailyActivityConfiguration : IEntityTypeConfiguration<DailyActivity
 
         builder.Property(a => a.Type).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(a => a.AnswerMode).HasConversion<string>().HasMaxLength(20).IsRequired();
-        builder.Property(a => a.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(a => a.OrderIndex).IsRequired();
         builder.Property(a => a.Prompt);
         builder.Property(a => a.ExpectedAnswer);
-        builder.Property(a => a.DailyId).IsRequired();
-
-        builder.Ignore(a => a.HasFailedAtLeastOnce);
-
-        builder.HasMany(a => a.Responses)
-            .WithOne()
-            .HasForeignKey(r => r.ActivityId)
-            .OnDelete(DeleteBehavior.Cascade);
+        builder.Property(a => a.DailyTemplateId).IsRequired();
 
         builder.HasMany(a => a.QuizOptions)
             .WithOne()
@@ -38,8 +30,8 @@ public class DailyActivityConfiguration : IEntityTypeConfiguration<DailyActivity
             .OnDelete(DeleteBehavior.Cascade);
 
         // ContentId e uma referencia "fraca" a um CuratedContent (fora da arvore de cascata da
-        // Daily): se o conteudo curado for removido, so desvincula (SetNull), nunca apaga em
-        // cadeia o historico de respostas da atividade.
+        // DailyTemplate): se o conteudo curado for removido, so desvincula (SetNull), nunca apaga
+        // em cadeia a definicao da atividade.
         builder.HasOne<CuratedContent>()
             .WithMany()
             .HasForeignKey(a => a.ContentId)

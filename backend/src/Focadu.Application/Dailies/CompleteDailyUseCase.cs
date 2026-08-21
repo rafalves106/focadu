@@ -23,9 +23,9 @@ public class CompleteDailyUseCase
         _clock = clock;
     }
 
-    public async Task<CompleteDailyResult> ExecuteAsync(Guid dailyId, CancellationToken cancellationToken = default)
+    public async Task<CompleteDailyResult> ExecuteAsync(Guid userId, Guid dailyId, CancellationToken cancellationToken = default)
     {
-        var weekly = await _weeklyRepository.GetByDailyIdAsync(dailyId, cancellationToken)
+        var weekly = await _weeklyRepository.GetByDailyIdAsync(dailyId, userId, cancellationToken)
             ?? throw new NotFoundException("daily_nao_encontrada", "Daily nao encontrada.");
 
         var daily = weekly.Dailies.First(d => d.Id == dailyId);

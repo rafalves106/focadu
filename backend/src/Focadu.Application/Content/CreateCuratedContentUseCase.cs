@@ -6,37 +6,38 @@ using Focadu.Domain.Repositories;
 namespace Focadu.Application.Content;
 
 /// <summary>
-/// Caso de uso: cria um CuratedContent vinculado a uma Weekly existente (Fase 4). Autoria de
-/// conteudo curado e o unico tipo de conteudo com endpoint de criacao ate agora -
-/// Course/Monthly/Weekly/Daily/DailyActivity continuam so via seed/extensao do seed, porque a
-/// estrutura muda com pouca frequencia; o que muda toda semana e o conteudo curado em si.
+/// Caso de uso: cria um CuratedContent vinculado a uma WeeklyTemplate existente (Fase 4, ajustado
+/// na Fase 13 - CuratedContent virou curriculo). Autoria de conteudo curado e o unico tipo de
+/// conteudo com endpoint de criacao ate agora - Course/Monthly/WeeklyTemplate/DailyTemplate/
+/// DailyActivity continuam so via seed/extensao do seed, porque a estrutura muda com pouca
+/// frequencia; o que muda toda semana e o conteudo curado em si.
 /// </summary>
 public class CreateCuratedContentUseCase
 {
-    private readonly IWeeklyRepository _weeklyRepository;
+    private readonly IWeeklyTemplateRepository _weeklyTemplateRepository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public CreateCuratedContentUseCase(IWeeklyRepository weeklyRepository, IUnitOfWork unitOfWork)
+    public CreateCuratedContentUseCase(IWeeklyTemplateRepository weeklyTemplateRepository, IUnitOfWork unitOfWork)
     {
-        _weeklyRepository = weeklyRepository;
+        _weeklyTemplateRepository = weeklyTemplateRepository;
         _unitOfWork = unitOfWork;
     }
 
     public async Task<CuratedContentDto> ExecuteAsync(
-        Guid weeklyId,
+        Guid weeklyTemplateId,
         string? type,
         string title,
         string? externalUrl,
         string? bodyText,
         CancellationToken cancellationToken = default)
     {
-        var weekly = await _weeklyRepository.GetByIdAsync(weeklyId, cancellationToken)
+        var weeklyTemplate = await _weeklyTemplateRepository.GetByIdAsync(weeklyTemplateId, cancellationToken)
             ?? throw new NotFoundException("semana_nao_encontrada", "Semana nao encontrada.");
 
         var parsedType = ParseType(type);
         RequireExternalUrlOrBodyText(externalUrl, bodyText);
 
-        var content = weekly.AddCuratedContent(parsedType, title, externalUrl, bodyText);
+        var content = weeklyTemplate.AddCuratedContent(parsedType, title, externalUrl, bodyText);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new CuratedContentDto(content.Id, content.Type, content.Title, content.ExternalUrl, content.BodyText);

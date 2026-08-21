@@ -43,4 +43,51 @@ public class UserTests
     {
         Assert.Throws<DomainException>(() => User.Create("falves@example.com", "", "Falves"));
     }
+
+    // Fase 13: Entrevista de Perfil (Onboarding).
+
+    [Fact]
+    public void CompleteProfile_SetsInterestsNotesAndProfileCompletedAt()
+    {
+        var user = User.Create("falves@example.com", "hash123", "Falves");
+        var before = DateTime.UtcNow;
+
+        user.CompleteProfile(["games", "musica"], "Curto ficcao cientifica.");
+
+        Assert.Equal(["games", "musica"], user.Interests);
+        Assert.Equal("Curto ficcao cientifica.", user.AdditionalProfileNotes);
+        Assert.NotNull(user.ProfileCompletedAt);
+        Assert.InRange(user.ProfileCompletedAt!.Value, before, DateTime.UtcNow);
+    }
+
+    [Fact]
+    public void CompleteProfile_TrimsBlanksAndDedupesInterests()
+    {
+        var user = User.Create("falves@example.com", "hash123", "Falves");
+
+        user.CompleteProfile(["  games  ", "", "games", "   ", "musica"], null);
+
+        Assert.Equal(["games", "musica"], user.Interests);
+    }
+
+    [Fact]
+    public void CompleteProfile_WithOnlyNotes_Succeeds()
+    {
+        var user = User.Create("falves@example.com", "hash123", "Falves");
+
+        user.CompleteProfile([], "So isso mesmo.");
+
+        Assert.Empty(user.Interests);
+        Assert.NotNull(user.ProfileCompletedAt);
+    }
+
+    [Fact]
+    public void CompleteProfile_WithBlankNotes_StoresNull()
+    {
+        var user = User.Create("falves@example.com", "hash123", "Falves");
+
+        user.CompleteProfile(["games"], "   ");
+
+        Assert.Null(user.AdditionalProfileNotes);
+    }
 }

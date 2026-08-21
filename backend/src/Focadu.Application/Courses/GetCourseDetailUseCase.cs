@@ -1,29 +1,40 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Shared;
 using Focadu.Domain.Repositories;
-using Focadu.Domain.Weeklies;
 
 namespace Focadu.Application.Courses;
 
 /// <summary>
 /// Caso de uso: detalhe de um curso (suporta "/start?course=") - conclusao, visao geral de cada
-/// Monthly/Weekly, e as sessoes de reforco (diario e semanal) disparadas ate agora no curso.
+/// Monthly/WeeklyTemplate, e as sessoes de reforco (diario e semanal) disparadas ate agora no
+/// curso. Fase 13: course.Monthlies.WeeklyTemplates e curriculo (igual pra todo mundo) - o
+/// progresso real (Status/reforcos/conclusao) vem das Weeklies-instancia da Enrollment do usuario
+/// logado, casadas por WeeklyTemplateId.
 /// </summary>
 public class GetCourseDetailUseCase
 {
     private readonly ICourseRepository _courseRepository;
+    private readonly IEnrollmentRepository _enrollmentRepository;
     private readonly IWeeklyRepository _weeklyRepository;
 
-    public GetCourseDetailUseCase(ICourseRepository courseRepository, IWeeklyRepository weeklyRepository)
+    public GetCourseDetailUseCase(
+        ICourseRepository courseRepository, IEnrollmentRepository enrollmentRepository, IWeeklyRepository weeklyRepository)
     {
         _courseRepository = courseRepository;
+        _enrollmentRepository = enrollmentRepository;
         _weeklyRepository = weeklyRepository;
     }
 
-    public async Task<CourseDetailDto> ExecuteAsync(Guid courseId, CancellationToken cancellationToken = default)
+    public async Task<CourseDetailDto> ExecuteAsync(Guid userId, Guid courseId, CancellationToken cancellationToken = default)
     {
         var course = await _courseRepository.GetByIdAsync(courseId, cancellationToken)
             ?? throw new NotFoundException("curso_nao_encontrado", "Curso nao encontrado.");
+
+        var enrollment = await _enrollmentRepository.GetByUserAndCourseAsync(userId, courseId, cancellationToken)
+            ?? throw new NotFoundException("matricula_nao_encontrada", "Usuario nao esta matriculado neste curso.");
+
+        var instanceWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken);
+        var weeklyByTemplateId = instanceWeeklies.ToDictionary(w => w.WeeklyTemplateId);
 
         var monthlyDtos = new List<MonthlyOverviewDto>();
         var dailyReinforcements = new List<DailyReinforcementSummaryDto>();
@@ -34,11 +45,16 @@ public class GetCourseDetailUseCase
 
         foreach (var monthly in course.Monthlies.OrderBy(m => m.Number))
         {
-            var weeklies = await _weeklyRepository.GetByMonthlyIdAsync(monthly.Id, cancellationToken);
             var weeklyDtos = new List<WeeklyOverviewDto>();
 
-            foreach (var weekly in weeklies.OrderBy(w => w.Number))
+            foreach (var weeklyTemplate in monthly.WeeklyTemplates.OrderBy(w => w.Number))
             {
+                // So deveria faltar se a matricula estiver no meio da criacao (nunca deveria
+                // acontecer em uso normal - EnrollUserInCourseUseCase cria 1 Weekly por
+                // WeeklyTemplate atomicamente) - pular em vez de derrubar a tela inteira.
+                if (!weeklyByTemplateId.TryGetValue(weeklyTemplate.Id, out var weekly))
+                    continue;
+
                 var weeklyTotal = weekly.Dailies.Count;
                 var weeklyCompleted = weekly.Dailies.Count(d => d.Status == Domain.Enums.DailyStatus.Completed);
                 var weeklyWeak = weekly.GetWeakDailies().Count;
@@ -47,7 +63,7 @@ public class GetCourseDetailUseCase
                     .OrderBy(d => d.DayNumber)
                     .Select(d => new DailyStatusSummaryDto(
                         d.Id, d.DayNumber, d.Date, d.Status, d.IsReinforcement,
-                        d.Activities.Count, d.Activities.Count(a => a.Status == Domain.Enums.ActivityStatus.Completed)))
+                        d.Activities.Count, d.Activities.Count(a => d.Responses.Any(r => r.ActivityId == a.Id))))
                     .ToList();
 
                 weeklyDtos.Add(new WeeklyOverviewDto(

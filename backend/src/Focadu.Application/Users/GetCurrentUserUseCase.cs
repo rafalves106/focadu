@@ -22,6 +22,6 @@ public class GetCurrentUserUseCase
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken)
             ?? throw new NotFoundException("usuario_nao_encontrado", "Usuario nao encontrado.");
 
-        return new UserDto(user.Id, user.Email, user.DisplayName);
+        return new UserDto(user.Id, user.Email, user.DisplayName, user.ProfileCompletedAt);
     }
 }

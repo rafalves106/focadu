@@ -16,15 +16,16 @@ public class DailyStateMapperTests
     public void Gabarito_IsHidden_BeforeFirstResponse()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
+        var template = weekly.Template.AddDailyTemplate(1);
+        var daily = weekly.AddDaily(template, DailyFixtures.Today);
 
-        var quiz = daily.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
+        var quiz = template.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
         quiz.AddQuizOption("Certa", true);
         quiz.AddQuizOption("Errada", false);
 
-        var cloze = daily.AddActivity(ActivityType.Cloze, 1, AnswerMode.FreeText, expectedAnswer: "resposta certa");
+        var cloze = template.AddActivity(ActivityType.Cloze, 1, AnswerMode.FreeText, expectedAnswer: "resposta certa");
 
-        var roleplay = daily.AddActivity(ActivityType.Roleplay, 2, AnswerMode.FreeText);
+        var roleplay = template.AddActivity(ActivityType.Roleplay, 2, AnswerMode.FreeText);
         roleplay.AddRoleplayNode("start", "Ola, como posso ajudar?", isTerminal: true, terminalQuality: TerminalQuality.Ideal);
 
         var dto = DailyStateMapper.ToDto(daily, DailyAccessMode.Start);
@@ -43,15 +44,16 @@ public class DailyStateMapperTests
     public void Gabarito_IsRevealed_AfterFirstResponse()
     {
         var weekly = DailyFixtures.NewWeekly();
-        var daily = weekly.AddDaily(1, DailyFixtures.Today);
+        var template = weekly.Template.AddDailyTemplate(1);
+        var daily = weekly.AddDaily(template, DailyFixtures.Today);
 
-        var quiz = daily.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
+        var quiz = template.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
         var correct = quiz.AddQuizOption("Certa", true);
         quiz.AddQuizOption("Errada", false);
 
-        var cloze = daily.AddActivity(ActivityType.Cloze, 1, AnswerMode.FreeText, expectedAnswer: "resposta certa");
+        var cloze = template.AddActivity(ActivityType.Cloze, 1, AnswerMode.FreeText, expectedAnswer: "resposta certa");
 
-        var roleplay = daily.AddActivity(ActivityType.Roleplay, 2, AnswerMode.FreeText);
+        var roleplay = template.AddActivity(ActivityType.Roleplay, 2, AnswerMode.FreeText);
         roleplay.AddRoleplayNode("start", "Ola, como posso ajudar?", isTerminal: true, terminalQuality: TerminalQuality.Ideal);
 
         daily.Start();

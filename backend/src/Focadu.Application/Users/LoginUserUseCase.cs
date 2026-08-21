@@ -34,6 +34,6 @@ public class LoginUserUseCase
             throw new DomainException("Email ou senha invalidos.", "credenciais_invalidas");
 
         var token = _jwtTokenService.GenerateToken(user);
-        return new AuthResultDto(new UserDto(user.Id, user.Email, user.DisplayName), token);
+        return new AuthResultDto(new UserDto(user.Id, user.Email, user.DisplayName, user.ProfileCompletedAt), token);
     }
 }

@@ -15,15 +15,33 @@ function Toggle({ on }: { on: boolean }) {
  * arvore por tras manualmente). Acionado por ESC/voltar do navegador durante uma sessao ativa (ver
  * TodayPage) ou pelo botao de engrenagem.
  *
- * Aparencia/Som/Notificacoes/Limite de gravacao/Perfil/Atalhos ficam como placeholders visuais
- * nao-funcionais (pedido explicito do prompt desta fase) - so "Fechar (ESC)" (onClose) e
- * "Sair e salvar progresso" (onExit) sao acoes reais. Esse ultimo troca o rotulo do design
- * ("Sair da conta") porque o app nao tem conceito de conta/login (usuario unico hardcoded,
- * ver docs/ARQUITETURA.md) - o que o botao de fato faz e navegar pra fora da sessao, o progresso
- * ja esta salvo no servidor a cada resposta enviada, nao ha nada extra pra "salvar" aqui.
+ * Aparencia/Som/Notificacoes/Limite de gravacao/Perfil e Analogias/Atalhos ficam como
+ * placeholders visuais nao-funcionais (pedido explicito do prompt da Fase 7 - "Perfil e
+ * Analogias" continua sem edicao nesta fase, a Entrevista de Perfil do onboarding e so pra
+ * preencher uma vez, nao pra editar depois) - "Fechar (ESC)" (onClose),
+ * "Sair e salvar progresso" (onExit, so navega pra /start - o progresso ja esta salvo no servidor
+ * a cada resposta enviada, nao ha nada extra pra "salvar") e "Sair da Conta" (onLogout, Fase 13 -
+ * agora existe conta de verdade, ver docs/fase-12) sao as acoes reais. onLogout pede confirmacao
+ * simples (window.confirm) antes de executar - evita logout acidental no meio de uma sessao.
  */
-export function SettingsMenu({ open, onClose, onExit }: { open: boolean; onClose: () => void; onExit: () => void }) {
+export function SettingsMenu({
+  open,
+  onClose,
+  onExit,
+  onLogout,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onExit: () => void;
+  onLogout: () => void;
+}) {
   if (!open) return null;
+
+  function handleLogoutClick() {
+    if (window.confirm('Sair da conta? Você precisará entrar de novo para continuar estudando.')) {
+      onLogout();
+    }
+  }
 
   return (
     <div
@@ -91,8 +109,11 @@ export function SettingsMenu({ open, onClose, onExit }: { open: boolean; onClose
           <button type="button" onClick={onClose} className="text-xs text-secondary hover:text-primary">
             Fechar (ESC)
           </button>
-          <button type="button" onClick={onExit} className="text-xs font-semibold text-alert hover:underline">
+          <button type="button" onClick={onExit} className="text-xs font-semibold text-secondary hover:text-primary hover:underline">
             Sair e salvar progresso
+          </button>
+          <button type="button" onClick={handleLogoutClick} className="text-xs font-semibold text-alert hover:underline">
+            Sair da Conta
           </button>
         </div>
       </div>

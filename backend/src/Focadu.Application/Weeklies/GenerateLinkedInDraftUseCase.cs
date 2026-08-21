@@ -26,12 +26,12 @@ public class GenerateLinkedInDraftUseCase
         _draftGenerationService = draftGenerationService;
     }
 
-    public async Task<ModulePublicationDto> ExecuteAsync(Guid weeklyId, CancellationToken cancellationToken = default)
+    public async Task<ModulePublicationDto> ExecuteAsync(Guid userId, Guid weeklyId, CancellationToken cancellationToken = default)
     {
-        var weekly = await _weeklyRepository.GetByIdAsync(weeklyId, cancellationToken)
+        var weekly = await _weeklyRepository.GetByIdAsync(weeklyId, userId, cancellationToken)
             ?? throw new NotFoundException("semana_nao_encontrada", "Semana nao encontrada.");
 
-        var keyConcepts = weekly.CuratedContents
+        var keyConcepts = weekly.Template.CuratedContents
             .Where(c => c.Type is CuratedContentType.Reading or CuratedContentType.Video)
             .Select(c => c.Title)
             .Take(3)

@@ -11,7 +11,6 @@ public class WeeklyProjectConfiguration : IEntityTypeConfiguration<WeeklyProject
         builder.ToTable("WeeklyProjects");
         builder.HasKey(p => p.Id);
 
-        builder.Property(p => p.SpecText).IsRequired();
         builder.Property(p => p.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(p => p.SubmissionUrl).HasMaxLength(2000);
         builder.Property(p => p.WeeklyId).IsRequired();

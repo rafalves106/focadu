@@ -17,7 +17,7 @@ public class DomainExceptionCodeTests
     {
         var weekly = DailyFixtures.NewWeekly();
         var today = DailyFixtures.Today;
-        var futureDaily = weekly.AddDaily(1, today.AddDays(1));
+        var futureDaily = DailyFixtures.NewDaily(weekly, 1, today.AddDays(1));
 
         var ex = Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(futureDaily.Id, today));
 
@@ -29,8 +29,8 @@ public class DomainExceptionCodeTests
     {
         var weekly = DailyFixtures.NewWeekly();
         var today = DailyFixtures.Today;
-        var daily1 = weekly.AddDaily(1, today);
-        var daily2 = weekly.AddDaily(2, today);
+        var daily1 = DailyFixtures.NewDaily(weekly, 1, today);
+        var daily2 = DailyFixtures.NewDaily(weekly, 2, today);
         weekly.StartOrResumeDaily(daily1.Id, today);
 
         var ex = Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(daily2.Id, today));
@@ -65,7 +65,7 @@ public class DomainExceptionCodeTests
     {
         var weekly = DailyFixtures.NewWeekly();
         var today = DailyFixtures.Today;
-        var pastDaily = weekly.AddDaily(1, today.AddDays(-3));
+        var pastDaily = DailyFixtures.NewDaily(weekly, 1, today.AddDays(-3));
 
         var ex = Assert.Throws<DomainException>(() => weekly.StartOrResumeDaily(pastDaily.Id, today));
 

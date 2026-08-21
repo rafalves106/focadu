@@ -39,6 +39,9 @@ namespace Focadu.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("DailyId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Justification")
                         .HasColumnType("text");
 
@@ -53,7 +56,7 @@ namespace Focadu.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ActivityId", "AttemptNumber")
+                    b.HasIndex("DailyId", "ActivityId", "AttemptNumber")
                         .IsUnique();
 
                     b.ToTable("ActivityResponses", (string)null);
@@ -72,7 +75,7 @@ namespace Focadu.Infrastructure.Migrations
                     b.Property<Guid?>("ContentId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("DailyId")
+                    b.Property<Guid>("DailyTemplateId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("ExpectedAnswer")
@@ -84,11 +87,6 @@ namespace Focadu.Infrastructure.Migrations
                     b.Property<string>("Prompt")
                         .HasColumnType("text");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -98,7 +96,7 @@ namespace Focadu.Infrastructure.Migrations
 
                     b.HasIndex("ContentId");
 
-                    b.HasIndex("DailyId");
+                    b.HasIndex("DailyTemplateId");
 
                     b.ToTable("DailyActivities", (string)null);
                 });
@@ -203,12 +201,12 @@ namespace Focadu.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<Guid>("WeeklyId")
+                    b.Property<Guid>("WeeklyTemplateId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("WeeklyId");
+                    b.HasIndex("WeeklyTemplateId");
 
                     b.ToTable("CuratedContents", (string)null);
                 });
@@ -217,6 +215,10 @@ namespace Focadu.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -240,6 +242,9 @@ namespace Focadu.Infrastructure.Migrations
 
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DailyTemplateId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
@@ -269,12 +274,57 @@ namespace Focadu.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DailyTemplateId");
+
                     b.HasIndex("ReinforcementDailyId");
 
                     b.HasIndex("WeeklyId", "DayNumber")
                         .IsUnique();
 
                     b.ToTable("Dailies", (string)null);
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Dailies.DailyTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DayNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("WeeklyTemplateId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WeeklyTemplateId", "DayNumber")
+                        .IsUnique();
+
+                    b.ToTable("DailyTemplates", (string)null);
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Enrollments.Enrollment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("EnrolledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("UserId", "CourseId")
+                        .IsUnique();
+
+                    b.ToTable("Enrollments", (string)null);
                 });
 
             modelBuilder.Entity("Focadu.Domain.Monthlies.Monthly", b =>
@@ -306,6 +356,10 @@ namespace Focadu.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AdditionalProfileNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -319,9 +373,16 @@ namespace Focadu.Infrastructure.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)");
 
+                    b.PrimitiveCollection<string[]>("Interests")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("ProfileCompletedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -378,24 +439,20 @@ namespace Focadu.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("MonthlyId")
+                    b.Property<Guid>("EnrollmentId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("Number")
-                        .HasColumnType("integer");
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
 
-                    b.Property<string>("Theme")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                    b.Property<Guid>("WeeklyTemplateId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("MonthlyId", "Number")
+                    b.HasIndex("WeeklyTemplateId");
+
+                    b.HasIndex("EnrollmentId", "WeeklyTemplateId")
                         .IsUnique();
 
                     b.ToTable("Weeklies", (string)null);
@@ -405,10 +462,6 @@ namespace Focadu.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("SpecText")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -448,11 +501,42 @@ namespace Focadu.Infrastructure.Migrations
                     b.ToTable("WeeklyReinforcements", (string)null);
                 });
 
+            modelBuilder.Entity("Focadu.Domain.Weeklies.WeeklyTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MonthlyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Theme")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("WeeklyProjectSpecText")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MonthlyId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("WeeklyTemplates", (string)null);
+                });
+
             modelBuilder.Entity("Focadu.Domain.Activities.ActivityResponse", b =>
                 {
-                    b.HasOne("Focadu.Domain.Activities.DailyActivity", null)
+                    b.HasOne("Focadu.Domain.Dailies.Daily", null)
                         .WithMany("Responses")
-                        .HasForeignKey("ActivityId")
+                        .HasForeignKey("DailyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -464,9 +548,9 @@ namespace Focadu.Infrastructure.Migrations
                         .HasForeignKey("ContentId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Focadu.Domain.Dailies.Daily", null)
+                    b.HasOne("Focadu.Domain.Dailies.DailyTemplate", null)
                         .WithMany("Activities")
-                        .HasForeignKey("DailyId")
+                        .HasForeignKey("DailyTemplateId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -505,15 +589,21 @@ namespace Focadu.Infrastructure.Migrations
 
             modelBuilder.Entity("Focadu.Domain.Content.CuratedContent", b =>
                 {
-                    b.HasOne("Focadu.Domain.Weeklies.Weekly", null)
+                    b.HasOne("Focadu.Domain.Weeklies.WeeklyTemplate", null)
                         .WithMany("CuratedContents")
-                        .HasForeignKey("WeeklyId")
+                        .HasForeignKey("WeeklyTemplateId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("Focadu.Domain.Dailies.Daily", b =>
                 {
+                    b.HasOne("Focadu.Domain.Dailies.DailyTemplate", "Template")
+                        .WithMany()
+                        .HasForeignKey("DailyTemplateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Focadu.Domain.Dailies.Daily", null)
                         .WithMany()
                         .HasForeignKey("ReinforcementDailyId")
@@ -522,6 +612,31 @@ namespace Focadu.Infrastructure.Migrations
                     b.HasOne("Focadu.Domain.Weeklies.Weekly", null)
                         .WithMany("Dailies")
                         .HasForeignKey("WeeklyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Template");
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Dailies.DailyTemplate", b =>
+                {
+                    b.HasOne("Focadu.Domain.Weeklies.WeeklyTemplate", null)
+                        .WithMany("DailyTemplates")
+                        .HasForeignKey("WeeklyTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Enrollments.Enrollment", b =>
+                {
+                    b.HasOne("Focadu.Domain.Courses.Course", null)
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Focadu.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -546,11 +661,19 @@ namespace Focadu.Infrastructure.Migrations
 
             modelBuilder.Entity("Focadu.Domain.Weeklies.Weekly", b =>
                 {
-                    b.HasOne("Focadu.Domain.Monthlies.Monthly", null)
-                        .WithMany("Weeklies")
-                        .HasForeignKey("MonthlyId")
+                    b.HasOne("Focadu.Domain.Enrollments.Enrollment", null)
+                        .WithMany()
+                        .HasForeignKey("EnrollmentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Focadu.Domain.Weeklies.WeeklyTemplate", "Template")
+                        .WithMany()
+                        .HasForeignKey("WeeklyTemplateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Template");
                 });
 
             modelBuilder.Entity("Focadu.Domain.Weeklies.WeeklyProject", b =>
@@ -597,11 +720,18 @@ namespace Focadu.Infrastructure.Migrations
                     b.Navigation("_weakDailyLinks");
                 });
 
+            modelBuilder.Entity("Focadu.Domain.Weeklies.WeeklyTemplate", b =>
+                {
+                    b.HasOne("Focadu.Domain.Monthlies.Monthly", null)
+                        .WithMany("WeeklyTemplates")
+                        .HasForeignKey("MonthlyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Focadu.Domain.Activities.DailyActivity", b =>
                 {
                     b.Navigation("QuizOptions");
-
-                    b.Navigation("Responses");
 
                     b.Navigation("RoleplayNodes");
                 });
@@ -618,18 +748,21 @@ namespace Focadu.Infrastructure.Migrations
 
             modelBuilder.Entity("Focadu.Domain.Dailies.Daily", b =>
                 {
+                    b.Navigation("Responses");
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Dailies.DailyTemplate", b =>
+                {
                     b.Navigation("Activities");
                 });
 
             modelBuilder.Entity("Focadu.Domain.Monthlies.Monthly", b =>
                 {
-                    b.Navigation("Weeklies");
+                    b.Navigation("WeeklyTemplates");
                 });
 
             modelBuilder.Entity("Focadu.Domain.Weeklies.Weekly", b =>
                 {
-                    b.Navigation("CuratedContents");
-
                     b.Navigation("Dailies");
 
                     b.Navigation("Project");
@@ -637,6 +770,13 @@ namespace Focadu.Infrastructure.Migrations
                     b.Navigation("Publication");
 
                     b.Navigation("Reinforcements");
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Weeklies.WeeklyTemplate", b =>
+                {
+                    b.Navigation("CuratedContents");
+
+                    b.Navigation("DailyTemplates");
                 });
 #pragma warning restore 612, 618
         }
