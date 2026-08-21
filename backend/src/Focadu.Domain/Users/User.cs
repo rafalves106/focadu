@@ -32,6 +32,9 @@ public class User : Entity
     /// <summary>Nulo ate o usuario concluir a Entrevista de Perfil (CompleteProfile) - AuthContext/SplashPage usam isso pra decidir se redirecionam pra /onboarding.</summary>
     public DateTime? ProfileCompletedAt { get; private set; }
 
+    /// <summary>Codigo de indicacao unico (Fase 17) - nulo ate a 1a consulta gerar (lazy, ver GetReferralInfoUseCase; unicidade checada na Application, que consulta o repositorio antes de atribuir).</summary>
+    public string? ReferralCode { get; private set; }
+
     private User()
     {
         Email = string.Empty;
@@ -73,5 +76,16 @@ public class User : Entity
         _interests.AddRange(interests.Select(i => i.Trim()).Where(i => i.Length > 0).Distinct());
         AdditionalProfileNotes = string.IsNullOrWhiteSpace(additionalNotes) ? null : additionalNotes.Trim();
         ProfileCompletedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>Atribui o codigo de indicacao gerado pela Application (unicidade ja checada la contra o repositorio) - so pode ser chamado uma vez.</summary>
+    public void AssignReferralCode(string code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            throw new DomainException("Codigo de indicacao invalido.");
+        if (ReferralCode is not null)
+            throw new DomainException("Este usuario ja tem um codigo de indicacao.");
+
+        ReferralCode = code;
     }
 }

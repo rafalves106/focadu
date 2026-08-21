@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import type { UserDto } from '../api/types';
 import { LoginForm } from '../components/auth/LoginForm';
 import { RegisterForm } from '../components/auth/RegisterForm';
@@ -21,7 +21,11 @@ type Mode = 'login' | 'register';
 export function LoginPage() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<Mode>('login');
+  // Fase 17: /login?ref=CODIGO (link de indicacao) - pula direto pra aba de registro, ja que
+  // quem clicou num link assim quase sempre quer criar conta, nao entrar numa ja existente.
+  const [searchParams] = useSearchParams();
+  const referralCode = searchParams.get('ref');
+  const [mode, setMode] = useState<Mode>(referralCode ? 'register' : 'login');
 
   // Evita a tela de login "piscar" atras da splash - so mostra o formulario depois que
   // AuthProvider ja sabe se ha sessao ou nao.
@@ -72,7 +76,12 @@ export function LoginPage() {
           ) : (
             <>
               <p className="text-sm text-secondary">Leva menos de um minuto.</p>
-              <RegisterForm onSuccess={handleAuthSuccess} />
+              {referralCode && (
+                <p className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-xs text-accent">
+                  Você foi indicado! Código <span className="font-mono font-bold">{referralCode}</span> será aplicado ao criar sua conta.
+                </p>
+              )}
+              <RegisterForm onSuccess={handleAuthSuccess} referralCode={referralCode} />
               <p className="text-center text-sm text-secondary">
                 Já tem conta?{' '}
                 <button type="button" onClick={() => setMode('login')} className="font-semibold text-accent hover:underline">

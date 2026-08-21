@@ -23,6 +23,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.AdditionalProfileNotes).HasMaxLength(2000);
         builder.Property(u => u.ProfileCompletedAt);
 
+        // Fase 17: nulo ate a 1a consulta gerar (lazy, ver GetReferralInfoUseCase).
+        builder.Property(u => u.ReferralCode).HasMaxLength(16);
+
         builder.HasIndex(u => u.Email).IsUnique();
+        builder.HasIndex(u => u.ReferralCode).IsUnique();
     }
 }

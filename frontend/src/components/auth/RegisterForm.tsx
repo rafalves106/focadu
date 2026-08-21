@@ -4,7 +4,14 @@ import type { UserDto } from '../../api/types';
 import { useAuth } from '../../contexts/useAuth';
 import { isValidEmail, MIN_PASSWORD_LENGTH } from '../../lib/validation';
 
-export function RegisterForm({ onSuccess }: { onSuccess: (user: UserDto) => void }) {
+export function RegisterForm({
+  onSuccess,
+  referralCode,
+}: {
+  onSuccess: (user: UserDto) => void;
+  /** Fase 17: opcional - vem de /login?ref= (ver LoginPage). Codigo invalido/de ninguem so e ignorado no backend. */
+  referralCode?: string | null;
+}) {
   const { register } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -37,7 +44,7 @@ export function RegisterForm({ onSuccess }: { onSuccess: (user: UserDto) => void
 
     setBusy(true);
     try {
-      onSuccess(await register({ email: email.trim(), password, displayName: displayName.trim() }));
+      onSuccess(await register({ email: email.trim(), password, displayName: displayName.trim(), referralCode: referralCode ?? undefined }));
     } catch (err) {
       // email_ja_cadastrado (409) e senha_muito_curta (400, redundante com a checagem acima, mas
       // o servidor nunca confia so no client-side) chegam aqui com a mensagem pronta do backend.

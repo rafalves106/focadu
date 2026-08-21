@@ -1,9 +1,12 @@
+using Focadu.Application.Achievements;
 using Focadu.Application.Content;
 using Focadu.Application.Courses;
 using Focadu.Application.Dailies;
 using Focadu.Application.Enrollments;
 using Focadu.Application.Gamification;
+using Focadu.Application.Marketplace;
 using Focadu.Application.Ranking;
+using Focadu.Application.Referrals;
 using Focadu.Application.Seed;
 using Focadu.Application.Users;
 using Focadu.Application.Weeklies;
@@ -35,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<SubmitVoiceSummaryResponseUseCase>();
         services.AddScoped<CompleteDailyUseCase>();
         services.AddScoped<SeedWebSecurityCourseUseCase>();
+        services.AddScoped<SeedCosmeticCatalogUseCase>();
         services.AddScoped<CreateCuratedContentUseCase>();
         services.AddScoped<UpdateCuratedContentUseCase>();
         services.AddScoped<GetCuratedContentUseCase>();
@@ -48,6 +52,12 @@ public static class DependencyInjection
         services.AddScoped<GamificationCreditor>();
         services.AddScoped<GetGamificationSummaryUseCase>();
         services.AddScoped<GetCourseRankingUseCase>();
+        services.AddScoped<GetMarketplaceCatalogUseCase>();
+        services.AddScoped<PurchaseCosmeticItemUseCase>();
+        services.AddScoped<EquipCosmeticUseCase>();
+        services.AddScoped<UnequipCosmeticUseCase>();
+        services.AddScoped<GetUserBadgesUseCase>();
+        services.AddScoped<GetReferralInfoUseCase>();
         return services;
     }
 }

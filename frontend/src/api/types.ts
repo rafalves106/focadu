@@ -293,6 +293,56 @@ export interface RankingResultDto {
   currentUserEntry: RankingEntryDto | null;
 }
 
+// Marketplace de Cosmeticos (Fase 17) - catalogo fixo via seed, sem autoria via Api ainda.
+export const CosmeticSlot = { AvatarFrame: 0, NameColor: 1, ProfileBanner: 2 } as const;
+export type CosmeticSlot = (typeof CosmeticSlot)[keyof typeof CosmeticSlot];
+
+// Nomes que a Api de unequip espera no campo "slot" do request (case-insensitive, ver
+// Program.cs) - mesma convencao de CURATED_CONTENT_TYPE_NAMES/PUBLICATION_PLATFORM_NAMES.
+export const COSMETIC_SLOT_NAMES: Record<CosmeticSlot, string> = {
+  [CosmeticSlot.AvatarFrame]: 'AvatarFrame',
+  [CosmeticSlot.NameColor]: 'NameColor',
+  [CosmeticSlot.ProfileBanner]: 'ProfileBanner',
+};
+
+export const CosmeticRarity = { Common: 0, Rare: 1, Epic: 2 } as const;
+export type CosmeticRarity = (typeof CosmeticRarity)[keyof typeof CosmeticRarity];
+
+/** Owned/Equipped ja resolvidos pro usuario logado - o frontend nunca precisa cruzar inventario/equipados manualmente. */
+export interface CosmeticItemDto {
+  id: string;
+  name: string;
+  slot: CosmeticSlot;
+  rarity: CosmeticRarity;
+  priceGems: number;
+  owned: boolean;
+  equipped: boolean;
+}
+
+/** Devolvido por GET catalog e por toda acao de compra/equipar/desequipar - sempre o catalogo inteiro recalculado, nunca precisa de uma 2a chamada. */
+export interface MarketplaceCatalogDto {
+  totalGems: number;
+  items: CosmeticItemDto[];
+}
+
+// Troféus/Badges (Fase 17) - todos calculados sob demanda no backend. `code` e estavel
+// ("streak_7", "streak_30", "easy_weekly", "embaixador", "founder") - label/icone/descricao sao
+// so apresentacao, o frontend decide (mesmo padrao de DailyStatus -> lib/statusBadge.ts).
+export interface BadgeDto {
+  code: string;
+  achieved: boolean;
+  progress: number;
+}
+
+export interface UserBadgesDto {
+  badges: BadgeDto[];
+}
+
+export interface ReferralInfoDto {
+  referralCode: string;
+  confirmedReferralCount: number;
+}
+
 export interface ModulePublicationDto {
   weeklyId: string;
   status: PublicationStatus;
@@ -325,10 +375,12 @@ export interface UserDto {
   profileCompletedAt: string | null;
 }
 
+// referralCode (Fase 17): opcional - codigo invalido/de ninguem so e ignorado no backend, nunca bloqueia o registro.
 export interface RegisterRequest {
   email: string;
   password: string;
   displayName: string;
+  referralCode?: string;
 }
 
 export interface LoginRequest {

@@ -1,4 +1,5 @@
 using Focadu.Domain.Common;
+using Focadu.Domain.Exceptions;
 using Focadu.Domain.Policies;
 
 namespace Focadu.Domain.Gamification;
@@ -60,6 +61,23 @@ public class UserGemBalance : Entity
     /// <summary>+30 Gems por Monthly perfeito, respeitando o cap de 30/mes vindas de Monthly.</summary>
     public int CreditMonthly(DateOnly today) =>
         Credit(today, MonthlyGemAmount, MonthlyMonthlyCap, () => GemsFromMonthlyThisMonth, v => GemsFromMonthlyThisMonth = v);
+
+    /// <summary>
+    /// Gasta `amount` do saldo (Fase 17, Marketplace) - false e nao mexe em nada se o saldo for
+    /// insuficiente. Gasto NUNCA mexe nos contadores mensais de cap (GemsFromDailiesThisMonth/
+    /// etc) - caps controlam quanto se GANHA por mes, nao quanto se pode GASTAR do acumulado; sao
+    /// sistemas independentes de proposito.
+    /// </summary>
+    public bool TrySpend(int amount)
+    {
+        if (amount <= 0)
+            throw new DomainException("Valor a gastar deve ser maior que zero.");
+        if (TotalGems < amount)
+            return false;
+
+        TotalGems -= amount;
+        return true;
+    }
 
     /// <summary>
     /// Credita `amount` na categoria informada, sem nunca ultrapassar `monthlyCap` (Fase 15:

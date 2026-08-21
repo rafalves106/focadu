@@ -4,13 +4,16 @@ using System.Text;
 using Focadu.Api.Contracts;
 using Focadu.Api.ErrorHandling;
 using Focadu.Application;
+using Focadu.Application.Achievements;
 using Focadu.Application.Content;
 using Focadu.Application.Courses;
 using Focadu.Application.Dailies;
 using Focadu.Application.Enrollments;
 using Focadu.Application.Exceptions;
 using Focadu.Application.Gamification;
+using Focadu.Application.Marketplace;
 using Focadu.Application.Ranking;
+using Focadu.Application.Referrals;
 using Focadu.Application.Seed;
 using Focadu.Application.Users;
 using Focadu.Application.Weeklies;
@@ -161,6 +164,14 @@ if (args.Contains("seed"))
         ? "Seed: curso 'Web Security' ja existe - nada foi inserido."
         : $"Seed: curso 'Web Security' criado com sucesso (CourseId={result.CourseId}).");
 
+    // Fase 17: catalogo fixo da loja de cosmeticos - mesmo gatilho `-- seed`, idempotente.
+    var cosmeticSeeder = scope.ServiceProvider.GetRequiredService<SeedCosmeticCatalogUseCase>();
+    var cosmeticCatalogAlreadyExisted = await cosmeticSeeder.ExecuteAsync();
+
+    Console.WriteLine(cosmeticCatalogAlreadyExisted
+        ? "Seed: catalogo de cosmeticos ja existe - nada foi inserido."
+        : "Seed: catalogo de cosmeticos (8 itens) criado com sucesso.");
+
     return;
 }
 
@@ -191,7 +202,8 @@ var api = app.MapGroup("/api");
 api.MapPost("/auth/register", async (HttpContext http, RegisterRequest? request, RegisterUserUseCase useCase, CancellationToken ct) =>
     {
         var result = await useCase.ExecuteAsync(
-            request?.Email ?? string.Empty, request?.Password ?? string.Empty, request?.DisplayName ?? string.Empty, ct);
+            request?.Email ?? string.Empty, request?.Password ?? string.Empty, request?.DisplayName ?? string.Empty,
+            request?.ReferralCode, ct);
         SetAuthCookie(http, result.Token);
         return Results.Created("/api/auth/me", result.User);
     })
@@ -231,6 +243,58 @@ api.MapGet("/users/me/gamification", async (ClaimsPrincipal principal, GetGamifi
         Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
     .RequireAuthorization()
     .WithName("GetGamificationSummary");
+
+// Badges/Troféus (Fase 17) - todos calculados sob demanda, ver GetUserBadgesUseCase.
+api.MapGet("/users/me/badges", async (ClaimsPrincipal principal, GetUserBadgesUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
+    .RequireAuthorization()
+    .WithName("GetUserBadges");
+
+// Indicacao (Fase 17) - gera o ReferralCode na 1a consulta (lazy, ver GetReferralInfoUseCase).
+api.MapGet("/users/me/referral", async (ClaimsPrincipal principal, GetReferralInfoUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
+    .RequireAuthorization()
+    .WithName("GetReferralInfo");
+
+// --- Marketplace de Cosmeticos (Fase 17) -----------------------------------------------------
+// Catalogo fixo via seed, sem autoria via Api nesta fase. Comprar/equipar/desequipar sempre
+// devolvem o catalogo inteiro recalculado (Owned/Equipped por item) - o frontend nunca precisa
+// de uma 2a chamada pra saber o estado novo depois de uma acao.
+
+api.MapGet("/marketplace/catalog", async (ClaimsPrincipal principal, GetMarketplaceCatalogUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
+    .RequireAuthorization()
+    .WithName("GetMarketplaceCatalog");
+
+api.MapPost("/marketplace/purchase", async (ClaimsPrincipal principal, PurchaseCosmeticItemRequest? request, PurchaseCosmeticItemUseCase useCase, CancellationToken ct) =>
+    {
+        if (request?.ItemId is not { } itemId)
+            throw new ValidationException("item_id_obrigatorio", "O campo 'itemId' e obrigatorio.");
+
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), itemId, ct));
+    })
+    .RequireAuthorization()
+    .WithName("PurchaseCosmeticItem");
+
+api.MapPost("/marketplace/equip", async (ClaimsPrincipal principal, EquipCosmeticRequest? request, EquipCosmeticUseCase useCase, CancellationToken ct) =>
+    {
+        if (request?.ItemId is not { } itemId)
+            throw new ValidationException("item_id_obrigatorio", "O campo 'itemId' e obrigatorio.");
+
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), itemId, ct));
+    })
+    .RequireAuthorization()
+    .WithName("EquipCosmetic");
+
+api.MapPost("/marketplace/unequip", async (ClaimsPrincipal principal, UnequipCosmeticRequest? request, UnequipCosmeticUseCase useCase, CancellationToken ct) =>
+    {
+        if (!Enum.TryParse<CosmeticSlot>(request?.Slot, ignoreCase: true, out var slot) || !Enum.IsDefined(slot))
+            throw new ValidationException("slot_invalido", "O campo 'slot' precisa ser 'AvatarFrame', 'NameColor' ou 'ProfileBanner'.");
+
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), slot, ct));
+    })
+    .RequireAuthorization()
+    .WithName("UnequipCosmetic");
 
 // --- Matricula (Fase 13) ---------------------------------------------------------------------
 

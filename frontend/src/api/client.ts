@@ -1,8 +1,10 @@
 import {
+  COSMETIC_SLOT_NAMES,
   PUBLICATION_PLATFORM_NAMES,
   type ApiErrorBody,
   type AvailableCourseDto,
   type CompleteDailyResult,
+  type CosmeticSlot,
   type CourseCurriculumDto,
   type CourseDetailDto,
   type CourseSummaryDto,
@@ -12,12 +14,15 @@ import {
   type GamificationSummaryDto,
   type GitHubRepoDto,
   type LoginRequest,
+  type MarketplaceCatalogDto,
   type ModulePublicationDto,
   type PublicationPlatform,
   type RankingResultDto,
   type RankingScope,
+  type ReferralInfoDto,
   type RegisterRequest,
   type SubmitActivityResponseResult,
+  type UserBadgesDto,
   type UserDto,
   type WeeklyDetailDto,
   type WeeklyProjectDto,
@@ -155,4 +160,19 @@ export const api = {
     request<EnrollmentDto>('/api/enrollments', { method: 'POST', body: JSON.stringify({ courseId }) }),
   // Gamificacao (Fase 14) - Gems + Streak.
   getGamification: () => request<GamificationSummaryDto>('/api/users/me/gamification'),
+  // Troféus/Badges + Indicação (Fase 17) - calculados sob demanda no backend.
+  getUserBadges: () => request<UserBadgesDto>('/api/users/me/badges'),
+  getReferralInfo: () => request<ReferralInfoDto>('/api/users/me/referral'),
+  // Marketplace de Cosméticos (Fase 17) - toda ação (compra/equipar/desequipar) devolve o
+  // catálogo inteiro recalculado, mesmo shape do GET.
+  getMarketplaceCatalog: () => request<MarketplaceCatalogDto>('/api/marketplace/catalog'),
+  purchaseCosmeticItem: (itemId: string) =>
+    request<MarketplaceCatalogDto>('/api/marketplace/purchase', { method: 'POST', body: JSON.stringify({ itemId }) }),
+  equipCosmetic: (itemId: string) =>
+    request<MarketplaceCatalogDto>('/api/marketplace/equip', { method: 'POST', body: JSON.stringify({ itemId }) }),
+  unequipCosmetic: (slot: CosmeticSlot) =>
+    request<MarketplaceCatalogDto>('/api/marketplace/unequip', {
+      method: 'POST',
+      body: JSON.stringify({ slot: COSMETIC_SLOT_NAMES[slot] }),
+    }),
 };

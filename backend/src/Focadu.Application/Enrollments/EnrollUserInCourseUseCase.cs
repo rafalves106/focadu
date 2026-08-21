@@ -18,6 +18,7 @@ public class EnrollUserInCourseUseCase
     private readonly ICourseRepository _courseRepository;
     private readonly IEnrollmentRepository _enrollmentRepository;
     private readonly IWeeklyRepository _weeklyRepository;
+    private readonly IReferralRepository _referralRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
 
@@ -25,12 +26,14 @@ public class EnrollUserInCourseUseCase
         ICourseRepository courseRepository,
         IEnrollmentRepository enrollmentRepository,
         IWeeklyRepository weeklyRepository,
+        IReferralRepository referralRepository,
         IUnitOfWork unitOfWork,
         IClock clock)
     {
         _courseRepository = courseRepository;
         _enrollmentRepository = enrollmentRepository;
         _weeklyRepository = weeklyRepository;
+        _referralRepository = referralRepository;
         _unitOfWork = unitOfWork;
         _clock = clock;
     }
@@ -68,6 +71,12 @@ public class EnrollUserInCourseUseCase
                 await _weeklyRepository.AddAsync(weekly, cancellationToken);
             }
         }
+
+        // Fase 17: se este usuario foi indicado por alguem (Referral criado no registro, ainda
+        // nao confirmado), a matricula e a prova de uso real que confirma - alimenta o badge
+        // Embaixador de quem indicou. Confirm() e idempotente, sem risco de dupla confirmacao.
+        var pendingReferral = await _referralRepository.GetByReferredUserIdAsync(userId, cancellationToken);
+        pendingReferral?.Confirm();
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

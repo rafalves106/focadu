@@ -558,6 +558,65 @@ dizia "ranking fica ancorado na visualizacao global do Course, pra nao distrair 
 Daily". `/start?course=&ranking=1` (mais um flag na query string do `/start`, mesmo padrao de
 `?project=`).
 
+### Marketplace de Cosmeticos, Troféus/Badges e Indicação (Fase 17)
+
+Fecha o ciclo economico da gamificacao - Gems (Fase 14) finalmente tem onde ser gastas. Sem node
+Figma validado pra "Loja de Cosmeticos"/"Perfil — Conquistas" ainda (confirmado com o usuario) -
+cor por raridade (Comum=cinza, Raro=azul, Epico=roxo) como placeholder visual, sem ilustracao
+nenhuma, mesma paleta escura/neon ja estabelecida.
+
+```
+Focadu.Domain.Cosmetics
+CosmeticItem (Name, Slot, Rarity, PriceGems, AssetUrl?, IsAnimated=false) - catalogo fixo, seed
+UserCosmeticInventory (UserId, CosmeticItemId, AcquiredAt) - posse permanente, "sem usar e perder"
+UserEquippedCosmetics (UserId, EquippedFrameId?, EquippedNameColorId?, EquippedBannerId?) - 1:1
+                        com User, lazy - Equip(slot, itemId) so sobrescreve o campo do slot
+                        (desequipa o anterior automaticamente, sem passo separado)
+
+Focadu.Domain.Referrals
+Referral (ReferrerUserId, ReferredUserId, CreatedAt, ConfirmedAt?) - Confirm() idempotente
+```
+
+**`UserGemBalance.TrySpend`** (novo) - gasto NUNCA mexe nos contadores mensais de cap
+(`GemsFromDailiesThisMonth`/etc): caps controlam quanto se GANHA por mes, nao quanto se pode
+GASTAR do saldo acumulado - sistemas independentes de proposito.
+
+**Marketplace - toda acao devolve o catalogo inteiro recalculado.** `GetMarketplaceCatalogUseCase`
+monta `MarketplaceCatalogDto` (Owned/Equipped ja resolvidos por item) e e reaproveitado por
+`Purchase`/`Equip`/`UnequipCosmeticItemUseCase` - cada um so muda o estado e delega a leitura de
+volta, pra nunca duplicar a montagem do DTO em 4 lugares. `PurchaseCosmeticItemUseCase` reaproveita
+`GamificationCreditor.GetOrCreateGemBalanceAsync` (Fase 14) - mesmo criterio de "so cria a linha
+quando precisa mexer nela de verdade".
+
+**Sistema de Indicacao - confirmado so na matricula, nunca no registro.** Todo `User` ganha um
+`ReferralCode` unico (8 caracteres, alfabeto sem `0/O/1/I` pra evitar confusao visual), gerado
+lazy na 1a consulta (`GetReferralInfoUseCase`, unicidade checada contra o repositorio antes de
+atribuir). `POST /api/auth/register` aceita `referralCode` opcional - se corresponder a um User de
+verdade, cria um `Referral` AINDA NAO confirmado (codigo invalido/de ninguem so e ignorado,
+silenciosamente, nunca bloqueia o registro). A confirmacao de verdade (`ConfirmedAt`) so acontece
+em `EnrollUserInCourseUseCase` - prova de uso real (o indicado de fato se matriculou), nao so
+cadastro vazio. `/login?ref=CODIGO` (deep link) pula a `LoginPage` direto pra aba de registro e
+preenche `referralCode` automaticamente.
+
+**Troféus/Badges - tudo calculado sob demanda, nada persistido** (mesmo principio ja usado desde a
+Fase 13a pra `DailyStatus`/`Weekly.Number`). `GetUserBadgesUseCase` le `UserStreak.LongestStreak`,
+conta `Weekly.IsPerfect()` do historico (todas as Enrollments do usuario), indicacoes confirmadas
+(`Referral.ConfirmedAt != null`) e posicao de registro (`IUserRepository.
+IsAmongFirstRegisteredAsync`, ordem total deterministica por `(CreatedAt, Id)` pra nunca empatar
+ambiguamente). O nucleo (`ComputeBadges`) e `internal static`, testado direto com os 4 numeros ja
+resolvidos - mesmo padrao de `SubmitActivityResponseUseCase.ResolveScore`/`GetCourseRankingUseCase.
+ComputeScore`. 5 badges, `code` estavel (`streak_7`/`streak_30`/`easy_weekly`/`embaixador`/
+`founder`) - label/icone/descricao sao so apresentacao no frontend (`BadgeGrid`).
+
+**Onde Badges/ReferralCard moram por enquanto.** Sem lar definitivo ainda - a aba "Conquistas" do
+Perfil so chega na Fase 18. Por ora, `/conquistas` (rota propria, `AchievementsPage` - `BadgeGrid`
++ `ReferralCard` juntos) mais um link a partir de `CourseDetailPage`. `MarketplacePage` (`/loja`)
+acessivel clicando no `GemBadge` do header do `StartDashboard` (ficou clicavel nesta fase).
+
+**Aplicacao visual dos cosmeticos equipados fica pra Fase 18** - esta fase so constroi comprar/
+equipar/guardar estado, nao "veste" o app inteiro ainda (cor do nome no Ranking, moldura no avatar
+do header, etc. - tudo isso ja vem pronto no dado, `UserEquippedCosmetics`, so falta consumir).
+
 ## Regras de negocio centralizadas
 
 Todas as constantes de negocio ficam em `Focadu.Domain.Policies.EvaluationPolicy` - unico lugar
@@ -686,7 +745,7 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 
 | Metodo | Rota | Caso de uso | Sucesso |
 |---|---|---|---|
-| POST | `/api/auth/register` | `RegisterUserUseCase` (Fase 12) | 201, seta cookie `focadu_auth`, 409/400 (ver "Autenticacao") |
+| POST | `/api/auth/register` | `RegisterUserUseCase` (Fase 12) | 201, seta cookie `focadu_auth`, 409/400 (ver "Autenticacao") - Fase 17: aceita `referralCode` opcional |
 | POST | `/api/auth/login` | `LoginUserUseCase` (Fase 12) | 200, seta cookie, 401 `credenciais_invalidas` |
 | POST | `/api/auth/logout` | - (limpa o cookie direto no endpoint) | 200 |
 | 🔒 GET | `/api/auth/me` | `GetCurrentUserUseCase` (Fase 12) | 200, 401 `nao_autenticado` |
@@ -712,6 +771,12 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | 🔒 POST | `/api/weeklies/{weeklyId}/project/submit` | `SubmitWeeklyProjectUseCase` (Fase 7) | 200, 400/404 - `WeeklyProject.Submit` existia desde a Fase 1, so faltava endpoint |
 | 🔒 PUT | `/api/weeklies/{weeklyId}/project/evaluate` | `EvaluateWeeklyProjectUseCase` (Fase 11) | 200, 400/404 - `WeeklyProject.Evaluate` existia desde a Fase 1, so faltava endpoint (so backend, sem UI). Fase 16: virou PUT (era POST) e o corpo `{score, feedback}` passou a ser obrigatorio (`score` alimenta o Score de Estudo) |
 | 🔒 GET | `/api/courses/{courseId}/ranking?scope=` | `GetCourseRankingUseCase` (Fase 16) | 200 (`RankingResultDto`) - `scope` = `weekly`\|`monthly`\|`course`, default `course` se omitido |
+| 🔒 GET | `/api/users/me/badges` | `GetUserBadgesUseCase` (Fase 17) | 200 (`UserBadgesDto`, 5 badges calculados sob demanda) |
+| 🔒 GET | `/api/users/me/referral` | `GetReferralInfoUseCase` (Fase 17) | 200 (`ReferralInfoDto`) - gera o `ReferralCode` na 1a consulta |
+| 🔒 GET | `/api/marketplace/catalog` | `GetMarketplaceCatalogUseCase` (Fase 17) | 200 (`MarketplaceCatalogDto`) |
+| 🔒 POST | `/api/marketplace/purchase` | `PurchaseCosmeticItemUseCase` (Fase 17) | 200 (catalogo recalculado), 404, 409 (`item_ja_possuido`/`gems_insuficientes`) |
+| 🔒 POST | `/api/marketplace/equip` | `EquipCosmeticUseCase` (Fase 17) | 200 (catalogo recalculado), 404, 409 (`item_nao_possuido`) |
+| 🔒 POST | `/api/marketplace/unequip` | `UnequipCosmeticUseCase` (Fase 17) | 200 (catalogo recalculado) - no-op se nada equipado ainda |
 | 🔒 GET | `/api/weeklies/{weeklyId}/publication/status` | `GetPublicationStatusUseCase` (Fase 11) | 200, 404 |
 | 🔒 POST | `/api/weeklies/{weeklyId}/publication/draft` | `GenerateLinkedInDraftUseCase` (Fase 11) | 200, 404, 502 (Groq) |
 | 🔒 POST | `/api/weeklies/{weeklyId}/publication/github-commit` | `CommitModuleSummaryUseCase` (Fase 11) | 200, 400/404, 502 (GitHub) |
@@ -1294,12 +1359,21 @@ frontend/
                                    no cabecalho quando `hasPendingWeeklyReinforcement` (Fase 15)
       CourseDetailPage.tsx        <- /start?course= - trilha completa (semanas + mini-grid de dias)
                                    (Fase 8); badge "🔒 Bloqueado" na Weekly seguinte a uma que ainda
-                                   precisa de publicacao (Fase 11); link "🏆 Ver Ranking" ->
-                                   /start?course=&ranking=1 (Fase 16)
+                                   precisa de publicacao (Fase 11); links "🏆 Ver Ranking" ->
+                                   /start?course=&ranking=1 (Fase 16) e "🎖️ Conquistas" -> /conquistas
+                                   (Fase 17)
       RankingPage.tsx            <- /start?course=&ranking=1 (Fase 16, tela 13 do inventario
                                    original) - abas Semana/Mes/Curso (RankingScopeTabs), top 10
                                    (RankingTable) + posicao do usuario sempre visivel
                                    (CurrentUserRankingCard)
+      MarketplacePage.tsx        <- /loja (Fase 17, tela 14 do inventario original) - acessivel
+                                   clicando no GemBadge do header do StartDashboard; filtro por
+                                   slot (CosmeticSlotFilter) + grid (CosmeticItemCard);
+                                   comprar/equipar/desequipar cada um devolve o catalogo inteiro
+                                   recalculado, guardado em `catalogOverride` (derivado no render,
+                                   nunca via effect) - cai pro `data` original ate a 1a acao
+      AchievementsPage.tsx       <- /conquistas (Fase 17) - BadgeGrid + ReferralCard juntos, sem
+                                   lar definitivo ainda (fica pra aba "Conquistas" do Perfil, Fase 18)
       WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7)
       AdminContentPage.tsx       <- /admin/conteudo (autoria de CuratedContent, Fase 6) - navega
                                    com WeeklyTemplateId desde a Fase 13b (getCourseCurriculum/
@@ -1311,7 +1385,8 @@ frontend/
       auth/
         LoginForm.tsx                <- email + senha (Fase 12); onSuccess recebe o UserDto (Fase 13b)
         RegisterForm.tsx              <- nome + email + senha + confirmacao (Fase 12); onSuccess
-                                   recebe o UserDto (Fase 13b)
+                                   recebe o UserDto (Fase 13b); `referralCode` opcional (Fase 17,
+                                   vem de /login?ref=, ver LoginPage)
       onboarding/                  <- Fase 13b
         InterestChip.tsx                <- chip de interesse multi-select (Entrevista de Perfil)
         OnboardingStepper.tsx             <- "Passo X de 3" + pontinhos, compartilhado pelas 3 telas
@@ -1331,6 +1406,19 @@ frontend/
                                    usuario quando ele aparece na lista
         CurrentUserRankingCard.tsx           <- posicao do usuario sempre visivel, mesmo fora do
                                    top N; null quando o usuario nao tem matricula no curso
+      marketplace/                  <- Fase 17
+        CosmeticItemCard.tsx              <- swatch de cor por raridade (sem arte real ainda) +
+                                   nome + preco/comprar OU equipar/desequipar (Owned/Equipped ja
+                                   resolvidos pelo backend)
+        CosmeticSlotFilter.tsx             <- filtro Tudo/Molduras/Cores/Banners, mesmo padrao das
+                                   abas do RankingScopeTabs
+      badges/
+        BadgeGrid.tsx                     <- Fase 17 - grid dos 5 badges, conquistado (borda accent)
+                                   vs esmaecido (opacity-40); code -> label/icone/descricao mapeado
+                                   no frontend (mesmo padrao de DailyStatus -> lib/statusBadge.ts)
+      referral/
+        ReferralCard.tsx                   <- Fase 17 - codigo + copiar link (clipboard) + contador
+                                   de indicacoes confirmadas
       activities/                 <- primitivas visuais das atividades avaliaveis (Fase 9)
         IntroCard.tsx                <- tela de intro (badge/titulo/descricao/regras/CTA) - gate local (`started`), nao e passo novo no Step do TodayPage
         OptionCard.tsx                <- card de opcao (neutro/selecionado/correto/errado/esmaecido) - Quiz, termos do WordMatch, decisoes do Roleplay
@@ -1377,7 +1465,7 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | Rota | Consome | Tela |
 |---|---|---|
 | `/` | `GET /api/auth/me` (via AuthProvider) | `SplashPage` (Fase 12) - decide entre `/login` e `resolveLandingPath(user)` (Fase 13b) |
-| `/login` | `POST /api/auth/register` ou `/login` | `LoginPage` (Fase 12) - abas Entrar/Criar Conta |
+| `/login` | `POST /api/auth/register` ou `/login` | `LoginPage` (Fase 12) - abas Entrar/Criar Conta; `?ref=CODIGO` (Fase 17) pula pra Criar Conta com o codigo pre-preenchido |
 | `/onboarding` | `PUT /api/users/me/profile` (so no "Pular tour") | `OnboardingWelcomePage` (Fase 13b) - passo 1/3 |
 | `/onboarding/perfil` | `PUT /api/users/me/profile` | `ProfileInterviewPage` (Fase 13b) - passo 2/3, Entrevista de Perfil |
 | `/selecionar-curso` | `GET /api/courses/available` + `POST /api/enrollments` | `CourseSelectionPage` (Fase 13b) - passo 3/3 |
@@ -1386,6 +1474,8 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/start` | `GET /api/today` + `GET /api/weeklies/{id}` + `GET /api/courses` + `GET /api/courses/{id}` + `GET /api/users/me/gamification` (Fase 14) | `StartDashboard` (Fase 8) - hub "Comecar Hoje"/"Projeto desta Semana"/"Trilha Completa" |
 | `/start?course=` | `GET /api/courses/{courseId}` | `CourseDetailPage` (Fase 8) - trilha completa do curso |
 | `/start?course=&ranking=1` | `GET /api/courses/{courseId}/ranking?scope=` | `RankingPage` (Fase 16) - Score de Estudo, top 10 + posicao do usuario |
+| `/loja` | `GET /api/marketplace/catalog` + `POST .../purchase`\|`/equip`\|`/unequip` | `MarketplacePage` (Fase 17) - catalogo de cosmeticos |
+| `/conquistas` | `GET /api/users/me/badges` + `GET /api/users/me/referral` | `AchievementsPage` (Fase 17) - BadgeGrid + ReferralCard |
 | `/start?course=&weekly=` | `GET /api/weeklies/{weeklyId}` (+ `GET /api/courses/{courseId}` pra navegacao entre semanas) | `WeeklyDetailPage` (Fase 8) - dias da semana + projeto |
 | `/start?course=&weekly=&daily=` | `GET /api/dailies/{dailyId}` | Estado de uma Daily especifica (somente leitura) |
 | `/start?course=&weekly=&project=1` | `GET /api/weeklies/{weeklyId}` | Projeto pratico da semana (`WeeklyProjectPage`, Fase 7 - submissao via `POST .../project/submit`) |
@@ -1644,6 +1734,7 @@ de Projeto Semanal).
 | 14 | Motor de Gems + Streak | `docs/fase-14/resumo-implementacao-fase-14.md` |
 | 15 | Conta-Giros Visual + Bonus de Superacao | `docs/fase-15/resumo-implementacao-fase-15.md` |
 | 16 | Score de Estudo + Ranking | `docs/fase-16/resumo-implementacao-fase-16.md` |
+| 17 | Marketplace de Cosmeticos + Trofeus/Badges + Sistema de Indicacao | `docs/fase-17/resumo-implementacao-fase-17.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
