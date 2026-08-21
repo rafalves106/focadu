@@ -396,6 +396,69 @@ mesmo pipeline de conclusao), so que nunca reprova (Score 100 >= `PassingScore`)
 (nenhum campo de `SubmitActivityResponseRequest` e usado). Preencheu a lacuna que existia desde a
 Fase 3: antes so havia tela pras atividades avaliaveis, nunca pro texto/video em si.
 
+### Gamificacao: Gems e Streak (Fase 14)
+
+Primeira fase real de gamificacao - ate aqui, todo elemento de Gems/Streak que apareceu nos
+designs do Figma (Fases 8, 9, 13b) foi deliberadamente descartado por nao ter dado real por
+tras. Dois aggregates novos, ambos **1:1 com `User`, criados sob demanda (lazy)** - nunca no
+registro (`RegisterUserUseCase` continua sem tocar neles), so na primeira conclusao que gera
+Gems/streak:
+
+```
+Focadu.Domain.Gamification
+UserGemBalance (UserId, TotalGems, GemsFromDailiesThisMonth, GemsFromWeekliesThisMonth,
+                GemsFromMonthlyThisMonth, CurrentMonthPeriod)
+UserStreak (UserId, CurrentStreak, LongestStreak, LastCompletedDate?)
+```
+
+**Gems**: +1 por Daily completa pela primeira vez, +5 por Weekly perfeita (`Weekly.IsPerfect()` -
+`IsModuleComplete()` e nenhuma Daily original com `PenaltyPoints > 0`), +30 por Monthly perfeito
+(todas as `WeeklyTemplates` do Monthly com Weekly-instancia perfeita). Cap mensal **por
+categoria** (20/20/30 = 70 no total), resetado quando o mes calendario (`Year`/`Month` de
+`IClock.Today()`) muda - `UserGemBalance.CreditDaily/CreditWeekly/CreditMonthly` devolvem quanto
+foi creditado de verdade (0 se o cap da categoria ja foi atingido nesse mes). Nunca expira,
+acumula indefinidamente.
+
+**Streak**: dias consecutivos com Daily completada no dia certo (`Daily.Date == hoje`) -
+replay nunca conta (nem soma nem quebra). "Quebrar por inatividade" e deteccao de AUSENCIA de
+evento, nao presenca - sem job/cron no projeto (mesmo principio ja usado pra `DailyStatus.Locked`,
+resolvido sob demanda comparando datas no momento do acesso). Resolvido em 2 pontos:
+`RegisterCompletion` reinicia a contagem (em vez de incrementar) se detectar que ja tinha
+quebrado antes desta conclusao; `CurrentStreakAsOf(today)` (usado em toda LEITURA) nunca precisa
+esperar uma escrita futura pra reportar `0` - o campo persistido pode ficar "desatualizado" ate a
+proxima conclusao real, mas nenhuma leitura enxerga esse valor stale.
+
+**ponytail**: a janela de tolerancia usa "1 dia util" (segunda-sexta) como proxy pro calendario
+real do curriculo - fins de semana nao quebram, mas um hiato legitimo maior que 1 dia util
+(ex: gap entre Weeklies, se um curso futuro tiver) quebraria o streak incorretamente. Upgrade
+natural se isso importar: checar contra as datas de Daily agendadas de verdade (`IWeeklyRepository`)
+em vez do heuristico de dia util. `UserStreak`/`EnrollUserInCourseUseCase` cada um tem sua propria
+copia do helper `NextBusinessDay`/`FirstBusinessDayOnOrAfter` (Domain nao pode depender de
+Application, entao nao da pra compartilhar 1 so) - duplicacao deliberada de ~3 linhas, nao vale
+uma abstracao cross-camada pra isso.
+
+**Onde a decisao mora - por que nao nos hooks `Daily.OnFirstCompleted`/`OnReplayCompleted`.**
+Esses hooks (`protected virtual`, ja existiam desde a Fase 4, propositalmente vazios) pareciam o
+ponto de entrada natural, mas `Daily` nao tem acesso a `UserGemBalance`/`UserStreak` (aggregates
+diferentes - dar a `Daily` um repositorio quebraria a arquitetura hexagonal), e o projeto **nao
+tem nenhum mecanismo de Domain Events** (confirmado - nenhuma fase anterior introduziu esse
+padrao). Resolvido na camada de aplicacao (`CompleteDailyUseCase`), a abordagem mais simples que
+ja se encaixa no estilo do projeto - os hooks continuam vazios, sem uso.
+
+**`GamificationCreditor` - por que credita em 2 lugares diferentes.** `Weekly.IsPerfect()` so
+fica `true` quando AMBAS as condicoes batem: todas as Dailies completas E o projeto avaliado
+(`IsModuleComplete()`). No fluxo tipico (confirmado na propria verificacao ao vivo da Fase 13a:
+"concluir a Daily -> submeter e avaliar o projeto"), o projeto e avaliado **depois** de todas as
+Dailies - ou seja, o evento que de fato "fecha" a Weekly costuma ser a avaliacao do projeto, nao a
+ultima Daily. Um `GamificationCreditor` extraido (`Focadu.Application.Gamification`) e chamado a
+partir de `CompleteDailyUseCase` **e** de `EvaluateWeeklyProjectUseCase` - qualquer um dos dois
+pode ser quem observa `IsPerfect()` virar `true` pela primeira vez, dependendo da ordem que o
+aluno segue. Seguro contra credito duplicado: `WeeklyProject.Evaluate()` ja rejeita ser chamado
+2x (`DomainException` se `Status != Submitted`), e uma Daily so tem "primeira conclusao" uma vez -
+entao, pra qualquer Weekly, so existe 1 momento em que `IsPerfect()` vira `true` pela primeira
+vez, nao importa qual dos 2 chamadores observa esse momento (verificado ao vivo, ver "Testes"
+abaixo).
+
 ## Regras de negocio centralizadas
 
 Todas as constantes de negocio ficam em `Focadu.Domain.Policies.EvaluationPolicy` - unico lugar
@@ -529,6 +592,7 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | POST | `/api/auth/logout` | - (limpa o cookie direto no endpoint) | 200 |
 | 🔒 GET | `/api/auth/me` | `GetCurrentUserUseCase` (Fase 12) | 200, 401 `nao_autenticado` |
 | 🔒 PUT | `/api/users/me/profile` | `CompleteProfileUseCase` (Fase 13) | 200 - Entrevista de Perfil (Onboarding), so persiste |
+| 🔒 GET | `/api/users/me/gamification` | `GetGamificationSummaryUseCase` (Fase 14) | 200 (`GamificationSummaryDto`) - nunca 404, `UserGemBalance`/`UserStreak` sao lazy |
 | 🔒 GET | `/api/courses/available` | `GetAvailableCoursesUseCase` (Fase 13) | 200 - so cursos `Active` em que o usuario ainda nao esta matriculado |
 | 🔒 POST | `/api/enrollments` | `EnrollUserInCourseUseCase` (Fase 13) | 201, 409 `ja_matriculado` - gera Weekly/Daily/WeeklyProject-instancia pra todo o curriculo do curso |
 | 🔒 GET | `/api/enrollments/me` | `GetMyEnrollmentsUseCase` (Fase 13) | 200 (lista - hoje no maximo 1) |
@@ -542,7 +606,7 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | 🔒 POST | `/api/dailies/{dailyId}/start` | `StartOrResumeDailyUseCase` | 200 |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses` | `SubmitActivityResponseUseCase` | 201 (cria uma nova `ActivityResponse`) |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/audio` | `SubmitVoiceSummaryResponseUseCase` (Fase 5) | 201, `multipart/form-data`, so pra `VoiceSummary` |
-| 🔒 POST | `/api/dailies/{dailyId}/complete` | `CompleteDailyUseCase` | 200 (`CompleteDailyResult`, ver abaixo) |
+| 🔒 POST | `/api/dailies/{dailyId}/complete` | `CompleteDailyUseCase` | 200 (`CompleteDailyResult`, ver abaixo - Fase 14: ganhou `GemsEarned`/`StreakAfterCompletion`) |
 | 🔒 GET | `/api/curated-content/{id}` | `GetCuratedContentUseCase` (Fase 7) | 200, 404 - exige login, mas nao filtra por usuario (curriculo compartilhado) |
 | 🔒 POST | `/api/curated-content` | `CreateCuratedContentUseCase` (Fase 4) | 201, 400/404 - Fase 13: campo `weeklyTemplateId` (era `weeklyId`) |
 | 🔒 PUT | `/api/curated-content/{id}` | `UpdateCuratedContentUseCase` (Fase 4) | 200, 400/404 |
@@ -687,7 +751,8 @@ Codes especificos deste fluxo:
 O reforco (diario e/ou semanal), quando existe, **ja foi disparado antes** - durante alguma
 `SubmitActivityResponse` anterior (`Daily.ShouldTriggerDailyReinforcement()`/
 `Weekly.ShouldTriggerWeeklyReinforcement()` sao avaliados resposta a resposta, nao no momento da
-conclusao). `CompleteDailyUseCase` so reporta o estado ja existente:
+conclusao). `CompleteDailyUseCase` reporta o estado do reforco (ja existente) + credita Gems/
+Streak (Fase 14, ver "Gamificacao" acima) na mesma chamada:
 
 ```
 CompleteDailyResult(
@@ -695,7 +760,9 @@ CompleteDailyResult(
   DailyReinforcementTriggered: bool,     <- Daily.ReinforcementTriggered
   ReinforcementDailyId: Guid?,            <- Daily.ReinforcementDailyId
   WeeklyReinforcementTriggered: bool,     <- existe algum WeeklyReinforcement cobrindo esta Daily
-  WeeklyReinforcementId: Guid?)
+  WeeklyReinforcementId: Guid?,
+  GemsEarned: int,                        <- Fase 14: 0 em replay ou cap mensal atingido
+  StreakAfterCompletion: int)             <- Fase 14: sempre o streak "ao vivo" (CurrentStreakAsOf)
 ```
 
 `WeeklyReinforcementTriggered`/`WeeklyReinforcementId` sao calculados procurando, em
@@ -843,6 +910,12 @@ Acionado via `dotnet run --project src/Focadu.Api -- seed` (checagem de `args` e
 antes de `app.Run()` - roda e encerra, sem subir o servidor HTTP).
 
 ## Persistencia (EF Core + Postgres)
+
+**Fase 14: `AddGamification`** - 2a migration desde o squash da Fase 13 (`InitialCreate` +
+`AddGamification`), cria `UserGemBalances`/`UserStreaks` (1:1 com `Users`, indice unico em
+`UserId`, `OnDelete Cascade`) - mesmo padrao de `Enrollments` (referencia "fraca", sem navegacao
+de volta em `User`). Aplicada contra o Postgres de dev existente sem precisar recriar o banco (ao
+contrario do squash da Fase 13) - schema so aditivo, nenhuma tabela existente mudou.
 
 **Fase 13: migrations de Fases 1-12 apagadas e squashadas numa unica `InitialCreate` nova** - o
 schema mudou demais (renomes de tabela, colunas removidas/adicionadas, tabelas novas) pra um diff
@@ -1096,7 +1169,8 @@ frontend/
                                    /api/courses/available, matricula via POST /api/enrollments
       EmptyStateStartPage.tsx     <- guarda de seguranca em /start (Fase 13b) - renderizada por
                                    StartDashboard quando GET /api/today devolve 404
-                                   `nenhuma_matricula_ativa`
+                                   `nenhuma_matricula_ativa`; StreakIndicator fixo em 0 (Fase 14,
+                                   sem chamada a API - quem nao se matriculou nunca tem streak)
       TodayPage.tsx            <- /hoje (orquestra os 7 tipos de atividade, o menu de configuracoes
                                    e o fluxo de conclusao - Fase 7)
       StartPage.tsx             <- /start (so o roteador por query string - Fase 8: as 3 telas
@@ -1105,7 +1179,9 @@ frontend/
                                    "Bug real: modal preso ao trocar de Weekly" abaixo)
       StartDashboard.tsx         <- /start sem params - hub "Comecar Hoje"/"Projeto"/"Trilha" (Fase 8);
                                    renderiza EmptyStateStartPage no lugar do erro generico quando
-                                   `error.code === 'nenhuma_matricula_ativa'` (Fase 13b)
+                                   `error.code === 'nenhuma_matricula_ativa'` (Fase 13b);
+                                   GemBadge/StreakIndicator no header via GET /api/users/me/
+                                   gamification (Fase 14)
       WeeklyDetailPage.tsx        <- /start?weekly= - dias da semana + projeto + navegacao entre semanas
                                    (Fase 8); banner + trigger do PublicationModal quando
                                    `requiresPublicationToUnlock` (Fase 11)
@@ -1127,6 +1203,9 @@ frontend/
       onboarding/                  <- Fase 13b
         InterestChip.tsx                <- chip de interesse multi-select (Entrevista de Perfil)
         OnboardingStepper.tsx             <- "Passo X de 3" + pontinhos, compartilhado pelas 3 telas
+      gamification/                 <- Fase 14
+        GemBadge.tsx                     <- icone + contador de Gems, mesmo padrao pill de StatusBadge
+        StreakIndicator.tsx               <- "🔥 N dias" - StartDashboard (real) e EmptyStateStartPage (fixo em 0)
       activities/                 <- primitivas visuais das atividades avaliaveis (Fase 9)
         IntroCard.tsx                <- tela de intro (badge/titulo/descricao/regras/CTA) - gate local (`started`), nao e passo novo no Step do TodayPage
         OptionCard.tsx                <- card de opcao (neutro/selecionado/correto/errado/esmaecido) - Quiz, termos do WordMatch, decisoes do Roleplay
@@ -1148,7 +1227,9 @@ frontend/
       ProgressBar.tsx               <- barra de progresso generica, extraida de SessionTopBar (Fase 8)
       WeeklyProjectCard.tsx          <- card do projeto semanal, usado por StartDashboard e WeeklyDetailPage (Fase 8)
       CompletionSummary.tsx       <- pos POST .../complete (reforco diario/semanal, se houver); resumo real +
-                                   badge "Conceito Dominado" (aprovacao >= 90%) + "Refazer este dia" desde a Fase 9
+                                   badge "Conceito Dominado" (aprovacao >= 90%) + "Refazer este dia" desde a Fase 9;
+                                   "+N 💎" discreto quando `gemsEarned > 0` (Fase 14 - texto pequeno,
+                                   sem popup/confete, alinhado ao minimalismo do produto)
       ErrorBoundary.tsx            <- class component, pega excecoes de render (Fase 10) - montado em App.tsx
       publication/
         PublicationModal.tsx          <- modal de publicacao publica (Fase 11) - maquina de passo local
@@ -1176,7 +1257,7 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/selecionar-curso` | `GET /api/courses/available` + `POST /api/enrollments` | `CourseSelectionPage` (Fase 13b) - passo 3/3 |
 | `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7) |
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco; Fase 8: tambem usada como "reprise" de um dia ja concluido, clicado a partir da Visao Semanal) |
-| `/start` | `GET /api/today` + `GET /api/weeklies/{id}` + `GET /api/courses` + `GET /api/courses/{id}` | `StartDashboard` (Fase 8) - hub "Comecar Hoje"/"Projeto desta Semana"/"Trilha Completa" |
+| `/start` | `GET /api/today` + `GET /api/weeklies/{id}` + `GET /api/courses` + `GET /api/courses/{id}` + `GET /api/users/me/gamification` (Fase 14) | `StartDashboard` (Fase 8) - hub "Comecar Hoje"/"Projeto desta Semana"/"Trilha Completa" |
 | `/start?course=` | `GET /api/courses/{courseId}` | `CourseDetailPage` (Fase 8) - trilha completa do curso |
 | `/start?course=&weekly=` | `GET /api/weeklies/{weeklyId}` (+ `GET /api/courses/{courseId}` pra navegacao entre semanas) | `WeeklyDetailPage` (Fase 8) - dias da semana + projeto |
 | `/start?course=&weekly=&daily=` | `GET /api/dailies/{dailyId}` | Estado de uma Daily especifica (somente leitura) |
@@ -1374,7 +1455,10 @@ de Projeto Semanal).
   Cloze/FreeText usa comparacao textual simples, Roleplay usa mapeamento fixo de
   `TerminalQuality` (ver "Score no servidor") - nenhum dos dois e avaliacao inteligente de
   verdade. So `VoiceSummary` usa avaliacao por IA de verdade (Groq, desde a Fase 5).
-- Sistema de Gems/Marketplace/Ranking/Cosmeticos/Arcade/UGC.
+- **Resolvido parcialmente na Fase 14:** Gems/Streak agora sao dado real (ver "Gamificacao" na
+  secao de Modelo de dominio). **Ainda em standby:** Marketplace/Cosmeticos/Arcade/UGC (nada pra
+  gastar Gems ainda, Fase 17), Ranking/Score de Estudo (Fase 16), XP/Level/Elo/Patente (reservado
+  pra quando existir Squad/PvP, Fase 19+, confirmado explicitamente fora do escopo da Fase 14).
 - Endpoints de autoria de Course/Monthly/WeeklyTemplate/DailyTemplate/DailyActivity - so
   `CuratedContent` tem autoria via Api desde a Fase 4 (ver "Autoria de conteudo curado"); o resto
   da estrutura continua so via `SeedWebSecurityCourseUseCase` (estrutural, muda com pouca
@@ -1393,9 +1477,8 @@ de Projeto Semanal).
 - **Resolvido na Fase 7, nao e mais pendencia:** menu de configuracoes no frontend - so que
   Aparencia/Som/Notificacoes/Limite de gravacao/Perfil/Atalhos continuam so visuais, sem
   persistencia (ver "Menu de configuracoes" na secao de Frontend).
-- Sistema de Gems/XP/cosmeticos/ranking (mesma pendencia de "Gems/Marketplace/Ranking/Cosmeticos/
-  Arcade/UGC" acima) - **reconfirmado em standby na Fase 7**, mesmo aparecendo em telas adjacentes
-  do Figma usado nessa fase.
+- Cosmeticos/ranking (mesma pendencia acima) - reconfirmado em standby na Fase 7, mesmo aparecendo
+  em telas adjacentes do Figma usado nessa fase; Gems deixou de estar nesta lista na Fase 14.
 - O enunciado do Projeto Semanal (`WeeklyProjectSpecText`, hoje em `WeeklyTemplate` - Fase 13a
   moveu pra la, curriculo compartilhado) so e texto livre unico - o mockup do Figma da tela de
   Projeto Semanal mostra titulo/objetivos/recursos adicionais como campos separados, que o dominio
@@ -1431,6 +1514,7 @@ de Projeto Semanal).
 | 12 | Fundacao de Autenticacao (Backend) + Splash & Login/Registro (UI) | `docs/fase-12/resumo-implementacao-fase-12.md` |
 | 13a | Template vs Instancia, Matricula e Logout (Backend) | `docs/fase-13a/resumo-implementacao-fase-13a.md` |
 | 13b | Onboarding (UI) + Correcao do /admin/conteudo | `docs/fase-13b/resumo-implementacao-fase-13b.md` |
+| 14 | Motor de Gems + Streak | `docs/fase-14/resumo-implementacao-fase-14.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
@@ -1449,7 +1533,9 @@ de Projeto Semanal).
   proxima sessao.
 - **"Sessao Expirada" e "Streak Perdido" (2 dos 4 designs do Figma da Fase 10) nao tem tela** - o
   primeiro precisaria de um conceito de sessao/expiracao por inatividade que o app nao tem (usuario
-  unico hardcoded, sem login); o segundo e gamificacao (Gems/XP/streak), em standby desde a Fase 6.
+  unico hardcoded, sem login); o segundo e uma tela dedicada de "voce perdeu o streak" - Streak
+  virou dado real na Fase 14 (`UserStreak`), mas nenhuma tela de alerta especifica foi pedida/
+  construida - o streak quebrado so aparece como `0` no `StreakIndicator` normal.
   Ver `docs/fase-10/resumo-implementacao-fase-10.md` pra tabela completa do que cada link do Figma
   continha de verdade vs. o que o prompt dizia.
 - **Testando erros de rede com Playwright: usar o host completo no glob de `page.route()`**

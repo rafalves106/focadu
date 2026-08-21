@@ -9,6 +9,7 @@ using Focadu.Application.Courses;
 using Focadu.Application.Dailies;
 using Focadu.Application.Enrollments;
 using Focadu.Application.Exceptions;
+using Focadu.Application.Gamification;
 using Focadu.Application.Seed;
 using Focadu.Application.Users;
 using Focadu.Application.Weeklies;
@@ -211,6 +212,14 @@ api.MapPut("/users/me/profile", async (ClaimsPrincipal principal, CompleteProfil
         Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), request?.Interests ?? [], request?.AdditionalNotes, ct)))
     .RequireAuthorization()
     .WithName("CompleteProfile");
+
+// Gems/Streak (Fase 14) - UserGemBalance/UserStreak sao lazy (so existem apos a 1a conclusao que
+// gera Gems/streak), entao um usuario que nunca completou nada devolve o estado zerado normalmente
+// (200, nunca 404 - nao ter gamificado ainda nao e um erro).
+api.MapGet("/users/me/gamification", async (ClaimsPrincipal principal, GetGamificationSummaryUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
+    .RequireAuthorization()
+    .WithName("GetGamificationSummary");
 
 // --- Matricula (Fase 13) ---------------------------------------------------------------------
 

@@ -103,6 +103,15 @@ public class Weekly : Entity
     public bool RequiresPublicationToUnlock() =>
         IsModuleComplete() && _publication?.Status != PublicationStatus.Validated;
 
+    /// <summary>
+    /// "Perfeita" (Fase 14, Gamificacao): modulo completo e nenhuma Daily original teve
+    /// penalidade (nunca errou o suficiente pra disparar reforco/dia fraco). Reforco fica de fora
+    /// da checagem pelo mesmo motivo de IsModuleComplete - nao e parte do conteudo planejado.
+    /// Usada pelo bonus de Gems de Weekly/Monthly perfeita (ver GamificationCreditor).
+    /// </summary>
+    public bool IsPerfect() =>
+        IsModuleComplete() && _dailies.Where(d => !d.IsReinforcement).All(d => d.PenaltyPoints == 0);
+
     public IReadOnlyCollection<Daily> GetWeakDailies() =>
         _dailies.Where(d => d.IsWeakDay).ToList();
 

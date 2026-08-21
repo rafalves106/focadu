@@ -249,6 +249,41 @@ public class WeeklyTests
         Assert.True(weekly.RequiresPublicationToUnlock());
     }
 
+    // Fase 14: IsPerfect (bonus de Gems).
+
+    [Fact]
+    public void IsPerfect_True_WhenModuleCompleteAndNoDailyHadPenalty()
+    {
+        var weekly = CompleteWeeklyDailies(DailyFixtures.NewWeekly());
+        DefineEvaluatedProject(weekly);
+
+        Assert.True(weekly.IsPerfect());
+    }
+
+    [Fact]
+    public void IsPerfect_False_WhenAnyOriginalDailyHadPenalty()
+    {
+        // NewWeakDaily reprova todas as respostas antes de concluir - PenaltyPoints > 0 mesmo apos
+        // Complete(), entao o modulo pode ficar completo sem ficar perfeito.
+        var weekly = DailyFixtures.NewWeekly();
+        var weakDaily = DailyFixtures.NewWeakDaily(weekly, 1, DailyFixtures.Today);
+        weakDaily.Complete();
+        DefineEvaluatedProject(weekly);
+
+        Assert.True(weekly.IsModuleComplete());
+        Assert.False(weekly.IsPerfect());
+    }
+
+    [Fact]
+    public void IsPerfect_False_WhenModuleNotComplete()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        DailyFixtures.NewDailyWithOneActivity(weekly, 1, DailyFixtures.Today);
+        DefineEvaluatedProject(weekly);
+
+        Assert.False(weekly.IsPerfect());
+    }
+
     [Fact]
     public void InitializeProject_CalledTwice_Throws()
     {

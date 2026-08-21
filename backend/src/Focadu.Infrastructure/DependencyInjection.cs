@@ -26,6 +26,8 @@ public static class DependencyInjection
         services.AddScoped<IWeeklyTemplateRepository, WeeklyTemplateRepository>();
         services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserGemBalanceRepository, UserGemBalanceRepository>();
+        services.AddScoped<IUserStreakRepository, UserStreakRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<IClock, SystemClock>();
 

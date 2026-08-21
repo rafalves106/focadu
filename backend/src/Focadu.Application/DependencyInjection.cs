@@ -2,6 +2,7 @@ using Focadu.Application.Content;
 using Focadu.Application.Courses;
 using Focadu.Application.Dailies;
 using Focadu.Application.Enrollments;
+using Focadu.Application.Gamification;
 using Focadu.Application.Seed;
 using Focadu.Application.Users;
 using Focadu.Application.Weeklies;
@@ -43,6 +44,8 @@ public static class DependencyInjection
         services.AddScoped<EnrollUserInCourseUseCase>();
         services.AddScoped<GetAvailableCoursesUseCase>();
         services.AddScoped<GetMyEnrollmentsUseCase>();
+        services.AddScoped<GamificationCreditor>();
+        services.AddScoped<GetGamificationSummaryUseCase>();
         return services;
     }
 }
