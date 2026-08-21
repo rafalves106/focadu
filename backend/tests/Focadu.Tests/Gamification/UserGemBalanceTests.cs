@@ -95,6 +95,52 @@ public class UserGemBalanceTests
         Assert.Equal(UserGemBalance.DailyMonthlyCap + 1, balance.TotalGems);
     }
 
+    // Fase 15: CreditReinforcementBonus (Bonus de Superacao).
+
+    [Fact]
+    public void CreditReinforcementBonus_AddsTwoGems()
+    {
+        var balance = new UserGemBalance(Guid.NewGuid(), Today);
+
+        var earned = balance.CreditReinforcementBonus(Today);
+
+        Assert.Equal(2, earned);
+        Assert.Equal(2, balance.TotalGems);
+        Assert.Equal(2, balance.GemsFromDailiesThisMonth);
+    }
+
+    [Fact]
+    public void CreditReinforcementBonus_SharesCapWithNormalDailyCredit()
+    {
+        var balance = new UserGemBalance(Guid.NewGuid(), Today);
+        for (var i = 0; i < UserGemBalance.DailyMonthlyCap - 1; i++)
+        {
+            balance.CreditDaily(Today); // 19 Gems de Dailies normais
+        }
+
+        // So sobra 1 de espaco no cap - o bonus de +2 e clampado pra +1, nunca estoura o cap.
+        var earned = balance.CreditReinforcementBonus(Today);
+
+        Assert.Equal(1, earned);
+        Assert.Equal(UserGemBalance.DailyMonthlyCap, balance.GemsFromDailiesThisMonth);
+        Assert.Equal(UserGemBalance.DailyMonthlyCap, balance.TotalGems);
+    }
+
+    [Fact]
+    public void CreditReinforcementBonus_ZeroAfterCategoryCapAlreadyReached()
+    {
+        var balance = new UserGemBalance(Guid.NewGuid(), Today);
+        for (var i = 0; i < UserGemBalance.DailyMonthlyCap; i++)
+        {
+            balance.CreditDaily(Today);
+        }
+
+        var earned = balance.CreditReinforcementBonus(Today);
+
+        Assert.Equal(0, earned);
+        Assert.Equal(UserGemBalance.DailyMonthlyCap, balance.TotalGems);
+    }
+
     [Fact]
     public void MonthlyCounters_DoNotReset_WithinTheSameMonth()
     {

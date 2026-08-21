@@ -119,6 +119,8 @@ export interface DailyStateDto {
   status: DailyStatus;
   isReinforcement: boolean;
   penaltyPoints: number;
+  /** Fase 15: sempre EvaluationPolicy.DailyPenaltyThreshold (backend) - pro PenaltyGauge nunca hardcodar o valor. */
+  penaltyThreshold: number;
   accessMode: DailyAccessMode;
   activities: DailyActivityDto[];
 }
@@ -134,6 +136,8 @@ export interface SubmitActivityResponseResult {
 // anterior) - so aqui o cliente tem certeza de ter visto todas as atividades da Daily.
 // gemsEarned/streakAfterCompletion (Fase 14): gemsEarned e 0 em replay/cap mensal atingido;
 // streakAfterCompletion e sempre o streak "ao vivo", mesmo quando esta conclusao nao mexeu nele.
+// wasReinforcementBonus (Fase 15): elegibilidade ao Bonus de Superacao, independente de quantas
+// Gems o cap mensal efetivamente permitiu (so usar pra escolher a COPY quando gemsEarned > 0).
 export interface CompleteDailyResult {
   daily: DailyStateDto;
   dailyReinforcementTriggered: boolean;
@@ -142,6 +146,7 @@ export interface CompleteDailyResult {
   weeklyReinforcementId: string | null;
   gemsEarned: number;
   streakAfterCompletion: number;
+  wasReinforcementBonus: boolean;
 }
 
 /** GET /api/users/me/gamification (Fase 14) - Gems acumuladas + streak atual/recorde do usuario logado. */
@@ -263,6 +268,8 @@ export interface WeeklyDetailDto {
   reinforcements: WeeklyReinforcementSummaryDto[];
   /** Fase 11: true quando ESTA Weekly completou o modulo mas ainda falta publicacao Validated. */
   requiresPublicationToUnlock: boolean;
+  /** Fase 15: true quando existe um reforco semanal (2+ dias fracos) ainda nao totalmente atendido - so indicador, nunca bloqueia nada. */
+  hasPendingWeeklyReinforcement: boolean;
 }
 
 export interface ModulePublicationDto {

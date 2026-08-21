@@ -167,6 +167,65 @@ public class DailyTests
         Assert.Throws<DomainException>(() => weekly.CreateDailyReinforcement(daily.Id, DailyFixtures.Today.AddDays(1)));
     }
 
+    // Fase 15: AllActivitiesPassed (Bonus de Superacao).
+
+    [Fact]
+    public void AllActivitiesPassed_True_WhenEveryActivityHasAPassingLatestAttempt()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var template = weekly.Template.AddDailyTemplate(1);
+        var daily = weekly.AddDaily(template, DailyFixtures.Today);
+        var a1 = template.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
+        var a2 = template.AddActivity(ActivityType.Quiz, 1, AnswerMode.MultipleChoice);
+        daily.Start();
+
+        daily.SubmitActivityResponse(a1.Id, 100);
+        daily.SubmitActivityResponse(a2.Id, 100);
+
+        Assert.True(daily.AllActivitiesPassed());
+    }
+
+    [Fact]
+    public void AllActivitiesPassed_False_WhenAnyActivityStillFailing()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var template = weekly.Template.AddDailyTemplate(1);
+        var daily = weekly.AddDaily(template, DailyFixtures.Today);
+        var a1 = template.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
+        var a2 = template.AddActivity(ActivityType.Quiz, 1, AnswerMode.MultipleChoice);
+        daily.Start();
+
+        daily.SubmitActivityResponse(a1.Id, 100);
+        daily.SubmitActivityResponse(a2.Id, 0);
+
+        Assert.False(daily.AllActivitiesPassed());
+    }
+
+    [Fact]
+    public void AllActivitiesPassed_UsesLatestAttempt_NotFirst()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var (daily, activity) = DailyFixtures.NewDailyWithOneActivity(weekly, 1, DailyFixtures.Today);
+        daily.Start();
+
+        daily.SubmitActivityResponse(activity.Id, 0); // 1a tentativa: reprovou
+        daily.SubmitActivityResponse(activity.Id, 100); // 2a tentativa: aprovou
+
+        Assert.True(daily.AllActivitiesPassed());
+    }
+
+    [Fact]
+    public void AllActivitiesPassed_False_WhenAnyActivityNeverAnswered()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var template = weekly.Template.AddDailyTemplate(1);
+        var daily = weekly.AddDaily(template, DailyFixtures.Today);
+        template.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
+        daily.Start();
+
+        Assert.False(daily.AllActivitiesPassed());
+    }
+
     [Fact]
     public void Replay_AfterFirstCompletion_NeverAddsNewPenalty()
     {

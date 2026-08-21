@@ -153,6 +153,18 @@ public class Daily : Entity
             .ToList();
 
     /// <summary>
+    /// Verdadeiro quando toda Activity desta Daily tem resposta e a tentativa MAIS RECENTE foi
+    /// aprovada (Fase 15, Bônus de Superação - só faz sentido pra Dailies de reforço, onde cada
+    /// Activity é uma das que o usuário errou originalmente). Activity sem nenhuma resposta ainda
+    /// conta como não aprovada (não dá pra "aprovar" o que nunca foi respondido); Daily sem
+    /// nenhuma Activity (não deveria acontecer - CreateDailyReinforcement sempre clona ao menos as
+    /// atividades falhas que a disparou) também não conta como aprovada, defensivamente.
+    /// </summary>
+    public bool AllActivitiesPassed() =>
+        Activities.Count > 0
+        && Activities.All(a => _responses.Where(r => r.ActivityId == a.Id).OrderBy(r => r.AttemptNumber).LastOrDefault()?.Passed == true);
+
+    /// <summary>
     /// Conclui a Daily. Na primeira conclusão, registra CompletedAt (a partir daí a penalidade
     /// para de contar). Em conclusões seguintes (replay), é só um hook — propositalmente vazio —
     /// para uma futura lógica de recompensa/streak; nunca dá recompensa duplicada.

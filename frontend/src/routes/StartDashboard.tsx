@@ -18,6 +18,7 @@ import { StreakIndicator } from '../components/gamification/StreakIndicator';
 import { StatusBadge } from '../components/StatusBadge';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
 import { WeeklyProjectCard } from '../components/WeeklyProjectCard';
+import { WeeklyReinforcementBadge } from '../components/WeeklyReinforcementBadge';
 import { EmptyStateStartPage } from './EmptyStateStartPage';
 
 interface DashboardData {
@@ -77,6 +78,12 @@ export function StartDashboard() {
           <StreakIndicator currentStreak={gamification.currentStreak} />
         </div>
       </div>
+
+      {weekly.hasPendingWeeklyReinforcement && (
+        <Link to={`/start?course=${course?.id ?? ''}&weekly=${weekly.id}`} className="self-start">
+          <WeeklyReinforcementBadge />
+        </Link>
+      )}
 
       <TodayCard daily={daily} weekly={weekly} />
 

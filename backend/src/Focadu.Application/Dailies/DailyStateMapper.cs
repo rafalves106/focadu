@@ -1,6 +1,7 @@
 using Focadu.Domain.Activities;
 using Focadu.Domain.Dailies;
 using Focadu.Domain.Enums;
+using Focadu.Domain.Policies;
 
 namespace Focadu.Application.Dailies;
 
@@ -24,7 +25,8 @@ internal static class DailyStateMapper
 
         return new DailyStateDto(
             daily.Id, daily.WeeklyId, daily.DayNumber, daily.Date,
-            daily.Status, daily.IsReinforcement, daily.PenaltyPoints, accessMode, activities);
+            daily.Status, daily.IsReinforcement, daily.PenaltyPoints, EvaluationPolicy.DailyPenaltyThreshold,
+            accessMode, activities);
     }
 
     private static DailyActivityDto ToActivityDto(Daily daily, DailyActivity activity)

@@ -1,4 +1,5 @@
 using Focadu.Domain.Common;
+using Focadu.Domain.Policies;
 
 namespace Focadu.Domain.Gamification;
 
@@ -40,36 +41,43 @@ public class UserGemBalance : Entity
     }
 
     /// <summary>+1 Gem por Daily completa pela primeira vez, respeitando o cap de 20/mes vindas de Dailies. Retorna quanto foi creditado de verdade (0 se o cap ja foi atingido).</summary>
-    public int CreditDaily(DateOnly today)
-    {
-        ResetMonthlyCountersIfNeeded(today);
-        if (GemsFromDailiesThisMonth >= DailyMonthlyCap) return 0;
+    public int CreditDaily(DateOnly today) =>
+        Credit(today, DailyGemAmount, DailyMonthlyCap, () => GemsFromDailiesThisMonth, v => GemsFromDailiesThisMonth = v);
 
-        GemsFromDailiesThisMonth += DailyGemAmount;
-        TotalGems += DailyGemAmount;
-        return DailyGemAmount;
-    }
+    /// <summary>
+    /// Bonus de Superacao (Fase 15): +2 Gems (EvaluationPolicy.ReinforcementBonusGems) por
+    /// concluir uma Daily de reforco com TODAS as atividades aprovadas - substitui o CreditDaily
+    /// normal (nunca os dois juntos, ver CompleteDailyUseCase), mas conta na MESMA categoria/cap
+    /// de Dailies (20/mes) - nao ganhou cap proprio de proposito, manter a Fase 14 simples.
+    /// </summary>
+    public int CreditReinforcementBonus(DateOnly today) =>
+        Credit(today, EvaluationPolicy.ReinforcementBonusGems, DailyMonthlyCap, () => GemsFromDailiesThisMonth, v => GemsFromDailiesThisMonth = v);
 
     /// <summary>+5 Gems por Weekly perfeita, respeitando o cap de 20/mes vindas de Weeklies.</summary>
-    public int CreditWeekly(DateOnly today)
-    {
-        ResetMonthlyCountersIfNeeded(today);
-        if (GemsFromWeekliesThisMonth >= WeeklyMonthlyCap) return 0;
-
-        GemsFromWeekliesThisMonth += WeeklyGemAmount;
-        TotalGems += WeeklyGemAmount;
-        return WeeklyGemAmount;
-    }
+    public int CreditWeekly(DateOnly today) =>
+        Credit(today, WeeklyGemAmount, WeeklyMonthlyCap, () => GemsFromWeekliesThisMonth, v => GemsFromWeekliesThisMonth = v);
 
     /// <summary>+30 Gems por Monthly perfeito, respeitando o cap de 30/mes vindas de Monthly.</summary>
-    public int CreditMonthly(DateOnly today)
+    public int CreditMonthly(DateOnly today) =>
+        Credit(today, MonthlyGemAmount, MonthlyMonthlyCap, () => GemsFromMonthlyThisMonth, v => GemsFromMonthlyThisMonth = v);
+
+    /// <summary>
+    /// Credita `amount` na categoria informada, sem nunca ultrapassar `monthlyCap` (Fase 15:
+    /// clampado, nao mais tudo-ou-nada - o Bonus de Superacao (+2) compartilha cap com o credito
+    /// normal de Daily (+1), entao um usuario a 19/20 no mes pode legitimamente so receber +1 de
+    /// um bonus de +2, nunca estourar o cap por 1). Devolve quanto foi creditado de verdade.
+    /// </summary>
+    private int Credit(DateOnly today, int amount, int monthlyCap, Func<int> getCategoryCounter, Action<int> setCategoryCounter)
     {
         ResetMonthlyCountersIfNeeded(today);
-        if (GemsFromMonthlyThisMonth >= MonthlyMonthlyCap) return 0;
 
-        GemsFromMonthlyThisMonth += MonthlyGemAmount;
-        TotalGems += MonthlyGemAmount;
-        return MonthlyGemAmount;
+        var remaining = monthlyCap - getCategoryCounter();
+        if (remaining <= 0) return 0;
+
+        var credited = Math.Min(amount, remaining);
+        setCategoryCounter(getCategoryCounter() + credited);
+        TotalGems += credited;
+        return credited;
     }
 
     private void ResetMonthlyCountersIfNeeded(DateOnly today)

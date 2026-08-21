@@ -1,4 +1,6 @@
 using Focadu.Domain.Common;
+using Focadu.Domain.Dailies;
+using Focadu.Domain.Enums;
 using Focadu.Domain.Exceptions;
 using Focadu.Domain.Policies;
 
@@ -35,6 +37,25 @@ public class WeeklyReinforcement : Entity
         TriggeredAt = DateTime.UtcNow;
         _weakDailyLinks.AddRange(ids.Select(id => new WeakDailyLink(id)));
     }
+
+    /// <summary>
+    /// Verdadeiro quando toda Daily fraca que disparou este reforço (WeakDailyIds) já tem sua
+    /// Daily de reforço correspondente (Daily.ReinforcementDailyId) concluída (Fase 15) - so
+    /// leitura/exibição (indicador "revisão pendente"), não muda a lógica de disparo existente.
+    /// `dailies` é o `Weekly.Dailies` de quem chama (WeeklyReinforcement não navega pra Daily
+    /// diretamente, só guarda os Ids). Uma Daily fraca sem `ReinforcementDailyId` ainda (não
+    /// deveria acontecer - toda Daily em WeakDailyIds disparou reforço por definição) conta como
+    /// não resolvida, defensivamente.
+    /// </summary>
+    public bool IsResolved(IReadOnlyCollection<Daily> dailies) =>
+        WeakDailyIds.All(weakDailyId =>
+        {
+            var weakDaily = dailies.FirstOrDefault(d => d.Id == weakDailyId);
+            if (weakDaily?.ReinforcementDailyId is not { } reinforcementDailyId) return false;
+
+            var reinforcementDaily = dailies.FirstOrDefault(d => d.Id == reinforcementDailyId);
+            return reinforcementDaily?.Status == DailyStatus.Completed;
+        });
 }
 
 /// <summary>

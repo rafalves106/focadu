@@ -112,6 +112,13 @@ public class Weekly : Entity
     public bool IsPerfect() =>
         IsModuleComplete() && _dailies.Where(d => !d.IsReinforcement).All(d => d.PenaltyPoints == 0);
 
+    /// <summary>
+    /// Verdadeiro quando existe um WeeklyReinforcement disparado (Fase 4, 2+ dias fracos) que
+    /// ainda nao foi totalmente atendido (Fase 15 - ver WeeklyReinforcement.IsResolved). So
+    /// leitura/exibicao (indicador "revisao semanal pendente"), nao muda a logica de disparo.
+    /// </summary>
+    public bool HasPendingWeeklyReinforcement() => _reinforcements.Any(r => !r.IsResolved(_dailies));
+
     public IReadOnlyCollection<Daily> GetWeakDailies() =>
         _dailies.Where(d => d.IsWeakDay).ToList();
 

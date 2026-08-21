@@ -1,3 +1,4 @@
+using Focadu.Domain.Dailies;
 using Focadu.Domain.Enums;
 using Focadu.Domain.Exceptions;
 using Focadu.Domain.Weeklies;
@@ -282,6 +283,61 @@ public class WeeklyTests
         DefineEvaluatedProject(weekly);
 
         Assert.False(weekly.IsPerfect());
+    }
+
+    // Fase 15: HasPendingWeeklyReinforcement / WeeklyReinforcement.IsResolved.
+
+    [Fact]
+    public void HasPendingWeeklyReinforcement_True_WhenWeakDailiesStillLackACompletedReinforcement()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var today = DailyFixtures.Today;
+        var day1 = DailyFixtures.NewWeakDaily(weekly, 1, today.AddDays(-3));
+        var day2 = DailyFixtures.NewWeakDaily(weekly, 2, today.AddDays(-2));
+        weekly.CreateDailyReinforcement(day1.Id, today.AddDays(-1));
+        weekly.CreateDailyReinforcement(day2.Id, today.AddDays(-1));
+
+        var reinforcement = weekly.TriggerWeeklyReinforcement();
+
+        Assert.False(reinforcement.IsResolved(weekly.Dailies));
+        Assert.True(weekly.HasPendingWeeklyReinforcement());
+    }
+
+    [Fact]
+    public void HasPendingWeeklyReinforcement_False_AfterAllWeakDailiesReinforcementsCompleted()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var today = DailyFixtures.Today;
+        var day1 = DailyFixtures.NewWeakDaily(weekly, 1, today.AddDays(-3));
+        var day2 = DailyFixtures.NewWeakDaily(weekly, 2, today.AddDays(-2));
+        var reinforcementDaily1 = weekly.CreateDailyReinforcement(day1.Id, today.AddDays(-1));
+        var reinforcementDaily2 = weekly.CreateDailyReinforcement(day2.Id, today.AddDays(-1));
+        weekly.TriggerWeeklyReinforcement();
+
+        CompleteWithPassingResponses(reinforcementDaily1);
+        CompleteWithPassingResponses(reinforcementDaily2);
+
+        Assert.False(weekly.HasPendingWeeklyReinforcement());
+    }
+
+    [Fact]
+    public void HasPendingWeeklyReinforcement_False_WhenNoReinforcementEverTriggered()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        DailyFixtures.NewDaily(weekly, 1, DailyFixtures.Today);
+
+        Assert.False(weekly.HasPendingWeeklyReinforcement());
+    }
+
+    /// <summary>Start + responde 100 em cada atividade + Complete - so pros testes de IsResolved acima.</summary>
+    private static void CompleteWithPassingResponses(Daily daily)
+    {
+        daily.Start();
+        foreach (var activity in daily.Activities)
+        {
+            daily.SubmitActivityResponse(activity.Id, 100);
+        }
+        daily.Complete();
     }
 
     [Fact]
