@@ -45,6 +45,11 @@ export function QuickQuestionOrb() {
  * JSX estava duplicado nos 2, sem componente proprio). `card=false` (so o Resumo Falado usa) pula
  * o cartao com borda/fundo - o Figma mostra a gravacao de voz flutuando direto sobre o fundo, sem
  * cartao ao redor (unico caso assim entre as 7 telas de sessao).
+ *
+ * `pt-20` (Fase 20, era `p-10` simetrico): PenaltyGauge/botao de configuracoes (TodayPage) sao
+ * `fixed left-6/right-6 top-6` por cima de QUALQUER tela de sessao - antes, o nav global de
+ * `<App/>` (~60px) coincidentemente dava essa folga; com `/hoje` full-bleed (Fase 20, sem nav), o
+ * SessionTopBar colidia direto com os 2 icones sem essa margem extra.
  */
 export function SessionLayout({
   eyebrow,
@@ -62,7 +67,7 @@ export function SessionLayout({
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-base p-10">
+    <div className="min-h-screen bg-base px-10 pt-20 pb-10">
       <div className="mx-auto flex max-w-[1360px] flex-col gap-8">
         <SessionTopBar eyebrow={eyebrow} stepLabel={stepLabel} progress={progress} />
 

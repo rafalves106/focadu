@@ -25,7 +25,7 @@ export function WeeklyProjectCard({
 }) {
   if (!project) {
     return (
-      <div className="flex flex-col gap-2 rounded-2xl border border-surface-alt bg-surface p-6">
+      <div className="flex flex-col gap-2 rounded-2xl border border-stroke bg-surface p-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted">Projeto desta semana</p>
         <p className="text-sm text-secondary">Nenhum projeto definido ainda para esta semana.</p>
       </div>
@@ -37,7 +37,15 @@ export function WeeklyProjectCard({
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-project/40 bg-surface p-6">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-project">Projeto desta Semana</p>
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-project">Projeto desta Semana</p>
+          {/* Fase 20 (Figma "visao-semanal"): rotulo decorativo fixo ("chefe de fase", mesma
+              linguagem ja usada em WeeklyProjectPage) - nao e dado do usuario, so identifica o
+              tipo de card. */}
+          <span className="rounded-full border border-project bg-project/25 px-2 py-0.5 text-[10px] font-bold tracking-wide text-project">
+            BOSS
+          </span>
+        </div>
         <StatusBadge {...badge} />
       </div>
       <p className="line-clamp-2 text-sm leading-relaxed text-secondary">{project.specText}</p>

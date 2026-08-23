@@ -17,7 +17,7 @@ export function ReferralCard({ info }: { info: ReferralInfoDto }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-surface-alt bg-surface p-6">
+    <div className="flex flex-col gap-3 rounded-2xl border border-stroke bg-surface p-6">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">Indique um amigo</p>
       <p className="font-mono text-2xl font-bold tracking-[0.3em] text-accent">{info.referralCode}</p>
       <button

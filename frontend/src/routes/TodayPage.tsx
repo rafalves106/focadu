@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../contexts/useAuth';
 import { ActivityType, AnswerMode, ActivityStatus, DailyAccessMode, type DailyStateDto, type CompleteDailyResult } from '../api/types';
 import { classifyApiError, type ApiFailure } from '../lib/apiError';
 import { ActivityScreen, Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { QuizActivity } from '../components/QuizActivity';
 import { WordMatchActivity } from '../components/WordMatchActivity';
 import { ClozeFreeTextActivity } from '../components/ClozeFreeTextActivity';
@@ -66,6 +67,24 @@ function useSessionExitGuard(active: boolean, onIntercept: () => void) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
+}
+
+/**
+ * `/hoje` (Fase 20): fora do shell `<App/>` - full-bleed, mesmo tratamento de `/onboarding`/
+ * `/login`, sem o nav global sobrepondo o PenaltyGauge/botao de configuracoes (fixos no topo,
+ * pensados pra ocupar o canto real da viewport - pendencia identificada na Fase 19). `<App/>`
+ * so contribuia com o nav (que aqui nao deve aparecer mesmo) e o `<ErrorBoundary key={pathname}>`
+ * em torno do `<Outlet/>` - reposto aqui, so que com a key incluindo `search` tambem (nao so
+ * `pathname`), ja que `/hoje` navega entre Dailies diferentes via `?daily=` sem trocar de rota
+ * (ver TodayPage abaixo) - sem isso, um crash nao seria "esquecido" ao trocar de Daily.
+ */
+export function TodayRoute() {
+  const location = useLocation();
+  return (
+    <ErrorBoundary key={location.pathname + location.search}>
+      <TodayPage />
+    </ErrorBoundary>
+  );
 }
 
 /**

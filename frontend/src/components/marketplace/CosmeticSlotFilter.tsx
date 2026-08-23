@@ -10,7 +10,7 @@ const FILTERS: { slot: CosmeticSlot | null; label: string }[] = [
 /** Filtro por slot (Fase 17) - mesmo padrão de abas do RankingScopeTabs/LoginPage. */
 export function CosmeticSlotFilter({ slot, onChange }: { slot: CosmeticSlot | null; onChange: (slot: CosmeticSlot | null) => void }) {
   return (
-    <div className="flex gap-6 border-b border-surface-alt">
+    <div className="flex gap-6 border-b border-stroke">
       {FILTERS.map((filter) => (
         <button
           key={filter.label}

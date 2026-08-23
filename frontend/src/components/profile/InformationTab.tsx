@@ -23,12 +23,12 @@ export function InformationTab({ user, gamification }: { user: UserDto; gamifica
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-surface-alt bg-surface p-6 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-stroke bg-surface p-6 sm:grid-cols-2">
         <Field label="Nome de exibição" value={user.displayName} />
         <Field label="E-mail" value={user.email} />
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-surface-alt bg-surface p-6">
+      <div className="flex flex-col gap-3 rounded-2xl border border-stroke bg-surface p-6">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Seus interesses</p>
           <Link to="/onboarding/perfil?edit=1" className="text-sm font-semibold text-accent hover:underline">
@@ -63,16 +63,16 @@ export function InformationTab({ user, gamification }: { user: UserDto; gamifica
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
-      <p className="mt-1 text-primary">{value}</p>
+    <div className="flex flex-col gap-2">
+      <p className="text-[12px] font-semibold tracking-[0.5px] text-secondary uppercase">{label}</p>
+      <p className="rounded-[10px] border border-stroke bg-surface-alt p-4 text-[15px] text-primary">{value}</p>
     </div>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-surface-alt bg-surface p-4 text-center">
+    <div className="rounded-2xl border border-stroke bg-surface p-4 text-center">
       <p className="text-xl font-bold text-primary">{value}</p>
       <p className="text-xs text-secondary">{label}</p>
     </div>

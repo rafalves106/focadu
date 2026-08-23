@@ -88,7 +88,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
             <p className="whitespace-pre-line text-[15px] leading-relaxed text-secondary">{project.specText}</p>
           </div>
 
-          <div className="h-px bg-surface-alt" />
+          <div className="h-px bg-stroke" />
 
           {project.submissionUrl && (
             <div className="flex flex-col gap-1">
@@ -110,7 +110,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
                   value={submissionUrl}
                   onChange={(e) => setSubmissionUrl(e.target.value)}
                   placeholder="https://github.com/..."
-                  className="rounded-xl border border-surface-alt bg-surface-alt px-4 py-3 text-primary outline-none focus:border-project"
+                  className="rounded-xl border border-stroke bg-surface-alt px-4 py-3 text-primary outline-none focus:border-project"
                 />
               </label>
 

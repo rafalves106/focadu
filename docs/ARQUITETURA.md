@@ -1340,23 +1340,41 @@ no dominio), fonte "Cousine" do bloco de codigo (reaproveitado Fira Code em vez 
 familia de fonte), rodape de telemetria fake em qualquer tela (nenhuma tela deste app mostra numero
 sem dado real por tras).
 
+**Fidelidade visual de Navegacao & Perfil + correcao de rota full-bleed (Fase 20):** `/hoje` saiu
+do shell `<App/>` (full-bleed, `TodayRoute` - ver acima) - resolve a pendencia da Fase 19 (nav
+global sobrepondo o HUD da sessao). `SessionLayout`/`IntroCard` ganharam mais folga no topo
+(`pt-20`) pra nao colidir com o PenaltyGauge/botao de configuracoes agora que o nav nao da mais
+essa folga de graca. As 8 telas de Navegacao/Perfil (StartDashboard/WeeklyDetailPage/
+WeeklyProjectPage/SettingsMenu/Perfil-3-abas/RankingPage/MarketplacePage) e componentes
+compartilhados (StreakIndicator/StatusBadge/WeeklyProjectCard/RankingScopeTabs/RankingTable)
+conferidos contra o Figma - nenhum token novo (reconciliado com `--color-stroke`/`--font-sans` da
+Fase 19). Maiores fabricacoes confirmadas e mantidas fora (mesmo criterio de sempre, ver
+`docs/fase-20/resumo-implementacao-fase-20.md`): Nivel/XP, "Sessoes completas", Platinas por curso,
+"blockchain focadu" no Perfil; ranking global com podium/XP/usuarios ficticios e painel "Seu
+Desempenho" com delta/percentil/sparkline no Ranking; grid "Seus Cursos" com 2 cursos bloqueados
+"libera no nivel X" no StartDashboard (so existe 1 Course Active, decisao da Fase 8 reafirmada).
+**"Sair da Conta" (SettingsMenu) virou o botao vermelho de largura total do Figma** - divergencia
+documentada desde a Fase 13a, corrigida nesta fase por decisao explicita (nao obrigatoria, mas
+natural durante o refinamento da mesma tela).
+
 ```
 frontend/
   index.html, vite.config.ts, package.json, tsconfig*.json
   .env.example, .env.local (gitignorado - VITE_API_BASE_URL)
   src/
     main.tsx              <- BrowserRouter + AuthProvider + Routes ("/" Splash, "/login" fora do
-                              ProtectedRoute; onboarding/onboarding/perfil/selecionar-curso/hoje/
-                              start/perfil/admin/conteudo dentro dele - Fase 12; onboarding/*/
-                              selecionar-curso ficam fora do <App/> (sem o nav), Fase 13b; /conquistas
-                              vira <Navigate to="/perfil?tab=conquistas"/> desde a Fase 18)
+                              ProtectedRoute; onboarding/onboarding/perfil/selecionar-curso/hoje
+                              fora do <App/> (Fase 12/13b/20) - so start/perfil/loja/admin/conteudo
+                              continuam dentro do shell; /conquistas vira
+                              <Navigate to="/perfil?tab=conquistas"/> desde a Fase 18; /hoje usa
+                              <TodayRoute/>, nao <TodayPage/> direto - ver routes/TodayPage.tsx)
     App.tsx                <- shell com nav (Hoje / Inicio / Conteudo) + HeaderUserBadge (nome+
                               moldura equipados, link pra /perfil - Fase 18) +
                               <ErrorBoundary key={pathname}><Outlet/></ErrorBoundary> (Fase 10).
-                              /hoje fica DENTRO deste shell (nao like onboarding/login) - o nav fixo
-                              sobrepoe o canto superior das telas de sessao "full-bleed" (Fase 19,
-                              ver "Duvidas ou pontos abertos" no resumo da fase) - pre-existente,
-                              nao mexido nesta fase (seria mudanca de rota/estrutura, nao de estilo)
+                              /hoje NAO fica mais dentro deste shell desde a Fase 20 (full-bleed,
+                              mesmo tratamento de onboarding/login) - o nav fixo sobrepondo o
+                              PenaltyGauge/botao de configuracoes (pendencia da Fase 19) foi
+                              resolvido movendo a rota pra fora, nao ajustando o nav
     index.css               <- @import "tailwindcss" + tokens @theme (paleta + fontes da identidade
                               visual, ver secao "Frontend" acima)
     assets/reading/          <- SVGs do design Figma (dots, play, check, orbe) - bytes exatos, Fase 7
@@ -1420,7 +1438,11 @@ frontend/
       TodayPage.tsx            <- /hoje (orquestra os 7 tipos de atividade, o menu de configuracoes
                                    e o fluxo de conclusao - Fase 7); PenaltyGauge fixo no HUD +
                                    ReinforcementIntroScreen como gate quando `daily.isReinforcement`
-                                   e nenhuma atividade ainda respondida (Fase 15)
+                                   e nenhuma atividade ainda respondida (Fase 15). `TodayRoute`
+                                   (Fase 20, exportado deste arquivo) - wrapper com
+                                   `<ErrorBoundary key={pathname+search}>`, usado direto em
+                                   main.tsx no lugar de `<TodayPage/>` - repoe o boundary que
+                                   `<App/>` dava de graca antes de `/hoje` sair do shell dele
       StartPage.tsx             <- /start (so o roteador por query string - Fase 8: as 3 telas
                                    viraram arquivos proprios abaixo, StartPage so decide qual mostrar);
                                    `<WeeklyDetailPage key={weeklyId} .../>` desde a Fase 11 (ver
@@ -1585,7 +1607,7 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/onboarding` | `PUT /api/users/me/profile` (so no "Pular tour") | `OnboardingWelcomePage` (Fase 13b) - passo 1/3 |
 | `/onboarding/perfil` | `PUT /api/users/me/profile` | `ProfileInterviewPage` (Fase 13b) - passo 2/3, Entrevista de Perfil. `?edit=1` (Fase 18) - mesma tela em modo edicao, pre-populada, volta pro `/perfil` |
 | `/selecionar-curso` | `GET /api/courses/available` + `POST /api/enrollments` | `CourseSelectionPage` (Fase 13b) - passo 3/3 |
-| `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7) |
+| `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7). Fora do shell `<App/>` desde a Fase 20 (full-bleed, `TodayRoute`) |
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco; Fase 8: tambem usada como "reprise" de um dia ja concluido, clicado a partir da Visao Semanal) |
 | `/start` | `GET /api/today` + `GET /api/weeklies/{id}` + `GET /api/courses` + `GET /api/courses/{id}` + `GET /api/users/me/gamification` (Fase 14) | `StartDashboard` (Fase 8) - hub "Comecar Hoje"/"Projeto desta Semana"/"Trilha Completa" |
 | `/start?course=` | `GET /api/courses/{courseId}` | `CourseDetailPage` (Fase 8) - trilha completa do curso |
@@ -1606,8 +1628,9 @@ em state; `SplashPage` e `ProtectedRoute` so leem esse mesmo state (nunca buscam
 Um 401 em `/me` (sem cookie/expirado) e o caminho **esperado** de "ninguem logado ainda" - vira
 `user: null` silenciosamente, nunca um erro pra propagar (o contexto nao tem campo `error` de
 proposito). `ProtectedRoute` envolve `/onboarding`, `/onboarding/perfil`, `/selecionar-curso`,
-`/hoje`, `/start`, `/admin/conteudo` (Fase 13b: as 3 primeiras ficam fora do `<App/>` shell, sem o
-nav Hoje/Inicio/Conteudo - mesmo tratamento full-bleed de `LoginPage`/`SplashPage`) - mostra um
+`/hoje`, `/start`, `/loja`, `/perfil`, `/admin/conteudo` (Fase 13b: as 4 primeiras ficam fora do
+`<App/>` shell, sem o nav Hoje/Inicio/Conteudo - mesmo tratamento full-bleed de `LoginPage`/
+`SplashPage`; `/hoje` entrou nesse grupo na Fase 20) - mostra um
 spinner enquanto `isLoading`, `<Navigate to="/login"/>` se `!user`, `<Outlet/>` senao. Backend exige
 `[Authorize]` em tudo isso desde a Fase 13a (ver "Autenticacao" acima). `LoginPage` redireciona pra
 `/` (nao mais direto pra `/start`) se ja houver sessao - passa pela `SplashPage`, que roda o mesmo
@@ -1865,6 +1888,7 @@ CSS).
 | 17 | Marketplace de Cosmeticos + Trofeus/Badges + Sistema de Indicacao | `docs/fase-17/resumo-implementacao-fase-17.md` |
 | 18 | Perfil, 3 Abas | `docs/fase-18/resumo-implementacao-fase-18.md` |
 | 19 | Fidelidade Visual - Sessao Diaria | `docs/fase-19/resumo-implementacao-fase-19.md` |
+| 20 | Fidelidade Visual - Navegacao & Perfil + Correcao de Rota Full-Bleed | `docs/fase-20/resumo-implementacao-fase-20.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 

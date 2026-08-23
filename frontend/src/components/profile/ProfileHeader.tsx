@@ -18,7 +18,7 @@ export function ProfileHeader({
   const equippedNameColor = catalog.items.find((i) => i.slot === CosmeticSlot.NameColor && i.equipped)?.name ?? null;
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-2xl border border-surface-alt bg-surface p-6">
+    <div className="flex items-center justify-between gap-4 rounded-2xl border border-stroke bg-surface p-6">
       <div className="flex items-center gap-4">
         <EquippedFramePreview displayName={displayName} frameRarity={equippedFrame?.rarity ?? null} size="lg" />
         <h1 className={`text-2xl font-bold ${nameColorClass(equippedNameColor)}`}>{displayName}</h1>
