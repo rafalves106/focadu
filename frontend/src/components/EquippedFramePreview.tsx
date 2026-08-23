@@ -24,7 +24,7 @@ export function EquippedFramePreview({
     .join('');
 
   const sizeClass = { sm: 'size-9 text-sm', md: 'size-14 text-lg', lg: 'size-20 text-2xl' }[size];
-  const ringClass = frameRarity !== null ? `border-2 ${RARITY_STYLE[frameRarity].border}` : 'border border-surface-alt';
+  const ringClass = frameRarity !== null ? `border-2 ${RARITY_STYLE[frameRarity].border}` : 'border border-stroke';
 
   return (
     <div

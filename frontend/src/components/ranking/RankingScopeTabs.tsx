@@ -7,19 +7,23 @@ const TABS: { scope: RankingScope; label: string }[] = [
 ];
 
 /**
- * Alternador de recorte do ranking (Fase 16) - mesmo padrão de abas do LoginPage
- * (Entrar/Criar Conta), reaproveitado aqui em vez de inventar outro componente de tab.
+ * Alternador de recorte do ranking (Fase 16) - controle segmentado (Figma "Ranking dos Usuários"),
+ * era abas com sublinhado (mesmo padrão de LoginPage) - trocado na Fase 20 porque o node deste
+ * ranking especificamente mostra um grupo de pilulas (bg-surface + segmento ativo accent-dim), nao
+ * o padrao de aba sublinhada usado em outras telas.
  */
 export function RankingScopeTabs({ scope, onChange }: { scope: RankingScope; onChange: (scope: RankingScope) => void }) {
   return (
-    <div className="flex gap-6 border-b border-surface-alt">
+    <div className="inline-flex gap-2 rounded-lg bg-surface p-1">
       {TABS.map((tab) => (
         <button
           key={tab.scope}
           type="button"
           onClick={() => onChange(tab.scope)}
-          className={`-mb-px border-b-2 pb-3 text-sm font-bold uppercase tracking-wide ${
-            scope === tab.scope ? 'border-accent text-primary' : 'border-transparent text-secondary hover:text-primary'
+          className={`rounded-md px-4 py-2 text-[13px] font-semibold uppercase tracking-wide ${
+            scope === tab.scope
+              ? 'border border-accent bg-accent/25 text-primary'
+              : 'border border-transparent text-secondary hover:text-primary'
           }`}
         >
           {tab.label}

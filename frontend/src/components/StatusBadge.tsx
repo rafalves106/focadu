@@ -2,8 +2,8 @@ import type { StatusBadgeTone } from '../lib/statusBadge';
 
 const TONE_CLASS: Record<StatusBadgeTone, string> = {
   muted: 'bg-surface-alt text-muted',
-  accent: 'bg-accent/10 text-accent',
-  project: 'bg-project/10 text-project',
+  accent: 'border border-accent bg-accent/25 text-primary',
+  project: 'border border-project bg-project/25 text-primary',
   alert: 'bg-surface-alt text-alert',
 };
 
@@ -12,6 +12,10 @@ const TONE_CLASS: Record<StatusBadgeTone, string> = {
  * proprio enum (DailyStatus, WeeklyProjectStatus, etc). Evita 1 componente so tentando conhecer
  * todos os enums de status do dominio. Mapeamento de DailyStatus -> props vive em
  * lib/statusBadge.ts (nao aqui), pra nao co-exportar funcao/componente do mesmo arquivo.
+ *
+ * Fase 20: tons accent/project ganharam preenchimento translucido + borda (era so texto colorido
+ * sobre bg neutro) - mesmo padrao "accent-dim" ja estabelecido na Fase 19 (OptionCard selecionado,
+ * badges do Roleplay/Ligar Palavras) pra pills de destaque real (nao neutro/erro).
  */
 export function StatusBadge({ icon, label, tone = 'muted' }: { icon: string; label: string; tone?: StatusBadgeTone }) {
   return (

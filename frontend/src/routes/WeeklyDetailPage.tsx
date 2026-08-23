@@ -127,7 +127,7 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
           <WeeklyProjectCard project={weekly.project} weeklyId={weeklyId} courseId={courseId} />
         </div>
 
-        <div className="flex w-full flex-col gap-5 rounded-2xl border border-surface-alt bg-surface p-6 lg:w-[360px]">
+        <div className="flex w-full flex-col gap-5 rounded-2xl border border-stroke bg-surface p-6 lg:w-[360px]">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Resumo da Semana</p>
 
           <div className="flex flex-col gap-2">
@@ -141,14 +141,14 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
           </div>
 
           {penaltyPoints > 0 && (
-            <div className="flex items-center justify-between border-t border-surface-alt pt-3 text-sm">
+            <div className="flex items-center justify-between border-t border-stroke pt-3 text-sm">
               <span className="text-secondary">Penalidades ativas</span>
               <span className="font-semibold text-alert">{penaltyPoints} ponto(s)</span>
             </div>
           )}
 
           {approvalRate !== null && (
-            <div className="flex items-center justify-between border-t border-surface-alt pt-3 text-sm">
+            <div className="flex items-center justify-between border-t border-stroke pt-3 text-sm">
               <span className="text-secondary">Taxa de aprovação</span>
               <span className="font-semibold text-accent">{approvalRate}%</span>
             </div>
@@ -186,8 +186,8 @@ function DayCard({ day, isFuture, isToday }: { day: DailyOverviewDto; isFuture: 
   const body = (
     <div
       className={[
-        'flex items-center gap-4 rounded-2xl border bg-surface p-5',
-        isToday ? 'border-accent' : 'border-surface-alt',
+        'flex items-center gap-4 rounded-2xl bg-surface p-5',
+        isToday ? 'border-[1.5px] border-accent' : 'border border-stroke',
         isFuture ? 'opacity-50' : '',
       ].join(' ')}
     >

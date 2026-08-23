@@ -22,7 +22,7 @@ export function BadgeGrid({ badges }: { badges: BadgeDto[] }) {
           <div
             key={badge.code}
             className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center ${
-              badge.achieved ? 'border-accent bg-accent/10' : 'border-surface-alt bg-surface opacity-40'
+              badge.achieved ? 'border-accent bg-accent/10' : 'border-stroke bg-surface opacity-40'
             }`}
           >
             <span className="text-3xl" aria-hidden="true">

@@ -9,7 +9,7 @@ const TABS: { tab: ProfileTab; label: string }[] = [
 /** Abas do `/perfil` (Fase 18) - mesmo padrão de RankingScopeTabs/CosmeticSlotFilter, reaproveitado em vez de inventar outro componente de tab. */
 export function ProfileTabs({ tab, onChange }: { tab: ProfileTab; onChange: (tab: ProfileTab) => void }) {
   return (
-    <div className="flex gap-6 border-b border-surface-alt">
+    <div className="flex gap-6 border-b border-stroke">
       {TABS.map((t) => (
         <button
           key={t.tab}

@@ -34,7 +34,7 @@ export function CosmeticItemCard({
   const rarity = RARITY_STYLE[item.rarity];
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-surface-alt bg-surface p-5">
+    <div className="flex flex-col gap-3 rounded-2xl border border-stroke bg-surface p-5">
       <div className={`h-20 w-full rounded-xl ${rarity.swatch}`} aria-hidden="true" />
       <div>
         <p className={`text-xs font-semibold uppercase tracking-wide ${rarity.text}`}>

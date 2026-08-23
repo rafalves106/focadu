@@ -23,6 +23,13 @@ function Toggle({ on }: { on: boolean }) {
  * a cada resposta enviada, nao ha nada extra pra "salvar") e "Sair da Conta" (onLogout, Fase 13 -
  * agora existe conta de verdade, ver docs/fase-12) sao as acoes reais. onLogout pede confirmacao
  * simples (window.confirm) antes de executar - evita logout acidental no meio de uma sessao.
+ *
+ * Fase 20: "Sair da Conta" virou o botao vermelho de largura total do Figma (era link de texto
+ * simples, divergencia documentada desde a Fase 13a) - "Fechar (ESC)"/"Sair e salvar progresso"
+ * continuam texto discreto acima dele (o Figma so mostra "Fechar (ESC)" + o botao de logout, sem
+ * a 3a acao - mas "Sair e salvar progresso" e um caminho de saida real, tirar reduziria
+ * funcionalidade so pra bater com o mockup, entao ficou como uma 2a linha discreta em vez de
+ * removida).
  */
 export function SettingsMenu({
   open,
@@ -50,7 +57,7 @@ export function SettingsMenu({
       role="presentation"
     >
       <div
-        className="flex w-[420px] flex-col gap-4 rounded-[20px] border border-surface-alt bg-surface p-6"
+        className="flex w-[420px] flex-col gap-4 rounded-[20px] border border-stroke bg-surface p-6"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -61,14 +68,14 @@ export function SettingsMenu({
           <p className="text-sm text-secondary">Ajuste a experiência do focadu</p>
         </div>
 
-        <div className="h-px bg-surface-alt" />
+        <div className="h-px bg-stroke" />
 
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-primary">Aparência</p>
-            <div className="flex overflow-hidden rounded-xl border border-surface-alt bg-surface-alt text-xs font-semibold">
+            <div className="flex overflow-hidden rounded-xl border border-stroke bg-surface-alt text-xs font-semibold">
               <span className="flex h-9 w-[110px] items-center justify-center text-secondary">Tema Claro</span>
-              <span className="flex h-9 w-[110px] items-center justify-center border-l border-surface-alt bg-accent/10 text-primary">
+              <span className="flex h-9 w-[110px] items-center justify-center border-l border-stroke bg-accent/25 font-bold text-primary">
                 Tema Escuro
               </span>
             </div>
@@ -90,7 +97,7 @@ export function SettingsMenu({
           </div>
         </div>
 
-        <div className="h-px bg-surface-alt" />
+        <div className="h-px bg-stroke" />
 
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center justify-between">
@@ -103,7 +110,7 @@ export function SettingsMenu({
           </div>
         </div>
 
-        <div className="h-px bg-surface-alt" />
+        <div className="h-px bg-stroke" />
 
         <div className="flex flex-col items-center gap-2 pt-1">
           <button type="button" onClick={onClose} className="text-xs text-secondary hover:text-primary">
@@ -112,10 +119,15 @@ export function SettingsMenu({
           <button type="button" onClick={onExit} className="text-xs font-semibold text-secondary hover:text-primary hover:underline">
             Sair e salvar progresso
           </button>
-          <button type="button" onClick={handleLogoutClick} className="text-xs font-semibold text-alert hover:underline">
-            Sair da Conta
-          </button>
         </div>
+
+        <button
+          type="button"
+          onClick={handleLogoutClick}
+          className="w-full rounded-[10px] border border-alert/25 bg-alert/10 py-2.5 text-[13px] font-semibold text-alert hover:bg-alert/15"
+        >
+          Sair da conta
+        </button>
       </div>
     </div>
   );

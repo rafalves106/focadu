@@ -9,7 +9,7 @@ import { nameColorClass } from '../../lib/cosmeticStyle';
 export function CurrentUserRankingCard({ entry }: { entry: RankingEntryDto | null }) {
   if (!entry) {
     return (
-      <div className="rounded-2xl border border-surface-alt bg-surface p-5 text-sm text-secondary">
+      <div className="rounded-2xl border border-stroke bg-surface p-5 text-sm text-secondary">
         Matricule-se neste curso para aparecer no ranking.
       </div>
     );
