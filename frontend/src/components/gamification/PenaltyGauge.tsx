@@ -22,7 +22,7 @@ export function PenaltyGauge({ penaltyPoints, penaltyThreshold }: { penaltyPoint
 
   return (
     <div
-      className="flex items-center gap-2 rounded-full border border-surface-alt bg-surface px-3 py-1.5"
+      className="flex items-center gap-2 rounded-full border border-stroke bg-surface px-3 py-1.5"
       title="Pontos de penalidade hoje"
     >
       <span className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-alt">

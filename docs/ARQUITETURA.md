@@ -1320,6 +1320,26 @@ Api em runtime).
 
 ## Frontend (Fase 3, telas de atividade completadas nas Fases 4 e 5, autoria na Fase 6)
 
+**Fidelidade visual da Sessao Diaria (Fase 19):** fase so de estilo, sem mudanca de logica/API/
+estrutura de dados - as 8 telas de atividade (Leitura/Resumo Falado/Video/Quiz/Ligar Palavras/
+Cloze/Roleplay/Feedback IA) e as pecas compartilhadas (`SessionShell`/`MaterialSidebar`/
+`IntroCard`/`OptionCard`/`CodeHighlight`/`FeedbackPanel`/`PenaltyGauge`) tiveram cores/tipografia/
+espacamento/raios conferidos contra o Figma. Maior mudanca estrutural (ainda assim so layout):
+Quiz/Ligar Palavras/Cloze/Roleplay/Resumo Falado ganharam o mesmo chrome que Reading/Video ja
+tinham desde a Fase 7 (`SessionTopBar` + cartao + `MaterialSidebar` + orbe) via `SessionLayout`
+(novo, `SessionShell.tsx`) - antes usavam `ActivityScreen` (`Layout.tsx`), um shell generico sem
+esse chrome. Token novo: `--color-stroke` (`#2A2A2A`, borda - distinto de `--color-surface-alt`,
+que e fundo). Fonte nova: Inter virou `--font-sans`, o default do app inteiro (nenhuma tela tinha
+fonte propria antes desta fase). Divergencias do Figma mantidas conscientemente (nenhuma delas e
+"resgate de conteudo descartado" - sao elementos sem dado real por tras, ver
+`docs/fase-19/resumo-implementacao-fase-19.md`): grafo de arraste do Ligar Palavras (Fase 4/9,
+reafirmado), 2 colunas do Feedback IA (Fase 7, reafirmado), indicador "arvore de decisao" numerada
+do Roleplay (profundidade do grafo e variavel), legenda "Baseado em" do Resumo Falado (exigiria
+chamada de API nova), campo de justificativa do Cloze como microfone (Justification e sempre texto
+no dominio), fonte "Cousine" do bloco de codigo (reaproveitado Fira Code em vez de somar uma 4a
+familia de fonte), rodape de telemetria fake em qualquer tela (nenhuma tela deste app mostra numero
+sem dado real por tras).
+
 ```
 frontend/
   index.html, vite.config.ts, package.json, tsconfig*.json
@@ -1332,8 +1352,13 @@ frontend/
                               vira <Navigate to="/perfil?tab=conquistas"/> desde a Fase 18)
     App.tsx                <- shell com nav (Hoje / Inicio / Conteudo) + HeaderUserBadge (nome+
                               moldura equipados, link pra /perfil - Fase 18) +
-                              <ErrorBoundary key={pathname}><Outlet/></ErrorBoundary> (Fase 10)
-    index.css               <- @import "tailwindcss" + tokens @theme (paleta da identidade visual)
+                              <ErrorBoundary key={pathname}><Outlet/></ErrorBoundary> (Fase 10).
+                              /hoje fica DENTRO deste shell (nao like onboarding/login) - o nav fixo
+                              sobrepoe o canto superior das telas de sessao "full-bleed" (Fase 19,
+                              ver "Duvidas ou pontos abertos" no resumo da fase) - pre-existente,
+                              nao mexido nesta fase (seria mudanca de rota/estrutura, nao de estilo)
+    index.css               <- @import "tailwindcss" + tokens @theme (paleta + fontes da identidade
+                              visual, ver secao "Frontend" acima)
     assets/reading/          <- SVGs do design Figma (dots, play, check, orbe) - bytes exatos, Fase 7
     lib/
       statusBadge.ts           <- dailyStatusBadgeProps (Fase 8) - separado de components/StatusBadge.tsx
@@ -1461,7 +1486,8 @@ frontend/
         StreakIndicator.tsx               <- "🔥 N dias" - StartDashboard (real) e EmptyStateStartPage (fixo em 0)
         PenaltyGauge.tsx                   <- Fase 15, "conta-giros" - PenaltyPoints/PenaltyThreshold,
                                    cor por faixa (neutro/amarelo/laranja/vermelho); mesma linguagem
-                                   visual do ProgressBar (Fase 8), sem node Figma pra este componente
+                                   visual do ProgressBar (Fase 8), sem node Figma proprio (borda
+                                   trocada pra border-stroke na Fase 19, mesmo token do resto)
       ReinforcementIntroScreen.tsx  <- Fase 15 - transicao pra Daily de reforco, reaproveita IntroCard
       WeeklyReinforcementBadge.tsx   <- Fase 15 - so apresentacao ("📋 Revisao semanal disponivel"),
                                    sem link embutido, sem bloquear nada
@@ -1506,20 +1532,25 @@ frontend/
                                    AchievementsPage.tsx (removido) - mesmo conteudo, novo lar
       activities/                 <- primitivas visuais das atividades avaliaveis (Fase 9)
         IntroCard.tsx                <- tela de intro (badge/titulo/descricao/regras/CTA) - gate local (`started`), nao e passo novo no Step do TodayPage
-        OptionCard.tsx                <- card de opcao (neutro/selecionado/correto/errado/esmaecido) - Quiz, termos do WordMatch, decisoes do Roleplay
-        CodeHighlight.tsx              <- realca a lacuna "___" do prompt de Cloze
-      QuizActivity.tsx             <- Quiz e Cloze/MultipleChoice (Intro + OptionsAnswer) (Fase 9)
-      WordMatchActivity.tsx         <- grupo de termos do WordMatch (Intro + progresso "X de Y termos") (Fase 9)
+        OptionCard.tsx                <- card de opcao (neutro/selecionado/correto/errado/esmaecido) - Quiz, termos do WordMatch, decisoes do Roleplay.
+                                   Fase 19: "selecionado" ganhou preenchimento verde translucido
+                                   (bg-accent/25, nao so a borda), padding px-[18px]/py-4 exatos do Figma
+        CodeHighlight.tsx              <- realca a lacuna "___" do prompt de Cloze - fonte mono (Fira Code, Fase 19) em vez de somar a fonte "Cousine" do Figma so pra este bloco
+      QuizActivity.tsx             <- Quiz e Cloze/MultipleChoice (Intro + OptionsAnswer) (Fase 9). Fase 19: pos-Intro usa SessionLayout (era ActivityScreen simples)
+      WordMatchActivity.tsx         <- grupo de termos do WordMatch (Intro + progresso "X de Y termos") (Fase 9). Fase 19: idem, SessionLayout - mecanica de multipla escolha independente mantida (ver nota de divergencia no proprio arquivo)
       OptionsAnswer.tsx          <- nucleo "escolher opcao" - Quiz, cada termo de WordMatch, Cloze/MultipleChoice; usa OptionCard desde a Fase 9
-      ClozeFreeTextActivity.tsx   <- Cloze/FreeText (resposta + justificativa); Intro + CodeHighlight desde a Fase 9
-      RoleplayActivity.tsx        <- navega o grafo de RoleplayNode client-side; Intro + OptionCard desde a Fase 9
-      VoiceSummaryActivity.tsx    <- grava audio (MediaRecorder), envia multipart, mostra transcricao+feedback (Fase 5)
-      ReadingActivity.tsx         <- etapa de leitura de um CuratedContent (Fase 7)
-      VideoActivity.tsx           <- etapa de video - embed real do YouTube (Fase 7)
-      FeedbackPanel.tsx           <- bloco de resultado compartilhado pelos 5 componentes de atividade (Fase 7)
-      SessionShell.tsx            <- SessionTopBar + QuickQuestionOrb, compartilhados por Reading/Video/Projeto (Fase 7);
-                                   SessionTopBar usa ProgressBar por baixo desde a Fase 8
-      MaterialSidebar.tsx         <- "Material de hoje", compartilhado por Reading/Video (Fase 7)
+      ClozeFreeTextActivity.tsx   <- Cloze/FreeText (resposta + justificativa); Intro + CodeHighlight desde a Fase 9. Fase 19: SessionLayout + bloco de codigo/labels fieis ao node "sessao-cloze-test" - campo de justificativa continua texto (nao microfone, ver nota no arquivo)
+      RoleplayActivity.tsx        <- navega o grafo de RoleplayNode client-side; Intro + OptionCard desde a Fase 9. Fase 19: SessionLayout + badge ambar "Roleplay de Decisoes" + bloco "Cenario" persistente (activity.prompt, antes so na Intro) + opcoes numeradas; indicador de "arvore de decisao" (1->2->3->4) do Figma omitido (profundidade do grafo e variavel, nao um numero fixo de passos)
+      VoiceSummaryActivity.tsx    <- grava audio (MediaRecorder), envia multipart, mostra transcricao+feedback (Fase 5). Fase 19: SessionLayout `card={false}` (unica tela de sessao sem cartao, mic orb 180px) + legenda "Gravando - MM:SS / limite 10:00"; legenda "Baseado em: ..." do Figma omitida (exigiria 1 chamada de API nova so pra isso)
+      ReadingActivity.tsx         <- etapa de leitura de um CuratedContent (Fase 7). Fase 19: usa SessionLayout/useMaterialSidebar (chrome generalizado, era JSX proprio)
+      VideoActivity.tsx           <- etapa de video - embed real do YouTube (Fase 7). Fase 19: idem
+      FeedbackPanel.tsx           <- bloco de resultado compartilhado pelos 5 componentes de atividade (Fase 7). Fase 19: gauge 72px (era 56px) com preenchimento bg-accent/25 quando passou, tracking/bordas fieis ao node "feedback-ia" - 2 colunas acertos/melhorias do Figma continuam fora (AiFeedback e 1 string so, ver Fase 7)
+      SessionShell.tsx            <- SessionTopBar + QuickQuestionOrb + SessionLayout, compartilhados por Reading/Video/Projeto (Fase 7) e, desde a Fase 19, tambem por Quiz/Ligar Palavras/Cloze/Roleplay/Resumo Falado.
+                                   SessionTopBar usa ProgressBar por baixo desde a Fase 8. SessionLayout
+                                   (Fase 19) generaliza o chrome inteiro (topbar + cartao/sem cartao +
+                                   sidebar + orbe) que Reading/Video ja tinham como JSX proprio duplicado
+      useMaterialSidebar.tsx      <- hook (Fase 19, arquivo proprio - co-exportar com SessionShell.tsx quebraria o fast refresh) - busca a Weekly e monta o MaterialSidebar com os itens/concluidos da Daily atual; reaproveitado pelas 7 telas de sessao
+      MaterialSidebar.tsx         <- "Material de hoje", compartilhado por Reading/Video (Fase 7), demais telas de sessao desde a Fase 19 (via useMaterialSidebar). `activeContentId` virou nullable (so Reading/Video tem conteudo proprio pra destacar)
       SettingsMenu.tsx            <- menu de configuracoes (overlay), montado em TodayPage (Fase 7)
       StatusBadge.tsx              <- badge de status generico, so apresentacao (Fase 8)
       ProgressBar.tsx               <- barra de progresso generica, extraida de SessionTopBar (Fase 8)
@@ -1734,10 +1765,21 @@ da Fase 3, ainda valida (so as telas de `/hoje` precisavam estar "as mais valida
 `/admin/conteudo` segue o mesmo padrao de "funcional, nao o mesmo nivel de `/hoje`".
 
 Paleta (Tailwind v4, tokens em `@theme` dentro de `index.css`, sem `tailwind.config.js`):
-`--color-base` (`#0A0A0A`), `--color-surface` (`#151515`), `--color-surface-alt` (`#1E1E1E`),
-`--color-accent` (`#39FF6A`), `--color-alert` (`#FF3B3B`), `--color-primary`/`secondary`/`muted`
-(`#F5F5F5`/`#9A9A9A`/`#5C5C5C`), `--color-project` (`#FFB800`, Fase 7 - so pro tema ambar da tela
-de Projeto Semanal).
+`--color-base` (`#0A0A0A`), `--color-surface` (`#151515`), `--color-surface-alt` (`#1E1E1E`,
+"surface-raised" no Figma - fundo de pilulas/linhas elevadas), `--color-stroke` (`#2A2A2A`, Fase
+19 - borda de cards/inputs, distinto de `surface-alt` mesmo sendo um cinza proximo), `--color-accent`
+(`#39FF6A`), `--color-alert` (`#FF3B3B`), `--color-primary`/`secondary`/`muted`
+(`#F5F5F5`/`#9A9A9A`/`#5C5C5C`), `--color-project` (`#FFB800`, Fase 7 - tema ambar de Projeto
+Semanal, reaproveitado no badge "Roleplay de Decisoes" desde a Fase 19). Tons translucidos de
+"preenchimento" (selecionado-mas-nao-confirmado no Quiz, gauge de Score no FeedbackPanel) usam
+`bg-accent/25`/`bg-project/15` (opacidade Tailwind) em vez de token proprio - aproximam o
+"neon-green-dim" (`#1F5C33`) do Figma sem inventar mais uma cor fixa pra um uso so de translucidez.
+
+Fontes: `--font-sans` (Inter, Fase 19 - default do app inteiro, nenhuma tela tinha fonte propria
+antes), `--font-display` (Archivo) e `--font-mono` (Fira Code) - os 2 ultimos escopados so a
+elementos explicitos do Login/Registro (Fase 18), nao o default. Todas carregadas via Google Fonts
+(`@import url(...)` no topo de `index.css`, antes de `@import "tailwindcss"` - ordem exigida por
+CSS).
 
 ## Fora de escopo ate agora
 
@@ -1822,6 +1864,7 @@ de Projeto Semanal).
 | 16 | Score de Estudo + Ranking | `docs/fase-16/resumo-implementacao-fase-16.md` |
 | 17 | Marketplace de Cosmeticos + Trofeus/Badges + Sistema de Indicacao | `docs/fase-17/resumo-implementacao-fase-17.md` |
 | 18 | Perfil, 3 Abas | `docs/fase-18/resumo-implementacao-fase-18.md` |
+| 19 | Fidelidade Visual - Sessao Diaria | `docs/fase-19/resumo-implementacao-fase-19.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
@@ -1833,11 +1876,10 @@ de Projeto Semanal).
   independente (`OptionsAnswer`, decisao da Fase 4). Reconstruir a interacao pra bater com o Figma
   e um pedido explicito pra uma fase futura, nao um ajuste de polimento (ver
   `docs/fase-9/resumo-implementacao-fase-9.md`).
-- **Cloze e Roleplay nao foram exercitados ao vivo na Fase 9** (so Quiz e WordMatch) - os Dias 3/4
-  do seed sao datados no futuro e ficam fora do alcance de `EvaluateDailyAccess` sem manipular
-  datas/relogio. Usam os mesmos componentes ja validados nos outros dois fluxos
-  (`IntroCard`/`OptionCard`/`CodeHighlight`/`FeedbackPanel`), mas vale uma conferencia visual numa
-  proxima sessao.
+- **Resolvido na Fase 19, nao e mais pendencia:** Cloze e Roleplay (Dias 3/4 do seed) nao tinham
+  sido exercitados ao vivo desde a Fase 9 (so Quiz e WordMatch) - verificados via Playwright com
+  data ajustada por SQL (mesma tecnica das Fases 15-18), confirmando fidelidade visual dos 8 telas
+  de sessao de ponta a ponta.
 - **"Sessao Expirada" e "Streak Perdido" (2 dos 4 designs do Figma da Fase 10) nao tem tela** - o
   primeiro precisaria de um conceito de sessao/expiracao por inatividade que o app nao tem (usuario
   unico hardcoded, sem login); o segundo e uma tela dedicada de "voce perdeu o streak" - Streak

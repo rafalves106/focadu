@@ -8,13 +8,16 @@ const LOOKS_LIKE_CODE = /[(){};=`]|\.\w/;
  * embutido, ex: "document.___ = ..."), nao um bloco multi-linha como o mockup do Figma mostra.
  * Divide por `___`, troca cada ocorrencia por uma pilula destacada; usa fonte mono no texto
  * inteiro quando ele "parece" codigo (heuristica, nao um highlighter real).
+ *
+ * Fase 19: o Figma usa a fonte "Cousine" pro bloco de codigo - reaproveitado `font-mono` (Fira
+ * Code, ja carregada pra Fase 18) em vez de somar uma 4a familia de fonte ao app so pra 1 bloco.
  */
 export function CodeHighlight({ text }: { text: string }) {
   const parts = text.split(BLANK);
   const monospace = LOOKS_LIKE_CODE.test(text);
 
   return (
-    <div className={`rounded-xl border border-surface-alt bg-base p-5 leading-relaxed ${monospace ? 'font-mono' : ''} text-[15px] text-primary`}>
+    <div className={`rounded-xl border border-stroke bg-base p-5 leading-relaxed ${monospace ? 'font-mono' : ''} text-[15px] text-primary`}>
       {parts.map((part, i) => (
         <span key={i}>
           {part}

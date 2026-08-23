@@ -222,7 +222,9 @@ export function TodayPage() {
         .filter((a) => a.type === ActivityType.WordMatch)
         .sort((a, b) => a.orderIndex - b.orderIndex);
 
-      return <WordMatchActivity group={group} dailyId={daily.id} onDailyRefetched={setDaily} onContinue={handleContinue} />;
+      return (
+        <WordMatchActivity group={group} dailyId={daily.id} daily={daily} onDailyRefetched={setDaily} onContinue={handleContinue} />
+      );
     }
 
     const activity = daily.activities.find((a) => a.id === step.activityId);
@@ -264,6 +266,7 @@ export function TodayPage() {
         <ClozeFreeTextActivity
           key={activity.id}
           dailyId={daily.id}
+          daily={daily}
           activity={activity}
           onDailyRefetched={setDaily}
           onContinue={handleContinue}
@@ -276,6 +279,7 @@ export function TodayPage() {
         <RoleplayActivity
           key={activity.id}
           dailyId={daily.id}
+          daily={daily}
           activity={activity}
           onDailyRefetched={setDaily}
           onContinue={handleContinue}
@@ -288,6 +292,7 @@ export function TodayPage() {
         <VoiceSummaryActivity
           key={activity.id}
           dailyId={daily.id}
+          daily={daily}
           activity={activity}
           onDailyRefetched={setDaily}
           onContinue={handleContinue}
@@ -297,7 +302,14 @@ export function TodayPage() {
 
     // Quiz e Cloze/MultipleChoice: mesma mecanica de OptionsAnswer, so muda o rotulo (ver QuizActivity).
     return (
-      <QuizActivity key={activity.id} dailyId={daily.id} activity={activity} onDailyRefetched={setDaily} onContinue={handleContinue} />
+      <QuizActivity
+        key={activity.id}
+        dailyId={daily.id}
+        daily={daily}
+        activity={activity}
+        onDailyRefetched={setDaily}
+        onContinue={handleContinue}
+      />
     );
   }
 }

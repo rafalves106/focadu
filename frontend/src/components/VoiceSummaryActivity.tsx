@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
-import { ActivityScreen } from './Layout';
 import { FeedbackPanel } from './FeedbackPanel';
+import { SessionLayout } from './SessionShell';
+import { useMaterialSidebar } from './useMaterialSidebar';
 
 const MAX_RECORDING_SECONDS = 10 * 60;
 
@@ -13,14 +14,21 @@ type RecorderState = 'idle' | 'recording' | 'submitting' | 'answered' | 'permiss
  * endpoint de audio - o backend transcreve (Groq Whisper) e avalia (Groq chat completion) contra
  * o CuratedContent de referencia. Score/Passed vem inteiramente da avaliacao, nunca do cliente
  * (mesma garantia dos outros 4 tipos de atividade).
+ *
+ * Fase 19 (fidelidade revisada, node "Sessão Diária — Resumo Falado"): unico tipo de atividade
+ * sem cartao ao redor (`SessionLayout card={false}`) - o Figma mostra a gravação flutuando direto
+ * sobre o fundo. Legenda "Baseado em: ..." do mockup omitida - exigiria buscar o CuratedContent
+ * só pra essa legenda (chamada de API nova), fora do escopo de uma fase que é só estilo.
  */
 export function VoiceSummaryActivity({
   dailyId,
+  daily,
   activity,
   onDailyRefetched,
   onContinue,
 }: {
   dailyId: string;
+  daily: DailyStateDto;
   activity: DailyActivityDto;
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
@@ -29,6 +37,7 @@ export function VoiceSummaryActivity({
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [lastResponse, setLastResponse] = useState(activity.responses.at(-1) ?? null);
+  const { weekly, sidebar } = useMaterialSidebar(daily);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -111,8 +120,20 @@ export function VoiceSummaryActivity({
   const minutes = String(Math.floor(seconds / 60)).padStart(2, '0');
   const secs = String(seconds % 60).padStart(2, '0');
 
+  const sortedActivities = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
+  const stepIndex = sortedActivities.findIndex((a) => a.id === activity.id);
+  const total = sortedActivities.length;
+
   return (
-    <ActivityScreen eyebrow="Resumo falado" title={activity.prompt ?? ''}>
+    <SessionLayout
+      eyebrow={(weekly?.theme ?? weekly?.title ?? '').toUpperCase()}
+      stepLabel={`ETAPA ${stepIndex + 1} DE ${total} — RESUMO FALADO`}
+      progress={(stepIndex + 1) / total}
+      sidebar={sidebar}
+      card={state === 'answered'}
+    >
+      {state !== 'answered' && <p className="max-w-[560px] text-2xl font-semibold leading-[1.3] text-primary">{activity.prompt}</p>}
+
       {state === 'permission_denied' && (
         <p className="text-alert">
           Não conseguimos acessar o microfone - verifique a permissão do navegador pra este site e tente de novo.
@@ -122,24 +143,25 @@ export function VoiceSummaryActivity({
       {error && <p className="text-sm text-alert">{error}</p>}
 
       {state !== 'submitting' && state !== 'answered' && (
-        <div className="flex flex-col items-center gap-4 py-6">
+        <div className="flex flex-col items-center gap-5">
           <button
             type="button"
             onClick={state === 'recording' ? handleStop : handleStart}
             aria-label={state === 'recording' ? 'Parar gravação' : 'Começar a gravar'}
             className={[
-              'flex h-28 w-28 items-center justify-center rounded-full text-4xl transition-shadow duration-300',
+              'flex size-[180px] items-center justify-center rounded-full text-6xl transition-shadow duration-300',
               state === 'recording'
-                ? 'animate-pulse bg-alert/20 shadow-[0_0_0_10px_rgba(255,59,59,0.15)]'
-                : 'bg-accent/20 shadow-[0_0_0_8px_rgba(57,255,106,0.15)] hover:shadow-[0_0_0_12px_rgba(57,255,106,0.22)]',
+                ? 'animate-pulse bg-alert/20 shadow-[0_0_0_14px_rgba(255,59,59,0.15)]'
+                : 'bg-accent/20 shadow-[0_0_0_10px_rgba(57,255,106,0.15)] hover:shadow-[0_0_0_14px_rgba(57,255,106,0.22)]',
             ].join(' ')}
           >
             🎙️
           </button>
 
           {state === 'recording' ? (
-            <p className="font-mono text-lg text-alert">
-              {minutes}:{secs} <span className="text-sm text-secondary">/ 10:00</span>
+            <p className="flex items-center gap-2 font-mono text-xs tracking-[1px] text-secondary uppercase">
+              <span className="size-2 rounded-full bg-alert" aria-hidden="true" />
+              Gravando — {minutes}:{secs} / limite 10:00
             </p>
           ) : (
             <p className="text-sm text-secondary">
@@ -148,8 +170,8 @@ export function VoiceSummaryActivity({
           )}
 
           {state === 'recording' && (
-            <button type="button" onClick={handleStop} className="text-sm text-secondary hover:text-primary">
-              Parar gravação
+            <button type="button" onClick={handleStop} className="text-sm text-muted hover:text-primary">
+              Toque para parar quando terminar de explicar
             </button>
           )}
         </div>
@@ -171,6 +193,6 @@ export function VoiceSummaryActivity({
           onContinue={onContinue}
         />
       )}
-    </ActivityScreen>
+    </SessionLayout>
   );
 }

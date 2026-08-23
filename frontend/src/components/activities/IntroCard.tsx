@@ -20,7 +20,7 @@ export function IntroCard({
   onStart: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-6 rounded-2xl border border-surface-alt bg-surface p-10">
+    <div className="flex flex-col gap-6 rounded-2xl border border-stroke bg-surface p-10">
       <span className="w-fit rounded-full bg-surface-alt px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-accent">
         {badge}
       </span>
@@ -31,7 +31,7 @@ export function IntroCard({
       </div>
 
       {rules && rules.length > 0 && (
-        <div className="flex flex-col gap-2.5 border-t border-surface-alt pt-5">
+        <div className="flex flex-col gap-2.5 border-t border-stroke pt-5">
           <p className="text-[11px] font-bold uppercase tracking-wide text-secondary">Como funciona</p>
           <ul className="flex flex-col gap-2">
             {rules.map((rule) => (
