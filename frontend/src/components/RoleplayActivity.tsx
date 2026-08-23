@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto, RoleplayNodeDto } from '../api/types';
 import { TerminalQuality } from '../api/types';
-import { ActivityScreen } from './Layout';
 import { FeedbackPanel } from './FeedbackPanel';
 import { IntroCard } from './activities/IntroCard';
 import { OptionCard } from './activities/OptionCard';
+import { SessionLayout } from './SessionShell';
+import { useMaterialSidebar } from './useMaterialSidebar';
 
 const TERMINAL_QUALITY_LABEL: Record<number, string> = {
   [TerminalQuality.Ideal]: 'Ideal',
@@ -21,14 +22,22 @@ const TERMINAL_QUALITY_LABEL: Record<number, string> = {
  *
  * Fase 9 (design Figma "Roleplay 1-6"): ganhou Intro (`started`) e as decisoes usam OptionCard
  * (sem letra A/B/C - sao acoes, nao alternativas de multipla escolha).
+ *
+ * Fase 19 (fidelidade revisada, node "sessao-roleplay"): o cenario (`activity.prompt`) agora fica
+ * visivel o tempo todo acima do no atual (bloco "CENÁRIO"), nao so na Intro - dado que ja existia,
+ * so a exibicao ficou persistente. O indicador "arvore de decisao" numerada (1→2→3→4) do mockup
+ * foi omitido: o grafo tem profundidade/ramificacao variavel por caminho (nao um numero fixo de
+ * passos), mostrar "passo N de 4" seria inventar uma precisao que o dominio nao garante.
  */
 export function RoleplayActivity({
   dailyId,
+  daily,
   activity,
   onDailyRefetched,
   onContinue,
 }: {
   dailyId: string;
+  daily: DailyStateDto;
   activity: DailyActivityDto;
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
@@ -42,6 +51,7 @@ export function RoleplayActivity({
   const [error, setError] = useState<string | null>(null);
   const [lastResponse, setLastResponse] = useState(activity.responses.at(-1) ?? null);
   const [finalNode, setFinalNode] = useState<RoleplayNodeDto | null>(null);
+  const { weekly, sidebar } = useMaterialSidebar(daily);
 
   const answered = lastResponse !== null;
   const currentNode = currentNodeId ? nodesById.get(currentNodeId) : undefined;
@@ -95,17 +105,43 @@ export function RoleplayActivity({
     );
   }
 
+  const sortedActivities = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
+  const stepIndex = sortedActivities.findIndex((a) => a.id === activity.id);
+  const total = sortedActivities.length;
+
   if (!displayNode) {
     return (
-      <ActivityScreen eyebrow="Roleplay" title={activity.prompt ?? ''}>
+      <SessionLayout
+        eyebrow={(weekly?.theme ?? weekly?.title ?? '').toUpperCase()}
+        stepLabel={`ETAPA ${stepIndex + 1} DE ${total} — ROLEPLAY`}
+        progress={(stepIndex + 1) / total}
+        sidebar={sidebar}
+      >
         <p className="text-secondary">Esta atividade ainda não tem diálogo configurado.</p>
-      </ActivityScreen>
+      </SessionLayout>
     );
   }
 
   return (
-    <ActivityScreen eyebrow="Roleplay" title={activity.prompt ?? ''}>
-      <div className="rounded-xl border border-surface-alt bg-surface p-5 leading-relaxed">
+    <SessionLayout
+      eyebrow={(weekly?.theme ?? weekly?.title ?? '').toUpperCase()}
+      stepLabel={`ETAPA ${stepIndex + 1} DE ${total} — ROLEPLAY`}
+      progress={(stepIndex + 1) / total}
+      sidebar={sidebar}
+    >
+      <span className="w-fit rounded-full border border-project bg-project/15 px-3 py-2 text-[11px] font-bold tracking-[0.5px] text-project uppercase">
+        Roleplay de decisões
+      </span>
+
+      <div className="flex flex-col gap-2.5">
+        <p className="text-[11px] font-bold tracking-[1px] text-muted uppercase">Cenário</p>
+        <div className="relative overflow-hidden rounded-xl border border-stroke bg-surface-alt py-3.5 pr-4 pl-5">
+          <span className="absolute inset-y-0 left-0 w-1 bg-project" aria-hidden="true" />
+          <p className="text-base leading-relaxed text-secondary">{activity.prompt}</p>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-stroke bg-surface-alt p-5 leading-relaxed">
         <p className="text-primary">{displayNode.text}</p>
       </div>
 
@@ -113,9 +149,10 @@ export function RoleplayActivity({
 
       {!answered && !displayNode.isTerminal && (
         <div className="flex flex-col gap-3">
-          {displayNode.options.map((option) => (
+          {displayNode.options.map((option, index) => (
             <OptionCard
               key={option.id}
+              label={`${index + 1}`}
               text={option.text}
               state="neutral"
               disabled={submitting}
@@ -140,6 +177,6 @@ export function RoleplayActivity({
           onContinue={onContinue}
         />
       )}
-    </ActivityScreen>
+    </SessionLayout>
   );
 }

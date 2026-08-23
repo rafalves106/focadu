@@ -1,11 +1,13 @@
 type OptionState = 'neutral' | 'selected' | 'correct' | 'wrong' | 'dimmed';
 
 const STATE_CLASS: Record<OptionState, string> = {
-  neutral: 'border-surface-alt bg-surface text-primary enabled:hover:border-secondary',
-  selected: 'border-accent bg-surface-alt text-primary',
+  neutral: 'border-stroke bg-surface text-primary enabled:hover:border-secondary',
+  // Fase 19 (Figma "Quiz 3"): selecionada-mas-nao-confirmada ganha preenchimento verde translucido
+  // (bg-accent/25 aproxima o "neon-green-dim" #1f5c33 do design), nao so a borda como antes.
+  selected: 'border-accent bg-accent/25 text-primary',
   correct: 'border-accent bg-accent/10 text-primary',
   wrong: 'border-alert bg-alert/10 text-primary',
-  dimmed: 'border-surface-alt bg-surface text-secondary opacity-40',
+  dimmed: 'border-stroke bg-surface text-secondary opacity-40',
 };
 
 /**
@@ -35,7 +37,7 @@ export function OptionCard({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`flex w-full items-center gap-3.5 rounded-xl border p-4 text-left transition-colors disabled:cursor-default ${stateClass}`}
+      className={`flex w-full items-center gap-3.5 rounded-xl border px-[18px] py-4 text-left transition-colors disabled:cursor-default ${stateClass}`}
     >
       <span
         className={[

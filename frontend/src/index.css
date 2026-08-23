@@ -1,8 +1,12 @@
-/* Fonte da identidade visual (Figma "Login/Registro", node 19:8) - Archivo (display/corpo) +
-   Fira Code (acentos "terminal": eyebrow, MOSTRAR/OCULTAR). So pesos usados no design.
-   Precisa vir ANTES de "@import tailwindcss" - regras @import tem que ficar todas no topo do
-   arquivo, antes de qualquer outra regra (Tailwind expande a propria import em conteudo real). */
-@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap");
+/* Fontes da identidade visual - todas ANTES de "@import tailwindcss" (regras @import tem que
+   ficar todas no topo do arquivo, antes de qualquer outra regra - Tailwind expande a propria
+   import em conteudo real).
+   - Archivo/Fira Code (Fase 18, Login/Registro node 19:8): display/corpo + acentos "terminal".
+   - Inter (Fase 19, Sessao Diaria): fonte de UI usada em todo o restante do Figma (Quiz/Cloze/
+     Roleplay/etc, ver docs/fase-19) - virou --font-sans, o padrao do app inteiro (nao so das 8
+     telas desta fase; nenhuma outra tela tinha um --font-sans proprio antes, so o default do
+     navegador - Inter e so uma troca de fonte, nao de layout/cor, risco baixo pro resto do app). */
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 /*
@@ -23,11 +27,18 @@
   --color-primary: #f5f5f5;
   --color-secondary: #9a9a9a;
   --color-muted: #5c5c5c;
-  /* font-display/font-mono (utilitarios Tailwind v4 gerados automaticamente por --font-*) - por
-     enquanto so aplicados na tela de Login/Registro (fidelidade ao node 19:8); nao e uma troca de
-     fonte do app inteiro, so os 2 tokens ficam disponiveis globalmente. */
+  /* stroke/subtle (Fase 19) - borda de cards/inputs no Figma (#2a2a2a), token proprio e distinto
+     de --color-surface-alt (#1e1e1e, "surface-raised" - fundo de pilulas/linhas elevadas, nao
+     borda). As 2 cores sao proximas mas genuinamente diferentes e usadas de forma consistente com
+     papeis diferentes no design - nao dava pra so reaproveitar surface-alt sem perder fidelidade. */
+  --color-stroke: #2a2a2a;
+  /* font-display/font-mono (Fase 18, Login/Registro node 19:8) - Archivo/Fira Code, escopados so
+     a elementos explicitos daquela tela (nao viram o default do app). font-sans (Fase 19) - Inter
+     vira o --font-sans de verdade, entao e o corpo padrao do app inteiro sem precisar de classe
+     explicita em cada elemento. */
   --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Fira Code", ui-monospace, "SFMono-Regular", monospace;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 body {

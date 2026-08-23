@@ -18,11 +18,12 @@ export function MaterialSidebar({
   completedContentIds,
 }: {
   contents: CuratedContentDto[];
-  activeContentId: string;
+  /** Nulo nas telas sem conteudo proprio (Quiz/Ligar Palavras/Cloze/Roleplay, Fase 19) - nenhum item fica em destaque, so o estado concluido aparece. */
+  activeContentId: string | null;
   completedContentIds: Set<string>;
 }) {
   return (
-    <aside className="flex w-[280px] shrink-0 flex-col gap-4 rounded-2xl border border-surface-alt bg-surface p-5">
+    <aside className="flex w-[280px] shrink-0 flex-col gap-4 rounded-2xl border border-stroke bg-surface p-5">
       <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-muted">Material de hoje</p>
 
       {([0, 1] as const).map((type) => {
@@ -42,7 +43,7 @@ export function MaterialSidebar({
                       key={item.id}
                       className={
                         isActive
-                          ? 'flex items-center gap-2.5 rounded-[10px] border border-accent bg-accent/10 p-3'
+                          ? 'flex items-center gap-2.5 rounded-[10px] border border-accent bg-accent/25 p-3'
                           : 'flex items-center gap-2.5 rounded-[10px] border border-transparent bg-surface-alt p-3'
                       }
                     >
@@ -64,7 +65,7 @@ export function MaterialSidebar({
                       key={item.id}
                       className={
                         isActive
-                          ? 'flex flex-col gap-2 rounded-[10px] border border-accent bg-accent/10'
+                          ? 'flex flex-col gap-2 rounded-[10px] border border-accent bg-accent/25'
                           : 'flex flex-col gap-2 rounded-[10px] bg-surface-alt'
                       }
                     >
