@@ -216,7 +216,7 @@ src/
       GroqContentEvaluationService.cs   <- adapter de IContentEvaluationService (Fase 5)
       GroqDraftGenerationService.cs      <- adapter de IDraftGenerationService (Fase 11 - rascunho
                                              de LinkedIn, mesmo HttpClient/erro do Groq, sem JSON mode)
-      GitHubOptions.cs                    <- Token/Username do GitHub (Fase 11)
+      GitHubOptions.cs                    <- Token do GitHub (Fase 11)
       GitHubService.cs                     <- adapter de IGitHubService (Fase 11, ver secao propria)
       BCryptPasswordHasher.cs               <- adapter de IPasswordHasher via BCrypt.Net-Next (Fase 12)
       JwtOptions.cs                          <- SecretKey de assinatura dos JWT (Fase 12)
@@ -232,7 +232,7 @@ src/
                                        WeeklyId renomeado pra WeeklyTemplateId na Fase 13),
                                        PublicationRequests (Fase 11), AuthRequests (Fase 12),
                                        ProfileRequests, EnrollmentRequests (Fase 13)
-    appsettings.json                <- connection string + Groq:ApiKey + GitHub:Token/Username +
+    appsettings.json                <- connection string + Groq:ApiKey + GitHub:Token +
                                        Jwt:SecretKey (todos vazios por padrao) default
     Focadu.Api.csproj                <- UserSecretsId (Fase 5, ver "Como configurar a chave da Groq"),
                                        Microsoft.AspNetCore.Authentication.JwtBearer (Fase 12)
@@ -805,9 +805,11 @@ GitHub) antes da proxima Weekly liberar.
   `ValidatePublicationUseCase` separado) - GitHub valida via `IGitHubService.GetRepositoryAsync`
   (owner/repo extraidos da URL, exige `IsPrivate == false`); retry e so resubmeter a mesma URL
   pelo mesmo endpoint, nao precisa de logica nova.
-- **GitHub nunca foi testado contra a API real** (decisao explicita do usuario nesta fase, ver
+- **GitHub nunca foi testado contra a API real** (decisao explicita do usuario na Fase 11, ver
   `docs/fase-11/resumo-implementacao-fase-11.md`) - verificado via `page.route()` do Playwright
-  mockando as duas chamadas que tocariam GitHub de verdade.
+  mockando as chamadas que tocariam GitHub de verdade. Revisado por leitura de codigo nesta fase
+  (achou e corrigiu um bug real de `sha` ausente no commit - ver "Como configurar o token do
+  GitHub" acima) - validacao ao vivo continua pendente, checklist na mesma secao.
 
 ## Superficie da API (Focadu.Api)
 
@@ -1275,20 +1277,55 @@ producao/CI, nunca em `appsettings.json`):
 ```bash
 cd backend/src/Focadu.Api
 dotnet user-secrets set "GitHub:Token" "seu-token-aqui"      # precisa de escopo de escrita (repo), nao so leitura
-dotnet user-secrets set "GitHub:Username" "seu-usuario-aqui"
 ```
 
+`GitHubOptions` so tem `Token` - o campo `Username` de quando isso foi escrito nunca foi lido em
+lugar nenhum (`GitHubService` sempre recebe `owner` explicito: da propria resposta da API pra
+criar/listar repos, ou da URL parseada por `GitHubUrlParser` pra validar/avaliar) - removido nesta
+revisao (dead config), um secret a menos pra configurar.
+
 Sem o token configurado, o resto da Api sobe normalmente - so as chamadas que tocam o GitHub
-falham com `github_token_nao_configurado` (502). **O token nunca foi validado contra a API real
-nesta fase** (decisao explicita do usuario - ver `docs/fase-11/resumo-implementacao-fase-11.md`);
-o prompt ja pedia pra confirmar que o token tem escopo de escrita (`repo`), nao so leitura, antes
-de assumir que o commit funciona.
+falham com `github_token_nao_configurado` (502).
+
+**Revisao de codigo desta fase (sem chave real ainda - Falves valida ao vivo, mesmo padrao da
+validacao real do Groq na Fase 5):**
+
+- **Bug real encontrado e corrigido:** `CommitFileAsync` fazia `PUT /repos/{owner}/{repo}/contents/
+  {path}` sem `sha` - a API do GitHub so aceita isso pra criar um arquivo que ainda nao existe;
+  sobrescrever um que ja existe sem `sha` responde `422 "sha wasnt supplied"` em vez de commitar.
+  Um repo novo (`auto_init=true`) e imune na 1a chamada, mas um repo reaproveitado
+  (`CommitModuleSummaryUseCase` com `isNewRepo=false`) ou qualquer retry do mesmo commit (ex: a
+  Api falha em `SaveChangesAsync` *depois* do commit ir pro GitHub) batiam nesse 422. Corrigido:
+  `CommitFileAsync` busca o `sha` atual (`GET .../contents/{path}`, 404 vira "nao existe" -
+  criacao pura) antes do `PUT`.
+- **Rate limit / repo privado-inexistente / token sem escopo `repo`:** nenhum ganhou tratamento
+  dedicado - `EnsureSuccessAsync` ja bota qualquer status de erro (nao só 404, que vira `null` via
+  `GetOptionalAsync`) dentro de `github_falhou`/`github_indisponivel` (502) com o corpo real da
+  resposta do GitHub anexado na mensagem, mesmo padrao ja usado pros erros genericos da Groq -
+  rate limit e token sem escopo chegam pro usuario com a mensagem literal que o GitHub devolveu
+  (ex: "API rate limit exceeded...", "Resource not accessible by personal access token"), sem
+  precisar de um `Code` por status.
+- **Ainda pendente (exige chave real, nao verificavel so por leitura de codigo):** confirmar que
+  os fluxos abaixo batem na API de verdade e que as mensagens acima realmente aparecem assim.
+  Checklist pro Falves (mesmo escopo do pedido original da Fase 11):
+  1. `github-commit` (`CommitModuleSummaryUseCase`) num repo **novo** - confirma o caminho feliz.
+  2. `github-commit` **de novo pro mesmo modulo** (mesmo repo, mesmo `MODULO-{n}.md`) - e o teste
+     que valida o fix do `sha` acima; sem ele, essa chamada quebrava com 422.
+  3. `submit` (`SubmitPublicationUseCase`) com uma URL de repo GitHub **publica** real - caminho
+     feliz de `GetRepositoryAsync`.
+  4. `submit` com URL de repo **privado** ou **inexistente** - confirma que cai no
+     `GitHubValidationError` (nao um 502 cru).
+  5. `POST /project/evaluate` (`EvaluateWeeklyProjectUseCase`) contra um repo com codigo de
+     verdade - confirma `GetContentSnapshotAsync` (Git Trees API + blobs) e o prompt de
+     `GroqProjectEvaluationService` juntos; e o unico dos 3 fluxos que tambem depende da Groq.
+  6. Token **sem** escopo `repo` (ou vazio) - confirma `github_token_nao_configurado`/
+     `github_falhou` em vez de um erro sem contexto.
 
 | Code | Status | Quando |
 |---|---|---|
 | `github_token_nao_configurado` | 502 | `GitHub:Token` vazio - qualquer chamada que precise dele |
 | `github_timeout` | 503 | GitHub nao respondeu a tempo (timeout de 20s) |
-| `github_indisponivel` / `github_falhou` | 502 | Erro de rede ou status HTTP de erro vindo do GitHub |
+| `github_indisponivel` / `github_falhou` | 502 | Erro de rede ou status HTTP de erro vindo do GitHub - inclui rate limit e token sem escopo, ver acima |
 
 ## Autenticacao (Fase 12)
 
@@ -2027,11 +2064,16 @@ CSS).
   compartilham a mesma `Date` (Daily normal + Daily de reforco geradas no mesmo dia) - ver
   `Weekly.GetDailyByDate` acima.
 - **GitHub nunca foi testado contra a API real** (Fase 11, decisao explicita do usuario) - o
-  codigo (`GitHubService`, `CommitModuleSummaryUseCase`) espelha o padrao ja comprovado do Groq,
-  mas so foi verificado estruturalmente (Playwright `page.route()` mockando as respostas). Antes
-  de confiar nele em uso real: configurar `GitHub:Token` com escopo de escrita (`repo`, nao so
-  leitura) e exercitar os 2 endpoints que tocam GitHub (`github-commit`, `submit` com URL de
-  GitHub) contra a API de verdade pelo menos uma vez.
+  codigo (`GitHubService`, `CommitModuleSummaryUseCase`, `SubmitPublicationUseCase`,
+  `EvaluateWeeklyProjectUseCase`) espelha o padrao ja comprovado do Groq, mas so foi verificado
+  estruturalmente (Playwright `page.route()` mockando as respostas). Revisao de codigo nesta fase
+  (sem chave real ainda) achou e corrigiu um bug real - `CommitFileAsync` fazia `PUT contents` sem
+  `sha`, o que quebra ao sobrescrever um arquivo que ja existe (422) - e removeu `GitHubOptions.
+  Username` (dead config, nunca foi lido). Validacao ao vivo continua pendente (mesmo padrao da
+  Fase 5 com o Groq, feita pelo Falves): checklist completo em "Como configurar o token do
+  GitHub" acima, cobrindo `github-commit` (incluindo commitar 2x pro mesmo modulo, o caso que
+  quebrava), `submit` com repo publico/privado/inexistente, `POST /project/evaluate` contra
+  codigo de verdade, e token sem escopo `repo`.
 - **Validacao de publicacao no LinkedIn e so estrutural** (Fase 11) - confirma o formato da URL
   (`linkedin.com/posts/...` ou `linkedin.com/feed/update/...`), nunca o conteudo do post. Nao ha
   API gratuita simples de conteudo do LinkedIn pra resolver isso - limitacao conhecida, ja

@@ -67,8 +67,25 @@ public class GitHubService : IGitHubService
     public async Task CommitFileAsync(
         string owner, string repo, string path, string content, string commitMessage, CancellationToken cancellationToken = default)
     {
-        var body = new { message = commitMessage, content = Convert.ToBase64String(Encoding.UTF8.GetBytes(content)) };
+        // A API PUT contents exige "sha" do arquivo atual pra sobrescrever um que ja existe -
+        // sem isso ela responde 422 "sha wasnt supplied" em vez de sobrescrever. So e "criacao
+        // pura" (sem sha) na 1a vez que este path e commitado num repo; um repo reaproveitado
+        // (CommitModuleSummaryUseCase com isNewRepo=false) ou um retry apos o commit ja ter ido
+        // pro GitHub mas a Api ter falhado depois (ex: SaveChangesAsync) caem no caso de update.
+        var existingSha = await GetFileShaAsync(owner, repo, path, cancellationToken);
+        object body = existingSha is null
+            ? new { message = commitMessage, content = Convert.ToBase64String(Encoding.UTF8.GetBytes(content)) }
+            : new { message = commitMessage, content = Convert.ToBase64String(Encoding.UTF8.GetBytes(content)), sha = existingSha };
         await SendAsync(HttpMethod.Put, $"repos/{owner}/{repo}/contents/{path}", cancellationToken, body);
+    }
+
+    private async Task<string?> GetFileShaAsync(string owner, string repo, string path, CancellationToken cancellationToken)
+    {
+        var response = await GetOptionalAsync($"repos/{owner}/{repo}/contents/{path}", cancellationToken);
+        if (response is null) return null;
+
+        var payload = await response.Content.ReadFromJsonAsync<GitHubContentPayload>(JsonOptions, cancellationToken);
+        return payload?.Sha;
     }
 
     public async Task<GitHubRepositoryInfo?> GetRepositoryAsync(string owner, string repo, CancellationToken cancellationToken = default)
@@ -241,4 +258,6 @@ public class GitHubService : IGitHubService
     private record GitHubTreeEntryPayload(string? Path, string? Type, string? Sha);
 
     private record GitHubBlobPayload(string? Content);
+
+    private record GitHubContentPayload(string? Sha);
 }
