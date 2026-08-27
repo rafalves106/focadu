@@ -1091,11 +1091,11 @@ de testes em vez de silenciosamente virar um 400 generico em producao.
 `POST /api/curated-content` e `PUT /api/curated-content/{id}` sao os **unicos** endpoints de
 autoria de conteudo da Api - Course/Monthly/WeeklyTemplate/DailyTemplate/DailyActivity continuam
 so via seed (ver "Fora de escopo"), porque a estrutura muda com pouca frequencia; o que muda toda
-semana e o conteudo curado (leituras/videos/diagramas) em si.
+semana e o conteudo curado (leituras/videos) em si.
 
 - `POST`: corpo `{ weeklyTemplateId, type, title, externalUrl?, bodyText? }` (campo renomeado de
   `weeklyId` na Fase 13 - `CuratedContent` e curriculo agora, vinculado a uma `WeeklyTemplate`,
-  nunca a uma Weekly-instancia de usuario nenhum). `type` e string (`"Reading"/"Video"/"Diagram"`,
+  nunca a uma Weekly-instancia de usuario nenhum). `type` e string (`"Reading"/"Video"`,
   case-insensitive), mais legivel pra curadoria manual do que o numero que a Api usa nas respostas
   de leitura. `weeklyTemplateId`/`title` sao validados em `Program.cs` (formato de request,
   incondicional); `type` invalido e falta de `externalUrl`/`bodyText` sao validados dentro do caso
@@ -1888,9 +1888,6 @@ CSS).
 - **Resolvido na Fase 6, quebrado de novo na Fase 13a, reconsertado na Fase 13b:** tela de
   autoria de conteudo curado no frontend (`/admin/conteudo`) - ver "Autoria de conteudo curado"
   acima.
-- Renderizacao de `CuratedContentType.Diagram` na experiencia do aluno (`/hoje`) - os 4 SVGs
-  reais da Semana 1 existem desde a Fase 6 (carregados via `/admin/conteudo`), mas nenhuma
-  `DailyActivity` referencia `Diagram` ainda, entao nao ha onde/como exibi-los pro aluno.
 - Exclusao (`DELETE`) de `CuratedContent` - so criacao/edicao existem; nunca foi pedido um
   endpoint de remocao.
 - CORS liberado so para `http://localhost:5173` (hardcoded, dev apenas).
@@ -2017,10 +2014,6 @@ CSS).
   `BadHttpRequestException` *antes* do endpoint rodar - `ApiExceptionHandler` ja trata isso
   globalmente (`requisicao_invalida`, 400) desde a Fase 5, nenhum endpoint novo precisa se
   preocupar com isso individualmente.
-- **Diagramas reais (SVG) das 4 Dailies da Semana 1 ja existem** (Fase 6, `CuratedContentType.
-  Diagram`), mas nenhuma `DailyActivity` os referencia ainda - decidir onde/como exibir `Diagram`
-  na experiencia do aluno (`/hoje`) fica pra uma fase futura. Reading/Video ganharam tela na Fase 7
-  - Diagram e o unico `CuratedContentType` que ainda nao tem.
 - **`GET /api/curated-content/{id}` (Fase 7)** existe pra dar ao frontend o conteudo de uma
   `DailyActivity` Reading/Video - se uma fase futura extinguir esse padrao (ex: embutir o
   `CuratedContent` direto no `DailyActivityDto`), vale revisar se o endpoint isolado ainda e

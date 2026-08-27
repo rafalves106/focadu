@@ -30,11 +30,11 @@ export type DailyStatus = (typeof DailyStatus)[keyof typeof DailyStatus];
 
 export const CourseStatus = { Draft: 0, Active: 1, Archived: 2 } as const;
 export type CourseStatus = (typeof CourseStatus)[keyof typeof CourseStatus];
-export type CuratedContentType = 0 | 1 | 2; // Reading, Video, Diagram
+export type CuratedContentType = 0 | 1; // Reading, Video
 
 // Nomes que a Api de autoria espera no campo `type` do request (case-insensitive, ver
 // CreateCuratedContentUseCase.ParseType) - a mesma ordem do enum acima.
-export const CURATED_CONTENT_TYPE_NAMES = ['Reading', 'Video', 'Diagram'] as const;
+export const CURATED_CONTENT_TYPE_NAMES = ['Reading', 'Video'] as const;
 
 export const WeeklyProjectStatus = { Pending: 0, Submitted: 1, Evaluated: 2 } as const;
 export type WeeklyProjectStatus = (typeof WeeklyProjectStatus)[keyof typeof WeeklyProjectStatus];

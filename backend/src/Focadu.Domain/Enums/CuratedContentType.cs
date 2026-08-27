@@ -4,6 +4,5 @@ namespace Focadu.Domain.Enums;
 public enum CuratedContentType
 {
     Reading = 0,
-    Video = 1,
-    Diagram = 2
+    Video = 1
 }

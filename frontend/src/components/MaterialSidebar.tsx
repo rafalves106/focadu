@@ -8,8 +8,7 @@ const GROUP_LABEL: Record<number, string> = { 0: 'LEITURA', 1: 'VÍDEO' };
 
 /**
  * "Material de hoje" (design Figma sessao-leitura/sessao-video, Fase 7) - a lista de
- * CuratedContent da semana, agrupada por tipo. CuratedContentType.Diagram fica de fora de
- * proposito: ainda nao tem tela na experiencia do aluno (ver docs/ARQUITETURA.md, "Fora de escopo").
+ * CuratedContent da semana, agrupada por tipo (Reading/Video).
  * Compartilhado entre ReadingActivity e VideoActivity - so muda o item ativo/concluido.
  */
 export function MaterialSidebar({

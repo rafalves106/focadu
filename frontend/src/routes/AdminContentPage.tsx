@@ -234,7 +234,7 @@ function CuratedContentForm({
       </label>
 
       <label className="flex flex-col gap-1 text-sm text-secondary">
-        Texto / SVG (para Diagram, cole o SVG puro aqui)
+        Texto
         <textarea
           value={bodyText}
           onChange={(event) => setBodyText(event.target.value)}

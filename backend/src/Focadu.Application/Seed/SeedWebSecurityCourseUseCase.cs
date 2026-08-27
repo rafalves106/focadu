@@ -112,10 +112,6 @@ public class SeedWebSecurityCourseUseCase
         var video = weeklyTemplate.AddCuratedContent(CuratedContentType.Video, "HTTP Crash Course & Exploration",
             "https://www.youtube.com/watch?v=iYM2zFP3Zn0");
 
-        // TODO: mecanismo de servir/anexar arquivo estatico (SVG) ainda nao foi desenhado
-        weeklyTemplate.AddCuratedContent(CuratedContentType.Diagram, "Diagrama do dia", null,
-            "Diagrama ja existe como SVG, mas ainda sem mecanismo definido para servi-lo pela Api.");
-
         // Ordem da sequencia do dia (Fase 7): leitura -> video -> atividades avaliaveis.
         dailyTemplate.AddActivity(ActivityType.Reading, 0, AnswerMode.MultipleChoice, contentId: reading.Id);
         dailyTemplate.AddActivity(ActivityType.Video, 1, AnswerMode.MultipleChoice, contentId: video.Id);
@@ -154,10 +150,6 @@ public class SeedWebSecurityCourseUseCase
         // Curadoria de video ainda nao fechada para os dias 3 e 4.
         var video = weeklyTemplate.AddCuratedContent(CuratedContentType.Video, "Vídeo a confirmar", null,
             "Curadoria pendente - video ainda nao definido para este dia.");
-
-        // TODO: mecanismo de servir/anexar arquivo estatico (SVG) ainda nao foi desenhado
-        weeklyTemplate.AddCuratedContent(CuratedContentType.Diagram, "Diagrama do dia", null,
-            "Diagrama ja existe como SVG, mas ainda sem mecanismo definido para servi-lo pela Api.");
 
         // Ordem da sequencia do dia (Fase 7): leitura -> video -> atividades avaliaveis.
         dailyTemplate.AddActivity(ActivityType.Reading, 0, AnswerMode.MultipleChoice, contentId: reading.Id);
@@ -199,10 +191,6 @@ public class SeedWebSecurityCourseUseCase
         // Curadoria de video ainda nao fechada para os dias 3 e 4.
         var video = weeklyTemplate.AddCuratedContent(CuratedContentType.Video, "Vídeo a confirmar", null,
             "Curadoria pendente - video ainda nao definido para este dia.");
-
-        // TODO: mecanismo de servir/anexar arquivo estatico (SVG) ainda nao foi desenhado
-        weeklyTemplate.AddCuratedContent(CuratedContentType.Diagram, "Diagrama do dia", null,
-            "Diagrama ja existe como SVG, mas ainda sem mecanismo definido para servi-lo pela Api.");
 
         // Ordem da sequencia do dia (Fase 7): leitura -> video -> atividades avaliaveis.
         dailyTemplate.AddActivity(ActivityType.Reading, 0, AnswerMode.MultipleChoice, contentId: reading.Id);
