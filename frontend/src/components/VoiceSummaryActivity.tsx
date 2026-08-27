@@ -54,7 +54,9 @@ function pickBestPortugueseVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesi
  */
 function usePromptVoice(text: string) {
   const [spokenChars, setSpokenChars] = useState(0);
-  const supported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+  // ponytail: leitura por voz desativada a pedido do usuario; reverter pra
+  // `typeof window !== 'undefined' && 'speechSynthesis' in window` pra reativar.
+  const supported = false;
 
   const speak = useCallback(async () => {
     if (!supported || !text) return;
