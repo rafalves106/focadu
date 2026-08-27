@@ -115,4 +115,55 @@ public class UserStreakTests
 
         Assert.Equal(0, streak.CurrentStreakAsOf(Monday));
     }
+
+    [Fact]
+    public void CurrentStreakAsOf_MarksBrokenAt_OnFirstObservation()
+    {
+        var streak = new UserStreak(Guid.NewGuid());
+        streak.RegisterCompletion(Monday);
+
+        Assert.Null(streak.BrokenAt);
+        streak.CurrentStreakAsOf(Wednesday);
+        Assert.Equal(Wednesday, streak.BrokenAt);
+
+        // Leitura seguinte, mesma quebra ja observada: nao reescreve a data.
+        streak.CurrentStreakAsOf(Friday);
+        Assert.Equal(Wednesday, streak.BrokenAt);
+    }
+
+    [Fact]
+    public void CurrentStreakAsOf_NeverMarksBrokenAt_WhenStreakStillAlive()
+    {
+        var streak = new UserStreak(Guid.NewGuid());
+        streak.RegisterCompletion(Monday);
+
+        streak.CurrentStreakAsOf(Tuesday);
+
+        Assert.Null(streak.BrokenAt);
+    }
+
+    [Fact]
+    public void RegisterCompletion_ClearsBrokenAt_WhenRestartingAfterABreak()
+    {
+        var streak = new UserStreak(Guid.NewGuid());
+        streak.RegisterCompletion(Monday);
+        streak.CurrentStreakAsOf(Wednesday);
+        Assert.NotNull(streak.BrokenAt);
+
+        streak.RegisterCompletion(Wednesday);
+
+        Assert.Null(streak.BrokenAt);
+    }
+
+    [Fact]
+    public void AcknowledgeBreak_ClearsBrokenAt()
+    {
+        var streak = new UserStreak(Guid.NewGuid());
+        streak.RegisterCompletion(Monday);
+        streak.CurrentStreakAsOf(Wednesday);
+
+        streak.AcknowledgeBreak();
+
+        Assert.Null(streak.BrokenAt);
+    }
 }

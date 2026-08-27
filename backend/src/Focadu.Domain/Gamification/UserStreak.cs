@@ -28,6 +28,15 @@ public class UserStreak : Entity
     public int LongestStreak { get; private set; }
     public DateOnly? LastCompletedDate { get; private set; }
 
+    /// <summary>
+    /// Data em que uma quebra (streak > 0 virando 0) foi observada pela primeira vez e ainda nao
+    /// foi reconhecida pelo usuario (Fase 10, tela "Streak Perdido") - setada como efeito colateral
+    /// de <see cref="CurrentStreakAsOf"/>, o mesmo lugar que ja resolvia a quebra sob demanda (ver
+    /// nota de design da classe). Null = nada pra mostrar (nunca quebrou, ja foi reconhecida via
+    /// <see cref="AcknowledgeBreak"/>, ou o usuario ja recomecou um streak novo desde entao).
+    /// </summary>
+    public DateOnly? BrokenAt { get; private set; }
+
     private UserStreak()
     {
     }
@@ -50,6 +59,9 @@ public class UserStreak : Entity
         if (HasBrokenAsOf(completionDate))
         {
             CurrentStreak = 0;
+            // Streak novo ja comecando - "voce perdeu o streak" deixa de fazer sentido, o usuario
+            // ja fez exatamente o que a tela pediria.
+            BrokenAt = null;
         }
 
         CurrentStreak++;
@@ -57,8 +69,23 @@ public class UserStreak : Entity
         LastCompletedDate = completionDate;
     }
 
-    /// <summary>Streak "ao vivo": aplica a quebra por inatividade silenciosa antes de expor o valor, sem precisar de uma escrita real pra refletir isso (ver nota de design acima).</summary>
-    public int CurrentStreakAsOf(DateOnly today) => HasBrokenAsOf(today) ? 0 : CurrentStreak;
+    /// <summary>
+    /// Streak "ao vivo": aplica a quebra por inatividade silenciosa antes de expor o valor, sem
+    /// precisar de uma escrita real pra refletir isso (ver nota de design acima). Efeito colateral:
+    /// na 1a leitura que observa uma quebra ainda nao registrada (CurrentStreak persistido > 0),
+    /// marca <see cref="BrokenAt"/> - e assim que o endpoint de gamificacao sabe que precisa expor
+    /// a tela "Streak Perdido" (Fase 10) uma vez, sem repeti-la em leituras seguintes.
+    /// </summary>
+    public int CurrentStreakAsOf(DateOnly today)
+    {
+        if (!HasBrokenAsOf(today)) return CurrentStreak;
+
+        if (CurrentStreak > 0 && BrokenAt is null) BrokenAt = today;
+        return 0;
+    }
+
+    /// <summary>Marca a quebra atual como vista - a tela "Streak Perdido" nao aparece de novo ate a proxima quebra real.</summary>
+    public void AcknowledgeBreak() => BrokenAt = null;
 
     private bool HasBrokenAsOf(DateOnly asOfDate) =>
         LastCompletedDate is { } last && NextBusinessDay(last) < asOfDate;
