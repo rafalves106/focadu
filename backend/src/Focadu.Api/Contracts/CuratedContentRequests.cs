@@ -1,7 +1,7 @@
 namespace Focadu.Api.Contracts;
 
 /// <summary>
-/// Type e string ("Reading"/"Video"/"Diagram", case-insensitive) - mais legivel pra quem cura
+/// Type e string ("Reading"/"Video", case-insensitive) - mais legivel pra quem cura
 /// conteudo manualmente do que o numero que a Api usa nas respostas de leitura. WeeklyTemplateId
 /// (Fase 13, era WeeklyId): CuratedContent virou curriculo, vinculado a uma WeeklyTemplate, nao a
 /// uma Weekly-instancia de usuario nenhum.

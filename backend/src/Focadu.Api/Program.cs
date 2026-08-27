@@ -36,13 +36,10 @@ var connectionString = builder.Configuration.GetConnectionString("Focadu")
 // Groq__ApiKey - nunca hardcoded nem commitada (ver docs/ARQUITETURA.md).
 var groqApiKey = builder.Configuration["Groq:ApiKey"] ?? string.Empty;
 
-// GitHub (Fase 11): mesma decisao do Groq acima - token/username ausentes nao impedem o app de
-// subir, so as chamadas de GitHubService falham (com erro claro) quando de fato invocadas sem
-// eles configurados. "GitHub:Token" precisa de escopo de escrita (repo), nao so leitura - ver
-// docs/ARQUITETURA.md.
-var gitHubOptions = new GitHubOptions(
-    builder.Configuration["GitHub:Token"] ?? string.Empty,
-    builder.Configuration["GitHub:Username"] ?? string.Empty);
+// GitHub (Fase 11): mesma decisao do Groq acima - token ausente nao impede o app de subir, so as
+// chamadas de GitHubService falham (com erro claro) quando de fato invocadas sem ele configurado.
+// "GitHub:Token" precisa de escopo de escrita (repo), nao so leitura - ver docs/ARQUITETURA.md.
+var gitHubOptions = new GitHubOptions(builder.Configuration["GitHub:Token"] ?? string.Empty);
 
 // Jwt:SecretKey (Fase 12): ao contrario de Groq/GitHub acima, esta e exigida no boot - a partir
 // desta fase, autenticacao e fundacao (nao uma integracao opcional), e sem a chave literalmente
@@ -393,15 +390,13 @@ api.MapPost("/weeklies/{weeklyId}/project/submit", async (ClaimsPrincipal princi
 
 // Avaliacao do projeto (Fase 11) - WeeklyProject.Evaluate() existia no dominio desde a Fase 1 sem
 // endpoint (gap documentado na Fase 7); precisou ganhar um porque Weekly.IsModuleComplete() exige
-// Project Evaluated. Sem tela propria - ver EvaluateWeeklyProjectUseCase. PUT (nao POST, Fase 16):
-// o corpo agora carrega o estado final da avaliacao (Score+Feedback), nao so uma acao vazia.
-api.MapPut("/weeklies/{weeklyId}/project/evaluate", async (ClaimsPrincipal principal, string weeklyId, EvaluateWeeklyProjectRequest? request, EvaluateWeeklyProjectUseCase useCase, CancellationToken ct) =>
+// Project Evaluated. Sem tela propria - ver EvaluateWeeklyProjectUseCase. POST sem corpo (Fase 21,
+// era PUT com {score,feedback} na Fase 16): a nota/feedback agora vem da IA (GitHub + Groq), nao
+// mais do chamador.
+api.MapPost("/weeklies/{weeklyId}/project/evaluate", async (ClaimsPrincipal principal, string weeklyId, EvaluateWeeklyProjectUseCase useCase, CancellationToken ct) =>
     {
         var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
-        if (request?.Score is not { } score)
-            throw new ValidationException("score_obrigatorio", "O campo 'score' e obrigatorio.");
-
-        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, score, request.Feedback, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
     })
     .RequireAuthorization()
     .WithName("EvaluateWeeklyProject");
@@ -468,10 +463,10 @@ api.MapGet("/github/repositories", async (GetGitHubRepositoriesUseCase useCase, 
 // de CuratedContent. Exige login (RequireAuthorization) mas nao filtra por usuario - curriculo e
 // compartilhado, nao ha papel de "admin" separado neste app de usuario unico ainda.
 
-api.MapGet("/curated-content/{id}", async (string id, GetCuratedContentUseCase useCase, CancellationToken ct) =>
+api.MapGet("/curated-content/{id}", async (ClaimsPrincipal principal, string id, GetCuratedContentUseCase useCase, CancellationToken ct) =>
     {
         var contentId = RouteParsing.RequireGuid(id, "id");
-        return Results.Ok(await useCase.ExecuteAsync(contentId, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), contentId, ct));
     })
     .RequireAuthorization()
     .WithName("GetCuratedContent");

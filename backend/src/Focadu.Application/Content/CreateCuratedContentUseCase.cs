@@ -43,12 +43,12 @@ public class CreateCuratedContentUseCase
         return new CuratedContentDto(content.Id, content.Type, content.Title, content.ExternalUrl, content.BodyText);
     }
 
-    /// <summary>"Reading"/"Video"/"Diagram" (case-insensitive) - nomes legiveis no corpo do request de autoria, diferente do numero que a Api usa nas respostas de leitura.</summary>
+    /// <summary>"Reading"/"Video" (case-insensitive) - nomes legiveis no corpo do request de autoria, diferente do numero que a Api usa nas respostas de leitura.</summary>
     internal static CuratedContentType ParseType(string? type)
     {
         if (!Enum.TryParse<CuratedContentType>(type, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed))
         {
-            throw new ValidationException("tipo_invalido", "O campo 'type' precisa ser Reading, Video ou Diagram.");
+            throw new ValidationException("tipo_invalido", "O campo 'type' precisa ser Reading ou Video.");
         }
 
         return parsed;

@@ -90,7 +90,7 @@ export function VideoActivity({
           <p className="text-[11px] font-medium tracking-[0.5px] text-secondary">MATERIAL: VÍDEO</p>
         </div>
 
-        <div className="h-[280px] w-full overflow-hidden rounded-xl bg-base">
+        <div className="aspect-video w-full overflow-hidden rounded-xl bg-base">
           {videoId ? (
             <iframe
               className="size-full"

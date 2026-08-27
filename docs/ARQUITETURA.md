@@ -216,7 +216,7 @@ src/
       GroqContentEvaluationService.cs   <- adapter de IContentEvaluationService (Fase 5)
       GroqDraftGenerationService.cs      <- adapter de IDraftGenerationService (Fase 11 - rascunho
                                              de LinkedIn, mesmo HttpClient/erro do Groq, sem JSON mode)
-      GitHubOptions.cs                    <- Token/Username do GitHub (Fase 11)
+      GitHubOptions.cs                    <- Token do GitHub (Fase 11)
       GitHubService.cs                     <- adapter de IGitHubService (Fase 11, ver secao propria)
       BCryptPasswordHasher.cs               <- adapter de IPasswordHasher via BCrypt.Net-Next (Fase 12)
       JwtOptions.cs                          <- SecretKey de assinatura dos JWT (Fase 12)
@@ -232,7 +232,7 @@ src/
                                        WeeklyId renomeado pra WeeklyTemplateId na Fase 13),
                                        PublicationRequests (Fase 11), AuthRequests (Fase 12),
                                        ProfileRequests, EnrollmentRequests (Fase 13)
-    appsettings.json                <- connection string + Groq:ApiKey + GitHub:Token/Username +
+    appsettings.json                <- connection string + Groq:ApiKey + GitHub:Token +
                                        Jwt:SecretKey (todos vazios por padrao) default
     Focadu.Api.csproj                <- UserSecretsId (Fase 5, ver "Como configurar a chave da Groq"),
                                        Microsoft.AspNetCore.Authentication.JwtBearer (Fase 12)
@@ -521,9 +521,19 @@ Score do Course (Ranking) = soma cumulativa (snowball) de Weekly.CalculateScore(
 **`WeeklyProject` ganhou `Score`/`Feedback`.** Antes da Fase 16, `WeeklyProject.Evaluate()` nao
 tinha parametro nenhum (so aprovar por status). Passou a exigir `Evaluate(int score, string?
 feedback)` - `score` (0-100) alimenta 30% do Score da Weekly; `feedback` so armazenado, sem uso em
-calculo nenhum. `PUT /api/weeklies/{weeklyId}/project/evaluate` (era `POST`) - o corpo agora
-carrega o estado final da avaliacao, nao so uma acao vazia. Continua sem UI propria (app nao tem
-papel de "revisor").
+calculo nenhum. Continua sem UI propria (app nao tem papel de "revisor").
+
+**Fase 21: avaliacao automatica por IA.** `score`/`feedback` deixaram de vir do corpo da requisicao
+(nao ha mais chamador humano decidindo a nota) - `EvaluateWeeklyProjectUseCase` busca o conteudo do
+repositorio publico via `IGitHubService.GetContentSnapshotAsync` (Git Trees API recursiva + leitura
+de cada blob - o codigo de verdade, nao so nomes de arquivo/README; filtrado por extensao e
+limitado em quantidade/tamanho pra caber no prompt, ver `GitHubService.CodeExtensions`/`MaxFiles`/
+`MaxTotalChars`) e pede pro Groq (`IProjectEvaluationService`/`GroqProjectEvaluationService`, port a
+parte de `IContentEvaluationService` por ter prompt proprio) comparar contra
+`WeeklyTemplate.WeeklyProjectSpecText`. `POST /api/weeklies/{weeklyId}/project/evaluate` (voltou a
+ser `POST` sem corpo, era `PUT {score,feedback}` na Fase 16) - so funciona se `SubmissionUrl` for
+um repositorio GitHub (parseado por `GitHubUrlParser`, compartilhado com `SubmitPublicationUseCase`);
+outros formatos (ex: link do LinkedIn) nao tem conteudo pra IA analisar.
 
 **Ranking - 3 recortes, "Weekly"/"Monthly" por POSICAO no curriculo, nao calendario real
 (decisao confirmada com o usuario).** Como cada Course tem 1 curriculo compartilhado mas cada
@@ -635,6 +645,29 @@ pra uma fase que e so composicao de leitura.
 13 (sem guarda de "so uma vez") - so faltava UI de edicao: `ProfileInterviewPage` ganhou `?edit=1`
 (pre-popula com o que ja foi salvo, volta pro `/perfil` em vez de `/selecionar-curso` ao salvar, em
 vez de virar uma tela nova).
+
+**Fase 21: `Interests`/`AdditionalProfileNotes` finalmente usados em prompt de IA.** Desde a
+Fase 13 o comentario em `User.cs` dizia "uso automatico em prompts de IA fica pra uma fase futura" -
+essa fase e o primeiro uso: `GetCuratedContentUseCase`, ao servir uma leitura (`Reading` com
+`BodyText`), gera (via `IAnalogyGenerationService`/`GroqAnalogyGenerationService`, port a parte pelo
+mesmo motivo de `IProjectEvaluationService`) 1 analogia POR SECAO do texto, conectando aquela secao
+especifica a um interesse do aluno - exatamente a "ancora pra analogia" que `CURADORIA.md` previa.
+Nao 1 analogia so cobrindo o texto inteiro (opcao mais simples, descartada durante o desenvolvimento
+desta mesma fase - ficava perdida no fim de leituras longas, menos intuitivo que reexplicar cada
+secao com a analogia dela): `GetCuratedContentUseCase.SplitIntoSections` divide o Texto Cru por titulo
+`"#### ..."` (convencao 100% consistente nos 20 `dia-N.json` ja curados - `### Titulo` geral + N
+subsecoes `####`), manda todas as N secoes numa unica chamada Groq (JSON mode, pede exatamente N
+analogias na mesma ordem - nunca menos/mais, formato errado vira `ExternalServiceException`), e
+`ReadingActivity.tsx` (frontend, `splitReadingSections` espelhando a mesma regex) intercala cada
+secao com sua analogia (card "💡 PRA VOCÊ" logo abaixo) - a preamble (titulo geral + paragrafo de
+abertura) fica sem analogia. Cacheado em `PersonalizedAnalogy` (aggregate com colecao owned
+`AnalogySection`, `SectionIndex`+`Text` cada, tabela `PersonalizedAnalogySections` - mesmo padrao de
+`WeeklyReinforcement`/`WeakDailyLink`) por `UserId`+`CuratedContentId` unico - gerado uma vez, nunca
+reavaliado mesmo se o aluno editar os interesses (ou a leitura for editada, mudando o numero de
+secoes) depois (mesmo principio de "nao reescrever historico" de `WeeklyProject.Feedback`). Sem
+interesse nenhum cadastrado (perfil ainda nao completado, ou completado so com texto livre vazio -
+`CompleteProfile` aceita isso), ou fora do tipo `Reading`, simplesmente nao gera nada - nunca
+bloqueia a leitura em si; falha do Groq na geracao tambem so degrada pra "sem analogias dessa vez".
 
 **`EquippedNameColor` no Ranking - token estavel, nao hex.** `GetCourseRankingUseCase` resolve, por
 Enrollment, o `Name` do `CosmeticItem` equipado no slot `NameColor` (ex: "Verde Neon") e devolve em
@@ -772,9 +805,11 @@ GitHub) antes da proxima Weekly liberar.
   `ValidatePublicationUseCase` separado) - GitHub valida via `IGitHubService.GetRepositoryAsync`
   (owner/repo extraidos da URL, exige `IsPrivate == false`); retry e so resubmeter a mesma URL
   pelo mesmo endpoint, nao precisa de logica nova.
-- **GitHub nunca foi testado contra a API real** (decisao explicita do usuario nesta fase, ver
+- **GitHub nunca foi testado contra a API real** (decisao explicita do usuario na Fase 11, ver
   `docs/fase-11/resumo-implementacao-fase-11.md`) - verificado via `page.route()` do Playwright
-  mockando as duas chamadas que tocariam GitHub de verdade.
+  mockando as chamadas que tocariam GitHub de verdade. Revisado por leitura de codigo nesta fase
+  (achou e corrigiu um bug real de `sha` ausente no commit - ver "Como configurar o token do
+  GitHub" acima) - validacao ao vivo continua pendente, checklist na mesma secao.
 
 ## Superficie da API (Focadu.Api)
 
@@ -809,11 +844,11 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses` | `SubmitActivityResponseUseCase` | 201 (cria uma nova `ActivityResponse`) |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/audio` | `SubmitVoiceSummaryResponseUseCase` (Fase 5) | 201, `multipart/form-data`, so pra `VoiceSummary` |
 | 🔒 POST | `/api/dailies/{dailyId}/complete` | `CompleteDailyUseCase` | 200 (`CompleteDailyResult`, ver abaixo - Fase 14: ganhou `GemsEarned`/`StreakAfterCompletion`; Fase 15: ganhou `WasReinforcementBonus`) |
-| 🔒 GET | `/api/curated-content/{id}` | `GetCuratedContentUseCase` (Fase 7) | 200, 404 - exige login, mas nao filtra por usuario (curriculo compartilhado) |
+| 🔒 GET | `/api/curated-content/{id}` | `GetCuratedContentUseCase` (Fase 7) | 200, 404 - exige login, mas nao filtra por usuario (curriculo compartilhado). Fase 21: resposta ganhou `personalizedAnalogies` (array, 1 por secao "####" do texto - so quando `Reading` + usuario com interesses cadastrados, ver secao acima) |
 | 🔒 POST | `/api/curated-content` | `CreateCuratedContentUseCase` (Fase 4) | 201, 400/404 - Fase 13: campo `weeklyTemplateId` (era `weeklyId`) |
 | 🔒 PUT | `/api/curated-content/{id}` | `UpdateCuratedContentUseCase` (Fase 4) | 200, 400/404 |
 | 🔒 POST | `/api/weeklies/{weeklyId}/project/submit` | `SubmitWeeklyProjectUseCase` (Fase 7) | 200, 400/404 - `WeeklyProject.Submit` existia desde a Fase 1, so faltava endpoint |
-| 🔒 PUT | `/api/weeklies/{weeklyId}/project/evaluate` | `EvaluateWeeklyProjectUseCase` (Fase 11) | 200, 400/404 - `WeeklyProject.Evaluate` existia desde a Fase 1, so faltava endpoint (so backend, sem UI). Fase 16: virou PUT (era POST) e o corpo `{score, feedback}` passou a ser obrigatorio (`score` alimenta o Score de Estudo) |
+| 🔒 POST | `/api/weeklies/{weeklyId}/project/evaluate` | `EvaluateWeeklyProjectUseCase` (Fase 11) | 200, 400/404 - `WeeklyProject.Evaluate` existia desde a Fase 1, so faltava endpoint (so backend, sem UI). Fase 16: virou PUT com corpo `{score, feedback}` obrigatorio. Fase 21: voltou a ser POST sem corpo - nota/feedback agora vem da IA (GitHub + Groq, ver secao acima) |
 | 🔒 GET | `/api/courses/{courseId}/ranking?scope=` | `GetCourseRankingUseCase` (Fase 16) | 200 (`RankingResultDto`) - `scope` = `weekly`\|`monthly`\|`course`, default `course` se omitido. Fase 18: `RankingEntryDto` ganhou `EquippedNameColor` (Name do cosmetico equipado, nao hex - ver secao abaixo) |
 | 🔒 GET | `/api/users/me/badges` | `GetUserBadgesUseCase` (Fase 17) | 200 (`UserBadgesDto`, 5 badges calculados sob demanda) |
 | 🔒 GET | `/api/users/me/referral` | `GetReferralInfoUseCase` (Fase 17) | 200 (`ReferralInfoDto`) - gera o `ReferralCode` na 1a consulta |
@@ -915,13 +950,18 @@ JSON. Fluxo de `SubmitVoiceSummaryResponseUseCase`:
 1. Valida tamanho do arquivo (`MaxAudioSizeBytes` = 25MB - **ponytail**: calibrado pra cobrir
    ~10min de gravacao tipica do navegador com folga, e coincide com o limite de upload da propria
    Groq) e que a atividade e do tipo `VoiceSummary`.
-2. Resolve o `CuratedContent` referenciado por `activity.ContentId` - se nao tiver `BodyText`,
-   `conteudo_referencia_ausente` (400).
+2. Resolve o `CuratedContent` referenciado por `activity.ContentId` como texto de referencia
+   (`BodyText`) - Fase 21: quando falta (`Video` nunca tem `BodyText`, estrutural, ver
+   `CURADORIA.md`), cai pro `Prompt` da propria atividade (os prompts de VoiceSummary sobre video
+   ja descrevem o que se espera na resposta, ver `dia-1.json`); so `conteudo_referencia_ausente`
+   (400) se nem isso existir.
 3. `IAudioTranscriptionService.TranscribeAsync` (Groq Whisper, `whisper-large-v3`) - transcricao
    vazia vira `ExternalServiceException` (`transcricao_vazia`, 502).
 4. `IContentEvaluationService.EvaluateAsync` (Groq chat completion, `openai/gpt-oss-120b`, JSON
-   mode) com `ContentEvaluationRequest(ExpectedAnswer: BodyText, UserAnswer: transcricao,
-   ContextText: Prompt)` - retorna `ContentEvaluationResult(Score, Feedback)`. O modelo original
+   mode) com `ContentEvaluationRequest(ExpectedAnswer: BodyText ou Prompt (item 2), UserAnswer:
+   transcricao, ContextText: Prompt - so quando BodyText ja foi a referencia principal; repeti-lo
+   seria redundante se a referencia ja caiu no fallback do Prompt)` - retorna
+   `ContentEvaluationResult(Score, Feedback)`. O modelo original
    escolhido na Fase 5 (`llama-3.3-70b-versatile`) saiu do catalogo da Groq antes mesmo do
    primeiro teste com chave real - corrigido pra `openai/gpt-oss-120b` nessa mesma validacao (ver
    `ponytail:` no codigo de `GroqContentEvaluationService` - catalogo de modelos da Groq muda com
@@ -1053,11 +1093,11 @@ de testes em vez de silenciosamente virar um 400 generico em producao.
 `POST /api/curated-content` e `PUT /api/curated-content/{id}` sao os **unicos** endpoints de
 autoria de conteudo da Api - Course/Monthly/WeeklyTemplate/DailyTemplate/DailyActivity continuam
 so via seed (ver "Fora de escopo"), porque a estrutura muda com pouca frequencia; o que muda toda
-semana e o conteudo curado (leituras/videos/diagramas) em si.
+semana e o conteudo curado (leituras/videos) em si.
 
 - `POST`: corpo `{ weeklyTemplateId, type, title, externalUrl?, bodyText? }` (campo renomeado de
   `weeklyId` na Fase 13 - `CuratedContent` e curriculo agora, vinculado a uma `WeeklyTemplate`,
-  nunca a uma Weekly-instancia de usuario nenhum). `type` e string (`"Reading"/"Video"/"Diagram"`,
+  nunca a uma Weekly-instancia de usuario nenhum). `type` e string (`"Reading"/"Video"`,
   case-insensitive), mais legivel pra curadoria manual do que o numero que a Api usa nas respostas
   de leitura. `weeklyTemplateId`/`title` sao validados em `Program.cs` (formato de request,
   incondicional); `type` invalido e falta de `externalUrl`/`bodyText` sao validados dentro do caso
@@ -1118,6 +1158,17 @@ alem do `WeeklyProject`. Conteudo completo em `docs/fase-3/resumo-implementacao-
 
 Acionado via `dotnet run --project src/Focadu.Api -- seed` (checagem de `args` em `Program.cs`,
 antes de `app.Run()` - roda e encerra, sem subir o servidor HTTP).
+
+**Fase 21: Dia 1 passou a usar conteudo curado de verdade.** `CuratedDayImporter`
+(`Focadu.Application.Seed`, generico por design - o roteiro real tem 60 dias, um metodo `AddDayN`
+por dia nao escala) le um `dia-N.json` (schema em `secret/curadoria/CURADORIA.md`, escrito pela
+skill `curar-conteudo`) do disco e aplica a uma `WeeklyTemplate`: cria `DailyTemplate`,
+`CuratedContent`s e `DailyActivity`s em ordem (`QuizOption`s e o grafo de `RoleplayNode`s
+incluidos, resolvido em 2 passadas porque `NodeKey` pode apontar pra um node definido depois no
+JSON). `SeedWebSecurityCourseUseCase.AddDay1` chama `CuratedDayImporter.ImportFile` em vez do
+placeholder hardcoded que existia (o `TODO` original); acha a raiz do repo subindo diretorios ate
+achar `.git` (o seed pode rodar tanto da raiz quanto de `backend/`). Dias 2-4 continuam no
+placeholder - so o Dia 1 foi pedido nesta fase, trocar os outros e a mesma 1 linha cada.
 
 ## Persistencia (EF Core + Postgres)
 
@@ -1226,20 +1277,55 @@ producao/CI, nunca em `appsettings.json`):
 ```bash
 cd backend/src/Focadu.Api
 dotnet user-secrets set "GitHub:Token" "seu-token-aqui"      # precisa de escopo de escrita (repo), nao so leitura
-dotnet user-secrets set "GitHub:Username" "seu-usuario-aqui"
 ```
 
+`GitHubOptions` so tem `Token` - o campo `Username` de quando isso foi escrito nunca foi lido em
+lugar nenhum (`GitHubService` sempre recebe `owner` explicito: da propria resposta da API pra
+criar/listar repos, ou da URL parseada por `GitHubUrlParser` pra validar/avaliar) - removido nesta
+revisao (dead config), um secret a menos pra configurar.
+
 Sem o token configurado, o resto da Api sobe normalmente - so as chamadas que tocam o GitHub
-falham com `github_token_nao_configurado` (502). **O token nunca foi validado contra a API real
-nesta fase** (decisao explicita do usuario - ver `docs/fase-11/resumo-implementacao-fase-11.md`);
-o prompt ja pedia pra confirmar que o token tem escopo de escrita (`repo`), nao so leitura, antes
-de assumir que o commit funciona.
+falham com `github_token_nao_configurado` (502).
+
+**Revisao de codigo desta fase (sem chave real ainda - Falves valida ao vivo, mesmo padrao da
+validacao real do Groq na Fase 5):**
+
+- **Bug real encontrado e corrigido:** `CommitFileAsync` fazia `PUT /repos/{owner}/{repo}/contents/
+  {path}` sem `sha` - a API do GitHub so aceita isso pra criar um arquivo que ainda nao existe;
+  sobrescrever um que ja existe sem `sha` responde `422 "sha wasnt supplied"` em vez de commitar.
+  Um repo novo (`auto_init=true`) e imune na 1a chamada, mas um repo reaproveitado
+  (`CommitModuleSummaryUseCase` com `isNewRepo=false`) ou qualquer retry do mesmo commit (ex: a
+  Api falha em `SaveChangesAsync` *depois* do commit ir pro GitHub) batiam nesse 422. Corrigido:
+  `CommitFileAsync` busca o `sha` atual (`GET .../contents/{path}`, 404 vira "nao existe" -
+  criacao pura) antes do `PUT`.
+- **Rate limit / repo privado-inexistente / token sem escopo `repo`:** nenhum ganhou tratamento
+  dedicado - `EnsureSuccessAsync` ja bota qualquer status de erro (nao só 404, que vira `null` via
+  `GetOptionalAsync`) dentro de `github_falhou`/`github_indisponivel` (502) com o corpo real da
+  resposta do GitHub anexado na mensagem, mesmo padrao ja usado pros erros genericos da Groq -
+  rate limit e token sem escopo chegam pro usuario com a mensagem literal que o GitHub devolveu
+  (ex: "API rate limit exceeded...", "Resource not accessible by personal access token"), sem
+  precisar de um `Code` por status.
+- **Ainda pendente (exige chave real, nao verificavel so por leitura de codigo):** confirmar que
+  os fluxos abaixo batem na API de verdade e que as mensagens acima realmente aparecem assim.
+  Checklist pro Falves (mesmo escopo do pedido original da Fase 11):
+  1. `github-commit` (`CommitModuleSummaryUseCase`) num repo **novo** - confirma o caminho feliz.
+  2. `github-commit` **de novo pro mesmo modulo** (mesmo repo, mesmo `MODULO-{n}.md`) - e o teste
+     que valida o fix do `sha` acima; sem ele, essa chamada quebrava com 422.
+  3. `submit` (`SubmitPublicationUseCase`) com uma URL de repo GitHub **publica** real - caminho
+     feliz de `GetRepositoryAsync`.
+  4. `submit` com URL de repo **privado** ou **inexistente** - confirma que cai no
+     `GitHubValidationError` (nao um 502 cru).
+  5. `POST /project/evaluate` (`EvaluateWeeklyProjectUseCase`) contra um repo com codigo de
+     verdade - confirma `GetContentSnapshotAsync` (Git Trees API + blobs) e o prompt de
+     `GroqProjectEvaluationService` juntos; e o unico dos 3 fluxos que tambem depende da Groq.
+  6. Token **sem** escopo `repo` (ou vazio) - confirma `github_token_nao_configurado`/
+     `github_falhou` em vez de um erro sem contexto.
 
 | Code | Status | Quando |
 |---|---|---|
 | `github_token_nao_configurado` | 502 | `GitHub:Token` vazio - qualquer chamada que precise dele |
 | `github_timeout` | 503 | GitHub nao respondeu a tempo (timeout de 20s) |
-| `github_indisponivel` / `github_falhou` | 502 | Erro de rede ou status HTTP de erro vindo do GitHub |
+| `github_indisponivel` / `github_falhou` | 502 | Erro de rede ou status HTTP de erro vindo do GitHub - inclui rate limit e token sem escopo, ver acima |
 
 ## Autenticacao (Fase 12)
 
@@ -1563,7 +1649,12 @@ frontend/
       OptionsAnswer.tsx          <- nucleo "escolher opcao" - Quiz, cada termo de WordMatch, Cloze/MultipleChoice; usa OptionCard desde a Fase 9
       ClozeFreeTextActivity.tsx   <- Cloze/FreeText (resposta + justificativa); Intro + CodeHighlight desde a Fase 9. Fase 19: SessionLayout + bloco de codigo/labels fieis ao node "sessao-cloze-test" - campo de justificativa continua texto (nao microfone, ver nota no arquivo)
       RoleplayActivity.tsx        <- navega o grafo de RoleplayNode client-side; Intro + OptionCard desde a Fase 9. Fase 19: SessionLayout + badge ambar "Roleplay de Decisoes" + bloco "Cenario" persistente (activity.prompt, antes so na Intro) + opcoes numeradas; indicador de "arvore de decisao" (1->2->3->4) do Figma omitido (profundidade do grafo e variavel, nao um numero fixo de passos)
-      VoiceSummaryActivity.tsx    <- grava audio (MediaRecorder), envia multipart, mostra transcricao+feedback (Fase 5). Fase 19: SessionLayout `card={false}` (unica tela de sessao sem cartao, mic orb 180px) + legenda "Gravando - MM:SS / limite 10:00"; legenda "Baseado em: ..." do Figma omitida (exigiria 1 chamada de API nova so pra isso)
+      VoiceSummaryActivity.tsx    <- grava audio (MediaRecorder), envia multipart, mostra transcricao+feedback (Fase 5). Fase 19: SessionLayout `card={false}` (unica tela de sessao sem cartao, mic orb 180px) + legenda "Gravando - MM:SS / limite 10:00"; legenda "Baseado em: ..." do Figma omitida (exigiria 1 chamada de API nova so pra isso).
+                                   Fase 21: le a pergunta em voz alta ao entrar (Web Speech API,
+                                   nativa - sem servico externo), destacando cada palavra falada
+                                   (`onboundary`, degrada pra colorir tudo de uma vez se o navegador/
+                                   voz nao disparar por palavra) + botao "Ouvir de novo"; prefere voz
+                                   pt-BR "de rede" (Google/Microsoft Online) por heuristica de nome
       ReadingActivity.tsx         <- etapa de leitura de um CuratedContent (Fase 7). Fase 19: usa SessionLayout/useMaterialSidebar (chrome generalizado, era JSX proprio)
       VideoActivity.tsx           <- etapa de video - embed real do YouTube (Fase 7). Fase 19: idem
       FeedbackPanel.tsx           <- bloco de resultado compartilhado pelos 5 componentes de atividade (Fase 7). Fase 19: gauge 72px (era 56px) com preenchimento bg-accent/25 quando passou, tracking/bordas fieis ao node "feedback-ia" - 2 colunas acertos/melhorias do Figma continuam fora (AiFeedback e 1 string so, ver Fase 7)
@@ -1834,9 +1925,6 @@ CSS).
 - **Resolvido na Fase 6, quebrado de novo na Fase 13a, reconsertado na Fase 13b:** tela de
   autoria de conteudo curado no frontend (`/admin/conteudo`) - ver "Autoria de conteudo curado"
   acima.
-- Renderizacao de `CuratedContentType.Diagram` na experiencia do aluno (`/hoje`) - os 4 SVGs
-  reais da Semana 1 existem desde a Fase 6 (carregados via `/admin/conteudo`), mas nenhuma
-  `DailyActivity` referencia `Diagram` ainda, entao nao ha onde/como exibi-los pro aluno.
 - Exclusao (`DELETE`) de `CuratedContent` - so criacao/edicao existem; nunca foi pedido um
   endpoint de remocao.
 - CORS liberado so para `http://localhost:5173` (hardcoded, dev apenas).
@@ -1861,8 +1949,10 @@ CSS).
 - "Modo Offline" (cache local pra continuar navegando sem servidor) e "Reportar" (mailto/formulario
   de feedback no erro generico) - ambos citados no prompt da Fase 10 como "futuro", sem cache local
   nem endereco de suporte pra apontar ainda.
-- Sistema de sessao/expiracao por inatividade - o design "Erro - Sessao Expirada" da Fase 10 nao
-  tem tela porque esse conceito nao existe no app (usuario unico hardcoded, sem login).
+- Sistema de sessao/expiracao - o design "Erro - Sessao Expirada" da Fase 10 continua sem tela.
+  Login existe desde a Fase 12 (JWT, expira em 7 dias), mas nao ha tratamento global de 401: uma
+  chamada de Api com token expirado/invalido so vira um `ApiError` cru, tratado (ou nao) por quem
+  fez a chamada - nao ha interceptor central nem redirecionamento/modal dedicado ainda.
 
 ## Fases concluidas
 
@@ -1905,10 +1995,11 @@ CSS).
   data ajustada por SQL (mesma tecnica das Fases 15-18), confirmando fidelidade visual dos 8 telas
   de sessao de ponta a ponta.
 - **"Sessao Expirada" e "Streak Perdido" (2 dos 4 designs do Figma da Fase 10) nao tem tela** - o
-  primeiro precisaria de um conceito de sessao/expiracao por inatividade que o app nao tem (usuario
-  unico hardcoded, sem login); o segundo e uma tela dedicada de "voce perdeu o streak" - Streak
-  virou dado real na Fase 14 (`UserStreak`), mas nenhuma tela de alerta especifica foi pedida/
-  construida - o streak quebrado so aparece como `0` no `StreakIndicator` normal.
+  primeiro precisaria de tratamento global de 401 (ver "Estados de erro" acima - login existe desde
+  a Fase 12, mas nenhum interceptor central reage a token expirado/invalido ainda); o segundo e uma
+  tela dedicada de "voce perdeu o streak" - Streak virou dado real na Fase 14 (`UserStreak`), mas
+  nenhuma tela de alerta especifica foi pedida/construida - o streak quebrado so aparece como `0`
+  no `StreakIndicator` normal.
   Ver `docs/fase-10/resumo-implementacao-fase-10.md` pra tabela completa do que cada link do Figma
   continha de verdade vs. o que o prompt dizia.
 - **Testando erros de rede com Playwright: usar o host completo no glob de `page.route()`**
@@ -1960,17 +2051,6 @@ CSS).
   `BadHttpRequestException` *antes* do endpoint rodar - `ApiExceptionHandler` ja trata isso
   globalmente (`requisicao_invalida`, 400) desde a Fase 5, nenhum endpoint novo precisa se
   preocupar com isso individualmente.
-- **Resolvido na Fase 6, quebrado de novo na Fase 13a:** UI de autoria de conteudo curado
-  (`/admin/conteudo`) - os endpoints `POST/PUT /api/curated-content` continuam existindo, mas a
-  tela usa `GET /api/courses`/`GET /api/weeklies/{weeklyId}`, que agora exigem uma Enrollment do
-  usuario logado pra retornar dado (curriculo virou Template, sem Enrollment nao ha Instance pra
-  cruzar). Uma fase futura precisa de um endpoint separado, no lado Template
-  (`IWeeklyTemplateRepository`), pra listar cursos/semanas de autoria sem depender de matricula -
-  ver "Autoria de conteudo curado" acima e `docs/fase-13a/resumo-implementacao-fase-13a.md`.
-- **Diagramas reais (SVG) das 4 Dailies da Semana 1 ja existem** (Fase 6, `CuratedContentType.
-  Diagram`), mas nenhuma `DailyActivity` os referencia ainda - decidir onde/como exibir `Diagram`
-  na experiencia do aluno (`/hoje`) fica pra uma fase futura. Reading/Video ganharam tela na Fase 7
-  - Diagram e o unico `CuratedContentType` que ainda nao tem.
 - **`GET /api/curated-content/{id}` (Fase 7)** existe pra dar ao frontend o conteudo de uma
   `DailyActivity` Reading/Video - se uma fase futura extinguir esse padrao (ex: embutir o
   `CuratedContent` direto no `DailyActivityDto`), vale revisar se o endpoint isolado ainda e
@@ -1984,11 +2064,16 @@ CSS).
   compartilham a mesma `Date` (Daily normal + Daily de reforco geradas no mesmo dia) - ver
   `Weekly.GetDailyByDate` acima.
 - **GitHub nunca foi testado contra a API real** (Fase 11, decisao explicita do usuario) - o
-  codigo (`GitHubService`, `CommitModuleSummaryUseCase`) espelha o padrao ja comprovado do Groq,
-  mas so foi verificado estruturalmente (Playwright `page.route()` mockando as respostas). Antes
-  de confiar nele em uso real: configurar `GitHub:Token` com escopo de escrita (`repo`, nao so
-  leitura) e exercitar os 2 endpoints que tocam GitHub (`github-commit`, `submit` com URL de
-  GitHub) contra a API de verdade pelo menos uma vez.
+  codigo (`GitHubService`, `CommitModuleSummaryUseCase`, `SubmitPublicationUseCase`,
+  `EvaluateWeeklyProjectUseCase`) espelha o padrao ja comprovado do Groq, mas so foi verificado
+  estruturalmente (Playwright `page.route()` mockando as respostas). Revisao de codigo nesta fase
+  (sem chave real ainda) achou e corrigiu um bug real - `CommitFileAsync` fazia `PUT contents` sem
+  `sha`, o que quebra ao sobrescrever um arquivo que ja existe (422) - e removeu `GitHubOptions.
+  Username` (dead config, nunca foi lido). Validacao ao vivo continua pendente (mesmo padrao da
+  Fase 5 com o Groq, feita pelo Falves): checklist completo em "Como configurar o token do
+  GitHub" acima, cobrindo `github-commit` (incluindo commitar 2x pro mesmo modulo, o caso que
+  quebrava), `submit` com repo publico/privado/inexistente, `POST /project/evaluate` contra
+  codigo de verdade, e token sem escopo `repo`.
 - **Validacao de publicacao no LinkedIn e so estrutural** (Fase 11) - confirma o formato da URL
   (`linkedin.com/posts/...` ou `linkedin.com/feed/update/...`), nunca o conteudo do post. Nao ha
   API gratuita simples de conteudo do LinkedIn pra resolver isso - limitacao conhecida, ja
