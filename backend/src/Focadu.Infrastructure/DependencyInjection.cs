@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IUserCosmeticInventoryRepository, UserCosmeticInventoryRepository>();
         services.AddScoped<IUserEquippedCosmeticsRepository, UserEquippedCosmeticsRepository>();
         services.AddScoped<IReferralRepository, ReferralRepository>();
+        services.AddScoped<IPersonalizedAnalogyRepository, PersonalizedAnalogyRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<IClock, SystemClock>();
 
@@ -50,6 +51,12 @@ public static class DependencyInjection
         // Rascunho de post do LinkedIn (Fase 11) - mesmo cliente/chave do Groq, so um adapter
         // diferente (gera texto livre, sem JSON mode/Score).
         services.AddHttpClient<IDraftGenerationService, GroqDraftGenerationService>(ConfigureGroqClient);
+        // Avaliacao automatica do projeto da semana (repositorio vs especificacao) - mesmo
+        // cliente/chave do Groq, adapter proprio (prompt de codigo/repo, nao de resumo falado).
+        services.AddHttpClient<IProjectEvaluationService, GroqProjectEvaluationService>(ConfigureGroqClient);
+        // Analogia personalizada de leitura (Fase 21) - mesmo cliente/chave do Groq, adapter
+        // proprio (prompt de analogia por interesse, nao de resumo falado nem de codigo).
+        services.AddHttpClient<IAnalogyGenerationService, GroqAnalogyGenerationService>(ConfigureGroqClient);
 
         // GitHub (Fase 11) - token ausente nao impede o app de subir, so as chamadas do
         // GitHubService falham (com erro claro) quando de fato invocadas sem ele configurado

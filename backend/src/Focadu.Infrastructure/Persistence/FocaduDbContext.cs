@@ -56,6 +56,9 @@ public class FocaduDbContext : DbContext
     public DbSet<UserEquippedCosmetics> UserEquippedCosmetics => Set<UserEquippedCosmetics>();
     public DbSet<Referral> Referrals => Set<Referral>();
 
+    // Personalizacao por IA (Fase 21) - cache de analogias por (User, CuratedContent).
+    public DbSet<PersonalizedAnalogy> PersonalizedAnalogies => Set<PersonalizedAnalogy>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FocaduDbContext).Assembly);

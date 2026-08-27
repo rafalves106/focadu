@@ -73,44 +73,29 @@ public class SeedWebSecurityCourseUseCase
         return course;
     }
 
-    private static void AddDay1(WeeklyTemplate weeklyTemplate)
+    // Fase 21: conteudo curado de verdade (secret/curadoria/web-security/semana-1/dia-1.json),
+    // carregado via CuratedDayImporter em vez do placeholder hardcoded que existia aqui (o "TODO:
+    // substituir pelo texto completo curado" original). Dias 2-4 abaixo continuam no placeholder -
+    // so o dia 1 foi pedido pra teste; trocar os outros e a mesma 1 linha quando chegar a vez.
+    private static void AddDay1(WeeklyTemplate weeklyTemplate) =>
+        CuratedDayImporter.ImportFile(weeklyTemplate, CuratedContentPath("web-security", "semana-1", "dia-1.json"));
+
+    /// <summary>
+    /// Acha secret/curadoria/&lt;curso&gt;/&lt;pastaSemana&gt;/&lt;arquivo&gt; a partir da raiz do
+    /// repo (achada subindo ate encontrar .git) - o seed roda via `dotnet run -- seed`, que pode
+    /// ser disparado tanto da raiz do repo quanto de backend/, entao nao da pra assumir
+    /// Directory.GetCurrentDirectory() direto.
+    /// </summary>
+    private static string CuratedContentPath(string courseSlug, string weekFolder, string fileName)
     {
-        var dailyTemplate = weeklyTemplate.AddDailyTemplate(1);
+        var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
+        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, ".git")))
+            dir = dir.Parent;
 
-        // TODO: substituir pelo texto completo curado
-        var reading = weeklyTemplate.AddCuratedContent(CuratedContentType.Reading, "Como a web funciona",
-            "https://developer.mozilla.org/en-US/docs/Learn_web_development/Getting_started/Web_standards/How_the_web_works",
-            "Um pedido de pagina passa por resolucao de DNS, abertura de conexao TCP (e TLS, se " +
-            "for HTTPS) e a troca de requisicao/resposta HTTP antes do navegador renderizar algo. " +
-            "Cada peca desse caminho e um ponto onde a seguranca pode falhar.");
+        var repoRoot = dir?.FullName
+            ?? throw new InvalidOperationException("Nao foi possivel localizar a raiz do repositorio (procurando por .git) para achar o conteudo curado.");
 
-        var video = weeklyTemplate.AddCuratedContent(CuratedContentType.Video, "How websites and HTTP work? Web Basics Crash Course",
-            "https://www.youtube.com/watch?v=iD2fgC74ZtA");
-
-        // TODO: mecanismo de servir/anexar arquivo estatico (SVG) ainda nao foi desenhado
-        weeklyTemplate.AddCuratedContent(CuratedContentType.Diagram, "Diagrama do dia", null,
-            "Diagrama ja existe como SVG, mas ainda sem mecanismo definido para servi-lo pela Api.");
-
-        // Ordem da sequencia do dia (Fase 7): leitura -> resumo falado (sobre a leitura) -> video
-        // -> atividades avaliaveis. Reading/Video sao etapas de consumo (ContentId obrigatorio,
-        // sem QuizOption/ExpectedAnswer) - ver ActivityType.Reading/Video.
-        dailyTemplate.AddActivity(ActivityType.Reading, 0, AnswerMode.MultipleChoice, contentId: reading.Id);
-
-        // VoiceSummary (Fase 5): resposta e sempre a transcricao do audio, avaliada pela Groq
-        // contra reading.BodyText - nao usa QuizOption nem ExpectedAnswer.
-        dailyTemplate.AddActivity(ActivityType.VoiceSummary, 1, AnswerMode.FreeText,
-            prompt: "Explique com suas proprias palavras o que voce entendeu sobre como a web " +
-                "funciona - o ciclo requisicao-resposta, o papel do HTTP, e por que isso importa " +
-                "pra seguranca.",
-            contentId: reading.Id);
-
-        dailyTemplate.AddActivity(ActivityType.Video, 2, AnswerMode.MultipleChoice, contentId: video.Id);
-
-        var quiz = dailyTemplate.AddActivity(ActivityType.Quiz, 3, AnswerMode.MultipleChoice,
-            prompt: "O que acontece, em ordem, quando voce digita uma URL e aperta Enter no navegador?");
-        quiz.AddQuizOption("O navegador resolve o dominio via DNS, abre uma conexao com o servidor e troca requisicao/resposta HTTP", true);
-        quiz.AddQuizOption("O navegador baixa o site inteiro por FTP antes de exibir qualquer coisa", false);
-        quiz.AddQuizOption("O servidor envia a pagina via um socket UDP sem estabelecer conexao", false);
+        return Path.Combine(repoRoot, "secret", "curadoria", courseSlug, weekFolder, fileName);
     }
 
     private static void AddDay2(WeeklyTemplate weeklyTemplate)

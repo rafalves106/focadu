@@ -1,6 +1,8 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Gamification;
 using Focadu.Application.Ports;
+using Focadu.Domain.Enums;
+using Focadu.Domain.Exceptions;
 using Focadu.Domain.Repositories;
 
 namespace Focadu.Application.Weeklies;
@@ -22,26 +24,38 @@ namespace Focadu.Application.Weeklies;
 ///
 /// Fase 16 (Score de Estudo): Evaluate() passou a exigir uma nota (0-100), nao so aprovar por
 /// texto livre - WeeklyProject.Score alimenta 30% de Weekly.CalculateScore(), usado pelo ranking
-/// (GetCourseRankingUseCase). Continua sem UI propria.
+/// (GetCourseRankingUseCase).
+///
+/// Fase 21: a nota/feedback deixaram de vir do chamador (curl manual) e passaram a ser calculados
+/// automaticamente - busca o conteudo do repositorio publico (IGitHubService.
+/// GetContentSnapshotAsync) e pede pro Groq (IProjectEvaluationService) comparar com
+/// WeeklyTemplate.WeeklyProjectSpecText. So funciona quando SubmissionUrl e um repositorio GitHub
+/// (o outro formato aceito, link do LinkedIn, nao tem conteudo pra IA analisar - ver
+/// SubmitPublicationUseCase pro fluxo de "prova de publicacao", que e separado deste). Continua
+/// sem UI propria, so o endpoint.
 /// </summary>
 public class EvaluateWeeklyProjectUseCase
 {
     private readonly IWeeklyRepository _weeklyRepository;
+    private readonly IGitHubService _gitHubService;
+    private readonly IProjectEvaluationService _projectEvaluationService;
     private readonly GamificationCreditor _gamificationCreditor;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
 
     public EvaluateWeeklyProjectUseCase(
-        IWeeklyRepository weeklyRepository, GamificationCreditor gamificationCreditor, IUnitOfWork unitOfWork, IClock clock)
+        IWeeklyRepository weeklyRepository, IGitHubService gitHubService, IProjectEvaluationService projectEvaluationService,
+        GamificationCreditor gamificationCreditor, IUnitOfWork unitOfWork, IClock clock)
     {
         _weeklyRepository = weeklyRepository;
+        _gitHubService = gitHubService;
+        _projectEvaluationService = projectEvaluationService;
         _gamificationCreditor = gamificationCreditor;
         _unitOfWork = unitOfWork;
         _clock = clock;
     }
 
-    public async Task<WeeklyProjectDto> ExecuteAsync(
-        Guid userId, Guid weeklyId, int score, string? feedback, CancellationToken cancellationToken = default)
+    public async Task<WeeklyProjectDto> ExecuteAsync(Guid userId, Guid weeklyId, CancellationToken cancellationToken = default)
     {
         var weekly = await _weeklyRepository.GetByIdAsync(weeklyId, userId, cancellationToken)
             ?? throw new NotFoundException("semana_nao_encontrada", "Semana nao encontrada.");
@@ -49,7 +63,25 @@ public class EvaluateWeeklyProjectUseCase
         var project = weekly.Project
             ?? throw new NotFoundException("projeto_nao_encontrado", "Esta semana nao tem projeto definido.");
 
-        project.Evaluate(score, feedback);
+        // Falha antes de gastar uma chamada a GitHub/Groq (paga) se o projeto nem estiver no
+        // estado certo - WeeklyProject.Evaluate() tambem valida isso, mas so depois da IA rodar.
+        if (project.Status != WeeklyProjectStatus.Submitted)
+            throw new DomainException("Só é possível avaliar um projeto que foi submetido.");
+
+        var repoRef = project.SubmissionUrl is not null ? GitHubUrlParser.TryParse(project.SubmissionUrl) : null;
+        if (repoRef is not { } repo)
+        {
+            throw new ValidationException(
+                "projeto_nao_e_repositorio_github",
+                "A avaliacao automatica exige que o projeto tenha sido submetido com uma URL de repositorio GitHub publico.");
+        }
+
+        var snapshot = await _gitHubService.GetContentSnapshotAsync(repo.Owner, repo.Repo, cancellationToken);
+        var specText = weekly.Template.WeeklyProjectSpecText ?? string.Empty;
+        var evaluation = await _projectEvaluationService.EvaluateAsync(
+            new ContentEvaluationRequest(specText, snapshot, null), cancellationToken);
+
+        project.Evaluate(evaluation.Score, evaluation.Feedback);
 
         // So resolve/cria o UserGemBalance se a Weekly de fato fechou perfeita agora - avaliar um
         // projeto de uma Weekly imperfeita (o caso comum) nao deveria criar uma linha de saldo

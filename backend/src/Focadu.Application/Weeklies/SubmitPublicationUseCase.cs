@@ -22,9 +22,6 @@ public class SubmitPublicationUseCase
     private static readonly Regex LinkedInPostUrl = new(
         @"^https://(www\.)?linkedin\.com/(posts|feed/update)/", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-    private static readonly Regex GitHubRepoUrl = new(
-        @"^https://github\.com/(?<owner>[^/]+)/(?<repo>[^/]+?)/?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
     private const string GitHubValidationError = "Repositório não encontrado ou está privado - verifique se é público.";
 
     private readonly IWeeklyRepository _weeklyRepository;
@@ -67,10 +64,10 @@ public class SubmitPublicationUseCase
 
     private async Task<(bool Valid, string? Error)> ValidateGitHubAsync(string url, CancellationToken cancellationToken)
     {
-        var match = GitHubRepoUrl.Match(url.Trim());
-        if (!match.Success) return (false, GitHubValidationError);
+        var parsed = GitHubUrlParser.TryParse(url);
+        if (parsed is null) return (false, GitHubValidationError);
 
-        var repo = await _gitHubService.GetRepositoryAsync(match.Groups["owner"].Value, match.Groups["repo"].Value, cancellationToken);
+        var repo = await _gitHubService.GetRepositoryAsync(parsed.Value.Owner, parsed.Value.Repo, cancellationToken);
         return repo is { IsPrivate: false } ? (true, null) : (false, GitHubValidationError);
     }
 }

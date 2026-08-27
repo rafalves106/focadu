@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
@@ -7,6 +7,26 @@ import { ApiErrorScreen } from './errors/ApiErrorScreen';
 import { SessionLayout } from './SessionShell';
 import { useMaterialSidebar } from './useMaterialSidebar';
 import dotSmall from '../assets/reading/dot-small.svg';
+
+const SECTION_HEADING = /^####\s+.+$/gm;
+
+/**
+ * Divide o Texto Cru em secoes por titulo "####" - precisa espelhar exatamente
+ * GetCuratedContentUseCase.SplitIntoSections (backend) pra `personalizedAnalogies[i]` alinhar com
+ * a secao certa por indice. Sem nenhum "####" encontrado, o texto inteiro vira 1 secao so (mesmo
+ * fallback do backend) - so fica vazio se bodyText tambem estiver vazio.
+ */
+function splitReadingSections(bodyText: string): { preamble: string; sections: string[] } {
+  const matches = [...bodyText.matchAll(SECTION_HEADING)];
+  if (matches.length === 0) return { preamble: '', sections: bodyText ? [bodyText] : [] };
+
+  const preamble = bodyText.slice(0, matches[0].index!).trim();
+  const sections = matches.map((match, i) => {
+    const end = i + 1 < matches.length ? matches[i + 1].index! : bodyText.length;
+    return bodyText.slice(match.index!, end).trim();
+  });
+  return { preamble, sections };
+}
 
 /**
  * Etapa de leitura (design Figma "sessao-leitura", Fase 7 - fidelidade revisada na Fase 19) -
@@ -38,6 +58,8 @@ export function ReadingActivity({
     retry,
   } = useApiResource(() => api.getCuratedContent(activity.contentId!), [activity.contentId]);
   const { weekly, sidebar } = useMaterialSidebar(daily, activity.contentId);
+  // Antes dos early return abaixo (Regras dos Hooks: useMemo nao pode vir depois de um return condicional).
+  const { preamble, sections } = useMemo(() => splitReadingSections(content?.bodyText ?? ''), [content?.bodyText]);
 
   if (loading) return <Centered text="Carregando leitura..." />;
   if (contentError) return <ApiErrorScreen error={contentError} onRetry={retry} />;
@@ -66,6 +88,7 @@ export function ReadingActivity({
     : null;
   const wordCount = content.bodyText?.trim().split(/\s+/).filter(Boolean).length ?? 0;
   const readMinutes = wordCount > 0 ? Math.max(1, Math.round(wordCount / 200)) : null;
+  const analogies = content.personalizedAnalogies ?? [];
 
   return (
     <SessionLayout
@@ -84,9 +107,22 @@ export function ReadingActivity({
         <h1 className="text-2xl font-semibold leading-[1.3] text-primary">{content.title}</h1>
 
         <div className="relative min-h-0 flex-1 overflow-y-auto pr-3">
-          <p className="whitespace-pre-line text-sm leading-[1.5] text-secondary">
-            {content.bodyText ?? 'Conteúdo ainda não cadastrado.'}
-          </p>
+          {!content.bodyText && (
+            <p className="whitespace-pre-line text-sm leading-[1.5] text-secondary">Conteúdo ainda não cadastrado.</p>
+          )}
+          {preamble && <p className="whitespace-pre-line text-sm leading-[1.5] text-secondary">{preamble}</p>}
+          {/* Uma analogia por seção "####" (mesma ordem de splitReadingSections) - explica aquela seção específica, em vez de 1 analogia só cobrindo o texto inteiro no final. */}
+          {sections.map((section, i) => (
+            <div key={i} className={preamble || i > 0 ? 'mt-5' : ''}>
+              <p className="whitespace-pre-line text-sm leading-[1.5] text-secondary">{section}</p>
+              {analogies[i] && (
+                <div className="mt-3 rounded-xl bg-surface-alt p-4">
+                  <p className="mb-1 text-[11px] font-medium tracking-[0.5px] text-secondary">💡 PRA VOCÊ</p>
+                  <p className="text-sm leading-[1.5] text-primary">{analogies[i]}</p>
+                </div>
+              )}
+            </div>
+          ))}
           <div className="pointer-events-none sticky bottom-0 h-8 bg-gradient-to-b from-transparent to-surface" />
         </div>
 

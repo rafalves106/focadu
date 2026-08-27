@@ -69,13 +69,18 @@ public class SubmitVoiceSummaryResponseUseCase
         }
 
         // Garantido pelo dominio na criacao (DailyActivity exige ContentId pra VoiceSummary), mas
-        // o texto de referencia em si (BodyText) e responsabilidade da curadoria de conteudo -
-        // esse sim pode faltar (ex: video sem BodyText), entao validamos aqui.
+        // o texto de referencia em si (BodyText) e responsabilidade da curadoria de conteudo - e
+        // so existe pra Reading (Video nunca tem BodyText, so ExternalUrl - estrutural no schema
+        // de curadoria, ver CURADORIA.md, nao um dado faltando por engano). Quando falta, cai pro
+        // Prompt da propria atividade: os prompts de VoiceSummary sobre video ja descrevem com
+        // detalhe o que se espera na resposta (ver dia-1.json), suficiente pra servir de
+        // referencia - sem isso, todo VoiceSummary sobre video quebraria sempre.
         var referenceContent = weekly.Template.CuratedContents.FirstOrDefault(c => c.Id == activity.ContentId);
-        if (referenceContent?.BodyText is null)
+        var referenceText = referenceContent?.BodyText ?? activity.Prompt;
+        if (string.IsNullOrWhiteSpace(referenceText))
         {
             throw new DomainException(
-                "Esta atividade VoiceSummary nao tem um CuratedContent de referencia com BodyText configurado.",
+                "Esta atividade VoiceSummary nao tem BodyText nem Prompt suficiente para servir de referencia de avaliacao.",
                 "conteudo_referencia_ausente");
         }
 
@@ -86,8 +91,12 @@ public class SubmitVoiceSummaryResponseUseCase
                 "transcricao_vazia", "A transcricao do audio veio vazia - tente gravar novamente.");
         }
 
+        // ContextText (a pergunta) so agrega informacao quando a referencia principal e outra
+        // coisa (o BodyText da leitura) - se ja caiu no fallback do Prompt como referencia,
+        // repeti-lo tambem aqui seria redundante.
+        var contextText = referenceContent?.BodyText is not null ? activity.Prompt : null;
         var evaluation = await _evaluationService.EvaluateAsync(
-            new ContentEvaluationRequest(referenceContent.BodyText, transcript, activity.Prompt), cancellationToken);
+            new ContentEvaluationRequest(referenceText, transcript, contextText), cancellationToken);
 
         return await ActivityResponseRecorder.RecordAsync(
             weekly, daily, activityId, evaluation.Score, transcript, justification: null, evaluation.Feedback,

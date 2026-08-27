@@ -24,7 +24,7 @@ public class User : Entity
 
     private readonly List<string> _interests = new();
 
-    /// <summary>Hobbies/interesses/referencias culturais (Fase 13, Entrevista de Perfil - Documento Mestre Secao 2.2). Fonte de futuras analogias personalizadas - so captura/persiste nesta fase, uso automatico em prompts de IA fica pra uma fase futura.</summary>
+    /// <summary>Hobbies/interesses/referencias culturais (Fase 13, Entrevista de Perfil - Documento Mestre Secao 2.2). Fase 21: usado em prompt de IA - ver GetCuratedContentUseCase/IAnalogyGenerationService (gera analogia personalizada pra leituras).</summary>
     public IReadOnlyCollection<string> Interests => _interests.AsReadOnly();
 
     public string? AdditionalProfileNotes { get; private set; }

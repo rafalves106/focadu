@@ -247,6 +247,12 @@ export interface CuratedContentDto {
   title: string;
   externalUrl: string | null;
   bodyText: string | null;
+  /**
+   * So preenchido por GET /api/curated-content/{id} (Fase 21/22) - 1 analogia por seção "####" do
+   * bodyText (mesma ordem), gerada por IA a partir dos interesses do usuário, quando a leitura e o
+   * perfil permitem. [] quando não há personalização pra este conteúdo/usuário.
+   */
+  personalizedAnalogies?: string[];
 }
 
 export interface WeeklyProjectDto {

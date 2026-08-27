@@ -393,15 +393,13 @@ api.MapPost("/weeklies/{weeklyId}/project/submit", async (ClaimsPrincipal princi
 
 // Avaliacao do projeto (Fase 11) - WeeklyProject.Evaluate() existia no dominio desde a Fase 1 sem
 // endpoint (gap documentado na Fase 7); precisou ganhar um porque Weekly.IsModuleComplete() exige
-// Project Evaluated. Sem tela propria - ver EvaluateWeeklyProjectUseCase. PUT (nao POST, Fase 16):
-// o corpo agora carrega o estado final da avaliacao (Score+Feedback), nao so uma acao vazia.
-api.MapPut("/weeklies/{weeklyId}/project/evaluate", async (ClaimsPrincipal principal, string weeklyId, EvaluateWeeklyProjectRequest? request, EvaluateWeeklyProjectUseCase useCase, CancellationToken ct) =>
+// Project Evaluated. Sem tela propria - ver EvaluateWeeklyProjectUseCase. POST sem corpo (Fase 21,
+// era PUT com {score,feedback} na Fase 16): a nota/feedback agora vem da IA (GitHub + Groq), nao
+// mais do chamador.
+api.MapPost("/weeklies/{weeklyId}/project/evaluate", async (ClaimsPrincipal principal, string weeklyId, EvaluateWeeklyProjectUseCase useCase, CancellationToken ct) =>
     {
         var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
-        if (request?.Score is not { } score)
-            throw new ValidationException("score_obrigatorio", "O campo 'score' e obrigatorio.");
-
-        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, score, request.Feedback, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
     })
     .RequireAuthorization()
     .WithName("EvaluateWeeklyProject");
@@ -468,10 +466,10 @@ api.MapGet("/github/repositories", async (GetGitHubRepositoriesUseCase useCase, 
 // de CuratedContent. Exige login (RequireAuthorization) mas nao filtra por usuario - curriculo e
 // compartilhado, nao ha papel de "admin" separado neste app de usuario unico ainda.
 
-api.MapGet("/curated-content/{id}", async (string id, GetCuratedContentUseCase useCase, CancellationToken ct) =>
+api.MapGet("/curated-content/{id}", async (ClaimsPrincipal principal, string id, GetCuratedContentUseCase useCase, CancellationToken ct) =>
     {
         var contentId = RouteParsing.RequireGuid(id, "id");
-        return Results.Ok(await useCase.ExecuteAsync(contentId, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), contentId, ct));
     })
     .RequireAuthorization()
     .WithName("GetCuratedContent");

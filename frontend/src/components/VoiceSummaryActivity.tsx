@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
 import { FeedbackPanel } from './FeedbackPanel';
@@ -8,6 +8,93 @@ import { useMaterialSidebar } from './useMaterialSidebar';
 const MAX_RECORDING_SECONDS = 10 * 60;
 
 type RecorderState = 'idle' | 'recording' | 'submitting' | 'answered' | 'permission_denied';
+
+/**
+ * Espera a lista de vozes do navegador carregar (em muitos navegadores getVoices() volta vazio
+ * na primeira chamada, so populando apos o evento 'voiceschanged') - com timeout curto pra nao
+ * travar a leitura pra sempre se o evento nunca disparar (ou nao houver voz nenhuma instalada).
+ */
+function getVoicesAsync(): Promise<SpeechSynthesisVoice[]> {
+  const synth = window.speechSynthesis;
+  const immediate = synth.getVoices();
+  if (immediate.length > 0) return Promise.resolve(immediate);
+
+  return new Promise((resolve) => {
+    const onChange = () => {
+      synth.removeEventListener('voiceschanged', onChange);
+      resolve(synth.getVoices());
+    };
+    synth.addEventListener('voiceschanged', onChange);
+    setTimeout(() => {
+      synth.removeEventListener('voiceschanged', onChange);
+      resolve(synth.getVoices());
+    }, 300);
+  });
+}
+
+/**
+ * Entre as vozes em portugues disponiveis, prefere uma "de rede" (Google/Microsoft Online) -
+ * essas costumam soar bem mais naturais que a voz local do SO (ex: eSpeak no Linux). Sem garantia
+ * de qualidade (o navegador nao expoe isso), so uma heuristica pelo nome da voz.
+ */
+function pickBestPortugueseVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  const ptBr = voices.filter((v) => v.lang.toLowerCase().startsWith('pt-br'));
+  const pool = ptBr.length > 0 ? ptBr : voices.filter((v) => v.lang.toLowerCase().startsWith('pt'));
+  if (pool.length === 0) return null;
+
+  return pool.find((v) => /google|online|natural/i.test(v.name)) ?? pool[0];
+}
+
+/**
+ * Le a pergunta em voz alta ao entrar na atividade (Web Speech API - nativa do navegador, sem
+ * servico/dependencia externa) e expõe quantos caracteres ja foram falados, pra colorir a
+ * pergunta palavra a palavra conforme a voz avança (estetica "karaoke" pedida). `onboundary` nem
+ * sempre dispara por palavra em todo navegador/voz (alguns so disparam por frase) - nesse caso o
+ * texto so muda de cor de uma vez ao final; degrade aceitavel, nao quebra a leitura em si.
+ */
+function usePromptVoice(text: string) {
+  const [spokenChars, setSpokenChars] = useState(0);
+  const supported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
+  const speak = useCallback(async () => {
+    if (!supported || !text) return;
+    window.speechSynthesis.cancel();
+    setSpokenChars(0);
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'pt-BR';
+    utterance.voice = pickBestPortugueseVoice(await getVoicesAsync());
+    utterance.onboundary = (event) => setSpokenChars(event.charIndex);
+    utterance.onend = () => setSpokenChars(text.length);
+    window.speechSynthesis.speak(utterance);
+  }, [text, supported]);
+
+  // So le uma vez, ao entrar na atividade - nao a cada re-render (o replay manual cobre "ouvir de novo").
+  useEffect(() => {
+    void speak();
+    return () => window.speechSynthesis.cancel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return { spokenChars, supported, replay: speak };
+}
+
+/** Divide o texto em palavras (com o espaço que as segue) e colore cada uma conforme ja foi falada ou nao. */
+function VoicedPrompt({ text, spokenChars, highlight }: { text: string; spokenChars: number; highlight: boolean }) {
+  const words = useMemo(() => Array.from(text.matchAll(/\S+\s*/g), (m) => ({ text: m[0], start: m.index ?? 0 })), [text]);
+
+  if (!highlight) return <>{text}</>;
+
+  return (
+    <>
+      {words.map((word, i) => (
+        <span key={i} className={`transition-colors duration-300 ${word.start <= spokenChars ? 'text-primary' : 'text-muted'}`}>
+          {word.text}
+        </span>
+      ))}
+    </>
+  );
+}
 
 /**
  * VoiceSummary: grava um resumo falado (MediaRecorder) e envia como multipart/form-data pro
@@ -38,6 +125,7 @@ export function VoiceSummaryActivity({
   const [error, setError] = useState<string | null>(null);
   const [lastResponse, setLastResponse] = useState(activity.responses.at(-1) ?? null);
   const { weekly, sidebar } = useMaterialSidebar(daily);
+  const { spokenChars, supported: voiceSupported, replay: replayPrompt } = usePromptVoice(activity.prompt ?? '');
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -132,7 +220,18 @@ export function VoiceSummaryActivity({
       sidebar={sidebar}
       card={state === 'answered'}
     >
-      {state !== 'answered' && <p className="max-w-[560px] text-2xl font-semibold leading-[1.3] text-primary">{activity.prompt}</p>}
+      {state !== 'answered' && (
+        <div className="flex max-w-[560px] flex-col items-start gap-3">
+          <p className="text-xl font-semibold leading-[1.4] text-primary">
+            <VoicedPrompt text={activity.prompt ?? ''} spokenChars={spokenChars} highlight={voiceSupported} />
+          </p>
+          {voiceSupported && (
+            <button type="button" onClick={replayPrompt} className="text-xs text-muted hover:text-primary">
+              🔊 Ouvir a pergunta de novo
+            </button>
+          )}
+        </div>
+      )}
 
       {state === 'permission_denied' && (
         <p className="text-alert">
