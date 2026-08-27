@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { api } from '../api/client';
+import { api, setSessionExpiredHandler } from '../api/client';
 import type { LoginRequest, RegisterRequest, UserDto } from '../api/types';
+import { SessionExpiredModal } from '../components/auth/SessionExpiredModal';
 import { AuthContext } from './authContextObject';
 
 /**
@@ -13,10 +14,18 @@ import { AuthContext } from './authContextObject';
  * proposito). Qualquer outra falha (rede fora do ar, 5xx) tambem cai em `user: null` - sem uma
  * sessao confirmada, o caminho seguro e sempre tratar como deslogado e deixar SplashPage mandar
  * pra /login; os proprios formularios de login/registro mostram o erro de rede se ele persistir.
+ *
+ * Fase 22: tambem e a fonte de "sessao expirou EM SEGUNDO PLANO" (401 "nao_autenticado" numa
+ * chamada feita depois do boot, ver api/client.ts). `sessionExpired` e um state SEPARADO de
+ * `user` de proposito - nunca limpa `user` sozinho: fazer isso desmontaria toda rota atras de
+ * `ProtectedRoute` (Navigate pra /login), exatamente o que a Fase 22 pede pra evitar ("aparece por
+ * cima da rota atual, sem perder a URL"). `SessionExpiredModal` fica montado como IRMAO de
+ * `children`, nao dentro de nenhuma rota - sobrevive a qualquer navegacao/erro de render local.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
     api
@@ -24,6 +33,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(setUser)
       .catch(() => setUser(null))
       .finally(() => setIsLoading(false));
+  }, []);
+
+  // request() (api/client.ts) roda fora da arvore React - o unico jeito de uma funcao pura avisar
+  // este componente e um callback modulo-level registrado aqui. So 1 assinante existe (o Provider
+  // raiz), entao um handler simples basta - nao vale um pub-sub de verdade pra isso.
+  useEffect(() => {
+    setSessionExpiredHandler(() => setSessionExpired(true));
+    return () => setSessionExpiredHandler(null);
   }, []);
 
   async function login(data: LoginRequest) {
@@ -43,8 +60,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await api.logout();
     } finally {
       setUser(null);
+      // Defensivo: uma requisicao concorrente pode 401 bem no instante do logout intencional e
+      // deixar `sessionExpired` true a toa - sem isso o modal ficaria preso por cima da tela de
+      // login (ele e irmao das rotas, uma navegacao pra /login nao o desmonta sozinho).
+      setSessionExpired(false);
     }
   }
 
-  return <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+      {children}
+      {sessionExpired && <SessionExpiredModal onClose={() => setSessionExpired(false)} />}
+    </AuthContext.Provider>
+  );
 }

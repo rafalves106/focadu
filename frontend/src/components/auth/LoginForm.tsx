@@ -4,7 +4,15 @@ import type { UserDto } from '../../api/types';
 import { useAuth } from '../../contexts/useAuth';
 import { isValidEmail } from '../../lib/validation';
 
-export function LoginForm({ onSuccess }: { onSuccess: (user: UserDto) => void }) {
+export function LoginForm({
+  onSuccess,
+  submitLabel = 'ENTRAR NO COCKPIT',
+}: {
+  onSuccess: (user: UserDto) => void;
+  // Fase 22 (SessionExpiredModal): mesmo form, CTA "Retomar Sessão" - className ja tem `uppercase`,
+  // entao o texto passado aqui nao precisa vir em caixa alta.
+  submitLabel?: string;
+}) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -74,7 +82,7 @@ export function LoginForm({ onSuccess }: { onSuccess: (user: UserDto) => void })
         disabled={busy}
         className="font-display mt-2 rounded-xl bg-accent p-4 text-sm font-bold tracking-[1px] text-base uppercase disabled:opacity-50"
       >
-        {busy ? 'ENTRANDO...' : 'ENTRAR NO COCKPIT'}
+        {busy ? 'ENTRANDO...' : submitLabel}
       </button>
     </form>
   );

@@ -52,7 +52,26 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit & { timeoutMs?: number }): Promise<T> {
+// Fase 22: interceptor central de sessao expirada (docs/ARQUITETURA.md, "O que uma proxima fase
+// provavelmente precisa saber") - `request()` roda fora da arvore React, entao nao pode chamar
+// useAuth()/setState direto. AuthProvider se registra aqui (useEffect no mount) pra saber quando
+// mostrar o SessionExpiredModal; um simples callback modulo-level basta, sem pub-sub de verdade -
+// so existe 1 assinante possivel (o Provider raiz).
+let sessionExpiredHandler: (() => void) | null = null;
+export function setSessionExpiredHandler(handler: (() => void) | null) {
+  sessionExpiredHandler = handler;
+}
+
+async function request<T>(
+  path: string,
+  init?: RequestInit & {
+    timeoutMs?: number;
+    // GET /api/auth/me no boot (AuthContext.tsx) e o UNICO caller onde um 401 e o caminho
+    // ESPERADO ("ninguem logado ainda") - sem esta flag, o mount do AuthProvider mostraria o
+    // modal de sessao expirada pra todo mundo que nunca logou.
+    skipAuthRedirect?: boolean;
+  },
+): Promise<T> {
   // FormData (upload de audio) nunca leva Content-Type manual - o navegador define o boundary
   // do multipart sozinho; forcar 'application/json' aqui quebraria o parsing no backend.
   const isFormData = init?.body instanceof FormData;
@@ -67,6 +86,14 @@ async function request<T>(path: string, init?: RequestInit & { timeoutMs?: numbe
 
   if (!res.ok) {
     const body: ApiErrorBody | null = await res.json().catch(() => null);
+    // "nao_autenticado" e o codigo que JwtBearerEvents.OnChallenge escreve (Program.cs) pra
+    // qualquer request sem cookie valido/expirado - dispara o modal global, mas o ApiError ainda
+    // e lancado normalmente logo abaixo: quem chamou continua tratando a falha como sempre tratou
+    // (useApiResource.error, catch local no meio de uma resposta, etc) - nada aqui engole a
+    // excecao nem mexe em estado de tela alheio, o modal so aparece por cima, sem desmontar nada.
+    if (res.status === 401 && body?.error === 'nao_autenticado' && !init?.skipAuthRedirect) {
+      sessionExpiredHandler?.();
+    }
     throw new ApiError(res.status, body?.error ?? 'erro_desconhecido', body?.message ?? res.statusText);
   }
 
@@ -150,7 +177,9 @@ export const api = {
   register: (data: RegisterRequest) => request<UserDto>('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   login: (data: LoginRequest) => request<UserDto>('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
-  getCurrentUser: () => request<UserDto>('/api/auth/me'),
+  // skipAuthRedirect: 401 aqui e o caminho ESPERADO "ninguem logado ainda" (ver AuthContext.tsx),
+  // nunca sessao expirada de verdade - nao deve disparar o modal global.
+  getCurrentUser: () => request<UserDto>('/api/auth/me', { skipAuthRedirect: true }),
   // Onboarding (Fase 13b) - Entrevista de Perfil + Selecao de Curso.
   completeProfile: (interests: string[], additionalNotes: string | null) =>
     request<UserDto>('/api/users/me/profile', { method: 'PUT', body: JSON.stringify({ interests, additionalNotes }) }),
