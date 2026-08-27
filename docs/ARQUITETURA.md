@@ -1915,8 +1915,10 @@ CSS).
 - "Modo Offline" (cache local pra continuar navegando sem servidor) e "Reportar" (mailto/formulario
   de feedback no erro generico) - ambos citados no prompt da Fase 10 como "futuro", sem cache local
   nem endereco de suporte pra apontar ainda.
-- Sistema de sessao/expiracao por inatividade - o design "Erro - Sessao Expirada" da Fase 10 nao
-  tem tela porque esse conceito nao existe no app (usuario unico hardcoded, sem login).
+- Sistema de sessao/expiracao - o design "Erro - Sessao Expirada" da Fase 10 continua sem tela.
+  Login existe desde a Fase 12 (JWT, expira em 7 dias), mas nao ha tratamento global de 401: uma
+  chamada de Api com token expirado/invalido so vira um `ApiError` cru, tratado (ou nao) por quem
+  fez a chamada - nao ha interceptor central nem redirecionamento/modal dedicado ainda.
 
 ## Fases concluidas
 
@@ -1959,10 +1961,11 @@ CSS).
   data ajustada por SQL (mesma tecnica das Fases 15-18), confirmando fidelidade visual dos 8 telas
   de sessao de ponta a ponta.
 - **"Sessao Expirada" e "Streak Perdido" (2 dos 4 designs do Figma da Fase 10) nao tem tela** - o
-  primeiro precisaria de um conceito de sessao/expiracao por inatividade que o app nao tem (usuario
-  unico hardcoded, sem login); o segundo e uma tela dedicada de "voce perdeu o streak" - Streak
-  virou dado real na Fase 14 (`UserStreak`), mas nenhuma tela de alerta especifica foi pedida/
-  construida - o streak quebrado so aparece como `0` no `StreakIndicator` normal.
+  primeiro precisaria de tratamento global de 401 (ver "Estados de erro" acima - login existe desde
+  a Fase 12, mas nenhum interceptor central reage a token expirado/invalido ainda); o segundo e uma
+  tela dedicada de "voce perdeu o streak" - Streak virou dado real na Fase 14 (`UserStreak`), mas
+  nenhuma tela de alerta especifica foi pedida/construida - o streak quebrado so aparece como `0`
+  no `StreakIndicator` normal.
   Ver `docs/fase-10/resumo-implementacao-fase-10.md` pra tabela completa do que cada link do Figma
   continha de verdade vs. o que o prompt dizia.
 - **Testando erros de rede com Playwright: usar o host completo no glob de `page.route()`**
@@ -2014,13 +2017,6 @@ CSS).
   `BadHttpRequestException` *antes* do endpoint rodar - `ApiExceptionHandler` ja trata isso
   globalmente (`requisicao_invalida`, 400) desde a Fase 5, nenhum endpoint novo precisa se
   preocupar com isso individualmente.
-- **Resolvido na Fase 6, quebrado de novo na Fase 13a:** UI de autoria de conteudo curado
-  (`/admin/conteudo`) - os endpoints `POST/PUT /api/curated-content` continuam existindo, mas a
-  tela usa `GET /api/courses`/`GET /api/weeklies/{weeklyId}`, que agora exigem uma Enrollment do
-  usuario logado pra retornar dado (curriculo virou Template, sem Enrollment nao ha Instance pra
-  cruzar). Uma fase futura precisa de um endpoint separado, no lado Template
-  (`IWeeklyTemplateRepository`), pra listar cursos/semanas de autoria sem depender de matricula -
-  ver "Autoria de conteudo curado" acima e `docs/fase-13a/resumo-implementacao-fase-13a.md`.
 - **Diagramas reais (SVG) das 4 Dailies da Semana 1 ja existem** (Fase 6, `CuratedContentType.
   Diagram`), mas nenhuma `DailyActivity` os referencia ainda - decidir onde/como exibir `Diagram`
   na experiencia do aluno (`/hoje`) fica pra uma fase futura. Reading/Video ganharam tela na Fase 7
