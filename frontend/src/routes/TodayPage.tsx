@@ -25,9 +25,21 @@ import { PenaltyGauge } from '../components/gamification/PenaltyGauge';
 // antes de trocar de tela.
 type Step = { kind: 'activity'; activityId: string } | { kind: 'done' };
 
-function resolveStep(daily: DailyStateDto): Step {
+/**
+ * Quantas respostas cada atividade já tinha ANTES desta passada de replay começar
+ * (`DailyAccessMode.Replay`, ver `Weekly.EvaluateDailyAccess`) - "Refazer este dia" reabre uma
+ * Daily onde toda atividade já está `Completed` (status vem de ter QUALQUER resposta, não de uma
+ * passada específica), então nem `resolveStep` nem os componentes de atividade (que decidem seu
+ * proprio "já respondida" via `activity.responses.length > 0`) sabem por si só que devem pedir
+ * uma resposta nova. Null fora de replay.
+ */
+type ReplayBaseline = Map<string, number> | null;
+
+function resolveStep(daily: DailyStateDto, replayBaseline: ReplayBaseline): Step {
   const sorted = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
-  const pending = sorted.find((a) => a.status !== ActivityStatus.Completed);
+  const pending = sorted.find((a) =>
+    replayBaseline ? a.responses.length <= (replayBaseline.get(a.id) ?? 0) : a.status !== ActivityStatus.Completed,
+  );
   return pending ? { kind: 'activity', activityId: pending.id } : { kind: 'done' };
 }
 
@@ -107,6 +119,7 @@ export function TodayPage() {
   const [completing, setCompleting] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [replayBaseline, setReplayBaseline] = useState<ReplayBaseline>(null);
   // Fase 15: gate local da ReinforcementIntroScreen - mesmo padrao de "started" das intros de
   // atividade (QuizActivity, etc), so no nivel da Daily inteira em vez de uma Activity. So mostra
   // a intro numa sessao de reforco genuinamente nova (nenhuma atividade respondida ainda) - evita
@@ -130,6 +143,11 @@ export function TodayPage() {
         if (!cancelled) {
           setDaily(state);
           setReinforcementIntroDismissed(state.activities.some((a) => a.responses.length > 0));
+          setReplayBaseline(
+            state.accessMode === DailyAccessMode.Replay
+              ? new Map(state.activities.map((a) => [a.id, a.responses.length]))
+              : null,
+          );
         }
       } catch (err) {
         if (!cancelled) setError(classifyApiError(err));
@@ -148,8 +166,8 @@ export function TodayPage() {
   // depois que o usuario clica "Continuar" (ver handleContinue). Nunca no meio de uma atividade
   // ja em exibicao, mesmo que `daily` mude (resposta enviada) nesse meio tempo.
   useEffect(() => {
-    if (daily && step === null) setStep(resolveStep(daily));
-  }, [daily, step]);
+    if (daily && step === null) setStep(resolveStep(daily, replayBaseline));
+  }, [daily, step, replayBaseline]);
 
   // Sessao "ativa" = ja temos passo pra mostrar e ainda nao concluiu - cobre as telas de
   // atividade e o "done", mas nunca o loading/erro nem a CompletionSummary.
@@ -229,13 +247,19 @@ export function TodayPage() {
       );
     }
 
-    const activity = daily.activities.find((a) => a.id === step.activityId);
-    if (!activity) {
+    const rawActivity = daily.activities.find((a) => a.id === step.activityId);
+    if (!rawActivity) {
       // Nao deveria acontecer (Step so aponta pra atividades que existiam em `daily` no momento em
       // que foi resolvido) - defensivo, forca reavaliar o passo com os dados atuais.
       handleContinue();
       return null;
     }
+
+    // Em replay, corta as respostas desta passada anterior - os componentes de atividade decidem
+    // seu proprio "ja respondida" via `activity.responses.length > 0`/`.at(-1)`, sem isso eles
+    // pulariam direto pro feedback antigo em vez de pedir uma resposta nova (ver ReplayBaseline).
+    const baseCount = replayBaseline?.get(rawActivity.id) ?? 0;
+    const activity = replayBaseline ? { ...rawActivity, responses: rawActivity.responses.slice(baseCount) } : rawActivity;
 
     if (activity.type === ActivityType.Reading) {
       return (

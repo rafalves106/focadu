@@ -196,6 +196,12 @@ public class Weekly : Entity
     /// mesma Weekly), copiando apenas as atividades onde houve falha na Daily de origem. As
     /// atividades clonadas moram num DailyTemplate "sintetico" (nunca no curriculo compartilhado -
     /// ver DailyTemplate.CreateSynthetic), ja que reforco e progresso individual, nao curriculo.
+    ///
+    /// Todo VoiceSummary reforcado ganha o Reading/Video original (mesmo ContentId) na frente -
+    /// sem isso, o reforco pedia pra explicar de novo um material que a atividade fracassada
+    /// nunca mostrou (VoiceSummary nao tem corpo de texto/video proprio), sem jeito de reler/
+    /// reassistir antes de tentar de novo (reportado ao vivo). Quiz/Cloze/WordMatch/Roleplay
+    /// reforcados continuam direto, sem material na frente - so fazem sentido sozinhos.
     /// </summary>
     public Daily CreateDailyReinforcement(Guid sourceDailyId, DateOnly date)
     {
@@ -215,6 +221,16 @@ public class Weekly : Entity
         var orderIndex = 0;
         foreach (var activity in source.GetFailedActivities())
         {
+            if (activity.Type == ActivityType.VoiceSummary && activity.ContentId is Guid contentId)
+            {
+                var material = source.Activities.FirstOrDefault(a =>
+                    (a.Type == ActivityType.Reading || a.Type == ActivityType.Video) && a.ContentId == contentId);
+                if (material is not null)
+                {
+                    reinforcementTemplate.AddActivity(material.Type, orderIndex++, material.AnswerMode, contentId: material.ContentId);
+                }
+            }
+
             reinforcementTemplate.AddClonedActivity(activity, orderIndex++);
         }
 

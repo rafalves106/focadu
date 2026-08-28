@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
+import { isFirstOfActivityGroup } from '../lib/activityGroup';
 import { IntroCard } from './activities/IntroCard';
 import { OptionCard } from './activities/OptionCard';
 import { FeedbackPanel } from './FeedbackPanel';
@@ -11,6 +12,94 @@ const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 /** Item atualmente "armado" aguardando seu par (toque no termo primeiro OU na definição primeiro - ambos os fluxos funcionam). */
 type Pending = { side: 'term'; id: string } | { side: 'definition'; id: string } | null;
+
+type ConnectorLine = { key: string; x1: number; y1: number; x2: number; y2: number; color: string };
+
+/**
+ * Linhas organicas conectando cada par ligado (Fase 23, pedido ao vivo: so a letra A/B/C nao
+ * ficou visual o suficiente). Mede a posicao real dos cards via ref (nao ha lib de drag-and-drop/
+ * diagrama no projeto que já resolvesse isso) e desenha uma curva bezier simples entre a borda
+ * direita do termo e a esquerda da definicao - "organico" o bastante sem trazer uma lib de grafos
+ * so pra 1 curva por par.
+ */
+function useConnectorLines(pairs: { termId: string; definitionId: string; color: string }[]) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const termNodes = useRef(new Map<string, HTMLDivElement>());
+  const defNodes = useRef(new Map<string, HTMLDivElement>());
+  const [lines, setLines] = useState<ConnectorLine[]>([]);
+  // `pairs` e um array novo a cada render (recriado no componente que chama este hook) - usar a
+  // referencia direto como dependencia do efeito reroda toda vez, setLines gera outro array novo,
+  // outro render... loop infinito. Chave estavel por conteudo em vez da referencia.
+  const pairsKey = pairs.map((p) => `${p.termId}:${p.definitionId}:${p.color}`).join('|');
+
+  useLayoutEffect(() => {
+    function recompute() {
+      const container = containerRef.current;
+      if (!container) return;
+      const containerRect = container.getBoundingClientRect();
+      const next: ConnectorLine[] = [];
+
+      for (const { termId, definitionId, color } of pairs) {
+        const fromEl = termNodes.current.get(termId);
+        const toEl = defNodes.current.get(definitionId);
+        if (!fromEl || !toEl) continue;
+
+        const fromRect = fromEl.getBoundingClientRect();
+        const toRect = toEl.getBoundingClientRect();
+        // Colunas empilhadas (mobile, grid-cols-1): termo e definicao nao ficam lado a lado -
+        // pular a linha em vez de cruzar por cima dos outros cards.
+        if (toRect.left < fromRect.right) continue;
+
+        next.push({
+          key: `${termId}-${definitionId}`,
+          x1: fromRect.right - containerRect.left,
+          y1: fromRect.top + fromRect.height / 2 - containerRect.top,
+          x2: toRect.left - containerRect.left,
+          y2: toRect.top + toRect.height / 2 - containerRect.top,
+          color,
+        });
+      }
+      setLines(next);
+    }
+
+    recompute();
+    window.addEventListener('resize', recompute);
+    return () => window.removeEventListener('resize', recompute);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pairsKey]);
+
+  function registerTerm(id: string, el: HTMLDivElement | null) {
+    if (el) termNodes.current.set(id, el);
+    else termNodes.current.delete(id);
+  }
+
+  function registerDefinition(id: string, el: HTMLDivElement | null) {
+    if (el) defNodes.current.set(id, el);
+    else defNodes.current.delete(id);
+  }
+
+  return { containerRef, lines, registerTerm, registerDefinition };
+}
+
+function ConnectorSvg({ lines }: { lines: ConnectorLine[] }) {
+  return (
+    <svg className="pointer-events-none absolute inset-0 size-full" aria-hidden="true">
+      {lines.map((line) => {
+        const midX = (line.x1 + line.x2) / 2;
+        return (
+          <path
+            key={line.key}
+            d={`M ${line.x1} ${line.y1} C ${midX} ${line.y1}, ${midX} ${line.y2}, ${line.x2} ${line.y2}`}
+            fill="none"
+            stroke={line.color}
+            strokeWidth={2.5}
+            strokeLinecap="round"
+          />
+        );
+      })}
+    </svg>
+  );
+}
 
 /**
  * Ligar Palavras (Fase 4/9, reformado na Fase 23 pra bater com o Figma "sessao-ligar-palavras":
@@ -40,7 +129,7 @@ export function WordMatchActivity({
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
 }) {
-  const [started, setStarted] = useState(activity.responses.length > 0);
+  const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || activity.responses.length > 0);
   const { weekly, sidebar } = useMaterialSidebar(daily);
 
   const [terms, setTerms] = useState(activity.wordMatchTerms);
@@ -56,9 +145,40 @@ export function WordMatchActivity({
   const matchedCount = Object.keys(matches).length;
   const allMatched = matchedCount === total;
 
-  // Letra de conexao (A/B/C...) por termo - so um rotulo visual pra ligar os dois lados sem SVG,
-  // fixo pela ordem dos termos (nao muda quando o usuario refaz uma escolha).
+  // Letra de conexao (A/B/C...) por termo - mantida como reforco visual redundante a linha
+  // organica abaixo (acessibilidade: nem todo mundo distingue as cores accent/alert).
   const letterByTermId = new Map(terms.map((term, index) => [term.id, LETTERS[index]]));
+
+  // `matches` só existe enquanto o componente ficou montado durante a tentativa (não é
+  // persistido) - ao reabrir uma atividade já respondida antes (replay, reload no meio do
+  // caminho), matches volta vazio e não há como saber o que o usuário tinha escolhido. Nesse
+  // caso, cai pro reveal "gabarito" (sempre verde, nunca vermelho) em vez de inventar acerto/erro.
+  const knowsSubmittedMatches = Object.keys(matches).length > 0;
+
+  // Verdade da conexao formada por este termo (so quando sabemos o que foi enviado). Ambos os
+  // lados de uma conexao (termo + a definicao ligada a ele) sempre mostram o MESMO veredito,
+  // porque sao o mesmo par na resposta enviada.
+  function termVerdict(termId: string): 'correct' | 'wrong' {
+    const term = terms.find((t) => t.id === termId);
+    return term && matches[termId] === term.correctDefinitionId ? 'correct' : 'wrong';
+  }
+
+  // Pares a desenhar como linha: antes de responder, so os ja ligados (verde = "em andamento");
+  // respondido com o palpite em memoria, o veredito real por par; sem memoria do palpite (reload),
+  // o gabarito inteiro (sempre verde). Hook chamado incondicionalmente (regra dos hooks) - antes
+  // do `if (!started)` abaixo.
+  const pairsToDraw = answered
+    ? knowsSubmittedMatches
+      ? Object.entries(matches).map(([termId, definitionId]) => ({
+          termId,
+          definitionId,
+          color: termVerdict(termId) === 'correct' ? 'var(--color-accent)' : 'var(--color-alert)',
+        }))
+      : terms
+          .filter((t): t is typeof t & { correctDefinitionId: string } => t.correctDefinitionId != null)
+          .map((t) => ({ termId: t.id, definitionId: t.correctDefinitionId, color: 'var(--color-accent)' }))
+    : Object.entries(matches).map(([termId, definitionId]) => ({ termId, definitionId, color: 'var(--color-accent)' }));
+  const { containerRef, lines, registerTerm, registerDefinition } = useConnectorLines(pairsToDraw);
 
   function connect(termId: string, definitionId: string) {
     setMatches((prev) => ({ ...prev, [termId]: definitionId }));
@@ -151,20 +271,6 @@ export function WordMatchActivity({
   const stepIndex = sortedActivities.findIndex((a) => a.id === activity.id);
   const stepTotal = sortedActivities.length;
 
-  // `matches` só existe enquanto o componente ficou montado durante a tentativa (não é
-  // persistido) - ao reabrir uma atividade já respondida antes (replay, reload no meio do
-  // caminho), matches volta vazio e não há como saber o que o usuário tinha escolhido. Nesse
-  // caso, cai pro reveal "gabarito" (sempre verde, nunca vermelho) em vez de inventar acerto/erro.
-  const knowsSubmittedMatches = Object.keys(matches).length > 0;
-
-  // Verdade da conexao formada por este termo (so quando sabemos o que foi enviado). Ambos os
-  // lados de uma conexao (termo + a definicao ligada a ele) sempre mostram o MESMO veredito,
-  // porque sao o mesmo par na resposta enviada.
-  function termVerdict(termId: string): 'correct' | 'wrong' {
-    const term = terms.find((t) => t.id === termId);
-    return term && matches[termId] === term.correctDefinitionId ? 'correct' : 'wrong';
-  }
-
   function pendingState(side: 'term' | 'definition', id: string) {
     return pending?.side === side && pending.id === id ? 'selected' : 'neutral';
   }
@@ -181,7 +287,9 @@ export function WordMatchActivity({
         <p className="text-xs text-secondary">{matchedCount} de {total} pares ligados</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div ref={containerRef} className="relative grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <ConnectorSvg lines={lines} />
+
         <div className="flex flex-col gap-3">
           {terms.map((term) => {
             const known = answered && !knowsSubmittedMatches; // reveal "gabarito", sem palpite do usuario
@@ -192,14 +300,15 @@ export function WordMatchActivity({
                 ? 'selected'
                 : pendingState('term', term.id);
             return (
-              <OptionCard
-                key={term.id}
-                label={letter}
-                text={term.text}
-                state={state}
-                disabled={answered || submitting}
-                onClick={() => handleTermClick(term.id)}
-              />
+              <div key={term.id} ref={(el) => registerTerm(term.id, el)}>
+                <OptionCard
+                  label={letter}
+                  text={term.text}
+                  state={state}
+                  disabled={answered || submitting}
+                  onClick={() => handleTermClick(term.id)}
+                />
+              </div>
             );
           })}
         </div>
@@ -219,14 +328,15 @@ export function WordMatchActivity({
                 ? 'selected'
                 : pendingState('definition', definition.id);
             return (
-              <OptionCard
-                key={definition.id}
-                label={letter}
-                text={definition.text}
-                state={state}
-                disabled={answered || submitting}
-                onClick={() => handleDefinitionClick(definition.id)}
-              />
+              <div key={definition.id} ref={(el) => registerDefinition(definition.id, el)}>
+                <OptionCard
+                  label={letter}
+                  text={definition.text}
+                  state={state}
+                  disabled={answered || submitting}
+                  onClick={() => handleDefinitionClick(definition.id)}
+                />
+              </div>
             );
           })}
         </div>

@@ -4,8 +4,10 @@ import { useApiResource } from '../api/useApiResource';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
 import { Centered } from './Layout';
 import { ApiErrorScreen } from './errors/ApiErrorScreen';
+import { MarkdownBlock } from './activities/MarkdownBlock';
 import { SessionLayout } from './SessionShell';
 import { useMaterialSidebar } from './useMaterialSidebar';
+import { stripRedundantTitleHeading } from '../lib/markdown';
 import dotSmall from '../assets/reading/dot-small.svg';
 
 const SECTION_HEADING = /^####\s+.+$/gm;
@@ -110,11 +112,11 @@ export function ReadingActivity({
           {!content.bodyText && (
             <p className="whitespace-pre-line text-sm leading-[1.5] text-secondary">Conteúdo ainda não cadastrado.</p>
           )}
-          {preamble && <p className="whitespace-pre-line text-sm leading-[1.5] text-secondary">{preamble}</p>}
+          {preamble && <MarkdownBlock text={stripRedundantTitleHeading(preamble, content.title)} />}
           {/* Uma analogia por seção "####" (mesma ordem de splitReadingSections) - explica aquela seção específica, em vez de 1 analogia só cobrindo o texto inteiro no final. */}
           {sections.map((section, i) => (
             <div key={i} className={preamble || i > 0 ? 'mt-5' : ''}>
-              <p className="whitespace-pre-line text-sm leading-[1.5] text-secondary">{section}</p>
+              <MarkdownBlock text={section} />
               {analogies[i] && (
                 <div className="mt-3 rounded-xl bg-surface-alt p-4">
                   <p className="mb-1 text-[11px] font-medium tracking-[0.5px] text-secondary">💡 PRA VOCÊ</p>

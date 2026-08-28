@@ -10,16 +10,22 @@ const GROUP_LABEL: Record<number, string> = { 0: 'LEITURA', 1: 'VÍDEO' };
  * "Material de hoje" (design Figma sessao-leitura/sessao-video, Fase 7) - a lista de
  * CuratedContent da semana, agrupada por tipo (Reading/Video).
  * Compartilhado entre ReadingActivity e VideoActivity - so muda o item ativo/concluido.
+ *
+ * Fase 23: itens viram botao (`onSelect`) que abre `ContentPreviewModal` - antes eram so status
+ * visual, sem jeito de reler o texto/reassistir o video depois de passar da etapa (pesava mais
+ * numa Daily de reforco, onde nao ha etapa de Leitura/Video pra voltar - so o Resumo Falado).
  */
 export function MaterialSidebar({
   contents,
   activeContentId,
   completedContentIds,
+  onSelect,
 }: {
   contents: CuratedContentDto[];
   /** Nulo nas telas sem conteudo proprio (Quiz/Ligar Palavras/Cloze/Roleplay, Fase 19) - nenhum item fica em destaque, so o estado concluido aparece. */
   activeContentId: string | null;
   completedContentIds: Set<string>;
+  onSelect: (contentId: string) => void;
 }) {
   return (
     <aside className="flex w-[280px] shrink-0 flex-col gap-4 rounded-2xl border border-stroke bg-surface p-5">
@@ -38,12 +44,14 @@ export function MaterialSidebar({
                   const isActive = item.id === activeContentId;
                   const isDone = completedContentIds.has(item.id);
                   return (
-                    <div
+                    <button
                       key={item.id}
+                      type="button"
+                      onClick={() => onSelect(item.id)}
                       className={
                         isActive
-                          ? 'flex items-center gap-2.5 rounded-[10px] border border-accent bg-accent/25 p-3'
-                          : 'flex items-center gap-2.5 rounded-[10px] border border-transparent bg-surface-alt p-3'
+                          ? 'flex w-full items-center gap-2.5 rounded-[10px] border border-accent bg-accent/25 p-3 text-left hover:bg-accent/35'
+                          : 'flex w-full items-center gap-2.5 rounded-[10px] border border-transparent bg-surface-alt p-3 text-left hover:border-stroke'
                       }
                     >
                       {isDone ? (
@@ -54,25 +62,27 @@ export function MaterialSidebar({
                         <img src={dotMedium} alt="" className="size-2 shrink-0" />
                       )}
                       <span className="truncate text-[13px] text-primary">{item.title}</span>
-                    </div>
+                    </button>
                   );
                 })
               : items.map((item) => {
                   const isActive = item.id === activeContentId;
                   return (
-                    <div
+                    <button
                       key={item.id}
+                      type="button"
+                      onClick={() => onSelect(item.id)}
                       className={
                         isActive
-                          ? 'flex flex-col gap-2 rounded-[10px] border border-accent bg-accent/25'
-                          : 'flex flex-col gap-2 rounded-[10px] bg-surface-alt'
+                          ? 'flex w-full flex-col gap-2 rounded-[10px] border border-accent bg-accent/25 text-left'
+                          : 'flex w-full flex-col gap-2 rounded-[10px] bg-surface-alt text-left hover:brightness-110'
                       }
                     >
                       <div className="relative flex h-[110px] w-full items-center justify-center rounded-[10px] bg-base">
                         <img src={isActive ? playThumbnailActive : playThumbnail} alt="" className="size-8" />
                       </div>
                       <p className="truncate px-3 pb-3 text-xs font-medium text-primary">{item.title}</p>
-                    </div>
+                    </button>
                   );
                 })}
           </div>

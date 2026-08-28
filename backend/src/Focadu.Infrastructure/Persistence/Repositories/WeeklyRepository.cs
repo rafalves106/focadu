@@ -7,7 +7,7 @@ namespace Focadu.Infrastructure.Persistence.Repositories;
 /// <summary>
 /// Weekly (instancia, Fase 13) e o aggregate "operacional": carregado sempre com o grafo completo
 /// TEMPLATE+INSTANCIA - Dailies (cada uma com seu DailyTemplate.Activities.QuizOptions/
-/// RoleplayNodes/Options e Responses), WeeklyTemplate (CuratedContents), WeeklyProject,
+/// WordMatchPairs/RoleplayNodes/Options e Responses), WeeklyTemplate (CuratedContents), WeeklyProject,
 /// WeeklyReinforcements, ModulePublication - porque as regras de negocio em Weekly.cs precisam
 /// enxergar tudo isso ao mesmo tempo. AsSplitQuery() (novo nesta fase): a fusao dos dois grafos
 /// (curriculo + progresso) fica grande demais pra um unico JOIN sem risco de explosao cartesiana.
@@ -25,6 +25,7 @@ public class WeeklyRepository : IWeeklyRepository
         _context.Weeklies
             .Include(w => w.Template).ThenInclude(t => t.CuratedContents)
             .Include(w => w.Dailies).ThenInclude(d => d.Template).ThenInclude(t => t.Activities).ThenInclude(a => a.QuizOptions)
+            .Include(w => w.Dailies).ThenInclude(d => d.Template).ThenInclude(t => t.Activities).ThenInclude(a => a.WordMatchPairs)
             .Include(w => w.Dailies).ThenInclude(d => d.Template).ThenInclude(t => t.Activities).ThenInclude(a => a.RoleplayNodes).ThenInclude(n => n.Options)
             .Include(w => w.Dailies).ThenInclude(d => d.Responses)
             .Include(w => w.Project)

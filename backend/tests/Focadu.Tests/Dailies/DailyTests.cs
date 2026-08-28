@@ -157,6 +157,38 @@ public class DailyTests
     }
 
     [Fact]
+    public void CreateDailyReinforcement_PrependsOriginalReadingOrVideo_BeforeFailedVoiceSummary()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var template = weekly.Template.AddDailyTemplate(1);
+        var daily = weekly.AddDaily(template, DailyFixtures.Today);
+        var readingContentId = Guid.NewGuid();
+        var videoContentId = Guid.NewGuid();
+        var reading = template.AddActivity(ActivityType.Reading, 0, AnswerMode.MultipleChoice, contentId: readingContentId);
+        var readingSummary = template.AddActivity(ActivityType.VoiceSummary, 1, AnswerMode.FreeText, contentId: readingContentId);
+        template.AddActivity(ActivityType.Video, 2, AnswerMode.MultipleChoice, contentId: videoContentId);
+        var videoSummary = template.AddActivity(ActivityType.VoiceSummary, 3, AnswerMode.FreeText, contentId: videoContentId);
+        var failedQuiz = template.AddActivity(ActivityType.Quiz, 4, AnswerMode.MultipleChoice);
+        // Threshold de reforco diario e 3 (ver EvaluationPolicy) - so o quiz e o resumo da leitura falham,
+        // o resumo do video passa (nao deveria ganhar material na frente).
+        template.AddActivity(ActivityType.Quiz, 5, AnswerMode.MultipleChoice);
+        template.AddActivity(ActivityType.Quiz, 6, AnswerMode.MultipleChoice);
+        daily.Start();
+
+        daily.SubmitActivityResponse(reading.Id, 100);
+        daily.SubmitActivityResponse(readingSummary.Id, 0);
+        daily.SubmitActivityResponse(videoSummary.Id, 100);
+        daily.SubmitActivityResponse(failedQuiz.Id, 0);
+        daily.SubmitActivityResponse(daily.Activities.Single(a => a.OrderIndex == 5).Id, 0);
+        daily.SubmitActivityResponse(daily.Activities.Single(a => a.OrderIndex == 6).Id, 0);
+
+        var reinforcementDaily = weekly.CreateDailyReinforcement(daily.Id, DailyFixtures.Today.AddDays(1));
+
+        var types = reinforcementDaily.Activities.OrderBy(a => a.OrderIndex).Select(a => a.Type).ToList();
+        Assert.Equal([ActivityType.Reading, ActivityType.VoiceSummary, ActivityType.Quiz, ActivityType.Quiz, ActivityType.Quiz], types);
+    }
+
+    [Fact]
     public void CreateDailyReinforcement_Throws_WhenPenaltyThresholdNotReached()
     {
         var weekly = DailyFixtures.NewWeekly();

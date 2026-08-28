@@ -17,6 +17,7 @@ public class WeeklyTemplateRepository : IWeeklyTemplateRepository
     public async Task<WeeklyTemplate?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         await _context.WeeklyTemplates
             .Include(w => w.DailyTemplates).ThenInclude(d => d.Activities).ThenInclude(a => a.QuizOptions)
+            .Include(w => w.DailyTemplates).ThenInclude(d => d.Activities).ThenInclude(a => a.WordMatchPairs)
             .Include(w => w.DailyTemplates).ThenInclude(d => d.Activities).ThenInclude(a => a.RoleplayNodes).ThenInclude(n => n.Options)
             .Include(w => w.CuratedContents)
             .AsSplitQuery()

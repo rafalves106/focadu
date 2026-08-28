@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
+import { isFirstOfActivityGroup } from '../lib/activityGroup';
 import { FeedbackPanel } from './FeedbackPanel';
 import { IntroCard } from './activities/IntroCard';
 import { CodeHighlight } from './activities/CodeHighlight';
@@ -34,7 +35,7 @@ export function ClozeFreeTextActivity({
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
 }) {
-  const [started, setStarted] = useState(activity.responses.length > 0);
+  const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || activity.responses.length > 0);
   const [transcript, setTranscript] = useState('');
   const [justification, setJustification] = useState('');
   const [submitting, setSubmitting] = useState(false);

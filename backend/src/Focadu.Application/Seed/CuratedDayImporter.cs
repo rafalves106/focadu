@@ -58,6 +58,9 @@ public static class CuratedDayImporter
         foreach (var option in json.QuizOptions ?? [])
             activity.AddQuizOption(option.Text, option.IsCorrect);
 
+        foreach (var pair in json.WordMatchPairs ?? [])
+            activity.AddWordMatchPair(pair.Term, pair.Definition);
+
         if (json.RoleplayNodes is { Count: > 0 } nodes)
             AddRoleplayNodes(activity, nodes);
     }
@@ -95,9 +98,12 @@ public static class CuratedDayImporter
 
     private record ActivityJson(
         ActivityType Type, AnswerMode AnswerMode, string? ContentRef, string? Prompt,
-        string? ExpectedAnswer, List<QuizOptionJson>? QuizOptions, List<RoleplayNodeJson>? RoleplayNodes);
+        string? ExpectedAnswer, List<QuizOptionJson>? QuizOptions, List<WordMatchPairJson>? WordMatchPairs,
+        List<RoleplayNodeJson>? RoleplayNodes);
 
     private record QuizOptionJson(string Text, bool IsCorrect);
+
+    private record WordMatchPairJson(string Term, string Definition);
 
     private record RoleplayNodeJson(string NodeKey, string Text, bool IsTerminal, TerminalQuality? TerminalQuality, List<RoleplayOptionJson>? Options);
 

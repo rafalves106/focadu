@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ActivityType, type DailyActivityDto, type DailyStateDto } from '../api/types';
+import { isFirstOfActivityGroup } from '../lib/activityGroup';
 import { IntroCard } from './activities/IntroCard';
 import { OptionsAnswer } from './OptionsAnswer';
 import { SessionLayout } from './SessionShell';
@@ -25,7 +26,7 @@ export function QuizActivity({
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
 }) {
-  const [started, setStarted] = useState(activity.responses.length > 0);
+  const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || activity.responses.length > 0);
   const isQuiz = activity.type === ActivityType.Quiz;
   const { weekly, sidebar } = useMaterialSidebar(daily);
 

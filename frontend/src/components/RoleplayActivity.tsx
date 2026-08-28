@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto, RoleplayNodeDto } from '../api/types';
 import { TerminalQuality } from '../api/types';
+import { isFirstOfActivityGroup } from '../lib/activityGroup';
 import { FeedbackPanel } from './FeedbackPanel';
 import { IntroCard } from './activities/IntroCard';
 import { OptionCard } from './activities/OptionCard';
@@ -45,7 +46,7 @@ export function RoleplayActivity({
   const nodesById = new Map(activity.roleplayNodes.map((n) => [n.id, n]));
   const startNode = activity.roleplayNodes.find((n) => n.nodeKey === 'start') ?? activity.roleplayNodes[0];
 
-  const [started, setStarted] = useState(activity.responses.length > 0);
+  const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || activity.responses.length > 0);
   const [currentNodeId, setCurrentNodeId] = useState<string | null>(startNode?.id ?? null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
