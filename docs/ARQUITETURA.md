@@ -4,10 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 13a - Template vs Instancia, Matricula e
-> Logout (Backend)**. A Fase 13 foi dividida em 13a (este resumo - refactor de dominio +
-> matricula + protecao de endpoints, sem UI nova alem do botao de logout) e 13b (onboarding/
-> selecao de curso/empty state no frontend, ainda nao implementado).
+> Ultima fase que atualizou este documento: **Fase 22 - Sessao Expirada (Modal Global)**.
 
 ## Visao geral do projeto
 
@@ -798,9 +795,13 @@ GitHub) antes da proxima Weekly liberar.
   (`MODULO-{n}.md`) via `PUT /repos/{owner}/{repo}/contents/{path}`. O commit bem sucedido *e* a
   prova - `CommitModuleSummaryUseCase` ja chama `Submit`+`MarkValidated` na mesma operacao, sem
   round-trip de validacao redundante depois.
-- **Validacao de LinkedIn e so estrutural** (regex `linkedin.com/(posts|feed/update)/...`), nunca
-  verifica se o post fala sobre o modulo de verdade - nao ha API gratuita de conteudo do LinkedIn
-  pra isso; limitacao conhecida, ja sinalizada assim no prompt da fase.
+- **Validacao de LinkedIn e so estrutural, decisao permanente (Fase 21+), nao e mais pendencia**:
+  regex (`linkedin.com/(posts|feed/update)/...`) confirma que a URL tem formato de post, nunca que
+  o post fala sobre o modulo de verdade. Avaliado e descartado validar conteudo via API oficial do
+  LinkedIn - ao contrario de Google/GitHub OAuth, ler post de terceiro exige aprovacao no programa
+  de parceiros da LinkedIn (processo de negocio, nao self-serve), desproporcional pra um app de
+  estudo pessoal solo. Fluxo GitHub continua validando de verdade (`IGitHubService.
+  GetRepositoryAsync`, acima) porque a API do GitHub e publica e gratuita pra isso.
 - **Um unico `SubmitPublicationUseCase` cobre LinkedIn e GitHub** (nao ha
   `ValidatePublicationUseCase` separado) - GitHub valida via `IGitHubService.GetRepositoryAsync`
   (owner/repo extraidos da URL, exige `IsPrivate == false`); retry e so resubmeter a mesma URL
@@ -1775,6 +1776,35 @@ que nenhum catch de fetch cobriria - mostra `GenericError`, caminho totalmente s
 ("Sem Conexao" apontava pra uma tela de sessao expirada, "Erro Generico" pra uma tela de streak
 perdido - nenhum dos dois foi construido, ver `docs/fase-10/resumo-implementacao-fase-10.md`).
 
+**Sessao expirada: interceptor global de 401 (Fase 22).** Fecha a pendencia deixada pela Fase 10
+(node Figma `13-978`, "Erro - Sessao Expirada") - so foi possivel agora porque login/JWT so
+existem desde a Fase 12. `request()` (`api/client.ts`) e o unico ponto de entrada de toda chamada
+de Api (ver "O contrato da Api" acima), entao e onde o interceptor mora: todo 401 com
+`error === "nao_autenticado"` (o codigo que `JwtBearerEvents.OnChallenge` escreve no middleware,
+ver "Autenticacao" acima) dispara um callback modulo-level - `setSessionExpiredHandler` - antes de
+lancar o `ApiError` de sempre; quem fez a chamada continua tratando a falha exatamente como antes
+(`useApiResource.error`, catch local), o interceptor so ADICIONA o aviso global, nunca substitui o
+tratamento existente. `AuthProvider` (`AuthContext.tsx`) se registra nesse callback (unico
+assinante) e guarda `sessionExpired` num state **separado** de `user` - de proposito: zerar `user`
+desmontaria toda rota atras de `ProtectedRoute` (`<Navigate to="/login"/>`), perdendo a URL atual e
+qualquer estado local em andamento (resposta ja digitada, audio ja gravado) - o objetivo desta fase
+e o oposto disso. `SessionExpiredModal` (`components/auth/`) e montado como IRMAO de `children`
+dentro do proprio `AuthContext.Provider` (nunca dentro de uma rota) - fica por cima de qualquer
+tela sem afetar o React Router. Reaproveita `LoginForm` (Fase 12) tal qual, so com
+`submitLabel="Retomar Sessao"` (prop nova, default inalterado) - reautenticar so chama
+`AuthContext.login()` (atualiza `user`) e fecha o modal, nunca navega; a tela por baixo nunca foi
+desmontada, entao nada se perde. Chrome de card modal (`fixed inset-0` + painel), no lugar do
+`ErrorLayout`/`ApiErrorScreen` de tela cheia (Fase 10) - mesmo motivo ja documentado em
+`PublicationModal` (Fase 11): `ErrorLayout` pressupoe `min-h-screen`, incompativel com sobrepor uma
+rota que continua viva por baixo. **`GET /api/auth/me` no boot precisa de escape hatch**: um 401 ali
+e o caminho ESPERADO "ninguem logado ainda" (ver `AuthContext.tsx`), nao sessao expirada de
+verdade - `request(path, { skipAuthRedirect: true })` (novo, mesmo padrao de `timeoutMs`) e como
+esse UNICO chamador se exclui do interceptor. **Sem retry automatico apos reautenticar** - decisao
+deliberada: paginas que usam `useApiResource` ja tem "Tentar Novamente" (`ApiErrorScreen`, Fase
+10); pra uma acao de escrita (submeter resposta) o usuario so precisa clicar em enviar de novo, o
+que ja funciona porque o campo/audio nunca foi limpo - encadear um retry automatico exigiria uma
+fila generica de "ultima acao que falhou" sem necessidade real pra isso.
+
 **Modal de Publicacao Publica (Fase 11):** `PublicationModal` recebe `weeklyId`/`courseId`/
 `onClose` (sem `onPublished` - ver "Bug real" abaixo) e gerencia sozinho uma maquina de passo
 (`intro` → `linkedinDraft`/`githubSelect` → `linkedinEditor`/`urlSubmit` → `validating` →
@@ -1949,10 +1979,9 @@ CSS).
 - "Modo Offline" (cache local pra continuar navegando sem servidor) e "Reportar" (mailto/formulario
   de feedback no erro generico) - ambos citados no prompt da Fase 10 como "futuro", sem cache local
   nem endereco de suporte pra apontar ainda.
-- Sistema de sessao/expiracao - o design "Erro - Sessao Expirada" da Fase 10 continua sem tela.
-  Login existe desde a Fase 12 (JWT, expira em 7 dias), mas nao ha tratamento global de 401: uma
-  chamada de Api com token expirado/invalido so vira um `ApiError` cru, tratado (ou nao) por quem
-  fez a chamada - nao ha interceptor central nem redirecionamento/modal dedicado ainda.
+- **Resolvido na Fase 22, nao e mais pendencia:** sistema de sessao/expiracao - o design "Erro -
+  Sessao Expirada" da Fase 10 ganhou tela, como modal global - ver "Sessao expirada: interceptor
+  global de 401 (Fase 22)" acima.
 
 ## Fases concluidas
 
@@ -1979,6 +2008,8 @@ CSS).
 | 18 | Perfil, 3 Abas | `docs/fase-18/resumo-implementacao-fase-18.md` |
 | 19 | Fidelidade Visual - Sessao Diaria | `docs/fase-19/resumo-implementacao-fase-19.md` |
 | 20 | Fidelidade Visual - Navegacao & Perfil + Correcao de Rota Full-Bleed | `docs/fase-20/resumo-implementacao-fase-20.md` |
+| 21 | Avaliacao de Projeto e Conteudo por IA + Narracao por Voz | `docs/fase-21/resumo-implementacao-fase-21.md` |
+| 22 | Sessao Expirada (Modal Global) | `docs/fase-22/resumo-implementacao-fase-22.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
@@ -1994,10 +2025,11 @@ CSS).
   sido exercitados ao vivo desde a Fase 9 (so Quiz e WordMatch) - verificados via Playwright com
   data ajustada por SQL (mesma tecnica das Fases 15-18), confirmando fidelidade visual dos 8 telas
   de sessao de ponta a ponta.
-- **"Sessao Expirada" e "Streak Perdido" (2 dos 4 designs do Figma da Fase 10) nao tem tela** - o
-  primeiro precisaria de tratamento global de 401 (ver "Estados de erro" acima - login existe desde
-  a Fase 12, mas nenhum interceptor central reage a token expirado/invalido ainda); o segundo e uma
-  tela dedicada de "voce perdeu o streak" - Streak virou dado real na Fase 14 (`UserStreak`), mas
+- **Resolvido na Fase 22, nao e mais pendencia:** "Sessao Expirada" (1 dos 4 designs do Figma da
+  Fase 10) - interceptor global de 401 "nao_autenticado" + `SessionExpiredModal`, ver "Sessao
+  expirada: interceptor global de 401 (Fase 22)" acima.
+- **"Streak Perdido" (o outro dos 4 designs do Figma da Fase 10) continua sem tela** - tela
+  dedicada de "voce perdeu o streak" - Streak virou dado real na Fase 14 (`UserStreak`), mas
   nenhuma tela de alerta especifica foi pedida/construida - o streak quebrado so aparece como `0`
   no `StreakIndicator` normal.
   Ver `docs/fase-10/resumo-implementacao-fase-10.md` pra tabela completa do que cada link do Figma

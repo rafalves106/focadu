@@ -149,11 +149,17 @@ export interface CompleteDailyResult {
   wasReinforcementBonus: boolean;
 }
 
-/** GET /api/users/me/gamification (Fase 14) - Gems acumuladas + streak atual/recorde do usuario logado. */
+/**
+ * GET /api/users/me/gamification (Fase 14) - Gems acumuladas + streak atual/recorde do usuario
+ * logado. streakJustBroken (Fase 10, retomada): true na 1a leitura apos currentStreak virar 0 por
+ * inatividade e ainda nao reconhecida - dispara a tela "Streak Perdido" (ver
+ * api.acknowledgeStreakBreak).
+ */
 export interface GamificationSummaryDto {
   totalGems: number;
   currentStreak: number;
   longestStreak: number;
+  streakJustBroken: boolean;
 }
 
 export interface CourseSummaryDto {

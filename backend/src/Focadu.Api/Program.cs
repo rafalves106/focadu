@@ -241,6 +241,17 @@ api.MapGet("/users/me/gamification", async (ClaimsPrincipal principal, GetGamifi
     .RequireAuthorization()
     .WithName("GetGamificationSummary");
 
+// PUT (nao POST): idempotente - reconhecer a quebra de novo depois de ja reconhecida e um no-op
+// (mesmo raciocinio de CompleteProfile acima). Fase 10 (retomada): alimenta a tela "Streak
+// Perdido" - o frontend chama isso ao fechar o modal, pra nao repetir na proxima visita.
+api.MapPut("/users/me/gamification/streak/acknowledge-broken", async (ClaimsPrincipal principal, AcknowledgeStreakBreakUseCase useCase, CancellationToken ct) =>
+    {
+        await useCase.ExecuteAsync(CurrentUserId(principal), ct);
+        return Results.NoContent();
+    })
+    .RequireAuthorization()
+    .WithName("AcknowledgeStreakBreak");
+
 // Badges/Troféus (Fase 17) - todos calculados sob demanda, ver GetUserBadgesUseCase.
 api.MapGet("/users/me/badges", async (ClaimsPrincipal principal, GetUserBadgesUseCase useCase, CancellationToken ct) =>
         Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))

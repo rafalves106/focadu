@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<GetMyEnrollmentsUseCase>();
         services.AddScoped<GamificationCreditor>();
         services.AddScoped<GetGamificationSummaryUseCase>();
+        services.AddScoped<AcknowledgeStreakBreakUseCase>();
         services.AddScoped<GetCourseRankingUseCase>();
         services.AddScoped<GetMarketplaceCatalogUseCase>();
         services.AddScoped<PurchaseCosmeticItemUseCase>();

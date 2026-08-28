@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
@@ -16,6 +17,7 @@ import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { GemBadge } from '../components/gamification/GemBadge';
 import { StreakIndicator } from '../components/gamification/StreakIndicator';
+import { StreakLostModal } from '../components/gamification/StreakLostModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
 import { ProgressBar } from '../components/ProgressBar';
@@ -39,6 +41,10 @@ interface DashboardData {
  * Fase 14: Gems/Streak do mockup do Figma ganharam dado real (GemBadge/StreakIndicator no header,
  * via GET /api/users/me/gamification) - XP/Level/badges de conquista continuam de fora (nao
  * existem no dominio ainda, ver docs/fase-14).
+ *
+ * Fase 10 (retomada): "Erro - Streak Perdido" (node Figma 13-1040, nunca construida) dispara aqui,
+ * no load, quando gamification.streakJustBroken vem true - StreakLostModal chama
+ * api.acknowledgeStreakBreak ao fechar, pra nao repetir na proxima visita.
  *
  * Fase 20 (fidelidade revisada): "Olá, Falves" do mockup virou saudacao com o nome real
  * (useAuth().user.displayName - so nao era usado aqui ainda). "INDIE DEV" + foto de usuario no
@@ -66,6 +72,11 @@ export function StartDashboard() {
     [],
   );
 
+  // Derivado direto do fetch (nao um effect) - so precisa "lembrar" um dismiss local pra nao
+  // reaparecer no mesmo carregamento depois que StreakLostModal ja chamou acknowledgeStreakBreak.
+  const [dismissed, setDismissed] = useState(false);
+  const streakLostVisible = !dismissed && !!data?.gamification.streakJustBroken;
+
   if (loading) return <Centered text="Carregando..." />;
   // Guarda de seguranca (Fase 13b) - usuario logado, perfil completo, mas sem nenhuma matricula
   // ainda (ver docs/fase-13a, "Consequencia direta"). SplashPage ja evita a maioria desses casos
@@ -80,6 +91,10 @@ export function StartDashboard() {
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6 p-8">
+      {streakLostVisible && (
+        <StreakLostModal longestStreak={gamification.longestStreak} onClose={() => setDismissed(true)} />
+      )}
+
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[2px] text-muted">{course?.name ?? 'Focadu'}</p>
