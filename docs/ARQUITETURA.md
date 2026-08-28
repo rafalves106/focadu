@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 22 - Sessao Expirada (Modal Global)**.
+> Ultima fase que atualizou este documento: **Fase 23 - Ligar Palavras (Matcher de 2 Colunas)**.
 
 ## Visao geral do projeto
 
@@ -279,7 +279,8 @@ Course (Draft/Active/Archived, Description)
     └── WeeklyTemplate (Number, Title, Theme, WeeklyProjectSpecText)
         ├── DailyTemplate (DayNumber)                 [WeeklyTemplateId NULL = sintetico, ver reforco abaixo]
         │   └── DailyActivity (Type, OrderIndex, AnswerMode, Prompt?, ContentId?, ExpectedAnswer?)
-        │       ├── QuizOption (Text, IsCorrect)                  [Quiz e WordMatch]
+        │       ├── QuizOption (Text, IsCorrect)                  [Quiz, Cloze/MultipleChoice]
+        │       ├── WordMatchPair (Term, DefinitionId, Definition)     [WordMatch, Fase 23]
         │       └── RoleplayNode (NodeKey, Text, IsTerminal, TerminalQuality?)  [Roleplay]
         │           └── RoleplayOption (Text, NextNodeId?)
         └── CuratedContent (Type, Title, ExternalUrl?, BodyText?)
@@ -351,19 +352,32 @@ link explicito (`Daily.ReinforcementDailyId`). Fecha a ambiguidade documentada c
 desde a Fase 4.
 
 **`DailyActivity.Prompt` (Fase 3):** enunciado/pergunta da propria atividade (pergunta do Quiz,
-termo do WordMatch, contexto do Cloze/Roleplay) - sempre visivel ao cliente (nunca redigido, e o
-que o usuario precisa ler pra responder). Faltava na Fase 1: so existiam `QuizOption` (as opcoes)
-e `ExpectedAnswer` (gabarito do Cloze), sem nenhum campo pra guardar o texto da pergunta em si.
-Descoberto ao escrever o seed de conteudo real da Fase 3 e confirmado com o Falves antes de mexer
-no schema - ver `docs/fase-3/resumo-implementacao-fase-3.md`.
+contexto do Cloze/Roleplay) - sempre visivel ao cliente (nunca redigido, e o que o usuario precisa
+ler pra responder). Faltava na Fase 1: so existiam `QuizOption` (as opcoes) e `ExpectedAnswer`
+(gabarito do Cloze), sem nenhum campo pra guardar o texto da pergunta em si. Descoberto ao
+escrever o seed de conteudo real da Fase 3 e confirmado com o Falves antes de mexer no schema -
+ver `docs/fase-3/resumo-implementacao-fase-3.md`. WordMatch (Fase 23) normalmente nao usa este
+campo - o "enunciado" e o proprio conjunto de `WordMatchPair`, ver abaixo.
 
-**WordMatch: 1 termo = 1 `DailyActivity`, nao 1 atividade com varios pares (Fase 4, confirmado com
-o Falves).** `Prompt` e o termo, `QuizOptions` sao as definicoes candidatas (exatamente 1
-correta) - o mesmo mecanismo de Quiz, so reaproveitado. Varias `DailyActivity` WordMatch na mesma
-`Daily` formam, juntas (do ponto de vista do frontend), um unico exercicio de associacao - mas
-cada uma continua sendo uma atividade independente pro dominio (penalidade, historico de
-respostas, etc). O schema nao suporta "N pares simultaneos numa unica atividade" - essa foi a
-alternativa descartada, ver `docs/fase-4/resumo-implementacao-fase-4.md`.
+**WordMatch: reforma completa do contrato na Fase 23 (revisita a decisao da Fase 4, ver
+`docs/fase-9/resumo-implementacao-fase-9.md` pra por que ficou pendente ate aqui).** Ate a Fase
+21: 1 termo = 1 `DailyActivity`, `Prompt` era o termo e `QuizOptions` eram as definicoes
+candidatas (exatamente 1 correta) - o mesmo mecanismo de Quiz, reaproveitado; varias
+`DailyActivity` WordMatch na mesma `Daily` formavam, juntas (so do ponto de vista do frontend), um
+unico exercicio - cada termo continuava pontuando/penalizando independente pro dominio. A partir
+da Fase 23, 1 `DailyActivity` WordMatch guarda o grupo de pares INTEIRO
+(`DailyActivity.WordMatchPairs`, ver `WordMatchPair`) - submetido/pontuado de uma vez so
+(`SubmitActivityResponseUseCase.ScoreFromWordMatchMatches`), nao mais 1 `ActivityResponse` por
+termo. Pontuacao e parcial (percentual de pares certos, arredondado), nao tudo-ou-nada - reusa o
+mesmo `EvaluationPolicy.PassingScore` (80) de qualquer outra atividade pra decidir `Passed`, entao
+grupos pequenos (2-3 pares) na pratica exigem acertar quase tudo e grupos maiores (4+) toleram 1
+erro, sem precisar de uma regra separada. `WordMatchPair.DefinitionId` e um Guid DELIBERADAMENTE
+separado do `Id` do proprio par (que identifica o termo) - se o termo e a definicao saissem pro
+cliente com o mesmo id, a correspondencia (o gabarito) vazaria so de olhar o JSON, sem jogar (ver
+`DailyStateMapper`, que tambem embaralha a ordem das definicoes a cada carga pelo mesmo motivo).
+Reforco (`CloneForReinforcement`) clona a atividade inteira, todos os pares - nao ha
+granularidade menor que "o grupo todo" (mesma logica de "reforco nao clona so a alternativa
+errada" do Quiz). `docs/fase-23/resumo-implementacao-fase-23.md` tem o detalhe completo.
 
 **`Daily.ReinforcementDailyId` (Fase 4):** Guid? preenchido junto com `ReinforcementTriggered`
 (`Weekly.CreateDailyReinforcement` grava o Id da Daily de reforco recem-criada na Daily de
@@ -880,13 +894,18 @@ atualizado sem precisar de uma segunda chamada. `POST .../complete` retorna um s
 (`CompleteDailyResult`, ver abaixo) porque, alem do estado da Daily, precisa reportar reforco.
 
 `DailyActivityDto` expoe `Prompt` (enunciado) sempre, sem redacao - e o que o usuario precisa ler
-pra responder. Ja `QuizOptions[].IsCorrect`, `ExpectedAnswer` e `RoleplayNodes[].TerminalQuality`
-(o gabarito propriamente dito) **so aparecem depois que a atividade tem ao menos uma
-`ActivityResponse` registrada** (Fase 3) - antes disso vem `null`. O gate e um unico booleano em
-`DailyStateMapper.ToActivityDto` (`hasAnswered = daily.Responses.Where(r => r.ActivityId ==
-activity.Id).Any()` desde a Fase 13 - `Responses` mora em `Daily`/instancia agora, nao mais em
-`DailyActivity`/template, ver "Template vs Instancia"), aplicado aos tres campos. Isso fecha a
-lacuna identificada na Fase 2 (gabarito visivel no DevTools antes de responder).
+pra responder. Ja `QuizOptions[].IsCorrect`, `ExpectedAnswer`, `RoleplayNodes[].TerminalQuality` e
+`WordMatchTerms[].CorrectDefinitionId` (Fase 23) - o gabarito propriamente dito de cada tipo -
+**so aparecem depois que a atividade tem ao menos uma `ActivityResponse` registrada** (Fase 3) -
+antes disso vem `null`. O gate e um unico booleano em `DailyStateMapper.ToActivityDto`
+(`hasAnswered = daily.Responses.Where(r => r.ActivityId == activity.Id).Any()` desde a Fase 13 -
+`Responses` mora em `Daily`/instancia agora, nao mais em `DailyActivity`/template, ver "Template
+vs Instancia"), aplicado aos quatro campos. Isso fecha a lacuna identificada na Fase 2 (gabarito
+visivel no DevTools antes de responder). WordMatch (Fase 23) tem uma segunda camada do mesmo
+cuidado: `WordMatchTerms` e `WordMatchDefinitions` vao em listas SEPARADAS (nunca aninhadas no
+mesmo objeto) e `WordMatchDefinitions` sai embaralhada a cada carga - do contrario, a propria
+FORMA do JSON (quem esta ao lado de quem, ou a mesma posicao nas duas listas) entregaria a
+correspondencia certa sem nem precisar de `CorrectDefinitionId`. Ver `WordMatchPair` no dominio.
 
 ### GET /api/today usa a Enrollment do usuario logado (Fase 13, era "1 Course Active" global)
 
@@ -908,14 +927,15 @@ atividade e sempre calculado no servidor, nunca aceito pronto do cliente:
 
 | Tipo | Campo do request | Como o Score e calculado |
 |---|---|---|
-| `Quiz` / `WordMatch` | `SelectedOptionId` | 100 se a opcao existe nessa atividade e `IsCorrect = true`, senao 0 |
-| `Cloze` + `AnswerMode.MultipleChoice` | `SelectedOptionId` | Mesmo mecanismo de Quiz/WordMatch (reaproveitado) |
+| `Quiz` | `SelectedOptionId` | 100 se a opcao existe nessa atividade e `IsCorrect = true`, senao 0 |
+| `Cloze` + `AnswerMode.MultipleChoice` | `SelectedOptionId` | Mesmo mecanismo de Quiz (reaproveitado) |
 | `Cloze` + `AnswerMode.FreeText` | `Transcript` | 100 se `Transcript.Trim()` bate com `ExpectedAnswer.Trim()` (case-insensitive), senao 0 - **ponytail**: comparacao textual simples, sem IA |
+| `WordMatch` (Fase 23) | `WordMatchMatches` (`Dictionary<Guid,Guid>`, TermId -> DefinitionId escolhido - TODOS os pares da atividade de uma vez, nao 1 por request) | Percentual de pares certos (`WordMatchPair.DefinitionId` bate com o escolhido), arredondado - pontuacao PARCIAL, nao tudo-ou-nada (ver `ScoreFromWordMatchMatches`) |
 | `Roleplay` | `SelectedRoleplayNodeId` | A partir do `TerminalQuality` do node terminal alcancado (ver tabela abaixo) - o node precisa ter `IsTerminal = true` |
 | `VoiceSummary` | Arquivo de audio (`POST .../responses/audio`, endpoint separado - ver "Resumo falado por voz" abaixo) | Resultado de `IContentEvaluationService.EvaluateAsync` (Groq, Fase 5) |
 | `Reading` / `Video` (Fase 7) | Nenhum (corpo vazio) | Sempre 100 - sem avaliacao, concluir a etapa e o proprio "acerto" (nunca reprova, nunca soma `PenaltyPoints`) |
 
-Os 4 primeiros tipos sao resolvidos sincronamente em
+Os 5 primeiros tipos sao resolvidos sincronamente em
 `SubmitActivityResponseUseCase.ResolveScore`. `VoiceSummary` e assincrono (chama 2 servicos
 externos) e por isso vive num caso de uso e endpoint proprios - ver abaixo.
 
@@ -936,8 +956,10 @@ Validacao (`ValidationException`, mesmo envelope padrao de erro):
 
 | Code | Quando |
 |---|---|
-| `selected_option_id_obrigatorio` | Quiz/WordMatch/Cloze(MultipleChoice) sem `SelectedOptionId` no corpo |
+| `selected_option_id_obrigatorio` | Quiz/Cloze(MultipleChoice) sem `SelectedOptionId` no corpo |
 | `selected_option_id_invalido` | `SelectedOptionId` nao corresponde a uma `QuizOption` desta atividade |
+| `word_match_matches_obrigatorio` | WordMatch sem `WordMatchMatches` no corpo (Fase 23) |
+| `word_match_matches_invalido` | WordMatch com `WordMatchMatches` faltando pares, sobrando pares, ou com algum TermId que nao pertence a esta atividade (Fase 23) |
 | `transcript_obrigatorio` | Cloze(FreeText) sem `Transcript` no corpo |
 | `selected_roleplay_node_id_obrigatorio` | Roleplay sem `SelectedRoleplayNodeId` no corpo |
 | `selected_roleplay_node_id_invalido` | `SelectedRoleplayNodeId` nao corresponde a um `RoleplayNode` desta atividade |
@@ -1641,13 +1663,17 @@ frontend/
                                    AchievementsPage.tsx (removido) - mesmo conteudo, novo lar
       activities/                 <- primitivas visuais das atividades avaliaveis (Fase 9)
         IntroCard.tsx                <- tela de intro (badge/titulo/descricao/regras/CTA) - gate local (`started`), nao e passo novo no Step do TodayPage
-        OptionCard.tsx                <- card de opcao (neutro/selecionado/correto/errado/esmaecido) - Quiz, termos do WordMatch, decisoes do Roleplay.
+        OptionCard.tsx                <- card de opcao (neutro/selecionado/correto/errado/esmaecido) - Quiz, Roleplay, e (Fase 23) os 2
+                                   lados do matcher de WordMatch (reaproveitado sem mudanca).
                                    Fase 19: "selecionado" ganhou preenchimento verde translucido
                                    (bg-accent/25, nao so a borda), padding px-[18px]/py-4 exatos do Figma
         CodeHighlight.tsx              <- realca a lacuna "___" do prompt de Cloze - fonte mono (Fira Code, Fase 19) em vez de somar a fonte "Cousine" do Figma so pra este bloco
       QuizActivity.tsx             <- Quiz e Cloze/MultipleChoice (Intro + OptionsAnswer) (Fase 9). Fase 19: pos-Intro usa SessionLayout (era ActivityScreen simples)
-      WordMatchActivity.tsx         <- grupo de termos do WordMatch (Intro + progresso "X de Y termos") (Fase 9). Fase 19: idem, SessionLayout - mecanica de multipla escolha independente mantida (ver nota de divergencia no proprio arquivo)
-      OptionsAnswer.tsx          <- nucleo "escolher opcao" - Quiz, cada termo de WordMatch, Cloze/MultipleChoice; usa OptionCard desde a Fase 9
+      WordMatchActivity.tsx         <- matcher visual de 2 colunas por toque (tap-to-connect), 1 DailyActivity = 1 grupo de pares inteiro
+                                   (Fase 23, reforma completa - substitui a versao Fase 9/19 que
+                                   reaproveitava OptionsAnswer por termo, ver nota de divergencia
+                                   removida do proprio arquivo)
+      OptionsAnswer.tsx          <- nucleo "escolher opcao" - Quiz, Cloze/MultipleChoice; usa OptionCard desde a Fase 9. WordMatch usava isto ate a Fase 21, tem interacao propria desde a Fase 23 (ver WordMatchActivity.tsx)
       ClozeFreeTextActivity.tsx   <- Cloze/FreeText (resposta + justificativa); Intro + CodeHighlight desde a Fase 9. Fase 19: SessionLayout + bloco de codigo/labels fieis ao node "sessao-cloze-test" - campo de justificativa continua texto (nao microfone, ver nota no arquivo)
       RoleplayActivity.tsx        <- navega o grafo de RoleplayNode client-side; Intro + OptionCard desde a Fase 9. Fase 19: SessionLayout + badge ambar "Roleplay de Decisoes" + bloco "Cenario" persistente (activity.prompt, antes so na Intro) + opcoes numeradas; indicador de "arvore de decisao" (1->2->3->4) do Figma omitido (profundidade do grafo e variavel, nao um numero fixo de passos)
       VoiceSummaryActivity.tsx    <- grava audio (MediaRecorder), envia multipart, mostra transcricao+feedback (Fase 5). Fase 19: SessionLayout `card={false}` (unica tela de sessao sem cartao, mic orb 180px) + legenda "Gravando - MM:SS / limite 10:00"; legenda "Baseado em: ..." do Figma omitida (exigiria 1 chamada de API nova so pra isso).
@@ -1736,19 +1762,26 @@ Daily precisa estar `InProgress` pra aceitar respostas - `daily_nao_iniciada` se
 
 **Maquina de passo (`Step`) - por que existe (Fase 4):** `TodayPage` nao re-deriva "o que
 mostrar" a cada resposta recebida - ela mantem um `Step` "pinado" (`{kind:'activity', activityId}`
-| `{kind:'wordMatchGroup'}` | `{kind:'done'}'}`) que so muda quando o usuario clica "Continuar".
-Sem isso, a ultima atividade da sessao (ou o ultimo termo de um WordMatch) tinha o proprio reveal
-engolido - assim que a resposta era enviada e os dados atualizavam, o componente pai ja trocava de
-tela antes do usuario conseguir ler "Acertou!"/"Errou" (bug encontrado e corrigido durante a
-verificacao ao vivo desta fase). Cada componente de atividade (`OptionsAnswer`,
-`ClozeFreeTextActivity`, `RoleplayActivity`) recebe `onDailyRefetched` (atualiza os dados) e
-`onContinue` (so chamado quando o usuario decide avancar) como callbacks separados.
+| `{kind:'done'}`) que so muda quando o usuario clica "Continuar". Sem isso, a ultima atividade da
+sessao tinha o proprio reveal engolido - assim que a resposta era enviada e os dados atualizavam,
+o componente pai ja trocava de tela antes do usuario conseguir ler "Acertou!"/"Errou" (bug
+encontrado e corrigido durante a verificacao ao vivo desta fase). Cada componente de atividade
+(`OptionsAnswer`, `WordMatchActivity`, `ClozeFreeTextActivity`, `RoleplayActivity`) recebe
+`onDailyRefetched` (atualiza os dados) e `onContinue` (so chamado quando o usuario decide avancar)
+como callbacks separados. Ate a Fase 21, `Step` tinha um terceiro caso (`{kind:'wordMatchGroup'}`)
+so pra WordMatch, porque varias `DailyActivity` do tipo formavam 1 exercicio na tela mas
+continuavam sendo N atividades separadas pro dominio - a Fase 23 (WordMatch = 1 unica
+`DailyActivity` por grupo) removeu esse caso especial: WordMatch virou uma atividade comum como
+qualquer outra no `Step`, e se um dia tiver mais de 1 grupo, cada um vira sua propria etapa
+sequencial, sem logica extra em `TodayPage`.
 
-**WordMatch, na tela:** todas as `DailyActivity` do tipo WordMatch da Daily sao renderizadas
-juntas (uma linha `OptionsAnswer` por termo, cada uma pontuando/revelando de forma independente);
-o botao "Continuar" do grupo so aparece quando todos os termos ja tem resposta. Desde a Fase 9 vive
-em `WordMatchActivity.tsx` (extraido de `TodayPage.renderStep`), com uma Intro e progresso real
-"X de Y termos conectados".
+**WordMatch, na tela (Fase 23):** cada `DailyActivity` do tipo WordMatch vira 1 tela de matcher de
+2 colunas (`WordMatchActivity.tsx`) - termos a esquerda, definicoes embaralhadas a direita, ligados
+por toque (tap-to-connect, nao drag-and-drop - ver nota no proprio arquivo pra o motivo). O botao
+"Continuar" so aparece quando todos os pares estao ligados; a resposta e enviada de uma vez so
+(`wordMatchMatches`). Se uma Daily tiver mais de 1 grupo de WordMatch (o molde de curadoria em
+`secret/curadoria/CURADORIA.md` preve 3 grupos por dia), cada `DailyActivity` vira sua propria etapa
+sequencial no `Step` - sem agrupamento especial, como qualquer outro tipo de atividade.
 
 **Intro por atividade (Fase 9):** Quiz/Cloze/WordMatch/Roleplay mostram uma tela de intro
 (`IntroCard`) antes da pergunta/desafio/cenario - `started` e um `useState` local em cada
@@ -2010,17 +2043,18 @@ CSS).
 | 20 | Fidelidade Visual - Navegacao & Perfil + Correcao de Rota Full-Bleed | `docs/fase-20/resumo-implementacao-fase-20.md` |
 | 21 | Avaliacao de Projeto e Conteudo por IA + Narracao por Voz | `docs/fase-21/resumo-implementacao-fase-21.md` |
 | 22 | Sessao Expirada (Modal Global) | `docs/fase-22/resumo-implementacao-fase-22.md` |
+| 23 | Ligar Palavras (Matcher de 2 Colunas) | `docs/fase-23/resumo-implementacao-fase-23.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
 - O contrato da Api (rotas, DTOs, formato de erro) esta documentado na secao "Superficie da
   API" acima; o client tipado do frontend (`frontend/src/api/`) e o exemplo de referencia de
   como consumi-lo.
-- **Ligar Palavras ainda nao e um matcher visual de 2 colunas com drag-and-drop** (o design do
-  Figma mostra essa interacao) - cada termo continua sendo respondido como multipla escolha
-  independente (`OptionsAnswer`, decisao da Fase 4). Reconstruir a interacao pra bater com o Figma
-  e um pedido explicito pra uma fase futura, nao um ajuste de polimento (ver
-  `docs/fase-9/resumo-implementacao-fase-9.md`).
+- **Resolvido na Fase 23, nao e mais pendencia:** Ligar Palavras virou um matcher visual de 2
+  colunas de verdade (tap-to-connect, nao drag-and-drop - ver `WordMatchActivity.tsx` pro motivo),
+  com reforma de contrato completa (1 `DailyActivity` = 1 grupo de pares, nao mais 1 termo por
+  atividade). Ver "WordMatch: reforma completa do contrato na Fase 23" acima e
+  `docs/fase-23/resumo-implementacao-fase-23.md`.
 - **Resolvido na Fase 19, nao e mais pendencia:** Cloze e Roleplay (Dias 3/4 do seed) nao tinham
   sido exercitados ao vivo desde a Fase 9 (so Quiz e WordMatch) - verificados via Playwright com
   data ajustada por SQL (mesma tecnica das Fases 15-18), confirmando fidelidade visual dos 8 telas

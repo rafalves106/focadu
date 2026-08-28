@@ -19,19 +19,16 @@ import { ReinforcementIntroScreen } from '../components/ReinforcementIntroScreen
 import { SettingsMenu } from '../components/SettingsMenu';
 import { PenaltyGauge } from '../components/gamification/PenaltyGauge';
 
-// "Pino" do passo atual - so identifica QUAL atividade/grupo mostrar, nunca guarda uma copia dos
-// dados (que vem sempre fresca de `daily.activities`). Isso evita 2 problemas: (1) trocar de tela
-// assim que a ultima atividade e respondida, sem o usuario ver o proprio reveal - so avancamos
-// quando o usuario clica "Continuar" (ver onContinue nos componentes de atividade); (2) dados
-// desatualizados dentro do WordMatchGroup apos responder um dos termos.
-type Step = { kind: 'activity'; activityId: string } | { kind: 'wordMatchGroup' } | { kind: 'done' };
+// "Pino" do passo atual - so identifica QUAL atividade mostrar, nunca guarda uma copia dos dados
+// (que vem sempre fresca de `daily.activities`) - so avancamos quando o usuario clica
+// "Continuar" (ver onContinue nos componentes de atividade), pra ele sempre ver o proprio reveal
+// antes de trocar de tela.
+type Step = { kind: 'activity'; activityId: string } | { kind: 'done' };
 
 function resolveStep(daily: DailyStateDto): Step {
   const sorted = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
   const pending = sorted.find((a) => a.status !== ActivityStatus.Completed);
-  if (!pending) return { kind: 'done' };
-  if (pending.type === ActivityType.WordMatch) return { kind: 'wordMatchGroup' };
-  return { kind: 'activity', activityId: pending.id };
+  return pending ? { kind: 'activity', activityId: pending.id } : { kind: 'done' };
 }
 
 /**
@@ -155,7 +152,7 @@ export function TodayPage() {
   }, [daily, step]);
 
   // Sessao "ativa" = ja temos passo pra mostrar e ainda nao concluiu - cobre as telas de
-  // atividade, o "done" e o wordMatchGroup, mas nunca o loading/erro nem a CompletionSummary.
+  // atividade e o "done", mas nunca o loading/erro nem a CompletionSummary.
   const sessionActive = daily !== null && step !== null && completion === null;
   useSessionExitGuard(sessionActive, () => setShowSettings((prev) => !prev));
 
@@ -232,20 +229,6 @@ export function TodayPage() {
       );
     }
 
-    // WordMatch: todas as DailyActivity WordMatch da Daily formam, juntas, 1 exercicio de
-    // associacao - 1 termo por atividade (decisao de modelagem confirmada na Fase 4, ver
-    // docs/ARQUITETURA.md). Renderizadas lado a lado, cada uma pontuando independentemente; o botao
-    // "Continuar" so aparece quando TODOS os termos ja tiverem resposta.
-    if (step.kind === 'wordMatchGroup') {
-      const group = [...daily.activities]
-        .filter((a) => a.type === ActivityType.WordMatch)
-        .sort((a, b) => a.orderIndex - b.orderIndex);
-
-      return (
-        <WordMatchActivity group={group} dailyId={daily.id} daily={daily} onDailyRefetched={setDaily} onContinue={handleContinue} />
-      );
-    }
-
     const activity = daily.activities.find((a) => a.id === step.activityId);
     if (!activity) {
       // Nao deveria acontecer (Step so aponta pra atividades que existiam em `daily` no momento em
@@ -270,6 +253,19 @@ export function TodayPage() {
     if (activity.type === ActivityType.Video) {
       return (
         <VideoActivity
+          key={activity.id}
+          dailyId={daily.id}
+          daily={daily}
+          activity={activity}
+          onDailyRefetched={setDaily}
+          onContinue={handleContinue}
+        />
+      );
+    }
+
+    if (activity.type === ActivityType.WordMatch) {
+      return (
+        <WordMatchActivity
           key={activity.id}
           dailyId={daily.id}
           daily={daily}

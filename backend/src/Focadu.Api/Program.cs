@@ -544,7 +544,7 @@ api.MapPost("/dailies/{dailyId}/activities/{activityId}/responses",
 
             var result = await useCase.ExecuteAsync(
                 CurrentUserId(principal), dId, aId, request?.SelectedOptionId, request?.SelectedRoleplayNodeId,
-                request?.Transcript, request?.Justification, request?.AiFeedback, ct);
+                request?.Transcript, request?.Justification, request?.AiFeedback, request?.WordMatchMatches, ct);
             return Results.Created($"/api/dailies/{dailyId}/activities/{activityId}/responses/{result.Response.Id}", result);
         })
     .RequireAuthorization()

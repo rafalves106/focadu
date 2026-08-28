@@ -31,6 +31,8 @@ public record DailyActivityDto(
     string? Prompt,
     string? ExpectedAnswer,
     IReadOnlyCollection<QuizOptionDto> QuizOptions,
+    IReadOnlyCollection<WordMatchTermDto> WordMatchTerms,
+    IReadOnlyCollection<WordMatchDefinitionDto> WordMatchDefinitions,
     IReadOnlyCollection<RoleplayNodeDto> RoleplayNodes,
     IReadOnlyCollection<ActivityResponseDto> Responses);
 
@@ -39,6 +41,22 @@ public record DailyActivityDto(
 /// gabarito só é revelado depois da primeira tentativa (ver DailyStateMapper).
 /// </summary>
 public record QuizOptionDto(Guid Id, string Text, bool? IsCorrect);
+
+/// <summary>
+/// Termo (coluna esquerda) de uma DailyActivity WordMatch (Fase 23). CorrectDefinitionId vem nulo
+/// até a atividade ter uma ActivityResponse - mesma regra/motivo de QuizOptionDto.IsCorrect (ver
+/// DailyStateMapper): é o gabarito, não pode vir antes de responder. Quando revelado, é sempre um
+/// dos Id em WordMatchDefinitions desta mesma DailyActivityDto.
+/// </summary>
+public record WordMatchTermDto(Guid Id, string Text, Guid? CorrectDefinitionId);
+
+/// <summary>
+/// Definição (coluna direita) de uma DailyActivity WordMatch (Fase 23) - ordem embaralhada a cada
+/// carga (ver DailyStateMapper), pra posição não denunciar a correspondência com o termo. Id é
+/// intencionalmente um Guid diferente do WordMatchTermDto correspondente (ver WordMatchPair) -
+/// nunca reaproveitar o Id do termo aqui.
+/// </summary>
+public record WordMatchDefinitionDto(Guid Id, string Text);
 
 public record RoleplayNodeDto(
     Guid Id,

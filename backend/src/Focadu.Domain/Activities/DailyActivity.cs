@@ -22,7 +22,11 @@ public class DailyActivity : Entity
     /// <summary>Referência ao CuratedContent de origem. Nulo quando a atividade não deriva de um conteúdo (ex: leitura/vídeo em si).</summary>
     public Guid? ContentId { get; private set; }
 
-    /// <summary>Enunciado da atividade (pergunta do Quiz, termo do WordMatch, contexto do Cloze/Roleplay). Sempre visível ao cliente, nunca redigido - é o que o usuário responde.</summary>
+    /// <summary>
+    /// Enunciado da atividade (pergunta do Quiz, contexto do Cloze/Roleplay). Sempre visível ao
+    /// cliente, nunca redigido - é o que o usuário responde. WordMatch (Fase 23) normalmente não
+    /// usa este campo - o "enunciado" é o proprio conjunto de WordMatchPairs.
+    /// </summary>
     public string? Prompt { get; private set; }
 
     /// <summary>Usado no Cloze em modo texto livre/código, para conferência da resposta esperada.</summary>
@@ -35,6 +39,11 @@ public class DailyActivity : Entity
 
     private readonly List<RoleplayNode> _roleplayNodes = new();
     public IReadOnlyCollection<RoleplayNode> RoleplayNodes => _roleplayNodes.AsReadOnly();
+
+    private readonly List<WordMatchPair> _wordMatchPairs = new();
+
+    /// <summary>Pares termo-definição, só pra Type == WordMatch (Fase 23) - ver WordMatchPair.</summary>
+    public IReadOnlyCollection<WordMatchPair> WordMatchPairs => _wordMatchPairs.AsReadOnly();
 
     private DailyActivity()
     {
@@ -68,11 +77,15 @@ public class DailyActivity : Entity
     }
 
     /// <summary>
-    /// Clona a definição desta atividade (tipo, ordem, modo de resposta, conteúdo de origem e
-    /// opções de quiz) para uso num DailyTemplate sintético de reforço (ver DailyTemplate). Não
-    /// copia roleplay nodes - reforco so acontece hoje pra Quiz/WordMatch/Cloze (ver
-    /// Daily.GetFailedActivities + o tipo das atividades do seed); se um Roleplay reprovado
-    /// precisar de reforco no futuro, RoleplayNode/Options tambem precisam ser clonados aqui.
+    /// Clona a definição desta atividade (tipo, ordem, modo de resposta, conteúdo de origem,
+    /// opções de quiz e pares de WordMatch) para uso num DailyTemplate sintético de reforço (ver
+    /// DailyTemplate). Não copia roleplay nodes - reforco so acontece hoje pra Quiz/WordMatch/
+    /// Cloze (ver Daily.GetFailedActivities + o tipo das atividades do seed); se um Roleplay
+    /// reprovado precisar de reforco no futuro, RoleplayNode/Options tambem precisam ser clonados
+    /// aqui. WordMatch (Fase 23): a atividade inteira é 1 unico grupo de pares - reprovar (nao
+    /// bater o PassingScore) clona TODOS os pares de volta pro reforco, mesmo os que o usuario
+    /// acertou individualmente; nao ha granularidade menor que "a atividade toda", pelo mesmo
+    /// motivo que o reforco de Quiz nao clona "so a alternativa errada".
     /// </summary>
     internal DailyActivity CloneForReinforcement(Guid newDailyTemplateId, int orderIndex)
     {
@@ -81,27 +94,46 @@ public class DailyActivity : Entity
         {
             clone.AddQuizOption(option.Text, option.IsCorrect);
         }
+        foreach (var pair in _wordMatchPairs)
+        {
+            clone.AddWordMatchPair(pair.Term, pair.Definition);
+        }
 
         return clone;
     }
 
     /// <summary>
-    /// Quiz/WordMatch: as opções da pergunta/termo. Cloze com AnswerMode = MultipleChoice
-    /// (Fase 4): as opções pra preencher a lacuna - mesmo mecanismo, só reaproveitado.
+    /// Quiz: as opções da pergunta. Cloze com AnswerMode = MultipleChoice (Fase 4): as opções pra
+    /// preencher a lacuna - mesmo mecanismo, só reaproveitado. WordMatch usa AddWordMatchPair
+    /// desde a Fase 23, não isto.
     /// </summary>
     public QuizOption AddQuizOption(string text, bool isCorrect)
     {
-        var allowed = Type is ActivityType.Quiz or ActivityType.WordMatch
+        var allowed = Type == ActivityType.Quiz
             || (Type == ActivityType.Cloze && AnswerMode == AnswerMode.MultipleChoice);
         if (!allowed)
         {
             throw new DomainException(
-                "QuizOption só pode ser adicionada a atividades do tipo Quiz, WordMatch, ou Cloze com AnswerMode MultipleChoice.");
+                "QuizOption só pode ser adicionada a atividades do tipo Quiz, ou Cloze com AnswerMode MultipleChoice.");
         }
 
         var option = new QuizOption(Id, text, isCorrect);
         _quizOptions.Add(option);
         return option;
+    }
+
+    /// <summary>
+    /// Um par termo-definição do grupo de WordMatch que esta DailyActivity representa (Fase 23) -
+    /// ver WordMatchPair pra por que Term/Definition tem ids separados.
+    /// </summary>
+    public WordMatchPair AddWordMatchPair(string term, string definition)
+    {
+        if (Type != ActivityType.WordMatch)
+            throw new DomainException("WordMatchPair só pode ser adicionado a atividades do tipo WordMatch.");
+
+        var pair = new WordMatchPair(Id, term, definition);
+        _wordMatchPairs.Add(pair);
+        return pair;
     }
 
     public RoleplayNode AddRoleplayNode(string nodeKey, string text, bool isTerminal = false, TerminalQuality? terminalQuality = null)

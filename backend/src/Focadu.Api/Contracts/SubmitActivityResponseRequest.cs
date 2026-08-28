@@ -3,7 +3,10 @@ namespace Focadu.Api.Contracts;
 /// <summary>
 /// Qual campo e usado depende do ActivityType (e, pro Cloze, do AnswerMode) da atividade -
 /// decidido dentro de SubmitActivityResponseUseCase.ResolveScore, que e quem enxerga esses dados:
-/// - Quiz/WordMatch/Cloze(MultipleChoice): SelectedOptionId.
+/// - Quiz/Cloze(MultipleChoice): SelectedOptionId.
+/// - WordMatch (Fase 23): WordMatchMatches - TODOS os pares da atividade de uma vez (chave =
+///   WordMatchTermDto.Id, valor = WordMatchDefinitionDto.Id que o usuario ligou a ele), nao 1
+///   selectedOptionId por termo (o schema antigo, ate a Fase 21).
 /// - Cloze(FreeText): Transcript (a resposta em texto livre, comparada no backend contra
 ///   ExpectedAnswer) + opcionalmente Justification (guardada, nao avaliada nesta fase).
 /// - Roleplay: SelectedRoleplayNodeId (o node terminal alcancado ao percorrer o dialogo).
@@ -15,4 +18,5 @@ public record SubmitActivityResponseRequest(
     Guid? SelectedRoleplayNodeId,
     string? Transcript,
     string? Justification,
-    string? AiFeedback);
+    string? AiFeedback,
+    IReadOnlyDictionary<Guid, Guid>? WordMatchMatches = null);

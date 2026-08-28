@@ -110,6 +110,8 @@ export interface SubmitActivityResponseBody {
   transcript?: string;
   justification?: string;
   aiFeedback?: string;
+  /** WordMatch (Fase 23): TODOS os pares da atividade de uma vez - chave = termId, valor = definitionId escolhido. */
+  wordMatchMatches?: Record<string, string>;
 }
 
 export const api = {

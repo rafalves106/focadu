@@ -30,17 +30,105 @@ public class SubmitActivityResponseScoreTests
     }
 
     [Fact]
-    public void WordMatch_SelectedWrongOption_ScoresZero()
+    public void WordMatch_AllPairsMatchedCorrectly_ScoresFull()
     {
         var weekly = DailyFixtures.NewWeekly();
         var template = weekly.Template.AddDailyTemplate(1);
         var activity = template.AddActivity(ActivityType.WordMatch, 0, AnswerMode.MultipleChoice);
-        activity.AddQuizOption("Certa", true);
-        var wrong = activity.AddQuizOption("Errada", false);
+        var pair1 = activity.AddWordMatchPair("DNS", "Tradução de Nomes");
+        var pair2 = activity.AddWordMatchPair("TCP", "Conexão Confiável");
 
-        var score = SubmitActivityResponseUseCase.ResolveScore(activity, wrong.Id, null, null);
+        var matches = new Dictionary<Guid, Guid> { [pair1.Id] = pair1.DefinitionId, [pair2.Id] = pair2.DefinitionId };
+        var score = SubmitActivityResponseUseCase.ResolveScore(activity, null, null, null, matches);
+
+        Assert.Equal(100, score);
+    }
+
+    [Fact]
+    public void WordMatch_AllPairsSwapped_ScoresZero()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(ActivityType.WordMatch, 0, AnswerMode.MultipleChoice);
+        var pair1 = activity.AddWordMatchPair("DNS", "Tradução de Nomes");
+        var pair2 = activity.AddWordMatchPair("TCP", "Conexão Confiável");
+
+        // Termo ligado a definicao do OUTRO par - errado nos dois.
+        var matches = new Dictionary<Guid, Guid> { [pair1.Id] = pair2.DefinitionId, [pair2.Id] = pair1.DefinitionId };
+        var score = SubmitActivityResponseUseCase.ResolveScore(activity, null, null, null, matches);
 
         Assert.Equal(0, score);
+    }
+
+    [Fact]
+    public void WordMatch_PartialPairsCorrect_ScoresProportionally()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(ActivityType.WordMatch, 0, AnswerMode.MultipleChoice);
+        var pair1 = activity.AddWordMatchPair("DNS", "Tradução de Nomes");
+        var pair2 = activity.AddWordMatchPair("TCP", "Conexão Confiável");
+        var pair3 = activity.AddWordMatchPair("HTTP", "Transferência Sem Estado");
+        var pair4 = activity.AddWordMatchPair("FQDN", "Domínio Legível");
+
+        // 3 de 4 certos = 75, arredondado.
+        var matches = new Dictionary<Guid, Guid>
+        {
+            [pair1.Id] = pair1.DefinitionId,
+            [pair2.Id] = pair2.DefinitionId,
+            [pair3.Id] = pair3.DefinitionId,
+            [pair4.Id] = pair1.DefinitionId, // errado
+        };
+        var score = SubmitActivityResponseUseCase.ResolveScore(activity, null, null, null, matches);
+
+        Assert.Equal(75, score);
+    }
+
+    [Fact]
+    public void WordMatch_WithoutMatches_Throws()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(ActivityType.WordMatch, 0, AnswerMode.MultipleChoice);
+        activity.AddWordMatchPair("DNS", "Tradução de Nomes");
+
+        var ex = Assert.Throws<ValidationException>(
+            () => SubmitActivityResponseUseCase.ResolveScore(activity, null, null, null, null));
+
+        Assert.Equal("word_match_matches_obrigatorio", ex.Code);
+    }
+
+    [Fact]
+    public void WordMatch_IncompleteMatches_Throws()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(ActivityType.WordMatch, 0, AnswerMode.MultipleChoice);
+        var pair1 = activity.AddWordMatchPair("DNS", "Tradução de Nomes");
+        activity.AddWordMatchPair("TCP", "Conexão Confiável");
+
+        var matches = new Dictionary<Guid, Guid> { [pair1.Id] = pair1.DefinitionId };
+        var ex = Assert.Throws<ValidationException>(
+            () => SubmitActivityResponseUseCase.ResolveScore(activity, null, null, null, matches));
+
+        Assert.Equal("word_match_matches_invalido", ex.Code);
+    }
+
+    [Fact]
+    public void WordMatch_MatchesWithTermIdFromAnotherActivity_Throws()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var template = weekly.Template.AddDailyTemplate(1);
+        var activity = template.AddActivity(ActivityType.WordMatch, 0, AnswerMode.MultipleChoice);
+        var pair = activity.AddWordMatchPair("DNS", "Tradução de Nomes");
+        var otherActivity = template.AddActivity(ActivityType.WordMatch, 1, AnswerMode.MultipleChoice);
+        var otherPair = otherActivity.AddWordMatchPair("TCP", "Conexão Confiável");
+
+        var matches = new Dictionary<Guid, Guid> { [otherPair.Id] = pair.DefinitionId };
+        var ex = Assert.Throws<ValidationException>(
+            () => SubmitActivityResponseUseCase.ResolveScore(activity, null, null, null, matches));
+
+        Assert.Equal("word_match_matches_invalido", ex.Code);
     }
 
     [Fact]
