@@ -189,6 +189,9 @@ export const api = {
     request<EnrollmentDto>('/api/enrollments', { method: 'POST', body: JSON.stringify({ courseId }) }),
   // Gamificacao (Fase 14) - Gems + Streak.
   getGamification: () => request<GamificationSummaryDto>('/api/users/me/gamification'),
+  // Fase 10 (retomada): fecha o modal "Streak Perdido" pro backend - streakJustBroken volta false
+  // na proxima leitura, ate a proxima quebra de verdade.
+  acknowledgeStreakBreak: () => request<void>('/api/users/me/gamification/streak/acknowledge-broken', { method: 'PUT' }),
   // Troféus/Badges + Indicação (Fase 17) - calculados sob demanda no backend.
   getUserBadges: () => request<UserBadgesDto>('/api/users/me/badges'),
   getReferralInfo: () => request<ReferralInfoDto>('/api/users/me/referral'),
