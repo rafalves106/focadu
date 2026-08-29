@@ -19,19 +19,28 @@ import { ReinforcementIntroScreen } from '../components/ReinforcementIntroScreen
 import { SettingsMenu } from '../components/SettingsMenu';
 import { PenaltyGauge } from '../components/gamification/PenaltyGauge';
 
-// "Pino" do passo atual - so identifica QUAL atividade/grupo mostrar, nunca guarda uma copia dos
-// dados (que vem sempre fresca de `daily.activities`). Isso evita 2 problemas: (1) trocar de tela
-// assim que a ultima atividade e respondida, sem o usuario ver o proprio reveal - so avancamos
-// quando o usuario clica "Continuar" (ver onContinue nos componentes de atividade); (2) dados
-// desatualizados dentro do WordMatchGroup apos responder um dos termos.
-type Step = { kind: 'activity'; activityId: string } | { kind: 'wordMatchGroup' } | { kind: 'done' };
+// "Pino" do passo atual - so identifica QUAL atividade mostrar, nunca guarda uma copia dos dados
+// (que vem sempre fresca de `daily.activities`) - so avancamos quando o usuario clica
+// "Continuar" (ver onContinue nos componentes de atividade), pra ele sempre ver o proprio reveal
+// antes de trocar de tela.
+type Step = { kind: 'activity'; activityId: string } | { kind: 'done' };
 
-function resolveStep(daily: DailyStateDto): Step {
+/**
+ * Quantas respostas cada atividade já tinha ANTES desta passada de replay começar
+ * (`DailyAccessMode.Replay`, ver `Weekly.EvaluateDailyAccess`) - "Refazer este dia" reabre uma
+ * Daily onde toda atividade já está `Completed` (status vem de ter QUALQUER resposta, não de uma
+ * passada específica), então nem `resolveStep` nem os componentes de atividade (que decidem seu
+ * proprio "já respondida" via `activity.responses.length > 0`) sabem por si só que devem pedir
+ * uma resposta nova. Null fora de replay.
+ */
+type ReplayBaseline = Map<string, number> | null;
+
+function resolveStep(daily: DailyStateDto, replayBaseline: ReplayBaseline): Step {
   const sorted = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
-  const pending = sorted.find((a) => a.status !== ActivityStatus.Completed);
-  if (!pending) return { kind: 'done' };
-  if (pending.type === ActivityType.WordMatch) return { kind: 'wordMatchGroup' };
-  return { kind: 'activity', activityId: pending.id };
+  const pending = sorted.find((a) =>
+    replayBaseline ? a.responses.length <= (replayBaseline.get(a.id) ?? 0) : a.status !== ActivityStatus.Completed,
+  );
+  return pending ? { kind: 'activity', activityId: pending.id } : { kind: 'done' };
 }
 
 /**
@@ -110,6 +119,7 @@ export function TodayPage() {
   const [completing, setCompleting] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [replayBaseline, setReplayBaseline] = useState<ReplayBaseline>(null);
   // Fase 15: gate local da ReinforcementIntroScreen - mesmo padrao de "started" das intros de
   // atividade (QuizActivity, etc), so no nivel da Daily inteira em vez de uma Activity. So mostra
   // a intro numa sessao de reforco genuinamente nova (nenhuma atividade respondida ainda) - evita
@@ -133,6 +143,11 @@ export function TodayPage() {
         if (!cancelled) {
           setDaily(state);
           setReinforcementIntroDismissed(state.activities.some((a) => a.responses.length > 0));
+          setReplayBaseline(
+            state.accessMode === DailyAccessMode.Replay
+              ? new Map(state.activities.map((a) => [a.id, a.responses.length]))
+              : null,
+          );
         }
       } catch (err) {
         if (!cancelled) setError(classifyApiError(err));
@@ -151,11 +166,11 @@ export function TodayPage() {
   // depois que o usuario clica "Continuar" (ver handleContinue). Nunca no meio de uma atividade
   // ja em exibicao, mesmo que `daily` mude (resposta enviada) nesse meio tempo.
   useEffect(() => {
-    if (daily && step === null) setStep(resolveStep(daily));
-  }, [daily, step]);
+    if (daily && step === null) setStep(resolveStep(daily, replayBaseline));
+  }, [daily, step, replayBaseline]);
 
   // Sessao "ativa" = ja temos passo pra mostrar e ainda nao concluiu - cobre as telas de
-  // atividade, o "done" e o wordMatchGroup, mas nunca o loading/erro nem a CompletionSummary.
+  // atividade e o "done", mas nunca o loading/erro nem a CompletionSummary.
   const sessionActive = daily !== null && step !== null && completion === null;
   useSessionExitGuard(sessionActive, () => setShowSettings((prev) => !prev));
 
@@ -232,27 +247,19 @@ export function TodayPage() {
       );
     }
 
-    // WordMatch: todas as DailyActivity WordMatch da Daily formam, juntas, 1 exercicio de
-    // associacao - 1 termo por atividade (decisao de modelagem confirmada na Fase 4, ver
-    // docs/ARQUITETURA.md). Renderizadas lado a lado, cada uma pontuando independentemente; o botao
-    // "Continuar" so aparece quando TODOS os termos ja tiverem resposta.
-    if (step.kind === 'wordMatchGroup') {
-      const group = [...daily.activities]
-        .filter((a) => a.type === ActivityType.WordMatch)
-        .sort((a, b) => a.orderIndex - b.orderIndex);
-
-      return (
-        <WordMatchActivity group={group} dailyId={daily.id} daily={daily} onDailyRefetched={setDaily} onContinue={handleContinue} />
-      );
-    }
-
-    const activity = daily.activities.find((a) => a.id === step.activityId);
-    if (!activity) {
+    const rawActivity = daily.activities.find((a) => a.id === step.activityId);
+    if (!rawActivity) {
       // Nao deveria acontecer (Step so aponta pra atividades que existiam em `daily` no momento em
       // que foi resolvido) - defensivo, forca reavaliar o passo com os dados atuais.
       handleContinue();
       return null;
     }
+
+    // Em replay, corta as respostas desta passada anterior - os componentes de atividade decidem
+    // seu proprio "ja respondida" via `activity.responses.length > 0`/`.at(-1)`, sem isso eles
+    // pulariam direto pro feedback antigo em vez de pedir uma resposta nova (ver ReplayBaseline).
+    const baseCount = replayBaseline?.get(rawActivity.id) ?? 0;
+    const activity = replayBaseline ? { ...rawActivity, responses: rawActivity.responses.slice(baseCount) } : rawActivity;
 
     if (activity.type === ActivityType.Reading) {
       return (
@@ -270,6 +277,19 @@ export function TodayPage() {
     if (activity.type === ActivityType.Video) {
       return (
         <VideoActivity
+          key={activity.id}
+          dailyId={daily.id}
+          daily={daily}
+          activity={activity}
+          onDailyRefetched={setDaily}
+          onContinue={handleContinue}
+        />
+      );
+    }
+
+    if (activity.type === ActivityType.WordMatch) {
+      return (
+        <WordMatchActivity
           key={activity.id}
           dailyId={daily.id}
           daily={daily}

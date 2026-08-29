@@ -36,26 +36,21 @@ public class GroqAudioTranscriptionService : IAudioTranscriptionService
                 "A chave de API do Groq nao esta configurada (Groq:ApiKey) - ver docs/ARQUITETURA.md.");
         }
 
-        using var content = new MultipartFormDataContent();
-        using var audioContent = new StreamContent(audioStream);
-        audioContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-        // ponytail: nome de arquivo fixo (o frontend so grava webm via MediaRecorder) - a Groq usa
-        // o parametro "model" pra decidir como decodificar, a extensao aqui e so metadado.
-        content.Add(audioContent, "file", "audio.webm");
-        content.Add(new StringContent(Model), "model");
+        // Bufferiza pra memoria em vez de mandar o Stream original direto: um retry precisa
+        // remontar o multipart do zero, e um Stream ja consumido na 1a tentativa nao da pra
+        // reler. Audio de resumo falado e pequeno (ver MaxAudioSizeBytes em
+        // SubmitVoiceSummaryResponseUseCase), sem custo real de memoria aqui.
+        using var buffer = new MemoryStream();
+        await audioStream.CopyToAsync(buffer, cancellationToken);
+        var audioBytes = buffer.ToArray();
 
-        var response = await PostAsync("audio/transcriptions", content, cancellationToken);
-
-        var result = await response.Content.ReadFromJsonAsync<GroqTranscriptionResponse>(JsonOptions, cancellationToken);
-        return result?.Text ?? string.Empty;
-    }
-
-    private async Task<HttpResponseMessage> PostAsync(string path, HttpContent content, CancellationToken cancellationToken)
-    {
-        HttpResponseMessage response;
         try
         {
-            response = await _httpClient.PostAsync(path, content, cancellationToken);
+            return await HttpRetry.RunAsync(
+                () => TranscribeOnceAsync(audioBytes, cancellationToken),
+                ex => HttpRetry.IsTransientFailure(ex, cancellationToken)
+                    || ex is ExternalServiceException { Code: "transcricao_vazia" },
+                cancellationToken);
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -67,15 +62,39 @@ public class GroqAudioTranscriptionService : IAudioTranscriptionService
             throw new ExternalServiceException(
                 "groq_indisponivel", $"Nao foi possivel conectar ao servico de transcricao: {ex.Message}");
         }
-
-        if (!response.IsSuccessStatusCode)
+        catch (HttpRetry.HttpStatusException ex)
         {
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
             throw new ExternalServiceException(
-                "groq_transcricao_falhou", $"O servico de transcricao respondeu com erro ({(int)response.StatusCode}): {body}");
+                "groq_transcricao_falhou", $"O servico de transcricao respondeu com erro ({(int)ex.StatusCode}): {ex.Body}");
+        }
+    }
+
+    private async Task<string> TranscribeOnceAsync(byte[] audioBytes, CancellationToken cancellationToken)
+    {
+        using var content = new MultipartFormDataContent();
+        using var audioContent = new ByteArrayContent(audioBytes);
+        audioContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        // ponytail: nome de arquivo fixo (o frontend so grava webm via MediaRecorder) - a Groq usa
+        // o parametro "model" pra decidir como decodificar, a extensao aqui e so metadado.
+        content.Add(audioContent, "file", "audio.webm");
+        content.Add(new StringContent(Model), "model");
+
+        var response = await _httpClient.PostAsync("audio/transcriptions", content, cancellationToken);
+        await HttpRetry.EnsureSuccessAsync(response, cancellationToken);
+
+        var result = await response.Content.ReadFromJsonAsync<GroqTranscriptionResponse>(JsonOptions, cancellationToken);
+        var text = result?.Text ?? string.Empty;
+
+        // Resposta 200 mas sem texto util: a Groq roda com audio real, entao isso normalmente e
+        // ruido/instabilidade da propria chamada, nao um resultado "correto" de audio vazio -
+        // entra no mesmo orcamento de retry do RunAsync acima (nao retry indefinido).
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            throw new ExternalServiceException(
+                "transcricao_vazia", "A transcricao do audio veio vazia - tente gravar novamente.");
         }
 
-        return response;
+        return text;
     }
 
     private record GroqTranscriptionResponse(string? Text);

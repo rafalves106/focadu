@@ -84,12 +84,9 @@ public class SubmitVoiceSummaryResponseUseCase
                 "conteudo_referencia_ausente");
         }
 
+        // TranscribeAsync nunca devolve vazio - a implementacao Groq ja lanca "transcricao_vazia"
+        // (com retry, ver GroqAudioTranscriptionService/HttpRetry) antes de retornar.
         var transcript = await _transcriptionService.TranscribeAsync(audioStream, cancellationToken);
-        if (string.IsNullOrWhiteSpace(transcript))
-        {
-            throw new ExternalServiceException(
-                "transcricao_vazia", "A transcricao do audio veio vazia - tente gravar novamente.");
-        }
 
         // ContextText (a pergunta) so agrega informacao quando a referencia principal e outra
         // coisa (o BodyText da leitura) - se ja caiu no fallback do Prompt como referencia,

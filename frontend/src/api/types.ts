@@ -70,6 +70,20 @@ export interface QuizOptionDto {
   isCorrect: boolean | null;
 }
 
+// WordMatch (Fase 23): termos e definicoes chegam em 2 listas separadas (nao aninhadas) - a
+// correspondencia entre elas e o proprio gabarito, so revelada depois de responder (ver
+// WordMatchTermDto.correctDefinitionId). Definicoes vem embaralhadas pelo backend a cada carga.
+export interface WordMatchTermDto {
+  id: string;
+  text: string;
+  correctDefinitionId: string | null;
+}
+
+export interface WordMatchDefinitionDto {
+  id: string;
+  text: string;
+}
+
 export interface RoleplayOptionDto {
   id: string;
   text: string;
@@ -107,6 +121,8 @@ export interface DailyActivityDto {
   prompt: string | null;
   expectedAnswer: string | null;
   quizOptions: QuizOptionDto[];
+  wordMatchTerms: WordMatchTermDto[];
+  wordMatchDefinitions: WordMatchDefinitionDto[];
   roleplayNodes: RoleplayNodeDto[];
   responses: ActivityResponseDto[];
 }

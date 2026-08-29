@@ -24,6 +24,11 @@ public class DailyActivityConfiguration : IEntityTypeConfiguration<DailyActivity
             .HasForeignKey(o => o.ActivityId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(a => a.WordMatchPairs)
+            .WithOne()
+            .HasForeignKey(p => p.ActivityId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasMany(a => a.RoleplayNodes)
             .WithOne()
             .HasForeignKey(n => n.ActivityId)

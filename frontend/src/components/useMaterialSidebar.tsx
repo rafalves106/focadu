@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { ActivityStatus, type DailyStateDto } from '../api/types';
+import { ContentPreviewModal } from './ContentPreviewModal';
 import { MaterialSidebar } from './MaterialSidebar';
 
 /**
@@ -16,6 +18,7 @@ import { MaterialSidebar } from './MaterialSidebar';
  */
 export function useMaterialSidebar(daily: DailyStateDto, activeContentId: string | null = null) {
   const { data: weekly } = useApiResource(() => api.getWeekly(daily.weeklyId), [daily.weeklyId]);
+  const [previewContentId, setPreviewContentId] = useState<string | null>(null);
 
   const completedContentIds = new Set(
     daily.activities.filter((a) => a.status === ActivityStatus.Completed && a.contentId).map((a) => a.contentId!),
@@ -26,11 +29,15 @@ export function useMaterialSidebar(daily: DailyStateDto, activeContentId: string
   const todaysContentIds = new Set(daily.activities.filter((a) => a.contentId).map((a) => a.contentId!));
 
   const sidebar = weekly ? (
-    <MaterialSidebar
-      contents={weekly.curatedContents.filter((c) => todaysContentIds.has(c.id))}
-      activeContentId={activeContentId}
-      completedContentIds={completedContentIds}
-    />
+    <>
+      <MaterialSidebar
+        contents={weekly.curatedContents.filter((c) => todaysContentIds.has(c.id))}
+        activeContentId={activeContentId}
+        completedContentIds={completedContentIds}
+        onSelect={setPreviewContentId}
+      />
+      {previewContentId && <ContentPreviewModal contentId={previewContentId} onClose={() => setPreviewContentId(null)} />}
+    </>
   ) : undefined;
 
   return { weekly, sidebar };

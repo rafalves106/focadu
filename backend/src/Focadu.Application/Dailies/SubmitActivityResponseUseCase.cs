@@ -38,6 +38,7 @@ public class SubmitActivityResponseUseCase
         string? transcript,
         string? justification,
         string? aiFeedback,
+        IReadOnlyDictionary<Guid, Guid>? wordMatchMatches = null,
         CancellationToken cancellationToken = default)
     {
         var weekly = await _weeklyRepository.GetByDailyIdAsync(dailyId, userId, cancellationToken)
@@ -47,7 +48,7 @@ public class SubmitActivityResponseUseCase
         var activity = daily.Activities.FirstOrDefault(a => a.Id == activityId)
             ?? throw new DomainException("Atividade não encontrada nesta Daily.", "atividade_nao_encontrada");
 
-        var resolvedScore = ResolveScore(activity, selectedOptionId, selectedRoleplayNodeId, transcript);
+        var resolvedScore = ResolveScore(activity, selectedOptionId, selectedRoleplayNodeId, transcript, wordMatchMatches);
 
         return await ActivityResponseRecorder.RecordAsync(
             weekly, daily, activityId, resolvedScore, transcript, justification, aiFeedback,
@@ -56,16 +57,21 @@ public class SubmitActivityResponseUseCase
 
     /// <summary>
     /// Decide como calcular o Score, conforme o tipo (e, pro Cloze, o AnswerMode) da atividade.
-    /// Quiz/WordMatch e Cloze/MultipleChoice: a partir da QuizOption escolhida (IsCorrect e a
-    /// fonte da verdade). Cloze/FreeText: comparacao textual do Transcript contra ExpectedAnswer.
-    /// Roleplay: a partir do TerminalQuality do RoleplayNode terminal alcancado.
+    /// Quiz e Cloze/MultipleChoice: a partir da QuizOption escolhida (IsCorrect e a fonte da
+    /// verdade). WordMatch (Fase 23): a partir dos pares que o cliente diz ter formado, conferidos
+    /// contra WordMatchPair.DefinitionId - pontuacao parcial (X de N pares certos), nao tudo-ou-
+    /// nada (ver ScoreFromWordMatchMatches). Cloze/FreeText: comparacao textual do Transcript
+    /// contra ExpectedAnswer. Roleplay: a partir do TerminalQuality do RoleplayNode terminal
+    /// alcancado.
     /// </summary>
     internal static int ResolveScore(
-        DailyActivity activity, Guid? selectedOptionId, Guid? selectedRoleplayNodeId, string? transcript)
+        DailyActivity activity, Guid? selectedOptionId, Guid? selectedRoleplayNodeId, string? transcript,
+        IReadOnlyDictionary<Guid, Guid>? wordMatchMatches = null)
     {
         return activity.Type switch
         {
-            ActivityType.Quiz or ActivityType.WordMatch => ScoreFromSelectedOption(activity, selectedOptionId),
+            ActivityType.Quiz => ScoreFromSelectedOption(activity, selectedOptionId),
+            ActivityType.WordMatch => ScoreFromWordMatchMatches(activity, wordMatchMatches),
             ActivityType.Cloze when activity.AnswerMode == AnswerMode.MultipleChoice =>
                 ScoreFromSelectedOption(activity, selectedOptionId),
             ActivityType.Cloze => ScoreFromFreeTextAnswer(activity, transcript),
@@ -94,6 +100,35 @@ public class SubmitActivityResponseUseCase
         }
 
         return option.IsCorrect ? 100 : 0;
+    }
+
+    /// <summary>
+    /// WordMatch (Fase 23): o cliente manda TODOS os pares de uma vez (TermId -> DefinitionId
+    /// escolhido pelo usuario), nao 1 selectedOptionId por vez. Score = percentual de pares
+    /// certos, arredondado - pontuacao parcial de proposito (nao tudo-ou-nada): reaproveita o
+    /// mesmo EvaluationPolicy.PassingScore (80) de todo outro tipo de atividade pra decidir
+    /// Passed, entao um grupo pequeno (2-3 pares) exige acertar quase tudo pra passar, e um grupo
+    /// maior (4+ pares) tolera 1 erro - sem precisar de uma regra tudo-ou-nada separada.
+    /// </summary>
+    private static int ScoreFromWordMatchMatches(DailyActivity activity, IReadOnlyDictionary<Guid, Guid>? wordMatchMatches)
+    {
+        var pairs = activity.WordMatchPairs;
+        if (wordMatchMatches is null || wordMatchMatches.Count == 0)
+        {
+            throw new ValidationException(
+                "word_match_matches_obrigatorio", "O campo 'wordMatchMatches' e obrigatorio para esta atividade.");
+        }
+
+        var hasUnknownTerm = wordMatchMatches.Keys.Any(termId => pairs.All(p => p.Id != termId));
+        if (wordMatchMatches.Count != pairs.Count || hasUnknownTerm)
+        {
+            throw new ValidationException(
+                "word_match_matches_invalido",
+                "O 'wordMatchMatches' precisa conter exatamente um par por termo desta atividade.");
+        }
+
+        var correctCount = pairs.Count(p => wordMatchMatches.TryGetValue(p.Id, out var chosen) && chosen == p.DefinitionId);
+        return (int)Math.Round(100.0 * correctCount / pairs.Count);
     }
 
     // ponytail: comparacao textual exata (trim + case-insensitive), sem avaliacao semantica/IA -

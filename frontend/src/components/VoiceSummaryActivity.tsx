@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
+import { getRecordingLimitMinutes } from '../lib/settings';
 import { FeedbackPanel } from './FeedbackPanel';
 import { SessionLayout } from './SessionShell';
 import { useMaterialSidebar } from './useMaterialSidebar';
-
-const MAX_RECORDING_SECONDS = 10 * 60;
 
 type RecorderState = 'idle' | 'recording' | 'submitting' | 'answered' | 'permission_denied';
 
@@ -133,6 +132,9 @@ export function VoiceSummaryActivity({
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // Le uma vez por montagem - configuravel em "Limite de gravação" no menu de configurações
+  // (frontend/src/lib/settings.ts), efeito so na proxima sessao/atividade aberta.
+  const maxRecordingSeconds = useMemo(() => getRecordingLimitMinutes() * 60, []);
 
   useEffect(
     () => () => {
@@ -145,7 +147,7 @@ export function VoiceSummaryActivity({
   // Para automaticamente ao atingir o limite - separado do handler do interval pra nao chamar
   // efeito colateral (parar a gravacao) de dentro de um updater de estado.
   useEffect(() => {
-    if (state === 'recording' && seconds >= MAX_RECORDING_SECONDS) {
+    if (state === 'recording' && seconds >= maxRecordingSeconds) {
       handleStop();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

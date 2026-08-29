@@ -48,6 +48,18 @@ internal static class DailyStateMapper
             .Select(o => new QuizOptionDto(o.Id, o.Text, hasAnswered ? o.IsCorrect : null))
             .ToList();
 
+        // WordMatch (Fase 23): termos e definicoes vao em 2 listas separadas, nao aninhadas -
+        // manda-las juntas (mesmo objeto/mesma posicao) entregaria a correspondencia so de olhar
+        // o JSON, sem nem jogar (ver WordMatchPair). Definicoes embaralhadas a cada carga
+        // (Guid.NewGuid() como chave de ordenacao) pra posicao tambem nao vazar a resposta.
+        var wordMatchTerms = activity.WordMatchPairs
+            .Select(p => new WordMatchTermDto(p.Id, p.Term, hasAnswered ? p.DefinitionId : null))
+            .ToList();
+        var wordMatchDefinitions = activity.WordMatchPairs
+            .Select(p => new WordMatchDefinitionDto(p.DefinitionId, p.Definition))
+            .OrderBy(_ => Guid.NewGuid())
+            .ToList();
+
         var roleplayNodes = activity.RoleplayNodes
             .Select(n => new RoleplayNodeDto(
                 n.Id, n.NodeKey, n.Text, n.IsTerminal, hasAnswered ? n.TerminalQuality : null,
@@ -58,6 +70,6 @@ internal static class DailyStateMapper
             activity.Id, activity.Type, activity.OrderIndex, activity.ContentId,
             hasAnswered ? ActivityStatus.Completed : ActivityStatus.Pending,
             activity.AnswerMode, activity.Prompt, hasAnswered ? activity.ExpectedAnswer : null,
-            quizOptions, roleplayNodes, responses);
+            quizOptions, wordMatchTerms, wordMatchDefinitions, roleplayNodes, responses);
     }
 }

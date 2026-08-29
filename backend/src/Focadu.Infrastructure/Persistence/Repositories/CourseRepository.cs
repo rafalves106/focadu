@@ -25,6 +25,7 @@ public class CourseRepository : ICourseRepository
     public async Task<Course?> GetFullTemplateGraphAsync(Guid id, CancellationToken cancellationToken = default) =>
         await _context.Courses
             .Include(c => c.Monthlies).ThenInclude(m => m.WeeklyTemplates).ThenInclude(w => w.DailyTemplates).ThenInclude(d => d.Activities).ThenInclude(a => a.QuizOptions)
+            .Include(c => c.Monthlies).ThenInclude(m => m.WeeklyTemplates).ThenInclude(w => w.DailyTemplates).ThenInclude(d => d.Activities).ThenInclude(a => a.WordMatchPairs)
             .Include(c => c.Monthlies).ThenInclude(m => m.WeeklyTemplates).ThenInclude(w => w.DailyTemplates).ThenInclude(d => d.Activities).ThenInclude(a => a.RoleplayNodes).ThenInclude(n => n.Options)
             .AsSplitQuery()
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);

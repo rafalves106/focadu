@@ -13,6 +13,10 @@ namespace Focadu.Infrastructure.Services;
 /// padrao do Groq: sem SDK/pacote Octokit, so HttpClient tipado + JSON - ver DependencyInjection).
 /// Token ausente nao impede o app de subir, so as chamadas abaixo falham com erro claro quando de
 /// fato invocadas sem ele configurado (mesma decisao do Groq, ver GroqOptions).
+///
+/// Cada chamada individual (GetOnceAsync/SendOnceAsync) passa por HttpRetry.RunAsync - mesmo
+/// helper e mesma politica de retry dos adapters Groq (ver HttpRetry, GroqAudioTranscriptionService).
+/// 404 nao entra no retry: e uma resposta valida (GetOptionalAsync), nao uma falha.
 /// </summary>
 public class GitHubService : IGitHubService
 {
@@ -177,10 +181,12 @@ public class GitHubService : IGitHubService
     {
         EnsureConfigured();
 
-        HttpResponseMessage response;
         try
         {
-            response = await _httpClient.GetAsync(path, cancellationToken);
+            return await HttpRetry.RunAsync(
+                () => GetOnceAsync(path, cancellationToken),
+                ex => HttpRetry.IsTransientFailure(ex, cancellationToken),
+                cancellationToken);
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -190,9 +196,17 @@ public class GitHubService : IGitHubService
         {
             throw new ExternalServiceException("github_indisponivel", $"Nao foi possivel conectar ao GitHub: {ex.Message}");
         }
+        catch (HttpRetry.HttpStatusException ex)
+        {
+            throw new ExternalServiceException("github_falhou", $"O GitHub respondeu com erro ({(int)ex.StatusCode}): {ex.Body}");
+        }
+    }
 
+    private async Task<HttpResponseMessage?> GetOnceAsync(string path, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.GetAsync(path, cancellationToken);
         if (response.StatusCode == HttpStatusCode.NotFound) return null;
-        await EnsureSuccessAsync(response, cancellationToken);
+        await HttpRetry.EnsureSuccessAsync(response, cancellationToken);
         return response;
     }
 
@@ -210,12 +224,12 @@ public class GitHubService : IGitHubService
     {
         EnsureConfigured();
 
-        HttpResponseMessage response;
         try
         {
-            using var request = new HttpRequestMessage(method, path);
-            if (body is not null) request.Content = JsonContent.Create(body, options: JsonOptions);
-            response = await _httpClient.SendAsync(request, cancellationToken);
+            return await HttpRetry.RunAsync(
+                () => SendOnceAsync(method, path, body, cancellationToken),
+                ex => HttpRetry.IsTransientFailure(ex, cancellationToken),
+                cancellationToken);
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -225,17 +239,22 @@ public class GitHubService : IGitHubService
         {
             throw new ExternalServiceException("github_indisponivel", $"Nao foi possivel conectar ao GitHub: {ex.Message}");
         }
-
-        await EnsureSuccessAsync(response, cancellationToken);
-        return response;
+        catch (HttpRetry.HttpStatusException ex)
+        {
+            throw new ExternalServiceException("github_falhou", $"O GitHub respondeu com erro ({(int)ex.StatusCode}): {ex.Body}");
+        }
     }
 
-    private static async Task EnsureSuccessAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    // Corpo (quando ha) e um objeto imutavel montado por chamada (ver CreateRepositoryAsync/
+    // CommitFileAsync) - seguro reserializar num HttpRequestMessage novo a cada tentativa de
+    // retry, diferente do Stream de audio da Groq (ver GroqAudioTranscriptionService).
+    private async Task<HttpResponseMessage> SendOnceAsync(HttpMethod method, string path, object? body, CancellationToken cancellationToken)
     {
-        if (response.IsSuccessStatusCode) return;
-
-        var body = await response.Content.ReadAsStringAsync(cancellationToken);
-        throw new ExternalServiceException("github_falhou", $"O GitHub respondeu com erro ({(int)response.StatusCode}): {body}");
+        using var request = new HttpRequestMessage(method, path);
+        if (body is not null) request.Content = JsonContent.Create(body, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request, cancellationToken);
+        await HttpRetry.EnsureSuccessAsync(response, cancellationToken);
+        return response;
     }
 
     private static GitHubRepositoryInfo ToInfo(GitHubRepoPayload payload) =>

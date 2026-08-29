@@ -6,19 +6,8 @@ import { Centered } from './Layout';
 import { ApiErrorScreen } from './errors/ApiErrorScreen';
 import { SessionLayout } from './SessionShell';
 import { useMaterialSidebar } from './useMaterialSidebar';
+import { extractYouTubeId } from '../lib/youtube';
 import dotSmall from '../assets/reading/dot-small.svg';
-
-/** youtube.com/watch?v=ID ou youtu.be/ID -> ID do video, ou null se o link nao for reconhecido/estiver ausente. */
-function extractYouTubeId(url: string | null): string | null {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname.includes('youtu.be')) return parsed.pathname.slice(1) || null;
-    return parsed.searchParams.get('v');
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Etapa de video (design Figma "sessao-video", Fase 7 - fidelidade revisada na Fase 19) -

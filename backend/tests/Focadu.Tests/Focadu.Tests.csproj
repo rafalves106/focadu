@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Focadu.Domain\Focadu.Domain.csproj" />
     <ProjectReference Include="..\..\src\Focadu.Application\Focadu.Application.csproj" />
+    <ProjectReference Include="..\..\src\Focadu.Infrastructure\Focadu.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

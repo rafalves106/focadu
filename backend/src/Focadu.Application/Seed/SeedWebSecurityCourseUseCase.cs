@@ -122,18 +122,14 @@ public class SeedWebSecurityCourseUseCase
         quiz.AddQuizOption("Content-Length", false);
         quiz.AddQuizOption("Accept-Language", false);
 
-        // WordMatch (Fase 4): 1 termo por DailyActivity (Prompt = termo, QuizOptions = definicoes
-        // candidatas) - as duas juntas, na mesma Daily, formam o exercicio de associacao que o
-        // frontend renderiza como 1 tela so (ver docs/ARQUITETURA.md).
-        var wordMatch1 = dailyTemplate.AddActivity(ActivityType.WordMatch, 3, AnswerMode.MultipleChoice, prompt: "Content-Type");
-        wordMatch1.AddQuizOption("Diz ao destinatario qual e o formato do conteudo no corpo da mensagem (ex: text/html, application/json)", true);
-        wordMatch1.AddQuizOption("Diz ao servidor quantos bytes o cliente aceita receber no corpo da resposta", false);
-        wordMatch1.AddQuizOption("Indica se a conexao deve permanecer aberta apos a resposta", false);
-
-        var wordMatch2 = dailyTemplate.AddActivity(ActivityType.WordMatch, 4, AnswerMode.MultipleChoice, prompt: "Cache-Control");
-        wordMatch2.AddQuizOption("Define por quanto tempo e de que forma a resposta pode ser armazenada em cache", true);
-        wordMatch2.AddQuizOption("Define qual algoritmo de compressao foi usado no corpo da resposta", false);
-        wordMatch2.AddQuizOption("Informa qual codificacao de caracteres o corpo usa", false);
+        // WordMatch (Fase 23): 1 unica DailyActivity guarda o grupo de pares inteiro (antes da
+        // Fase 23, 1 termo = 1 DailyActivity com QuizOptions fabricadas como distratores - ver
+        // docs/ARQUITETURA.md). AnswerMode nao importa pra WordMatch (Score vem de
+        // ScoreFromWordMatchMatches, nunca de AnswerMode), mantido MultipleChoice so pelo
+        // parametro ser obrigatorio.
+        var wordMatch = dailyTemplate.AddActivity(ActivityType.WordMatch, 3, AnswerMode.MultipleChoice);
+        wordMatch.AddWordMatchPair("Content-Type", "Diz ao destinatario qual e o formato do conteudo no corpo da mensagem (ex: text/html, application/json)");
+        wordMatch.AddWordMatchPair("Cache-Control", "Define por quanto tempo e de que forma a resposta pode ser armazenada em cache");
     }
 
     private static void AddDay3(WeeklyTemplate weeklyTemplate)
