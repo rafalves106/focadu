@@ -146,13 +146,6 @@ export const api = {
     );
   },
   // Autoria de conteudo curado (Fase 6) - unico tipo de conteudo com endpoint de escrita, ver
-  // docs/ARQUITETURA.md. `type` so existe na criacao (nunca muda depois, ver CuratedContent.Update).
-  // weeklyTemplateId (Fase 13b, era weeklyId): CuratedContent virou curriculo, ver
-  // CreateCuratedContentRequest no backend.
-  createCuratedContent: (body: { weeklyTemplateId: string; type: string; title: string; externalUrl: string | null; bodyText: string | null }) =>
-    request<CuratedContentDto>('/api/curated-content', { method: 'POST', body: JSON.stringify(body) }),
-  updateCuratedContent: (id: string, body: { title: string; externalUrl: string | null; bodyText: string | null }) =>
-    request<CuratedContentDto>(`/api/curated-content/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   // Projeto semanal (Fase 7): unica escrita do aluno sobre WeeklyProject - Status vira Submitted no dominio (WeeklyProject.Submit).
   submitWeeklyProject: (weeklyId: string, submissionUrl: string) =>
     request<WeeklyProjectDto>(`/api/weeklies/${weeklyId}/project/submit`, {

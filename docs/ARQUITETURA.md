@@ -1111,44 +1111,15 @@ de testes em vez de silenciosamente virar um 400 generico em producao.
   o campo esperado) agora sempre usa o formato padrao da Api (`requisicao_invalida`, 400) - ver
   `BadHttpRequestException` na secao de tratamento de erro acima.
 
-### Autoria de conteudo curado (Fase 4, tela de UI na Fase 6, virou curriculo na Fase 13)
+### Autoria de conteudo curado (Fase 4-13b, removida - decisao do usuario, 2026-08-28)
 
-`POST /api/curated-content` e `PUT /api/curated-content/{id}` sao os **unicos** endpoints de
-autoria de conteudo da Api - Course/Monthly/WeeklyTemplate/DailyTemplate/DailyActivity continuam
-so via seed (ver "Fora de escopo"), porque a estrutura muda com pouca frequencia; o que muda toda
-semana e o conteudo curado (leituras/videos) em si.
-
-- `POST`: corpo `{ weeklyTemplateId, type, title, externalUrl?, bodyText? }` (campo renomeado de
-  `weeklyId` na Fase 13 - `CuratedContent` e curriculo agora, vinculado a uma `WeeklyTemplate`,
-  nunca a uma Weekly-instancia de usuario nenhum). `type` e string (`"Reading"/"Video"`,
-  case-insensitive), mais legivel pra curadoria manual do que o numero que a Api usa nas respostas
-  de leitura. `weeklyTemplateId`/`title` sao validados em `Program.cs` (formato de request,
-  incondicional); `type` invalido e falta de `externalUrl`/`bodyText` sao validados dentro do caso
-  de uso (`CreateCuratedContentUseCase`), porque dependem de logica de dominio/enum.
-- `PUT`: corpo `{ title, externalUrl?, bodyText? }` - `Type`/`WeeklyTemplateId` nunca aparecem
-  (nunca mudam depois de criado). Busca o `CuratedContent` direto por Id
-  (`IWeeklyTemplateRepository.GetCuratedContentByIdAsync`, novo na Fase 13 - sem carregar o grafo
-  completo da WeeklyTemplate) e chama `CuratedContent.Update(...)`.
-- Codes: `weekly_template_id_obrigatorio` (renomeado de `weekly_id_obrigatorio`),
-  `titulo_obrigatorio` (400, `Program.cs`), `tipo_invalido`, `conteudo_obrigatorio` (400, caso de
-  uso), `semana_nao_encontrada`, `conteudo_nao_encontrado` (404).
-- **Resolvido na Fase 13b: `/admin/conteudo` (frontend) voltou a funcionar.** A quebra da Fase
-  13a (`GET /api/weeklies/{weeklyId}`/`GET /api/courses/{id}` viraram instancia, exigem
-  Enrollment) foi consertada por 2 endpoints TEMPLATE novos, sem exigir matricula:
-  `GET /api/courses/{courseId}/curriculum` (Course -> Monthly -> WeeklyTemplate, so
-  id/number/title/theme) e `GET /api/weekly-templates/{id}` (`WeeklyTemplateDetailDto`, com
-  `curatedContents` - reaproveita `IWeeklyTemplateRepository.GetByIdAsync`, que
-  `CreateCuratedContentUseCase` ja usava). `AdminContentPage.tsx` passou a navegar com
-  `WeeklyTemplateId` (nunca mais id de Weekly-instancia), e `createCuratedContent` no client
-  passou a mandar `weeklyTemplateId` no corpo (era `weeklyId` - mismatch silencioso com o contrato
-  do backend desde a Fase 13a). Ver `docs/fase-13b/resumo-implementacao-fase-13b.md`.
-- **UI (`/admin/conteudo`, Fase 6)**: `frontend/src/routes/AdminContentPage.tsx` - mesmo padrao de
-  navegacao por query string do `/start` (curso -> semana), lista o conteudo da semana com
-  indicador Completo/Pendente (`externalUrl || bodyText` preenchido), formulario unico serve
-  criacao e edicao (`Type` fixo na edicao - nunca muda depois de criado). Sem autenticacao, sem
-  polimento visual alem do padrao de `/start`. Usada na pratica pra carregar o texto completo das
-  4 leituras (Fase 4) e os 4 SVGs de diagrama (Fase 6) da Semana 1 por cima dos placeholders do
-  seed.
+`POST /api/curated-content` e `PUT /api/curated-content/{id}` (+ `CreateCuratedContentUseCase`,
+`UpdateCuratedContentUseCase`, `CuratedContent.Update`, `/admin/conteudo` /
+`AdminContentPage.tsx`) existiram da Fase 4 ate aqui, mas foram **removidos**: conteudo curado
+(cursos novos dentro de `secret/curadoria/`) e so via seed (`CuratedDayImporter`, skill
+`curar-conteudo`) mesmo, sem tela de autoria na plataforma. `GET /api/curated-content/{id}`
+continua existindo (leitura, usada por `ReadingActivity`/`VideoActivity` na sessao diaria). Ver
+`docs/fase-13b/resumo-implementacao-fase-13b.md` pro historico da UI que existiu.
 
 ### CORS (Fase 3)
 
@@ -1977,17 +1948,14 @@ CSS).
   Cloze/FreeText usa comparacao textual simples, Roleplay usa mapeamento fixo de
   `TerminalQuality` (ver "Score no servidor") - nenhum dos dois e avaliacao inteligente de
   verdade. So `VoiceSummary` usa avaliacao por IA de verdade (Groq, desde a Fase 5).
-- **Resolvido parcialmente na Fase 14:** Gems/Streak agora sao dado real (ver "Gamificacao" na
-  secao de Modelo de dominio). **Ainda em standby:** Marketplace/Cosmeticos/Arcade/UGC (nada pra
-  gastar Gems ainda, Fase 17), Ranking/Score de Estudo (Fase 16), XP/Level/Elo/Patente (reservado
+- **Resolvido na Fase 14 (Gems/Streak), Fase 16 (Ranking/Score de Estudo) e Fase 17
+  (Marketplace/Cosmeticos/Trofeus/Indicacao), nao e mais pendencia:** ver secoes correspondentes
+  em "Modelo de dominio" acima. **Ainda em standby:** Arcade/UGC e XP/Level/Elo/Patente (reservado
   pra quando existir Squad/PvP, Fase 19+, confirmado explicitamente fora do escopo da Fase 14).
-- Endpoints de autoria de Course/Monthly/WeeklyTemplate/DailyTemplate/DailyActivity - so
-  `CuratedContent` tem autoria via Api desde a Fase 4 (ver "Autoria de conteudo curado"); o resto
-  da estrutura continua so via `SeedWebSecurityCourseUseCase` (estrutural, muda com pouca
-  frequencia).
-- **Resolvido na Fase 6, quebrado de novo na Fase 13a, reconsertado na Fase 13b:** tela de
-  autoria de conteudo curado no frontend (`/admin/conteudo`) - ver "Autoria de conteudo curado"
-  acima.
+- Endpoints de autoria de Course/Monthly/WeeklyTemplate/DailyTemplate/DailyActivity/CuratedContent
+  - nada disso tem API de criacao/edicao (CuratedContent teve, Fase 4 a 13b, removida - decisao do
+  usuario, ver "Autoria de conteudo curado"). Toda a estrutura, incluindo conteudo curado, e so via
+  `SeedWebSecurityCourseUseCase`/`CuratedDayImporter`.
 - Exclusao (`DELETE`) de `CuratedContent` - so criacao/edicao existem; nunca foi pedido um
   endpoint de remocao.
 - CORS liberado so para `http://localhost:5173` (hardcoded, dev apenas).
@@ -2062,12 +2030,10 @@ CSS).
 - **Resolvido na Fase 22, nao e mais pendencia:** "Sessao Expirada" (1 dos 4 designs do Figma da
   Fase 10) - interceptor global de 401 "nao_autenticado" + `SessionExpiredModal`, ver "Sessao
   expirada: interceptor global de 401 (Fase 22)" acima.
-- **"Streak Perdido" (o outro dos 4 designs do Figma da Fase 10) continua sem tela** - tela
-  dedicada de "voce perdeu o streak" - Streak virou dado real na Fase 14 (`UserStreak`), mas
-  nenhuma tela de alerta especifica foi pedida/construida - o streak quebrado so aparece como `0`
-  no `StreakIndicator` normal.
-  Ver `docs/fase-10/resumo-implementacao-fase-10.md` pra tabela completa do que cada link do Figma
-  continha de verdade vs. o que o prompt dizia.
+- **Resolvido na Fase 10 (retomada), nao e mais pendencia:** "Streak Perdido" (o outro dos 4
+  designs do Figma da Fase 10) ganhou tela - `UserStreak.BrokenAt`, `streakJustBroken` no
+  `GamificationSummaryDto`, `PUT .../streak/acknowledge-broken` e `StreakLostModal` disparado pelo
+  `StartDashboard`. Ver `docs/fase-10/resumo-implementacao-fase-10.md`.
 - **Testando erros de rede com Playwright: usar o host completo no glob de `page.route()`**
   (ex: `http://localhost:5282/api/**`), nunca so `**/api/**` - o Vite dev server serve os arquivos-
   fonte do frontend por HTTP (`/src/api/client.ts`, `/src/api/types.ts`), um glob generico demais
@@ -2168,9 +2134,8 @@ CSS).
   tem `[Authorize]` e filtra pela Enrollment do usuario logado (ver "Superficie da API" e "Modelo
   de dominio" acima) - a excecao documentada e `/admin/conteudo`, que ainda depende de endpoints
   de autoria que nao foram adaptados pro lado Template (ver bullet acima).
-- **Sem botao de logout na UI** (Fase 12) - fora do checklist desta fase (so splash + login/
-  registro); verificado ao vivo direto via `POST /api/auth/logout`. Uma fase futura de Perfil e
-  provavelmente o lugar certo.
+- **Resolvido, nao e mais pendencia:** botao de logout na UI - `SettingsMenu.tsx` chama
+  `POST /api/auth/logout`.
 - **`IJwtTokenService` so gera token, nao valida** - a validacao de qualquer JWT recebido e feita
   pelo middleware `JwtBearer` do ASP.NET Core (`Program.cs`), nao por um metodo do port. Se uma
   fase futura precisar validar um token fora do pipeline HTTP normal (ex: um worker em background),

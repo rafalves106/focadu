@@ -18,9 +18,6 @@ export function App() {
           <NavLink to="/start" className={({ isActive }) => navLinkClass(isActive)}>
             Início
           </NavLink>
-          <NavLink to="/admin/conteudo" className={({ isActive }) => navLinkClass(isActive)}>
-            Conteúdo
-          </NavLink>
         </div>
         {/* Fase 18: nome+moldura equipados, link pro Perfil - unico jeito de chegar em /perfil pela UI. */}
         <HeaderUserBadge />

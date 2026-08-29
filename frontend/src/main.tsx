@@ -5,7 +5,6 @@ import './index.css';
 import { App } from './App';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
-import { AdminContentPage } from './routes/AdminContentPage';
 import { CourseSelectionPage } from './routes/CourseSelectionPage';
 import { LoginPage } from './routes/LoginPage';
 import { MarketplacePage } from './routes/MarketplacePage';
@@ -40,7 +39,6 @@ createRoot(document.getElementById('root')!).render(
               {/* Fase 18: /conquistas virou a aba "Conquistas" do Perfil - redirect em vez de
                   quebrar links/favoritos antigos (decisao documentada em docs/fase-18). */}
               <Route path="conquistas" element={<Navigate to="/perfil?tab=conquistas" replace />} />
-              <Route path="admin/conteudo" element={<AdminContentPage />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

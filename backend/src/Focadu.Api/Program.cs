@@ -465,14 +465,10 @@ api.MapGet("/github/repositories", async (GetGitHubRepositoriesUseCase useCase, 
     .RequireAuthorization()
     .WithName("GetGitHubRepositories");
 
-// --- Conteudo curado (autoria) ---------------------------------------------------------------
-// Unico tipo de conteudo com endpoint de criacao/edicao ate agora - Course/Monthly/WeeklyTemplate/
-// DailyTemplate/DailyActivity continuam so via seed (estrutura muda raramente; conteudo curado
-// muda toda semana, ver docs/ARQUITETURA.md). WeeklyTemplateId/Type/Title sao exigidos aqui
-// (formato de request, nao depende de nenhum dado de dominio); "Type invalido" e "falta
-// ExternalUrl/BodyText" moram no caso de uso, que e quem sabe validar contra o enum e as regras
-// de CuratedContent. Exige login (RequireAuthorization) mas nao filtra por usuario - curriculo e
-// compartilhado, nao ha papel de "admin" separado neste app de usuario unico ainda.
+// --- Conteudo curado (leitura) ----------------------------------------------------------------
+// Autoria (Create/Update) removida - conteudo curado agora e so via seed (CuratedDayImporter, le
+// secret/curadoria/*.json - ver docs/ARQUITETURA.md). So leitura, usada por ReadingActivity/
+// VideoActivity durante a sessao diaria.
 
 api.MapGet("/curated-content/{id}", async (ClaimsPrincipal principal, string id, GetCuratedContentUseCase useCase, CancellationToken ct) =>
     {
@@ -481,32 +477,6 @@ api.MapGet("/curated-content/{id}", async (ClaimsPrincipal principal, string id,
     })
     .RequireAuthorization()
     .WithName("GetCuratedContent");
-
-api.MapPost("/curated-content", async (CreateCuratedContentRequest? request, CreateCuratedContentUseCase useCase, CancellationToken ct) =>
-    {
-        if (request?.WeeklyTemplateId is null)
-            throw new ValidationException("weekly_template_id_obrigatorio", "O campo 'weeklyTemplateId' e obrigatorio.");
-        if (string.IsNullOrWhiteSpace(request.Title))
-            throw new ValidationException("titulo_obrigatorio", "O campo 'title' e obrigatorio.");
-
-        var result = await useCase.ExecuteAsync(
-            request.WeeklyTemplateId.Value, request.Type, request.Title, request.ExternalUrl, request.BodyText, ct);
-        return Results.Created($"/api/curated-content/{result.Id}", result);
-    })
-    .RequireAuthorization()
-    .WithName("CreateCuratedContent");
-
-api.MapPut("/curated-content/{id}", async (string id, UpdateCuratedContentRequest? request, UpdateCuratedContentUseCase useCase, CancellationToken ct) =>
-    {
-        var contentId = RouteParsing.RequireGuid(id, "id");
-        if (string.IsNullOrWhiteSpace(request?.Title))
-            throw new ValidationException("titulo_obrigatorio", "O campo 'title' e obrigatorio.");
-
-        var result = await useCase.ExecuteAsync(contentId, request.Title, request.ExternalUrl, request.BodyText, ct);
-        return Results.Ok(result);
-    })
-    .RequireAuthorization()
-    .WithName("UpdateCuratedContent");
 
 // --- Dailies -------------------------------------------------------------------------------
 

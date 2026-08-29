@@ -33,20 +33,6 @@ public class CuratedContent : Entity
         BodyText = bodyText;
     }
 
-    /// <summary>
-    /// Atualiza Title/ExternalUrl/BodyText - usado pela autoria de conteudo (Fase 4) para
-    /// carregar o texto completo por cima de um placeholder de seed, por exemplo. Type e
-    /// WeeklyTemplateId nunca mudam depois de criado.
-    /// </summary>
-    public void Update(string title, string? externalUrl, string? bodyText)
-    {
-        Validate(title, externalUrl, bodyText);
-
-        Title = title;
-        ExternalUrl = externalUrl;
-        BodyText = bodyText;
-    }
-
     private static void Validate(string title, string? externalUrl, string? bodyText)
     {
         if (string.IsNullOrWhiteSpace(title))
