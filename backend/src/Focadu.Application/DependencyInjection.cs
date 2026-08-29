@@ -8,6 +8,7 @@ using Focadu.Application.Marketplace;
 using Focadu.Application.Ranking;
 using Focadu.Application.Referrals;
 using Focadu.Application.Seed;
+using Focadu.Application.Squads;
 using Focadu.Application.Users;
 using Focadu.Application.Weeklies;
 using Microsoft.Extensions.DependencyInjection;
@@ -57,6 +58,11 @@ public static class DependencyInjection
         services.AddScoped<UnequipCosmeticUseCase>();
         services.AddScoped<GetUserBadgesUseCase>();
         services.AddScoped<GetReferralInfoUseCase>();
+        services.AddScoped<CreateSquadUseCase>();
+        services.AddScoped<JoinSquadUseCase>();
+        services.AddScoped<LeaveSquadUseCase>();
+        services.AddScoped<RemoveMemberUseCase>();
+        services.AddScoped<GetSquadRankingUseCase>();
         return services;
     }
 }

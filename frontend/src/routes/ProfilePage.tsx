@@ -11,8 +11,9 @@ import { ProfileTabs, type ProfileTab } from '../components/profile/ProfileTabs'
 import { InformationTab } from '../components/profile/InformationTab';
 import { CustomizationTab } from '../components/profile/CustomizationTab';
 import { ConquestsTab } from '../components/profile/ConquestsTab';
+import { SquadTab } from '../components/profile/SquadTab';
 
-const VALID_TABS: ProfileTab[] = ['info', 'customizacao', 'conquistas'];
+const VALID_TABS: ProfileTab[] = ['info', 'customizacao', 'conquistas', 'squad'];
 
 /**
  * `/perfil` (Fase 18) - 3 abas via query string `?tab=` (mesmo padrão de `/start?weekly=`), sem
@@ -75,6 +76,7 @@ export function ProfilePage() {
           />
         )}
         {tab === 'conquistas' && <ConquestsTab />}
+        {tab === 'squad' && <SquadTab />}
       </div>
     </PageShell>
   );

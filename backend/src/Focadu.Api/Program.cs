@@ -15,6 +15,7 @@ using Focadu.Application.Marketplace;
 using Focadu.Application.Ranking;
 using Focadu.Application.Referrals;
 using Focadu.Application.Seed;
+using Focadu.Application.Squads;
 using Focadu.Application.Users;
 using Focadu.Application.Weeklies;
 using Focadu.Domain.Enums;
@@ -263,6 +264,50 @@ api.MapGet("/users/me/referral", async (ClaimsPrincipal principal, GetReferralIn
         Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
     .RequireAuthorization()
     .WithName("GetReferralInfo");
+
+// --- Squad (Fase 24) --------------------------------------------------------------------------
+// So owner/member, sem aprovacao de convite - quem tem o JoinCode entra direto. Sair de/remover
+// de um squad sao a mesma rota (DELETE /squads/members/{userId}): {userId} igual ao usuario
+// logado e "sair" (LeaveSquadUseCase), diferente e "o dono remove alguem" (RemoveMemberUseCase).
+
+api.MapPost("/squads", async (ClaimsPrincipal principal, CreateSquadRequest? request, CreateSquadUseCase useCase, CancellationToken ct) =>
+    {
+        var result = await useCase.ExecuteAsync(CurrentUserId(principal), request?.Name ?? string.Empty, ct);
+        return Results.Created("/api/squads/me/ranking", result);
+    })
+    .RequireAuthorization()
+    .WithName("CreateSquad");
+
+api.MapPost("/squads/join", async (ClaimsPrincipal principal, JoinSquadRequest? request, JoinSquadUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), request?.JoinCode ?? string.Empty, ct)))
+    .RequireAuthorization()
+    .WithName("JoinSquad");
+
+api.MapDelete("/squads/members/{userId}", async (
+        ClaimsPrincipal principal, string userId, LeaveSquadUseCase leaveUseCase, RemoveMemberUseCase removeUseCase, CancellationToken ct) =>
+    {
+        var targetUserId = RouteParsing.RequireGuid(userId, "userId");
+        var requestingUserId = CurrentUserId(principal);
+
+        if (targetUserId == requestingUserId)
+            await leaveUseCase.ExecuteAsync(requestingUserId, ct);
+        else
+            await removeUseCase.ExecuteAsync(requestingUserId, targetUserId, ct);
+
+        return Results.NoContent();
+    })
+    .RequireAuthorization()
+    .WithName("RemoveSquadMember");
+
+// Ranking (soma/media de Score/Gems dos membros) - tambem onde Squad.JoinCode e gerado (lazy, ver
+// GetSquadRankingUseCase), entao dobra de "tela inicial do squad" pro frontend.
+api.MapGet("/squads/me/ranking", async (ClaimsPrincipal principal, string? scope, GetSquadRankingUseCase useCase, CancellationToken ct) =>
+    {
+        var rankingScope = ParseRankingScope(scope);
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), rankingScope, ct));
+    })
+    .RequireAuthorization()
+    .WithName("GetSquadRanking");
 
 // --- Marketplace de Cosmeticos (Fase 17) -----------------------------------------------------
 // Catalogo fixo via seed, sem autoria via Api nesta fase. Comprar/equipar/desequipar sempre

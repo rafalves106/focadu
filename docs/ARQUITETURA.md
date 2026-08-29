@@ -641,8 +641,11 @@ avatar do header) - esta fase so constroi comprar/equipar/guardar estado.
 
 Fase de consolidacao - nenhum sistema novo, so compoe dado que ja existia (`GetGamificationSummaryUseCase`/
 `GetUserBadgesUseCase`/`GetReferralInfoUseCase`/`GetMarketplaceCatalogUseCase`/`User.Interests`,
-Fases 14-17). `/perfil`, 3 abas via query string `?tab=info|customizacao|conquistas` (default
-`info` - mesmo padrao de `/start?weekly=`).
+Fases 14-17). `/perfil`, abas via query string `?tab=info|customizacao|conquistas|squad` (default
+`info` - mesmo padrao de `/start?weekly=`). **Fase 24: 4a aba "Squad"** adicionada (decisao tomada
+olhando `ProfileTabs.tsx` na hora - as 3 abas existentes sao leitura+acao pontual sobre o proprio
+usuario, Squad tem fluxo proprio de criar/entrar/sair/remover + uma classificacao, entao ganhou aba
+nova em vez de forcar dentro de Conquistas) - ver "Squad (Fase 24)" abaixo.
 
 **Sem endpoint consolidado novo** (`GET /api/users/me/profile-summary` era opcional no prompt) -
 `ProfilePage` faz `Promise.all([getGamification, getMarketplaceCatalog])` pro cabecalho, cada aba
@@ -699,11 +702,48 @@ mostrando o nome do usuario logado fora do Perfil).
 nenhuma tem dado real por tras, mesmo criterio ja usado em outras telas (ver `OnboardingWelcomePage`):
 upload de foto, "Apelido/Username", "Sua frase de guerra" e toda a secao "Analogias de Aprendizado"
 (preview de IA) nao existem no dominio - omitidos. Nivel/XP, "Sessoes completas" e Platinas por
-curso (troféu por 100% de conclusao) tambem nao existem - confirmado fora de escopo ate Squad/PvP
-existir (mesma decisao ja tomada nas fases anteriores pra Elo/Patente). "Recorde de Streak" do
-mockup virou dado real (`GamificationSummaryDto.longestStreak`). O 4o grupo de customizacao do
-mockup ("Avatar", a ilustracao do personagem) nao existe como slot compravel - so os 3 slots reais
-de `CosmeticSlot` (Moldura/Cor do Nome/Banner) aparecem na aba Customizacao.
+curso (troféu por 100% de conclusao) tambem nao existem - Squad existe desde a Fase 24, mas
+XP/Level/Elo/Patente continuam fora de escopo (nunca foram parte do pedido de Squad, ver secao
+propria abaixo). "Recorde de Streak" do mockup virou dado real (`GamificationSummaryDto.longestStreak`).
+O 4o grupo de customizacao do mockup ("Avatar", a ilustracao do personagem) nao existe como slot
+compravel - so os 3 slots reais de `CosmeticSlot` (Moldura/Cor do Nome/Banner) aparecem na aba
+Customizacao.
+
+### Squad (Fase 24)
+
+Grupo de usuarios com 1 dono (`Squad.OwnerUserId`) - so 2 papeis existem (owner/member), sem
+aprovacao de convite: quem tem o `JoinCode` (8 caracteres, mesmo alfabeto sem `0/O/1/I` de
+`ReferralCode` - `Focadu.Application.Shared.UniqueCodeGenerator`, extraido nesta fase e
+reaproveitado pelos dois) entra direto. "1 squad ativo por usuario" e garantido em 2 camadas: a
+Application checa antes de criar/entrar, e um indice unico em `SquadMemberships.UserId` garante no
+banco - sair do squad e hard delete da linha (sem flag "inativo"), permitindo entrar em outro
+squad depois.
+
+`JoinCode` nasce nulo e e gerado lazy (mesmo padrao de `User.ReferralCode`/`GetReferralInfoUseCase`)
+dentro de `GetSquadRankingUseCase` - nao ha endpoint dedicado "GET /squads/me": a consulta de
+ranking ja devolve nome/codigo/classificacao/agregados numa unica chamada, dobrando de "tela
+inicial do squad" pro frontend.
+
+**Ranking do squad reaproveita `GetCourseRankingUseCase.ComputeScore`/`RankEntries`/
+`RankingEntryDto` (Fase 16) direto** - mesmo principio de Score sempre computado sob demanda,
+escopado por `RankingScope` (weekly/monthly/course). **Gems, ao contrario de Score, NUNCA
+respeitam `scope`** - `UserGemBalance` (Fase 14) so guarda o saldo total + um contador "neste mes
+calendario" (pro cap de ganho), sem historico por semana/posicao no curriculo; `TotalGems`/
+`AverageGems` no `SquadRankingResultDto` sao sempre o saldo total de cada membro. `TotalScore`/
+`AverageScore` (que respeitam `scope`) e `TotalGems`/`AverageGems` juntos cobrem o "soma/media de
+Score/Gems dos membros" pedido - alem da lista de membros (`RankingEntryDto[]`, mesmo shape do
+ranking de Course, reaproveitado sem alteracao no frontend: `RankingTable`/`CurrentUserRankingCard`
+servem os dois sem parametro squad-especifico).
+
+**Owner nao pode sair enquanto ha outros membros** (`dono_nao_pode_sair`, 409) - precisa remover
+todo mundo primeiro. Decisao deliberada: transferir posse automaticamente resolveria, mas seria
+uma regra nova nao pedida ("papeis alem de owner/member" fora de escopo); squads com 0 membros
+(so acontece se o Owner sair sozinho) ficam orfaos e inertes no banco, sem limpeza automatica -
+pendencia conhecida, ver `docs/fase-24/resumo-implementacao-fase-24.md`.
+
+**Fora de escopo, confirmado no prompt da Fase 24**: papeis alem de owner/member, aprovacao de
+convite, um usuario em N squads ao mesmo tempo, qualquer entidade de "partida"/Challenge/PvP,
+Elo/Patente - continuam nao existindo.
 
 ## Regras de negocio centralizadas
 
@@ -876,6 +916,10 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | 🔒 POST | `/api/weeklies/{weeklyId}/publication/github-commit` | `CommitModuleSummaryUseCase` (Fase 11) | 200, 400/404, 502 (GitHub) |
 | 🔒 POST | `/api/weeklies/{weeklyId}/publication/submit` | `SubmitPublicationUseCase` (Fase 11) | 200, 400/404 - LinkedIn valida por regex, GitHub chama a API real |
 | 🔒 GET | `/api/github/repositories` | `GetGitHubRepositoriesUseCase` (Fase 11) | 200, 502 (GitHub) - exige login, sem filtro por usuario (1 token global do GitHub) |
+| 🔒 POST | `/api/squads` | `CreateSquadUseCase` (Fase 24) | 201 (`SquadDto`), 409 `ja_esta_em_squad` |
+| 🔒 POST | `/api/squads/join` | `JoinSquadUseCase` (Fase 24) | 200 (`SquadDto`), 404 `codigo_invalido`, 409 `ja_esta_em_squad` |
+| 🔒 DELETE | `/api/squads/members/{userId}` | `LeaveSquadUseCase` (se `{userId}` = usuario logado) ou `RemoveMemberUseCase` (Fase 24) | 204, 404 `squad_nao_encontrado`/`membro_nao_encontrado`, 409 `dono_nao_pode_sair`/`dono_nao_pode_se_remover` |
+| 🔒 GET | `/api/squads/me/ranking?scope=` | `GetSquadRankingUseCase` (Fase 24) | 200 (`SquadRankingResultDto`) - gera `JoinCode` na 1a consulta (lazy), 404 `squad_nao_encontrado` |
 
 As rotas da Api sao caminhos REST simples (`/api/weeklies/{weeklyId}`), **nao** um espelho das
 rotas do frontend (`/start?course=&weekly=`) - o frontend usa query string no seu proprio router
@@ -1979,10 +2023,12 @@ CSS).
   Cloze/FreeText usa comparacao textual simples, Roleplay usa mapeamento fixo de
   `TerminalQuality` (ver "Score no servidor") - nenhum dos dois e avaliacao inteligente de
   verdade. So `VoiceSummary` usa avaliacao por IA de verdade (Groq, desde a Fase 5).
-- **Resolvido na Fase 14 (Gems/Streak), Fase 16 (Ranking/Score de Estudo) e Fase 17
-  (Marketplace/Cosmeticos/Trofeus/Indicacao), nao e mais pendencia:** ver secoes correspondentes
-  em "Modelo de dominio" acima. **Ainda em standby:** Arcade/UGC e XP/Level/Elo/Patente (reservado
-  pra quando existir Squad/PvP, Fase 19+, confirmado explicitamente fora do escopo da Fase 14).
+- **Resolvido na Fase 14 (Gems/Streak), Fase 16 (Ranking/Score de Estudo), Fase 17
+  (Marketplace/Cosmeticos/Trofeus/Indicacao) e Fase 24 (Squad), nao e mais pendencia:** ver
+  secoes correspondentes em "Modelo de dominio" acima. **Ainda em standby:** Arcade/UGC e
+  XP/Level/Elo/Patente, alem de qualquer entidade de "partida"/Challenge/PvP - confirmado
+  explicitamente fora do escopo tanto da Fase 14 quanto da Fase 24 (Squad ficou so em
+  owner/member + ranking, sem PvP nenhum entre squads).
 - Endpoints de autoria de Course/Monthly/WeeklyTemplate/DailyTemplate/DailyActivity/CuratedContent
   - nada disso tem API de criacao/edicao (CuratedContent teve, Fase 4 a 13b, removida - decisao do
   usuario, ver "Autoria de conteudo curado"). Toda a estrutura, incluindo conteudo curado, e so via
@@ -2041,6 +2087,7 @@ CSS).
 | 21 | Avaliacao de Projeto e Conteudo por IA + Narracao por Voz | `docs/fase-21/resumo-implementacao-fase-21.md` |
 | 22 | Sessao Expirada (Modal Global) | `docs/fase-22/resumo-implementacao-fase-22.md` |
 | 23 | Ligar Palavras (Matcher de 2 Colunas) | `docs/fase-23/resumo-implementacao-fase-23.md` |
+| 24 | Squad (Fase A) | `docs/fase-24/resumo-implementacao-fase-24.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 

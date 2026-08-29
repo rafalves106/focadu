@@ -7,6 +7,7 @@ using Focadu.Domain.Enrollments;
 using Focadu.Domain.Gamification;
 using Focadu.Domain.Monthlies;
 using Focadu.Domain.Referrals;
+using Focadu.Domain.Squads;
 using Focadu.Domain.Users;
 using Focadu.Domain.Weeklies;
 using Microsoft.EntityFrameworkCore;
@@ -58,6 +59,10 @@ public class FocaduDbContext : DbContext
 
     // Personalizacao por IA (Fase 21) - cache de analogias por (User, CuratedContent).
     public DbSet<PersonalizedAnalogy> PersonalizedAnalogies => Set<PersonalizedAnalogy>();
+
+    // Squad (Fase 24) - 1 squad ativo por usuario (SquadMemberships.UserId unico).
+    public DbSet<Squad> Squads => Set<Squad>();
+    public DbSet<SquadMembership> SquadMemberships => Set<SquadMembership>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
