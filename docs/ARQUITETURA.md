@@ -1229,7 +1229,36 @@ Os dois ports que existiam so como stub desde a Fase 1 (`IAudioTranscriptionServ
 `IContentEvaluationService`) agora tem adapter concreto via Groq
 (`Focadu.Infrastructure.Services`) - ver "Resumo falado por voz" acima pro fluxo completo. Os
 dois usam `HttpClient` tipado (`services.AddHttpClient<TPort, TAdapter>`), base address
-`https://api.groq.com/openai/v1/`, timeout de 60s.
+`https://api.groq.com/openai/v1/`. Timeout por tentativa de 2s (ver "Retry automatico" abaixo) -
+diferente dos outros 3 adapters Groq (rascunho de post, avaliacao de projeto, analogia de leitura),
+que continuam com 60s de chamada unica, sem retry (prompts maiores, sem o orcamento apertado do
+fluxo de resumo falado).
+
+### Retry automatico
+
+`TranscribeAsync` e `EvaluateAsync` (as duas chamadas do fluxo de resumo falado por voz,
+`SubmitVoiceSummaryResponseUseCase`) fazem ate 2 retries (3 tentativas) via `HttpRetry`
+(`Focadu.Infrastructure.Services.HttpRetry`) - helper generico e reutilizavel (sem interface/DI, e
+detalhe de HTTP), tambem usado por `GitHubService` (ver secao GitHub abaixo).
+
+- **Retryable:** `HttpRequestException` (falha de transporte), `TaskCanceledException` que nao
+  veio de cancelamento do usuario (timeout do `HttpClient`), HTTP 429 e HTTP 5xx. Groq/GitHub 4xx
+  fora 429 nunca e retryable (o pedido em si esta errado). Resposta 200 mas com conteudo
+  inutilizavel (`transcricao_vazia`, `avaliacao_ia_formato_invalido`) tambem retry - a Groq roda
+  com `temperature=0.2`, nao e deterministica - mas entra no mesmo orcamento de 2 retries, nao e
+  retry indefinido. `groq_api_key_nao_configurada` nunca retry (falha antes de qualquer chamada
+  HTTP).
+- **Backoff:** exponencial + jitter (~500ms na 1a espera, ~1s na 2a), com teto de 2s de espera por
+  tentativa - mesmo se a Groq mandar um `Retry-After` maior num 429.
+- **Orcamento do fluxo:** com o timeout de 2s por tentativa, pior caso de transcricao+avaliacao
+  juntas (6 tentativas + backoff) fica em ~15-20s, bem abaixo dos 60s que o frontend usa como
+  referencia pro timeout dessa chamada (`VOICE_SUMMARY_TIMEOUT_MS`, `frontend/src/api/client.ts`).
+- Falha definitiva (depois de esgotar as tentativas) cai no mesmo erro/`Code` de antes
+  (`groq_transcricao_falhou`, `groq_avaliacao_falhou`, `groq_timeout`, `groq_indisponivel`,
+  `transcricao_vazia`, `avaliacao_ia_formato_invalido`) - sem mudanca de contrato pro frontend,
+  que ja trata esses erros no mesmo estado `submitting`/erro de sempre (nenhum estado novo).
+- `# ponytail: loop manual, migrar pra Polly se aparecer necessidade de circuit breaker/policy
+  composta` - decisao registrada no proprio `HttpRetry`.
 
 ### Como configurar a chave da Groq
 
@@ -1261,7 +1290,9 @@ Groq (`services.AddHttpClient<IGitHubService, GitHubService>(...)`), apesar do p
 ter dito duas vezes que "Octokit ja estava configurado desde a Fase 1" (afirmacao falsa,
 verificada por `grep` antes de implementar - ver `docs/fase-11/resumo-implementacao-fase-11.md`).
 Headers fixos: `Authorization: Bearer {token}` (so quando configurado), `User-Agent: Focadu/1.0`
-(exigido pela API do GitHub), `Accept: application/vnd.github+json`. Timeout de 20s.
+(exigido pela API do GitHub), `Accept: application/vnd.github+json`. Timeout de 20s por chamada,
+com o mesmo retry automatico (`HttpRetry`) documentado na secao Groq acima - 404 (usado como
+"nao existe" em `GetOptionalAsync`) nunca entra no retry, e resposta valida, nao falha.
 
 ### Como configurar o token do GitHub
 
@@ -1293,7 +1324,7 @@ validacao real do Groq na Fase 5):**
   `CommitFileAsync` busca o `sha` atual (`GET .../contents/{path}`, 404 vira "nao existe" -
   criacao pura) antes do `PUT`.
 - **Rate limit / repo privado-inexistente / token sem escopo `repo`:** nenhum ganhou tratamento
-  dedicado - `EnsureSuccessAsync` ja bota qualquer status de erro (nao só 404, que vira `null` via
+  dedicado - `HttpRetry.EnsureSuccessAsync` ja bota qualquer status de erro (nao só 404, que vira `null` via
   `GetOptionalAsync`) dentro de `github_falhou`/`github_indisponivel` (502) com o corpo real da
   resposta do GitHub anexado na mensagem, mesmo padrao ja usado pros erros genericos da Groq -
   rate limit e token sem escopo chegam pro usuario com a mensagem literal que o GitHub devolveu
@@ -1959,8 +1990,6 @@ CSS).
 - Exclusao (`DELETE`) de `CuratedContent` - so criacao/edicao existem; nunca foi pedido um
   endpoint de remocao.
 - CORS liberado so para `http://localhost:5173` (hardcoded, dev apenas).
-- Retry automatico em falha da chamada a Groq - se a transcricao/avaliacao falhar (rede, rate
-  limit), o usuario precisa gravar de novo manualmente.
 - **Resolvido na Fase 7, nao e mais pendencia:** menu de configuracoes no frontend - so que
   Aparencia/Som/Notificacoes/Limite de gravacao/Perfil/Atalhos continuam so visuais, sem
   persistencia (ver "Menu de configuracoes" na secao de Frontend).

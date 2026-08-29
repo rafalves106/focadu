@@ -61,10 +61,13 @@ public class GroqContentEvaluationService : IContentEvaluationService
             },
         };
 
-        HttpResponseMessage response;
         try
         {
-            response = await _httpClient.PostAsJsonAsync("chat/completions", payload, cancellationToken);
+            return await HttpRetry.RunAsync(
+                () => EvaluateOnceAsync(payload, cancellationToken),
+                ex => HttpRetry.IsTransientFailure(ex, cancellationToken)
+                    || ex is ExternalServiceException { Code: "avaliacao_ia_formato_invalido" },
+                cancellationToken);
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -76,17 +79,24 @@ public class GroqContentEvaluationService : IContentEvaluationService
             throw new ExternalServiceException(
                 "groq_indisponivel", $"Nao foi possivel conectar ao servico de avaliacao: {ex.Message}");
         }
-
-        if (!response.IsSuccessStatusCode)
+        catch (HttpRetry.HttpStatusException ex)
         {
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
             throw new ExternalServiceException(
-                "groq_avaliacao_falhou", $"O servico de avaliacao respondeu com erro ({(int)response.StatusCode}): {body}");
+                "groq_avaliacao_falhou", $"O servico de avaliacao respondeu com erro ({(int)ex.StatusCode}): {ex.Body}");
         }
+    }
+
+    private async Task<ContentEvaluationResult> EvaluateOnceAsync<TPayload>(TPayload payload, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync("chat/completions", payload, cancellationToken);
+        await HttpRetry.EnsureSuccessAsync(response, cancellationToken);
 
         var completion = await response.Content.ReadFromJsonAsync<GroqChatCompletionResponse>(JsonOptions, cancellationToken);
         var rawContent = completion?.Choices?.FirstOrDefault()?.Message?.Content;
 
+        // ParseEvaluation lanca "avaliacao_ia_formato_invalido" (200 mas conteudo inutilizavel) -
+        // entra no mesmo orcamento de retry do RunAsync acima (a Groq roda com temperature=0.2,
+        // nao deterministico; nao e retry indefinido, e a mesma verba de 2 tentativas).
         return ParseEvaluation(rawContent);
     }
 
