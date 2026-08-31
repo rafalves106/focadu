@@ -20,6 +20,10 @@ public class SquadConfiguration : IEntityTypeConfiguration<Squad>
         // Referencia "fraca" (sem navegacao de volta em User) - mesmo padrao de Enrollment.UserId.
         builder.HasOne<User>().WithMany().HasForeignKey(s => s.OwnerUserId).OnDelete(DeleteBehavior.Cascade);
 
+        // Co-Leader e opcional e nao "possui" o squad como o Owner - deletar o usuario so esvazia
+        // o cargo (SetNull), nunca cascateia a delecao do squad inteiro.
+        builder.HasOne<User>().WithMany().HasForeignKey(s => s.CoLeaderUserId).OnDelete(DeleteBehavior.SetNull);
+
         // Nulo ate a 1a leitura gerar (lazy, ver GetSquadRankingUseCase) - unico so entre os nao-nulos (comportamento padrao de indice unico + coluna nullable no Postgres).
         builder.HasIndex(s => s.JoinCode).IsUnique();
     }

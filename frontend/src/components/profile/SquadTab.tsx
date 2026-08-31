@@ -55,13 +55,21 @@ export function SquadTab() {
       <CurrentUserRankingCard entry={data.currentUserEntry} />
       <RankingTable entries={data.members} highlightUserId={user.id} />
 
-      {isOwner && <MemberManagement members={data.members} ownerUserId={data.ownerUserId} onChanged={retry} />}
+      {isOwner && (
+        <MemberManagement
+          members={data.members}
+          ownerUserId={data.ownerUserId}
+          coLeaderUserId={data.coLeaderUserId}
+          onChanged={retry}
+        />
+      )}
     </div>
   );
 }
 
-/** Nome + código de entrada (copiar) + sair do squad. */
+/** Nome + código de entrada (copiar) + co-líder (se houver) + sair do squad. */
 function SquadHeader({ data, userId, onLeft }: { data: SquadRankingResultDto; userId: string; onLeft: () => void }) {
+  const coLeaderName = data.members.find((m) => m.userId === data.coLeaderUserId)?.displayName;
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
@@ -109,49 +117,85 @@ function SquadHeader({ data, userId, onLeft }: { data: SquadRankingResultDto; us
           {copied ? 'COPIADO ✓' : 'COPIAR'}
         </button>
       </div>
+      {coLeaderName && <p className="text-xs text-secondary">👑 Co-líder: <span className="font-semibold text-primary">{coLeaderName}</span></p>}
       {error && <p className="text-sm text-alert">{error}</p>}
     </div>
   );
 }
 
-/** So o Owner ve isso - remover qualquer membro (exceto a si mesmo, ele sai pelo botão acima). */
-function MemberManagement({ members, ownerUserId, onChanged }: { members: RankingEntryDto[]; ownerUserId: string; onChanged: () => void }) {
+/**
+ * So o Owner ve isso - remover qualquer membro (exceto a si mesmo, ele sai pelo botão acima) e
+ * promover/rebaixar o Co-líder (Fase 24b) - quem herda a liderança se o Owner sair, ver
+ * LeaveSquadUseCase.
+ */
+function MemberManagement({
+  members,
+  ownerUserId,
+  coLeaderUserId,
+  onChanged,
+}: {
+  members: RankingEntryDto[];
+  ownerUserId: string;
+  coLeaderUserId: string | null;
+  onChanged: () => void;
+}) {
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const removable = members.filter((m) => m.userId !== ownerUserId);
+  const others = members.filter((m) => m.userId !== ownerUserId);
 
-  if (removable.length === 0) return null;
+  if (others.length === 0) return null;
 
-  async function handleRemove(userId: string) {
+  async function run(userId: string, action: () => Promise<void>, failMessage: string) {
     setError(null);
     setBusyUserId(userId);
     try {
-      await api.removeSquadMember(userId);
+      await action();
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Não foi possível remover este membro.');
+      setError(err instanceof ApiError ? err.message : failMessage);
     } finally {
       setBusyUserId(null);
     }
   }
 
+  const handleRemove = (userId: string) => run(userId, () => api.removeSquadMember(userId), 'Não foi possível remover este membro.');
+  const handlePromote = (userId: string) => run(userId, () => api.promoteSquadCoLeader(userId), 'Não foi possível promover este membro.');
+  const handleDemote = (userId: string) => run(userId, () => api.clearSquadCoLeader(), 'Não foi possível rebaixar o co-líder.');
+
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-stroke bg-surface p-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">Gerenciar membros</p>
       {error && <p className="text-sm text-alert">{error}</p>}
-      {removable.map((m) => (
-        <div key={m.userId} className="flex items-center justify-between gap-4">
-          <span className="truncate text-sm text-primary">{m.displayName}</span>
-          <button
-            type="button"
-            onClick={() => handleRemove(m.userId)}
-            disabled={busyUserId === m.userId}
-            className="shrink-0 text-xs font-semibold text-alert underline disabled:opacity-50"
-          >
-            {busyUserId === m.userId ? 'REMOVENDO...' : 'REMOVER'}
-          </button>
-        </div>
-      ))}
+      {others.map((m) => {
+        const isCoLeader = m.userId === coLeaderUserId;
+        const busy = busyUserId === m.userId;
+        return (
+          <div key={m.userId} className="flex items-center justify-between gap-4">
+            <span className="truncate text-sm text-primary">
+              {m.displayName}
+              {isCoLeader && ' 👑'}
+            </span>
+            <div className="flex shrink-0 gap-3">
+              <button
+                type="button"
+                onClick={() => (isCoLeader ? handleDemote(m.userId) : handlePromote(m.userId))}
+                disabled={busy}
+                className="text-xs font-semibold text-accent underline disabled:opacity-50"
+              >
+                {busy ? '...' : isCoLeader ? 'REBAIXAR' : 'TORNAR CO-LÍDER'}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRemove(m.userId)}
+                disabled={busy}
+                className="text-xs font-semibold text-alert underline disabled:opacity-50"
+              >
+                {busy ? '...' : 'REMOVER'}
+              </button>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

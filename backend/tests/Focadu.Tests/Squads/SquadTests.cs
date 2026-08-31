@@ -52,6 +52,65 @@ public class SquadTests
 
         Assert.Throws<DomainException>(() => squad.AssignJoinCode(" "));
     }
+
+    [Fact]
+    public void PromoteCoLeader_SetsCoLeaderUserId()
+    {
+        var squad = new Squad("Squad A", Guid.NewGuid());
+        var memberId = Guid.NewGuid();
+
+        squad.PromoteCoLeader(memberId);
+
+        Assert.Equal(memberId, squad.CoLeaderUserId);
+    }
+
+    [Fact]
+    public void ClearCoLeader_SetsNull()
+    {
+        var squad = new Squad("Squad A", Guid.NewGuid());
+        squad.PromoteCoLeader(Guid.NewGuid());
+
+        squad.ClearCoLeader();
+
+        Assert.Null(squad.CoLeaderUserId);
+    }
+
+    [Fact]
+    public void ClearCoLeaderIfMatches_DifferentUser_KeepsCoLeader()
+    {
+        var squad = new Squad("Squad A", Guid.NewGuid());
+        var coLeaderId = Guid.NewGuid();
+        squad.PromoteCoLeader(coLeaderId);
+
+        squad.ClearCoLeaderIfMatches(Guid.NewGuid());
+
+        Assert.Equal(coLeaderId, squad.CoLeaderUserId);
+    }
+
+    [Fact]
+    public void ClearCoLeaderIfMatches_SameUser_Clears()
+    {
+        var squad = new Squad("Squad A", Guid.NewGuid());
+        var coLeaderId = Guid.NewGuid();
+        squad.PromoteCoLeader(coLeaderId);
+
+        squad.ClearCoLeaderIfMatches(coLeaderId);
+
+        Assert.Null(squad.CoLeaderUserId);
+    }
+
+    [Fact]
+    public void TransferOwnership_SetsNewOwnerAndClearsCoLeader()
+    {
+        var squad = new Squad("Squad A", Guid.NewGuid());
+        squad.PromoteCoLeader(Guid.NewGuid());
+        var newOwnerId = Guid.NewGuid();
+
+        squad.TransferOwnership(newOwnerId);
+
+        Assert.Equal(newOwnerId, squad.OwnerUserId);
+        Assert.Null(squad.CoLeaderUserId);
+    }
 }
 
 public class SquadMembershipTests

@@ -198,6 +198,9 @@ export const api = {
   // Mesma rota serve "sair" (userId = o proprio usuario) e "remover" (dono removendo outro membro) - ver Program.cs.
   leaveSquad: (userId: string) => request<void>(`/api/squads/members/${userId}`, { method: 'DELETE' }),
   removeSquadMember: (userId: string) => request<void>(`/api/squads/members/${userId}`, { method: 'DELETE' }),
+  // Co-Leader (Fase 24b) - o Owner promove/rebaixa; herda a lideranca se o Owner sair.
+  promoteSquadCoLeader: (userId: string) => request<void>(`/api/squads/co-leader/${userId}`, { method: 'PUT' }),
+  clearSquadCoLeader: () => request<void>('/api/squads/co-leader', { method: 'DELETE' }),
   getSquadRanking: (scope: RankingScope) => request<SquadRankingResultDto>(`/api/squads/me/ranking?scope=${scope}`),
   // Marketplace de Cosméticos (Fase 17) - toda ação (compra/equipar/desequipar) devolve o
   // catálogo inteiro recalculado, mesmo shape do GET.

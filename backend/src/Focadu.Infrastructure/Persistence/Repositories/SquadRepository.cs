@@ -22,6 +22,12 @@ public class SquadRepository : ISquadRepository
     public async Task AddAsync(Squad squad, CancellationToken cancellationToken = default) =>
         await _context.Squads.AddAsync(squad, cancellationToken);
 
+    public Task RemoveAsync(Squad squad, CancellationToken cancellationToken = default)
+    {
+        _context.Squads.Remove(squad);
+        return Task.CompletedTask;
+    }
+
     public async Task<SquadMembership?> GetMembershipByUserIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
         await _context.SquadMemberships.FirstOrDefaultAsync(m => m.UserId == userId, cancellationToken);
 

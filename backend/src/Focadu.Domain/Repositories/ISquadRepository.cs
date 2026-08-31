@@ -11,6 +11,9 @@ public interface ISquadRepository
 
     Task AddAsync(Squad squad, CancellationToken cancellationToken = default);
 
+    /// <summary>Squad sem nenhum membro (ultimo saiu) e deletado, nunca fica orfao (ver LeaveSquadUseCase).</summary>
+    Task RemoveAsync(Squad squad, CancellationToken cancellationToken = default);
+
     /// <summary>No maximo 1 por usuario (1 squad ativo) - null se o usuario nao esta em nenhum squad agora.</summary>
     Task<SquadMembership?> GetMembershipByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
 

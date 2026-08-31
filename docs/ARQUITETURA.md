@@ -711,8 +711,9 @@ Customizacao.
 
 ### Squad (Fase 24)
 
-Grupo de usuarios com 1 dono (`Squad.OwnerUserId`) - so 2 papeis existem (owner/member), sem
-aprovacao de convite: quem tem o `JoinCode` (8 caracteres, mesmo alfabeto sem `0/O/1/I` de
+Grupo de usuarios com 1 dono (`Squad.OwnerUserId`) - 3 papeis existem (owner/co-leader opcional/
+member, ver "Sucessao de lideranca" abaixo, Fase 24b), sem aprovacao de convite: quem tem o
+`JoinCode` (8 caracteres, mesmo alfabeto sem `0/O/1/I` de
 `ReferralCode` - `Focadu.Application.Shared.UniqueCodeGenerator`, extraido nesta fase e
 reaproveitado pelos dois) entra direto. "1 squad ativo por usuario" e garantido em 2 camadas: a
 Application checa antes de criar/entrar, e um indice unico em `SquadMemberships.UserId` garante no
@@ -735,15 +736,17 @@ Score/Gems dos membros" pedido - alem da lista de membros (`RankingEntryDto[]`, 
 ranking de Course, reaproveitado sem alteracao no frontend: `RankingTable`/`CurrentUserRankingCard`
 servem os dois sem parametro squad-especifico).
 
-**Owner nao pode sair enquanto ha outros membros** (`dono_nao_pode_sair`, 409) - precisa remover
-todo mundo primeiro. Decisao deliberada: transferir posse automaticamente resolveria, mas seria
-uma regra nova nao pedida ("papeis alem de owner/member" fora de escopo); squads com 0 membros
-(so acontece se o Owner sair sozinho) ficam orfaos e inertes no banco, sem limpeza automatica -
-pendencia conhecida, ver `docs/fase-24/resumo-implementacao-fase-24.md`.
+**Resolvido na Fase 24b, nao e mais pendencia: sucessao de lideranca + limpeza de squad orfao.**
+Owner sair nao bloqueia mais com outros membros dentro - a lideranca e transferida (referencia
+Clash of Clans, decisao do usuario): `Squad.CoLeaderUserId` (opcional, promovido pelo Owner via
+`PUT /api/squads/co-leader/{userId}`/`DELETE /api/squads/co-leader`, `SetSquadCoLeaderUseCase`)
+herda primeiro; sem Co-Leader, o membro com `SquadMembership.JoinedAt` mais antigo (selecao pura
+em `LeaveSquadUseCase.ResolveSuccessor`, testada sem repositorio). Owner sozinho: o squad e
+deletado junto (`ISquadRepository.RemoveAsync`) - nunca mais fica orfao no banco.
 
-**Fora de escopo, confirmado no prompt da Fase 24**: papeis alem de owner/member, aprovacao de
-convite, um usuario em N squads ao mesmo tempo, qualquer entidade de "partida"/Challenge/PvP,
-Elo/Patente - continuam nao existindo.
+**Fora de escopo, confirmado no prompt da Fase 24 (Co-Leader adicionado na 24b e a unica excecao)**:
+papeis alem de owner/co-leader/member, aprovacao de convite, um usuario em N squads ao mesmo
+tempo, qualquer entidade de "partida"/Challenge/PvP, Elo/Patente - continuam nao existindo.
 
 ## Regras de negocio centralizadas
 
@@ -2203,9 +2206,12 @@ CSS).
   esta mostrando seu proprio resultado** (ver "Bug real: `onPublished` desmontava o modal", secao
   de Frontend) - o refetch precisa esperar o usuario decidir sair (`onClose`), nao disparar no
   meio do fluxo de sucesso/erro do modal.
-- **"Auditoria de Repositorios" (citada no prompt da Fase 11 como proxima fase) depende de uma
-  decisao de escopo (estatica vs. dinamica) antes de virar um prompt tecnico** - ainda em aberto
-  (a Fase 12 acabou entrando antes, com a mudanca de direcao pra autenticacao real).
+- **"Auditoria de Repositorios" (citada no prompt da Fase 11 como proxima fase) - decisao de
+  escopo tomada em 2026-08-31: estatica (SAST)**, ler o codigo do repo via GitHub API sem
+  executar nada (segredo commitado, dependencia desatualizada/vulneravel, header de seguranca
+  ausente no codigo, etc.), mesmo padrao sincrono do fluxo GitHub atual - dinamica (DAST, testar
+  a app rodando de verdade) descartada por enquanto. Ainda nao e um prompt tecnico - falta definir
+  a lista exata de checks antes de implementar.
 - **Resolvido na Fase 13a:** todo endpoint de curso/weekly/daily/publicacao/conteudo curado agora
   tem `[Authorize]` e filtra pela Enrollment do usuario logado (ver "Superficie da API" e "Modelo
   de dominio" acima) - a excecao documentada e `/admin/conteudo`, que ainda depende de endpoints

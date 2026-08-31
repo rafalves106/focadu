@@ -1,16 +1,17 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
 using Focadu.Domain.Repositories;
+using Focadu.Domain.Squads;
 
 namespace Focadu.Application.Squads;
 
 /// <summary>
-/// Caso de uso: usuario logado sai do proprio squad (Fase 24) - hard delete da SquadMembership
-/// (ver comentario em SquadMembership). O Owner so pode sair sozinho (ultimo membro, o squad fica
-/// orfao mas inerte - ninguem mais acha ele, GetMembershipByUserIdAsync nunca aponta pra ele de
-/// novo) - com outros membros ainda dentro, sair exigiria decidir quem vira o novo Owner, uma
-/// transferencia de posse fora do escopo desta fase (nenhuma outra regra alem de owner/member foi
-/// pedida); bloqueado com uma mensagem clara em vez disso.
+/// Caso de uso: usuario logado sai do proprio squad (Fase 24, sucessao na Fase 24b) - hard delete
+/// da SquadMembership (ver comentario em SquadMembership). Membro comum: so sai, e se era o
+/// Co-Leader o cargo esvazia (Squad.ClearCoLeaderIfMatches). Owner com outros membros dentro: a
+/// lideranca e transferida (referencia Clash of Clans) - Co-Leader primeiro, senao o membro com
+/// SquadMembership.JoinedAt mais antigo. Owner sozinho: o squad e deletado junto (nunca fica
+/// orfao - antes disso, o squad so ficava inerte pra sempre, ver docs/fase-24).
 /// </summary>
 public class LeaveSquadUseCase
 {
@@ -33,12 +34,30 @@ public class LeaveSquadUseCase
 
         if (squad.OwnerUserId == userId)
         {
-            var members = await _squadRepository.GetMembersAsync(squad.Id, cancellationToken);
-            if (members.Count > 1)
-                throw new ConflictException("dono_nao_pode_sair", "Remova todos os membros antes de sair do squad que voce criou.");
+            var remaining = (await _squadRepository.GetMembersAsync(squad.Id, cancellationToken))
+                .Where(m => m.UserId != userId)
+                .ToList();
+
+            if (remaining.Count == 0)
+            {
+                await _squadRepository.RemoveMembershipAsync(membership, cancellationToken);
+                await _squadRepository.RemoveAsync(squad, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return;
+            }
+
+            squad.TransferOwnership(ResolveSuccessor(remaining, squad.CoLeaderUserId));
+        }
+        else
+        {
+            squad.ClearCoLeaderIfMatches(userId);
         }
 
         await _squadRepository.RemoveMembershipAsync(membership, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>Logica pura de sucessao (Fase 24b, ver comentario da classe) - `remaining` nunca vazio (chamador ja tratou esse caso separadamente).</summary>
+    internal static Guid ResolveSuccessor(IReadOnlyCollection<SquadMembership> remaining, Guid? coLeaderUserId) =>
+        (remaining.FirstOrDefault(m => m.UserId == coLeaderUserId) ?? remaining.OrderBy(m => m.JoinedAt).First()).UserId;
 }

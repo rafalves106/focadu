@@ -299,6 +299,25 @@ api.MapDelete("/squads/members/{userId}", async (
     .RequireAuthorization()
     .WithName("RemoveSquadMember");
 
+// Co-Leader (Fase 24b) - o Owner promove {userId} ou limpa o cargo (DELETE, sem corpo). Sucessao
+// ao sair usa isso em LeaveSquadUseCase - ver Squad.TransferOwnership.
+api.MapPut("/squads/co-leader/{userId}", async (
+        ClaimsPrincipal principal, string userId, SetSquadCoLeaderUseCase useCase, CancellationToken ct) =>
+    {
+        await useCase.ExecuteAsync(CurrentUserId(principal), RouteParsing.RequireGuid(userId, "userId"), ct);
+        return Results.NoContent();
+    })
+    .RequireAuthorization()
+    .WithName("PromoteSquadCoLeader");
+
+api.MapDelete("/squads/co-leader", async (ClaimsPrincipal principal, SetSquadCoLeaderUseCase useCase, CancellationToken ct) =>
+    {
+        await useCase.ExecuteAsync(CurrentUserId(principal), null, ct);
+        return Results.NoContent();
+    })
+    .RequireAuthorization()
+    .WithName("ClearSquadCoLeader");
+
 // Ranking (soma/media de Score/Gems dos membros) - tambem onde Squad.JoinCode e gerado (lazy, ver
 // GetSquadRankingUseCase), entao dobra de "tela inicial do squad" pro frontend.
 api.MapGet("/squads/me/ranking", async (ClaimsPrincipal principal, string? scope, GetSquadRankingUseCase useCase, CancellationToken ct) =>

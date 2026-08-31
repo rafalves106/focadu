@@ -62,6 +62,7 @@ public static class DependencyInjection
         services.AddScoped<JoinSquadUseCase>();
         services.AddScoped<LeaveSquadUseCase>();
         services.AddScoped<RemoveMemberUseCase>();
+        services.AddScoped<SetSquadCoLeaderUseCase>();
         services.AddScoped<GetSquadRankingUseCase>();
         return services;
     }

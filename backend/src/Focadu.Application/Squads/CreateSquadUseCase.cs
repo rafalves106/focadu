@@ -35,7 +35,7 @@ public class CreateSquadUseCase
     }
 }
 
-public record SquadDto(Guid Id, string Name, Guid OwnerUserId, DateTime CreatedAt)
+public record SquadDto(Guid Id, string Name, Guid OwnerUserId, Guid? CoLeaderUserId, DateTime CreatedAt)
 {
-    public static SquadDto From(Squad squad) => new(squad.Id, squad.Name, squad.OwnerUserId, squad.CreatedAt);
+    public static SquadDto From(Squad squad) => new(squad.Id, squad.Name, squad.OwnerUserId, squad.CoLeaderUserId, squad.CreatedAt);
 }

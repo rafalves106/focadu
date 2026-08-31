@@ -325,12 +325,15 @@ export interface RankingResultDto {
   currentUserEntry: RankingEntryDto | null;
 }
 
-// Squad (Fase 24) - grupo com 1 dono (ownerUserId) + membros, sem papeis alem disso. joinCode e
-// gerado na 1a vez que alguem pede o ranking do proprio squad (lazy, ver GetSquadRankingUseCase).
+// Squad (Fase 24) - grupo com 1 dono (ownerUserId) + membros. coLeaderUserId (Fase 24b) e
+// opcional, promovido pelo Owner - herda a lideranca se o Owner sair (senao, o membro mais
+// antigo). joinCode e gerado na 1a vez que alguem pede o ranking do proprio squad (lazy, ver
+// GetSquadRankingUseCase).
 export interface SquadDto {
   id: string;
   name: string;
   ownerUserId: string;
+  coLeaderUserId: string | null;
   createdAt: string;
 }
 
@@ -345,6 +348,7 @@ export interface SquadRankingResultDto {
   squadName: string;
   joinCode: string;
   ownerUserId: string;
+  coLeaderUserId: string | null;
   members: RankingEntryDto[];
   currentUserEntry: RankingEntryDto | null;
   totalScore: number;

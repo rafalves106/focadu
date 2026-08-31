@@ -104,7 +104,7 @@ public class GetSquadRankingUseCase
         var totalScore = ranked.Sum(e => e.Score);
 
         return new SquadRankingResultDto(
-            squad.Id, squad.Name, squad.JoinCode!, squad.OwnerUserId,
+            squad.Id, squad.Name, squad.JoinCode!, squad.OwnerUserId, squad.CoLeaderUserId,
             ranked, currentUserEntry,
             totalScore, memberCount == 0 ? 0 : totalScore / memberCount,
             totalGems, memberCount == 0 ? 0 : (double)totalGems / memberCount);
@@ -123,6 +123,7 @@ public record SquadRankingResultDto(
     string SquadName,
     string JoinCode,
     Guid OwnerUserId,
+    Guid? CoLeaderUserId,
     IReadOnlyCollection<RankingEntryDto> Members,
     RankingEntryDto? CurrentUserEntry,
     double TotalScore,

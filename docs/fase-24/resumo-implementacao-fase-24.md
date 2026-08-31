@@ -164,20 +164,37 @@ frontend/src/
   endpoints que `SquadTab.tsx` chama) + `tsc -b` limpo (garante que os tipos de
   `SquadRankingResultDto`/`SquadDto` batem entre front e back).
 
+## Fase 24b - sucessão de liderança + limpeza (2026-08-31)
+
+Duas pendências abaixo foram fechadas a pedido do usuário, com referência explícita ao Clash of
+Clans:
+
+- **Squads com 0 membros agora são deletados** - `LeaveSquadUseCase` chama
+  `ISquadRepository.RemoveAsync` quando o Owner sai sozinho, em vez de deixar a linha órfã.
+- **Transferência de posse automática** - `Squad` ganhou `CoLeaderUserId` (opcional, promovido
+  pelo Owner via `PUT /api/squads/co-leader/{userId}`, rebaixado via `DELETE .../co-leader`,
+  `SetSquadCoLeaderUseCase`). Quando o Owner sai com outros membros dentro: o Co-Leader herda a
+  liderança; sem Co-Leader, o membro com `SquadMembership.JoinedAt` mais antigo (lógica pura em
+  `LeaveSquadUseCase.ResolveSuccessor`, testada sem repositório, mesmo critério de
+  `GetCourseRankingUseCase.ComputeScore`). `dono_nao_pode_sair` não existe mais como bloqueio -
+  sair do próprio squad sempre funciona agora, com ou sem outros membros.
+- Se o membro removido/que saiu era o Co-Leader, o cargo esvazia (`ClearCoLeaderIfMatches`) em vez
+  de apontar pra alguém fora do squad.
+- Migration `AddSquadCoLeader`, puramente aditiva - **não aplicada contra o Postgres de dev**
+  (Docker Desktop não estava rodando na sessão que fez esta mudança); rodar
+  `dotnet ef database update --startup-project backend/src/Focadu.Api --project backend/src/Focadu.Infrastructure`
+  antes de usar o backend.
+- Backend: 238 testes (230 anteriores + 8 novos: `Squad.PromoteCoLeader`/`ClearCoLeader`/
+  `ClearCoLeaderIfMatches`/`TransferOwnership`, `LeaveSquadUseCase.ResolveSuccessor` com/sem
+  Co-Leader e Co-Leader que já saiu). `tsc -b`/`oxlint` limpos no frontend - **não verificado ao
+  vivo** (mesma limitação de Postgres acima, mais a instância de dev compartilhada mencionada na
+  Fase 24 original).
+
 ## Dúvidas ou pontos abertos para a próxima fase
 
 - **`SquadTab.tsx` nunca foi visto renderizado de verdade num navegador** (ver "Testes" acima) -
   recomendado um passe visual/Playwright assim que a outra sessão em paralelo liberar a
   instância de dev compartilhada, antes de considerar o frontend desta fase 100% fechado.
-- **Squads com 0 membros não são limpos** (ver "Decisões técnicas") - só acontece se o Owner
-  sair sozinho, o que é permitido; o squad fica órfão e inerte (nenhum `SquadMembership` aponta
-  pra ele, então ninguém o acha de novo), mas a linha continua na tabela `Squads` pra sempre.
-  Sem sinal de que isso vá virar problema de volume no curto prazo - fica como pendência
-  conhecida, não um bug.
-- **Transferência de posse não existe** - se o Owner quiser sair de um squad com outros membros,
-  a única saída hoje é remover todo mundo primeiro (perdendo os outros membros) e só então sair.
-  Fora do escopo confirmado desta fase ("papéis além de owner/member"), mas é a limitação mais
-  visível pra quem for usar Squad de verdade.
 - **Ranking do squad não pagina/limita** (diferente de `GetCourseRankingUseCase`, que corta em
   10) - squads são times pequenos por natureza (sem convite/aprovação, cresce só por quem tem o
   código), então não pareceu necessário; reavaliar se squads gigantes aparecerem na prática.

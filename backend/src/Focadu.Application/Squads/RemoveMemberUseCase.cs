@@ -38,6 +38,7 @@ public class RemoveMemberUseCase
         if (targetMembership is null || targetMembership.SquadId != squad.Id)
             throw new NotFoundException("membro_nao_encontrado", "Este usuario nao e membro do seu squad.");
 
+        squad.ClearCoLeaderIfMatches(targetUserId);
         await _squadRepository.RemoveMembershipAsync(targetMembership, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
