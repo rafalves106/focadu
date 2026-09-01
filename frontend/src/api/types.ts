@@ -325,6 +325,44 @@ export interface RankingResultDto {
   currentUserEntry: RankingEntryDto | null;
 }
 
+// Squad (Fase 24) - grupo com 1 dono (ownerUserId) + membros. coLeaderUserId (Fase 24b) e
+// opcional, promovido pelo Owner - herda a lideranca se o Owner sair (senao, o membro mais
+// antigo). joinCode e gerado na 1a vez que alguem pede o ranking do proprio squad (lazy, ver
+// GetSquadRankingUseCase).
+export interface SquadDto {
+  id: string;
+  name: string;
+  ownerUserId: string;
+  coLeaderUserId: string | null;
+  createdAt: string;
+}
+
+/**
+ * totalGems/averageGems sao sempre o saldo TOTAL de cada membro (Gems nao tem recorte semana/mes
+ * no dominio, diferente de Score) - so totalScore/averageScore respeitam `scope`. currentUserEntry
+ * nunca e null aqui (diferente de RankingResultDto): se a chamada teve sucesso, o usuario logado
+ * necessariamente e membro deste squad. `members` e so a pagina pedida (squad nao tem cap de
+ * tamanho, Fase 24c) - `page`/`pageSize`/`totalMembers` describem o resto. coLeaderDisplayName vem
+ * resolvido contra o squad inteiro (pode nao estar em `members` se ele nao esta na pagina atual).
+ */
+export interface SquadRankingResultDto {
+  squadId: string;
+  squadName: string;
+  joinCode: string;
+  ownerUserId: string;
+  coLeaderUserId: string | null;
+  coLeaderDisplayName: string | null;
+  members: RankingEntryDto[];
+  currentUserEntry: RankingEntryDto | null;
+  totalScore: number;
+  averageScore: number;
+  totalGems: number;
+  averageGems: number;
+  page: number;
+  pageSize: number;
+  totalMembers: number;
+}
+
 // Marketplace de Cosmeticos (Fase 17) - catalogo fixo via seed, sem autoria via Api ainda.
 export const CosmeticSlot = { AvatarFrame: 0, NameColor: 1, ProfileBanner: 2 } as const;
 export type CosmeticSlot = (typeof CosmeticSlot)[keyof typeof CosmeticSlot];

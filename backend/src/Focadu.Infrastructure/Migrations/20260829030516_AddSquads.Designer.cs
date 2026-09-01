@@ -3,6 +3,7 @@ using System;
 using Focadu.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Focadu.Infrastructure.Migrations
 {
     [DbContext(typeof(FocaduDbContext))]
-    partial class FocaduDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260829030516_AddSquads")]
+    partial class AddSquads
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -579,9 +582,6 @@ namespace Focadu.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("CoLeaderUserId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -598,8 +598,6 @@ namespace Focadu.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CoLeaderUserId");
 
                     b.HasIndex("JoinCode")
                         .IsUnique();
@@ -1065,11 +1063,6 @@ namespace Focadu.Infrastructure.Migrations
 
             modelBuilder.Entity("Focadu.Domain.Squads.Squad", b =>
                 {
-                    b.HasOne("Focadu.Domain.Users.User", null)
-                        .WithMany()
-                        .HasForeignKey("CoLeaderUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("Focadu.Domain.Users.User", null)
                         .WithMany()
                         .HasForeignKey("OwnerUserId")

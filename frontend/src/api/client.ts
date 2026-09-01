@@ -21,6 +21,8 @@ import {
   type RankingScope,
   type ReferralInfoDto,
   type RegisterRequest,
+  type SquadDto,
+  type SquadRankingResultDto,
   type SubmitActivityResponseResult,
   type UserBadgesDto,
   type UserDto,
@@ -190,6 +192,17 @@ export const api = {
   // Troféus/Badges + Indicação (Fase 17) - calculados sob demanda no backend.
   getUserBadges: () => request<UserBadgesDto>('/api/users/me/badges'),
   getReferralInfo: () => request<ReferralInfoDto>('/api/users/me/referral'),
+  // Squad (Fase 24) - so owner/member, sem aprovacao (quem tem o joinCode entra direto).
+  createSquad: (name: string) => request<SquadDto>('/api/squads', { method: 'POST', body: JSON.stringify({ name }) }),
+  joinSquad: (joinCode: string) => request<SquadDto>('/api/squads/join', { method: 'POST', body: JSON.stringify({ joinCode }) }),
+  // Mesma rota serve "sair" (userId = o proprio usuario) e "remover" (dono removendo outro membro) - ver Program.cs.
+  leaveSquad: (userId: string) => request<void>(`/api/squads/members/${userId}`, { method: 'DELETE' }),
+  removeSquadMember: (userId: string) => request<void>(`/api/squads/members/${userId}`, { method: 'DELETE' }),
+  // Co-Leader (Fase 24b) - o Owner promove/rebaixa; herda a lideranca se o Owner sair.
+  promoteSquadCoLeader: (userId: string) => request<void>(`/api/squads/co-leader/${userId}`, { method: 'PUT' }),
+  clearSquadCoLeader: () => request<void>('/api/squads/co-leader', { method: 'DELETE' }),
+  getSquadRanking: (scope: RankingScope, page = 1) =>
+    request<SquadRankingResultDto>(`/api/squads/me/ranking?scope=${scope}&page=${page}`),
   // Marketplace de Cosméticos (Fase 17) - toda ação (compra/equipar/desequipar) devolve o
   // catálogo inteiro recalculado, mesmo shape do GET.
   getMarketplaceCatalog: () => request<MarketplaceCatalogDto>('/api/marketplace/catalog'),

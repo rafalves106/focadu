@@ -1,0 +1,300 @@
+import { useState, type FormEvent } from 'react';
+import { api, ApiError } from '../../api/client';
+import { useApiResource } from '../../api/useApiResource';
+import type { RankingEntryDto, RankingScope, SquadRankingResultDto } from '../../api/types';
+import { useAuth } from '../../contexts/useAuth';
+import { Centered } from '../Layout';
+import { ApiErrorScreen } from '../errors/ApiErrorScreen';
+import { RankingScopeTabs } from '../ranking/RankingScopeTabs';
+import { RankingTable } from '../ranking/RankingTable';
+import { CurrentUserRankingCard } from '../ranking/CurrentUserRankingCard';
+
+const INPUT_CLASS = 'font-display rounded-xl border-[1.5px] border-surface-alt bg-surface p-4 text-[15px] text-primary outline-none focus:border-accent';
+const BUTTON_CLASS = 'font-display rounded-xl bg-accent p-4 text-sm font-bold tracking-[1px] text-base uppercase disabled:opacity-50';
+
+/**
+ * Aba "Squad" do Perfil (Fase 24) - criar/entrar por código + ranking dos membros do próprio
+ * squad. Reaproveita RankingScopeTabs/RankingTable/CurrentUserRankingCard (Fase 16) direto, mesmo
+ * formato de classificação - só a fonte dos membros muda (squad em vez do Course inteiro).
+ * "squad_nao_encontrado" (404 de GET /api/squads/me/ranking) é tratado como estado vazio "você
+ * ainda não tem squad", não como erro - mesmo padrão de StartDashboard com
+ * `nenhuma_matricula_ativa`/EmptyStateStartPage.
+ */
+export function SquadTab() {
+  const { user } = useAuth();
+  const [scope, setScope] = useState<RankingScope>('course');
+  const [page, setPage] = useState(1);
+  const { data, error, loading, retry } = useApiResource(() => api.getSquadRanking(scope, page), [scope, page]);
+
+  function changeScope(next: RankingScope) {
+    setScope(next);
+    setPage(1); // ordem muda por recorte - pagina 2 do scope anterior nao faz sentido no novo
+  }
+
+  if (loading) return <Centered text="Carregando squad..." />;
+  if (error?.code === 'squad_nao_encontrado') return <NoSquadView onDone={retry} />;
+  if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
+  if (!data || !user) return null;
+
+  const isOwner = data.ownerUserId === user.id;
+  const totalPages = Math.max(1, Math.ceil(data.totalMembers / data.pageSize));
+
+  return (
+    <div className="flex flex-col gap-6">
+      <SquadHeader data={data} userId={user.id} onLeft={retry} />
+      <RankingScopeTabs scope={scope} onChange={changeScope} />
+
+      <div className="flex flex-wrap gap-x-6 gap-y-1 rounded-2xl border border-stroke bg-surface p-4 text-sm text-secondary">
+        <span>
+          Score total: <strong className="font-mono text-primary">{data.totalScore.toFixed(1)}</strong>
+        </span>
+        <span>
+          Score médio: <strong className="font-mono text-primary">{data.averageScore.toFixed(1)}</strong>
+        </span>
+        <span>
+          Gems total: <strong className="font-mono text-primary">{data.totalGems}</strong>
+        </span>
+        <span>
+          Gems médio: <strong className="font-mono text-primary">{data.averageGems.toFixed(1)}</strong>
+        </span>
+      </div>
+
+      <CurrentUserRankingCard entry={data.currentUserEntry} />
+      <RankingTable entries={data.members} highlightUserId={user.id} />
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 text-sm text-secondary">
+          <button type="button" onClick={() => setPage((p) => p - 1)} disabled={page <= 1} className="font-semibold text-accent underline disabled:opacity-40">
+            ANTERIOR
+          </button>
+          <span>
+            Página {data.page} de {totalPages} ({data.totalMembers} membros)
+          </span>
+          <button type="button" onClick={() => setPage((p) => p + 1)} disabled={page >= totalPages} className="font-semibold text-accent underline disabled:opacity-40">
+            PRÓXIMA
+          </button>
+        </div>
+      )}
+
+      {isOwner && (
+        <MemberManagement
+          members={data.members}
+          ownerUserId={data.ownerUserId}
+          coLeaderUserId={data.coLeaderUserId}
+          onChanged={retry}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Nome + código de entrada (copiar) + co-líder (se houver) + sair do squad. */
+function SquadHeader({ data, userId, onLeft }: { data: SquadRankingResultDto; userId: string; onLeft: () => void }) {
+  const coLeaderName = data.coLeaderDisplayName;
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(data.joinCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard indisponivel - so nao copia, mesmo tratamento de ReferralCard.
+    }
+  }
+
+  async function handleLeave() {
+    setError(null);
+    setLeaving(true);
+    try {
+      await api.leaveSquad(userId);
+      onLeft();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Não foi possível sair do squad.');
+    } finally {
+      setLeaving(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-stroke bg-surface p-6">
+      <div className="flex items-center justify-between gap-4">
+        <p className="truncate text-lg font-bold text-primary">{data.squadName}</p>
+        <button
+          type="button"
+          onClick={handleLeave}
+          disabled={leaving}
+          className="shrink-0 text-xs font-semibold text-alert underline disabled:opacity-50"
+        >
+          {leaving ? 'SAINDO...' : 'SAIR DO SQUAD'}
+        </button>
+      </div>
+      <div className="flex items-center gap-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Código de entrada</p>
+        <p className="font-mono text-lg font-bold tracking-[0.3em] text-accent">{data.joinCode}</p>
+        <button type="button" onClick={handleCopy} className="text-xs font-semibold text-accent underline">
+          {copied ? 'COPIADO ✓' : 'COPIAR'}
+        </button>
+      </div>
+      {coLeaderName && <p className="text-xs text-secondary">👑 Co-líder: <span className="font-semibold text-primary">{coLeaderName}</span></p>}
+      {error && <p className="text-sm text-alert">{error}</p>}
+    </div>
+  );
+}
+
+/**
+ * So o Owner ve isso - remover qualquer membro (exceto a si mesmo, ele sai pelo botão acima) e
+ * promover/rebaixar o Co-líder (Fase 24b) - quem herda a liderança se o Owner sair, ver
+ * LeaveSquadUseCase. `members` e a mesma página exibida no ranking (Fase 24c) - squad grande exige
+ * trocar de página pra alcançar quem não está na 1ª, mesmo trade-off documentado em
+ * GetSquadRankingUseCase.
+ */
+function MemberManagement({
+  members,
+  ownerUserId,
+  coLeaderUserId,
+  onChanged,
+}: {
+  members: RankingEntryDto[];
+  ownerUserId: string;
+  coLeaderUserId: string | null;
+  onChanged: () => void;
+}) {
+  const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const others = members.filter((m) => m.userId !== ownerUserId);
+
+  if (others.length === 0) return null;
+
+  async function run(userId: string, action: () => Promise<void>, failMessage: string) {
+    setError(null);
+    setBusyUserId(userId);
+    try {
+      await action();
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : failMessage);
+    } finally {
+      setBusyUserId(null);
+    }
+  }
+
+  const handleRemove = (userId: string) => run(userId, () => api.removeSquadMember(userId), 'Não foi possível remover este membro.');
+  const handlePromote = (userId: string) => run(userId, () => api.promoteSquadCoLeader(userId), 'Não foi possível promover este membro.');
+  const handleDemote = (userId: string) => run(userId, () => api.clearSquadCoLeader(), 'Não foi possível rebaixar o co-líder.');
+
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border border-stroke bg-surface p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted">Gerenciar membros</p>
+      {error && <p className="text-sm text-alert">{error}</p>}
+      {others.map((m) => {
+        const isCoLeader = m.userId === coLeaderUserId;
+        const busy = busyUserId === m.userId;
+        return (
+          <div key={m.userId} className="flex items-center justify-between gap-4">
+            <span className="truncate text-sm text-primary">
+              {m.displayName}
+              {isCoLeader && ' 👑'}
+            </span>
+            <div className="flex shrink-0 gap-3">
+              <button
+                type="button"
+                onClick={() => (isCoLeader ? handleDemote(m.userId) : handlePromote(m.userId))}
+                disabled={busy}
+                className="text-xs font-semibold text-accent underline disabled:opacity-50"
+              >
+                {busy ? '...' : isCoLeader ? 'REBAIXAR' : 'TORNAR CO-LÍDER'}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRemove(m.userId)}
+                disabled={busy}
+                className="text-xs font-semibold text-alert underline disabled:opacity-50"
+              >
+                {busy ? '...' : 'REMOVER'}
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Estado vazio "você ainda não tem squad" - criar um novo ou entrar num existente por código. */
+function NoSquadView({ onDone }: { onDone: () => void }) {
+  return (
+    <div className="flex flex-col gap-6 md:flex-row">
+      <CreateSquadForm onDone={onDone} />
+      <JoinSquadForm onDone={onDone} />
+    </div>
+  );
+}
+
+function CreateSquadForm({ onDone }: { onDone: () => void }) {
+  const [name, setName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      await api.createSquad(name.trim());
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Não foi possível criar o squad.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4 rounded-2xl border border-stroke bg-surface p-6">
+      <p className="font-bold text-primary">Criar um squad</p>
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do squad" className={INPUT_CLASS} />
+      {error && <p className="text-sm text-alert">{error}</p>}
+      <button type="submit" disabled={busy || !name.trim()} className={BUTTON_CLASS}>
+        {busy ? 'CRIANDO...' : 'CRIAR SQUAD'}
+      </button>
+    </form>
+  );
+}
+
+function JoinSquadForm({ onDone }: { onDone: () => void }) {
+  const [joinCode, setJoinCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      await api.joinSquad(joinCode.trim());
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Não foi possível entrar neste squad.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4 rounded-2xl border border-stroke bg-surface p-6">
+      <p className="font-bold text-primary">Entrar com código</p>
+      <input
+        value={joinCode}
+        onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+        placeholder="Código de 8 caracteres"
+        className={`${INPUT_CLASS} font-mono tracking-[0.2em] uppercase`}
+      />
+      {error && <p className="text-sm text-alert">{error}</p>}
+      <button type="submit" disabled={busy || !joinCode.trim()} className={BUTTON_CLASS}>
+        {busy ? 'ENTRANDO...' : 'ENTRAR NO SQUAD'}
+      </button>
+    </form>
+  );
+}

@@ -1,9 +1,10 @@
-export type ProfileTab = 'info' | 'customizacao' | 'conquistas';
+export type ProfileTab = 'info' | 'customizacao' | 'conquistas' | 'squad';
 
 const TABS: { tab: ProfileTab; label: string }[] = [
   { tab: 'info', label: 'Informações' },
   { tab: 'customizacao', label: 'Customização' },
   { tab: 'conquistas', label: 'Conquistas' },
+  { tab: 'squad', label: 'Squad' },
 ];
 
 /** Abas do `/perfil` (Fase 18) - mesmo padrão de RankingScopeTabs/CosmeticSlotFilter, reaproveitado em vez de inventar outro componente de tab. */
