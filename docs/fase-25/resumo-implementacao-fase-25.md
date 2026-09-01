@@ -38,6 +38,41 @@
   + uma cunha indicando a direção - sem asset de personagem de verdade ainda (ver "Dúvidas"
   abaixo). Trocar por spritesheet real é substituir só o conteúdo interno deste componente, a
   lógica de posição/movimento não muda.
+- **Mapa full-bleed** (ajuste pedido depois do 1º teste ao vivo): `/start` sem params saiu do
+  shell `<App/>` no roteador - mesmo tratamento que `/hoje` já tinha desde a Fase 20. `App.tsx`
+  ganhou `children` opcional (continua servindo de shell via `<Outlet/>` quando usado como layout
+  de rota, mas agora também aceita ser chamado manualmente); `StartPage` decide caso a caso, só a
+  `WorldMapPage` fica sem o shell. CSS de "contain" (aspect-ratio + max-width/max-height cruzados)
+  garante que o mapa preenche o máximo da tela em qualquer proporção de janela sem esticar -
+  testado em 16:9 exato (preenche 100%), janela mais larga (pillarbox) e mais alta (letterbox).
+- **Letreiro sempre visível em cada casa** (`HouseLabel.tsx`, pedido do Falves): só o título
+  ("Hoje"/"Trilha do Curso"/etc.), sempre ligado (não só no modo "Ajustar zonas") - indica pro
+  jogador o que tem ali antes de precisar chegar perto. Posição derivada direto da trigger zone
+  (`x` igual, `y` = topo do círculo + gap fixo) - fica logo acima da porta de verdade, não perto
+  do telhado. Fonte 25% maior que a 1ª versão (pedido explícito: 11px -> 13.75px).
+- **Menu global único** (`GlobalNav.tsx`, pedido do Falves - "refatorar o header de todas as
+  seções... um menu único que é possível navegar por tudo"): substitui o antigo `<nav>` de 2
+  links (Hoje/Início) do `App.tsx`. Aparece em toda tela "de dentro de uma casa" (Hoje, Trilha do
+  Curso, Ranking, Squad, Loja, Perfil, Projeto Semanal) - a única tela sem ele é o próprio mapa,
+  que é o destino do botão central. Itens: Hoje, Trilha do Curso, Ranking (agora item próprio, não
+  só ancorado dentro da Trilha), Squad, Loja, Configurações (abre o `SettingsMenu`, ver abaixo) +
+  `HeaderUserBadge` (nome+moldura, já existia, continua sendo o "link pro Perfil"). Botão central
+  ("onde o player volta pro mapa", pedido do Falves) é um placeholder (emoji 🗺️) até ele trazer o
+  PNG pixel art próprio.
+- **`/hoje` voltou a ter o menu global** (decisão explícita do Falves - "sim, entra em `/hoje`
+  também"): reverte parte da Fase 20 (que tinha tirado `/hoje` do shell `<App/>` pra não colidir
+  com o `PenaltyGauge`/botão de configurações fixos no topo). O botão de engrenagem próprio saiu
+  de `TodayPage` (o item "Configurações" do `GlobalNav` cobre o mesmo caso); `PenaltyGauge`
+  continua `fixed`, só que `top-[72px]` em vez de `top-6` (limpa a altura do header, 56px + 16px
+  de respiro) - verificado ao vivo, sem colisão.
+- **Menu de Configurações virou 1 instância só pro app inteiro** (`SettingsProvider`, novo
+  Context): antes `SettingsMenu` só existia dentro de `TodayPage` (seu próprio estado local). Com
+  o `GlobalNav` podendo abri-lo de qualquer tela E `/hoje` ainda precisando que ESC/voltar do
+  navegador o abra (`useSessionExitGuard`), as duas fontes de abertura precisavam compartilhar o
+  mesmo estado - senão existiriam 2 modais independentes, sem um saber do outro. Mesmo padrão de
+  `AuthProvider`: o Provider guarda o estado e renderiza o modal 1x como irmão de `children`.
+  `onExit` continua `window.location.href` (não `navigate()`) - de propósito, preservado
+  idêntico ao comportamento anterior (ver comentário em `SettingsProvider.tsx` pro racional).
 
 ## Decisões técnicas tomadas que não estavam no prompt original
 
@@ -64,6 +99,14 @@
 - **HUD (GemBadge/StreakIndicator) reaproveitado idêntico ao antigo `StartDashboard`** só como
   placeholder funcional - o Falves já avisou que pretende redesenhar esses elementos em UI
   própria de pixel art depois, então não valia a pena investir em polimento visual deles agora.
+- **Sem destaque de "item ativo" no `GlobalNav`**: vários itens (Trilha do Curso/Ranking) apontam
+  pro mesmo pathname `/start` com querys diferentes - `NavLink` só compara pathname por padrão,
+  destacaria os dois ao mesmo tempo (incorreto). Usado `Link` simples em vez de `NavLink` - não
+  vale a complexidade de comparar `location.search` a mão numa UI que já vai ser redesenhada.
+- **`ErrorBoundary` do `App.tsx` ganhou `search` na key** (era só `pathname`): necessário pra
+  `/hoje` (agora dentro do shell) continuar resetando o boundary ao trocar de Daily via `?daily=`
+  sem trocar de pathname - mesmo motivo que existia no `TodayRoute` isolado, que foi removido
+  (o `App` cobre o caso agora, `TodayPage` virou elemento de rota direto).
 
 ## Estrutura de arquivos criada
 
@@ -73,49 +116,72 @@ frontend/src/
     mapa-vilarejo.png          <- arte trazida pelo Falves (Figma/asset pack), 2304x1296
   components/world/
     PlayerSprite.tsx            <- placeholder do personagem (bolinha + sombra + indicador de direção)
+    HouseLabel.tsx               <- letreiro sempre visivel acima de cada porta (so o titulo)
+  components/GlobalNav.tsx       <- menu global unico, substitui o <nav> antigo do App.tsx
+  contexts/
+    settingsContextObject.ts      <- createContext + tipo (SettingsContextValue)
+    SettingsProvider.tsx           <- Provider - estado do SettingsMenu + renderiza o modal 1x pro app inteiro
+    useSettings.ts                  <- hook (mesmo padrao de useAuth.ts)
   routes/world/
     WorldMapPage.tsx             <- tela /start sem params - busca dados (today/courses/gamification),
-                                    renderiza mapa + HUD + personagem, decide navegação ao entrar em zona
+                                    renderiza mapa full-bleed + HUD + personagem + letreiros,
+                                    decide navegação ao entrar em zona
     worldConfig.ts                <- WORLD_WIDTH/HEIGHT, START_POSITION, WORLD_TRIGGER_ZONES (as 5 casas)
     useWorldMovement.ts            <- hook do loop de movimento (teclado + requestAnimationFrame)
-  routes/StartPage.tsx             <- (editado) sem params -> WorldMapPage em vez de StartDashboard
+  routes/StartPage.tsx             <- (editado) StartRoute (novo, repoe ErrorBoundary) + StartPage
+                                    chama <App> manualmente nas 5 sub-telas, WorldMapPage sem shell
+  routes/TodayPage.tsx              <- (editado) TodayRoute removido (App cobre o ErrorBoundary agora),
+                                    sem estado/botao proprio de Configuracoes (usa useSettings()),
+                                    PenaltyGauge reposicionado (top-6 -> top-[72px])
+  App.tsx                            <- (editado) <nav> antigo -> <GlobalNav/>, children opcional,
+                                    ErrorBoundary key ganhou +search
+  main.tsx                            <- (editado) <SettingsProvider> envolvendo as rotas, /hoje
+                                    voltou pra dentro de <Route element={<App/>}>
   routes/StartDashboard.tsx         <- (sem alteração de conteúdo) mantido no repo, sem uso
 ```
 
 ## Testes
 
-- `tsc -b --noEmit`: limpo.
-- `oxlint`: limpo nos arquivos novos (1 warning pré-existente em `TodayPage.tsx`, não relacionado
-  a esta fase).
-- Calibração visual das 5 trigger zones: composição via ImageMagick sobre a imagem real, conferida
-  antes de fixar as coordenadas em `worldConfig.ts`.
-- Verificação ao vivo em browser real (Playwright + Chromium, Vite dev server): rota de preview
-  temporária (`/__dev-preview`, sem autenticação/backend) renderizou o mapa, moveu o personagem
-  via teclado (posição/direção corretas, condizentes com a física esperada) e confirmou que entrar
-  na zona "Hoje" dispara o callback de navegação exatamente 1 vez. Rota/arquivo de preview
-  removidos antes do commit - nunca fizeram parte do app real.
-- **Não testado**: fluxo completo autenticado (login real + `/start` + entrar numa casa +
-  aterrissar na tela de destino) - a verificação acima cobriu a mecânica do mapa isoladamente,
-  sem depender do backend estar de pé. Falves vai testar isso ao vivo com o app rodando de
-  verdade.
+- `tsc -b --noEmit`: limpo em cada rodada de mudança.
+- `oxlint`: limpo (1 warning pré-existente em `TodayPage.tsx`, não relacionado a esta fase).
+- Calibração visual das 5 trigger zones + posição dos letreiros: composição via ImageMagick sobre
+  a imagem real antes de fixar coordenadas, depois conferida de novo ao vivo no browser.
+- Mapa full-bleed: testado via Playwright em 3 proporções de viewport (16:9 exato - preenche
+  100% sem barra nenhuma; janela mais larga - pillarbox; janela mais alta - letterbox) - preenche
+  o máximo em qualquer caso sem esticar a imagem.
+- **`GlobalNav`/`SettingsProvider`/reposicionamento do `PenaltyGauge`: verificado de ponta a ponta
+  com login real** (usuário de QA descartável, criado via API só pra este teste - `qa-fase25@
+  example.com`, matriculado em Web Security, nunca a conta do Falves): login -> `/start` (mapa,
+  sem `GlobalNav`) -> `/loja` (`GlobalNav` aparece, hrefs de Trilha/Ranking com o `courseId` real
+  resolvido) -> clique em "Configurações" abre o modal -> clique no botão central 🗺️ volta pro
+  mapa -> `/hoje` (`GlobalNav` aparece, `PenaltyGauge` em `y=72`, nav termina em `y=56` - **sem
+  colisão**, confirmado por bounding box) -> ESC durante a sessão ainda abre o mesmo modal de
+  Configurações (context compartilhado funcionando). Screenshots de cada passo revisados.
 
 ## Dúvidas ou pontos abertos para a próxima fase
 
 1. **Personagem sem arte de verdade ainda** - Falves vai procurar um asset pack free de criação
    de personagem compatível com o estilo do mapa (spritesheet com idle/andando nas 4 direções).
    Quando chegar, é só substituir o conteúdo de `PlayerSprite.tsx`.
-2. **HUD (Gems/Streak) vai ser redesenhado em pixel art** - hoje são os mesmos componentes
-   "modernos" (pill arredondada) que o `StartDashboard` usava, só reposicionados. Falves confirmou
-   que pretende refazer essa UI depois, então isso é esperado, não uma pendência esquecida.
-3. **Sem colisão contra parede** - decisão explícita desta fase pra entregar mais rápido. Se
+2. **Botão central do `GlobalNav` sem arte de verdade ainda** - emoji 🗺️ como placeholder até o
+   Falves trazer o PNG pixel art próprio ("onde o player volta pro mapa"). Troca é só substituir
+   o conteúdo de `MapButton` (dentro de `GlobalNav.tsx`) por um `<img>`.
+3. **HUD do mapa (Gems/Streak) e o `GlobalNav` em si vão ser redesenhados em pixel art** - hoje
+   são os componentes "modernos" (pill arredondada) já existentes desde a Fase 14/18, só
+   reposicionados/reorganizados. Falves confirmou que pretende refazer essa UI depois.
+4. **Sem colisão contra parede no mapa** - decisão explícita da fase pra entregar mais rápido. Se
    incomodar visualmente na prática (personagem "afundando" numa construção), é candidato a uma
    próxima iteração - exigiria mapear os retângulos sólidos de cada construção.
-4. **Coordenadas das trigger zones são uma calibração visual, não uma medição exaustiva** - todas
-   bateram na primeira estimativa (ver "Testes" acima), mas se alguma porta parecer "errada" no
-   uso real, é só ajustar o `x`/`y`/`radius` correspondente em `worldConfig.ts`.
-5. **`StartDashboard.tsx` está órfão no repo** - sem import nenhum apontando pra ele, mantido a
+5. **Coordenadas das trigger zones/letreiros são uma calibração visual, não uma medição
+   exaustiva** - bateram nas estimativas (ver "Testes"), mas se alguma porta parecer "errada" no
+   uso real, é só ajustar `x`/`y`/`radius` em `worldConfig.ts`.
+6. **`StartDashboard.tsx` está órfão no repo** - sem import nenhum apontando pra ele, mantido a
    pedido do Falves. Uma fase futura vai precisar decidir se algum trecho dele (ex: lógica do
    `StreakLostModal`, `WeeklyProjectCard` no hub) volta a ser usado em algum lugar, ou se o arquivo
    é removido de vez.
-6. **Sem mudança nenhuma de backend nesta fase** - é 100% frontend/navegação; nenhum DTO, endpoint
+7. **Usuário de QA descartável ficou no banco local** (`qa-fase25@example.com`, matriculado em Web
+   Security) - criado só pra verificar o `GlobalNav`/`/hoje` com login real, sem endpoint de
+   remoção de usuário no domínio pra limpar via API. Inofensivo (banco de dev local), mas fica
+   registrado - remover via SQL direto se incomodar.
+8. **Sem mudança nenhuma de backend nesta fase** - é 100% frontend/navegação; nenhum DTO, endpoint
    ou entidade de domínio foi tocado.
