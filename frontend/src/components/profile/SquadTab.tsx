@@ -23,7 +23,13 @@ const BUTTON_CLASS = 'font-display rounded-xl bg-accent p-4 text-sm font-bold tr
 export function SquadTab() {
   const { user } = useAuth();
   const [scope, setScope] = useState<RankingScope>('course');
-  const { data, error, loading, retry } = useApiResource(() => api.getSquadRanking(scope), [scope]);
+  const [page, setPage] = useState(1);
+  const { data, error, loading, retry } = useApiResource(() => api.getSquadRanking(scope, page), [scope, page]);
+
+  function changeScope(next: RankingScope) {
+    setScope(next);
+    setPage(1); // ordem muda por recorte - pagina 2 do scope anterior nao faz sentido no novo
+  }
 
   if (loading) return <Centered text="Carregando squad..." />;
   if (error?.code === 'squad_nao_encontrado') return <NoSquadView onDone={retry} />;
@@ -31,11 +37,12 @@ export function SquadTab() {
   if (!data || !user) return null;
 
   const isOwner = data.ownerUserId === user.id;
+  const totalPages = Math.max(1, Math.ceil(data.totalMembers / data.pageSize));
 
   return (
     <div className="flex flex-col gap-6">
       <SquadHeader data={data} userId={user.id} onLeft={retry} />
-      <RankingScopeTabs scope={scope} onChange={setScope} />
+      <RankingScopeTabs scope={scope} onChange={changeScope} />
 
       <div className="flex flex-wrap gap-x-6 gap-y-1 rounded-2xl border border-stroke bg-surface p-4 text-sm text-secondary">
         <span>
@@ -54,6 +61,19 @@ export function SquadTab() {
 
       <CurrentUserRankingCard entry={data.currentUserEntry} />
       <RankingTable entries={data.members} highlightUserId={user.id} />
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 text-sm text-secondary">
+          <button type="button" onClick={() => setPage((p) => p - 1)} disabled={page <= 1} className="font-semibold text-accent underline disabled:opacity-40">
+            ANTERIOR
+          </button>
+          <span>
+            Página {data.page} de {totalPages} ({data.totalMembers} membros)
+          </span>
+          <button type="button" onClick={() => setPage((p) => p + 1)} disabled={page >= totalPages} className="font-semibold text-accent underline disabled:opacity-40">
+            PRÓXIMA
+          </button>
+        </div>
+      )}
 
       {isOwner && (
         <MemberManagement
@@ -69,7 +89,7 @@ export function SquadTab() {
 
 /** Nome + código de entrada (copiar) + co-líder (se houver) + sair do squad. */
 function SquadHeader({ data, userId, onLeft }: { data: SquadRankingResultDto; userId: string; onLeft: () => void }) {
-  const coLeaderName = data.members.find((m) => m.userId === data.coLeaderUserId)?.displayName;
+  const coLeaderName = data.coLeaderDisplayName;
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
@@ -126,7 +146,9 @@ function SquadHeader({ data, userId, onLeft }: { data: SquadRankingResultDto; us
 /**
  * So o Owner ve isso - remover qualquer membro (exceto a si mesmo, ele sai pelo botão acima) e
  * promover/rebaixar o Co-líder (Fase 24b) - quem herda a liderança se o Owner sair, ver
- * LeaveSquadUseCase.
+ * LeaveSquadUseCase. `members` e a mesma página exibida no ranking (Fase 24c) - squad grande exige
+ * trocar de página pra alcançar quem não está na 1ª, mesmo trade-off documentado em
+ * GetSquadRankingUseCase.
  */
 function MemberManagement({
   members,

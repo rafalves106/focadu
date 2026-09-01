@@ -190,14 +190,33 @@ Clans:
   vivo** (mesma limitação de Postgres acima, mais a instância de dev compartilhada mencionada na
   Fase 24 original).
 
+## Fase 24c - paginação do ranking do squad (2026-08-31)
+
+**Resolvido:** `GetSquadRankingUseCase` pagina `Members` (`page`, `PageSize = 20` fixo, mesmo
+padrão de const de `GetCourseRankingUseCase.TopEntriesCount`) - squad não tem cap de tamanho
+(`JoinSquadUseCase` aceita qualquer um com o código), então a lista podia crescer sem limite.
+Agregados (`TotalScore`/`AverageScore`/`TotalGems`/`AverageGems`) e `CurrentUserEntry` continuam
+calculados sobre o squad INTEIRO, nunca só a página - só `Members` é cortado. Novo
+`CoLeaderDisplayName` no DTO (resolvido contra a lista inteira, antes de paginar) porque o
+Co-Líder pode não estar na página atual - sem isso o header do squad perderia o nome do Co-Líder
+ao navegar pra página 2. `SquadTab.tsx` ganhou botões Anterior/Próxima; `MemberManagement` (ações
+do Owner) opera sobre a mesma página exibida no ranking, sem endpoint separado - squad gigante
+exige trocar de página pra gerenciar quem não está na 1ª (trade-off documentado como comentário
+`ponytail:` em `GetSquadRankingUseCase`, reavaliar se squads realmente grandes aparecerem).
+
+Verificado ao vivo contra Postgres real (curl, instância temporária): squad com 22 membros -
+`page=1` devolve 20 + `totalMembers=22`, `page=2` devolve os 2 restantes, `page=0` clampa pra 1,
+`page=99` devolve `members` vazio mas `currentUserEntry`/agregados intactos, `coLeaderDisplayName`
+resolve corretamente para um Co-Líder promovido que ficou na página 2 enquanto se via a página 1.
+Backend: 238 testes (sem teste dedicado novo - paginação é `Skip`/`Take` + `Math.Max` inline,
+mesmo critério de "sem teste de integração pra `GetXxxRankingUseCase`" já documentado). Frontend:
+`tsc -b`/`oxlint`/`vite build` limpos.
+
 ## Dúvidas ou pontos abertos para a próxima fase
 
 - **`SquadTab.tsx` nunca foi visto renderizado de verdade num navegador** (ver "Testes" acima) -
   recomendado um passe visual/Playwright assim que a outra sessão em paralelo liberar a
   instância de dev compartilhada, antes de considerar o frontend desta fase 100% fechado.
-- **Ranking do squad não pagina/limita** (diferente de `GetCourseRankingUseCase`, que corta em
-  10) - squads são times pequenos por natureza (sem convite/aprovação, cresce só por quem tem o
-  código), então não pareceu necessário; reavaliar se squads gigantes aparecerem na prática.
 - **Detectado trabalho concorrente não relacionado no mesmo repositório** durante esta fase
   (retry/timeout em `GitHubService`/adapters da Groq, `HttpRetry.cs` novo, `Focadu.Tests.csproj`
   alterado) - nenhum arquivo dessa frente foi tocado ou commitado por esta fase; só os arquivos

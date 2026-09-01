@@ -725,6 +725,9 @@ dentro de `GetSquadRankingUseCase` - nao ha endpoint dedicado "GET /squads/me": 
 ranking ja devolve nome/codigo/classificacao/agregados numa unica chamada, dobrando de "tela
 inicial do squad" pro frontend.
 
+`Members` do ranking e paginado (`?page=`, 20 por pagina fixo - Fase 24c, squad nao tem cap de
+tamanho) - agregados/`CurrentUserEntry` continuam sobre o squad inteiro, so a lista e cortada.
+
 **Ranking do squad reaproveita `GetCourseRankingUseCase.ComputeScore`/`RankEntries`/
 `RankingEntryDto` (Fase 16) direto** - mesmo principio de Score sempre computado sob demanda,
 escopado por `RankingScope` (weekly/monthly/course). **Gems, ao contrario de Score, NUNCA
@@ -922,7 +925,7 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | 🔒 POST | `/api/squads` | `CreateSquadUseCase` (Fase 24) | 201 (`SquadDto`), 409 `ja_esta_em_squad` |
 | 🔒 POST | `/api/squads/join` | `JoinSquadUseCase` (Fase 24) | 200 (`SquadDto`), 404 `codigo_invalido`, 409 `ja_esta_em_squad` |
 | 🔒 DELETE | `/api/squads/members/{userId}` | `LeaveSquadUseCase` (se `{userId}` = usuario logado) ou `RemoveMemberUseCase` (Fase 24) | 204, 404 `squad_nao_encontrado`/`membro_nao_encontrado`, 409 `dono_nao_pode_sair`/`dono_nao_pode_se_remover` |
-| 🔒 GET | `/api/squads/me/ranking?scope=` | `GetSquadRankingUseCase` (Fase 24) | 200 (`SquadRankingResultDto`) - gera `JoinCode` na 1a consulta (lazy), 404 `squad_nao_encontrado` |
+| 🔒 GET | `/api/squads/me/ranking?scope=&page=` | `GetSquadRankingUseCase` (Fase 24) | 200 (`SquadRankingResultDto`) - gera `JoinCode` na 1a consulta (lazy), `Members` paginado (Fase 24c), 404 `squad_nao_encontrado` |
 
 As rotas da Api sao caminhos REST simples (`/api/weeklies/{weeklyId}`), **nao** um espelho das
 rotas do frontend (`/start?course=&weekly=`) - o frontend usa query string no seu proprio router
@@ -2208,10 +2211,43 @@ CSS).
   meio do fluxo de sucesso/erro do modal.
 - **"Auditoria de Repositorios" (citada no prompt da Fase 11 como proxima fase) - decisao de
   escopo tomada em 2026-08-31: estatica (SAST)**, ler o codigo do repo via GitHub API sem
-  executar nada (segredo commitado, dependencia desatualizada/vulneravel, header de seguranca
-  ausente no codigo, etc.), mesmo padrao sincrono do fluxo GitHub atual - dinamica (DAST, testar
-  a app rodando de verdade) descartada por enquanto. Ainda nao e um prompt tecnico - falta definir
-  a lista exata de checks antes de implementar.
+  executar nada, mesmo padrao sincrono do fluxo GitHub atual (`IGitHubService.
+  GetContentSnapshotAsync`, ja usado por `EvaluateWeeklyProjectUseCase`/`GroqProjectEvaluationService`
+  - a auditoria reaproveitaria o MESMO snapshot, so trocando o prompt) - dinamica (DAST, testar a
+  app rodando de verdade) descartada por enquanto.
+  **Lista de checks definida em 2026-08-31 (Fase 24c)** - escopo web (curriculo do curso, nao
+  scanner generico de qualquer linguagem), cada um marcado com como seria detectado dado o modelo
+  atual (determinístico/regex em C#, mais barato e sem alucinacao, vs. julgamento via LLM Groq
+  igual `GroqProjectEvaluationService`, pra tudo que exige entender o codigo):
+  1. **Segredo commitado** (regex) - chave de API/token, private key (`-----BEGIN...PRIVATE KEY-----`),
+     AWS key (`AKIA[0-9A-Z]{16}`), connection string com senha em texto puro, `.env`/`secrets.json`
+     presente na arvore. Severidade alta.
+  2. **Dependencia desatualizada/vulneravel conhecida** (LLM, heuristico) - le `package.json`/
+     `requirements.txt`/`*.csproj`/`go.mod` e aponta versoes que o modelo reconhece como antigas/com
+     CVE conhecida da propria base de conhecimento - NAO e consulta a uma base de vulnerabilidades
+     ao vivo (nao e OSV/Snyk), best-effort e limitado ao corte de treino do modelo, precisa ficar
+     claro no texto do finding pro aluno nao confiar cegamente.
+  3. **Header de seguranca ausente na configuracao do servidor** (LLM) - procura configuracao
+     explicita (Express/helmet, middleware ASP.NET, nginx.conf) de `Content-Security-Policy`,
+     `X-Frame-Options`, `Strict-Transport-Security`, `X-Content-Type-Options`. So sinaliza ausencia
+     quando ha um servidor HTTP de verdade no repo (nao se aplica a script/CLI sem servidor).
+  4. **Injecao de SQL** (LLM) - concatenacao/interpolacao de string direto numa query, em vez de
+     parametrizacao/ORM.
+  5. **XSS refletido/armazenado** (LLM) - saida de dado do usuario sem escape (`innerHTML`,
+     `dangerouslySetInnerHTML`, `render_template_string`, eco direto de query param em HTML) sem
+     sanitizacao visivel.
+  6. **CORS permissivo** (LLM) - `Access-Control-Allow-Origin: *` combinado com
+     `Access-Control-Allow-Credentials: true`, ou `cors()`/equivalente sem `origin` restrito.
+  7. **Senha em texto puro / hash fraco** (LLM) - senha comparada/armazenada sem hash, ou hash
+     MD5/SHA1 sem salt, em vez de bcrypt/argon2/scrypt.
+  8. **Autenticacao/autorizacao ausente em rota sensivel** (LLM) - endpoint que mexe em dado de
+     usuario (delete/update/admin) sem nenhuma checagem de sessao/token visivel no handler.
+
+  Cada finding devolvido estruturado (arquivo, categoria, severidade alta/media/baixa, trecho,
+  explicacao curta em portugues) - mesmo formato JSON-mode que `GroqProjectEvaluationService` ja
+  usa pra nao inventar nota fora do formato esperado. **Ainda nao implementada** - esta lista fecha
+  o unico bloqueio que faltava ("falta definir os checks"), pronta pra virar prompt tecnico de uma
+  proxima fase.
 - **Resolvido na Fase 13a:** todo endpoint de curso/weekly/daily/publicacao/conteudo curado agora
   tem `[Authorize]` e filtra pela Enrollment do usuario logado (ver "Superficie da API" e "Modelo
   de dominio" acima) - a excecao documentada e `/admin/conteudo`, que ainda depende de endpoints

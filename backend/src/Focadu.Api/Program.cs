@@ -320,10 +320,10 @@ api.MapDelete("/squads/co-leader", async (ClaimsPrincipal principal, SetSquadCoL
 
 // Ranking (soma/media de Score/Gems dos membros) - tambem onde Squad.JoinCode e gerado (lazy, ver
 // GetSquadRankingUseCase), entao dobra de "tela inicial do squad" pro frontend.
-api.MapGet("/squads/me/ranking", async (ClaimsPrincipal principal, string? scope, GetSquadRankingUseCase useCase, CancellationToken ct) =>
+api.MapGet("/squads/me/ranking", async (ClaimsPrincipal principal, string? scope, int? page, GetSquadRankingUseCase useCase, CancellationToken ct) =>
     {
         var rankingScope = ParseRankingScope(scope);
-        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), rankingScope, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), rankingScope, page ?? 1, ct));
     })
     .RequireAuthorization()
     .WithName("GetSquadRanking");

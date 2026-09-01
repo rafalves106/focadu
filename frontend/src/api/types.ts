@@ -341,7 +341,9 @@ export interface SquadDto {
  * totalGems/averageGems sao sempre o saldo TOTAL de cada membro (Gems nao tem recorte semana/mes
  * no dominio, diferente de Score) - so totalScore/averageScore respeitam `scope`. currentUserEntry
  * nunca e null aqui (diferente de RankingResultDto): se a chamada teve sucesso, o usuario logado
- * necessariamente e membro deste squad.
+ * necessariamente e membro deste squad. `members` e so a pagina pedida (squad nao tem cap de
+ * tamanho, Fase 24c) - `page`/`pageSize`/`totalMembers` describem o resto. coLeaderDisplayName vem
+ * resolvido contra o squad inteiro (pode nao estar em `members` se ele nao esta na pagina atual).
  */
 export interface SquadRankingResultDto {
   squadId: string;
@@ -349,12 +351,16 @@ export interface SquadRankingResultDto {
   joinCode: string;
   ownerUserId: string;
   coLeaderUserId: string | null;
+  coLeaderDisplayName: string | null;
   members: RankingEntryDto[];
   currentUserEntry: RankingEntryDto | null;
   totalScore: number;
   averageScore: number;
   totalGems: number;
   averageGems: number;
+  page: number;
+  pageSize: number;
+  totalMembers: number;
 }
 
 // Marketplace de Cosmeticos (Fase 17) - catalogo fixo via seed, sem autoria via Api ainda.

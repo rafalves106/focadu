@@ -201,7 +201,8 @@ export const api = {
   // Co-Leader (Fase 24b) - o Owner promove/rebaixa; herda a lideranca se o Owner sair.
   promoteSquadCoLeader: (userId: string) => request<void>(`/api/squads/co-leader/${userId}`, { method: 'PUT' }),
   clearSquadCoLeader: () => request<void>('/api/squads/co-leader', { method: 'DELETE' }),
-  getSquadRanking: (scope: RankingScope) => request<SquadRankingResultDto>(`/api/squads/me/ranking?scope=${scope}`),
+  getSquadRanking: (scope: RankingScope, page = 1) =>
+    request<SquadRankingResultDto>(`/api/squads/me/ranking?scope=${scope}&page=${page}`),
   // Marketplace de Cosméticos (Fase 17) - toda ação (compra/equipar/desequipar) devolve o
   // catálogo inteiro recalculado, mesmo shape do GET.
   getMarketplaceCatalog: () => request<MarketplaceCatalogDto>('/api/marketplace/catalog'),
