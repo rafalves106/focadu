@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 23 - Ligar Palavras (Matcher de 2 Colunas)**.
+> Ultima fase que atualizou este documento: **Fase 25 (Parte A) - Mapa do Mundo (Navegacao)**.
 
 ## Visao geral do projeto
 
@@ -1608,14 +1608,33 @@ frontend/
                                    viraram arquivos proprios abaixo, StartPage so decide qual mostrar);
                                    `<WeeklyDetailPage key={weeklyId} .../>` desde a Fase 11 (ver
                                    "Bug real: modal preso ao trocar de Weekly" abaixo); `?ranking=1`
-                                   -> RankingPage (Fase 16, mesmo padrao de flag de `?project=`)
-      StartDashboard.tsx         <- /start sem params - hub "Comecar Hoje"/"Projeto"/"Trilha" (Fase 8);
-                                   renderiza EmptyStateStartPage no lugar do erro generico quando
-                                   `error.code === 'nenhuma_matricula_ativa'` (Fase 13b);
-                                   GemBadge/StreakIndicator no header via GET /api/users/me/
-                                   gamification (Fase 14); WeeklyReinforcementBadge (linkado pra
-                                   /start?weekly=) quando `weekly.hasPendingWeeklyReinforcement`
-                                   (Fase 15)
+                                   -> RankingPage (Fase 16, mesmo padrao de flag de `?project=`);
+                                   sem params -> `WorldMapPage` desde a Fase 25 (era `StartDashboard`
+                                   ate a Fase 24)
+      world/WorldMapPage.tsx     <- /start sem params (Fase 25, Parte A) - hub de entrada virou mapa
+                                   top-down (`assets/world/mapa-vilarejo.png`, arte trazida pelo
+                                   Falves) com personagem controlavel (setas/WASD, sem colisao contra
+                                   predio - so as 5 trigger zones das portas importam); GemBadge/
+                                   StreakIndicator sobrepostos no HUD (mesma fonte de dado da Fase 14
+                                   que o StartDashboard usava); guarda de `nenhuma_matricula_ativa`
+                                   preservada identica (renderiza EmptyStateStartPage). Personagem e
+                                   so placeholder (bolinha + indicador de direcao) - sem asset de
+                                   personagem ainda, ver "Fora de escopo" abaixo. Botao "Ajustar
+                                   zonas" no canto (state local, sem query param) mostra os circulos
+                                   das 5 trigger zones + coordenada atual do personagem - nao e
+                                   feature, e ferramenta de calibracao contra a arte
+      world/worldConfig.ts        <- coordenadas das 5 trigger zones (espaco de pixels da imagem,
+                                   2304x1296) + pra onde cada uma navega - torre->Hoje, castelo->
+                                   Trilha do Curso (Ranking continua ancorado la dentro), casinha->
+                                   Perfil, celeiro->Loja, campo de treino->Squad
+      world/useWorldMovement.ts    <- hook do loop de movimento (keydown/keyup + requestAnimationFrame,
+                                   sem lib externa - mesmo principio de "fetch nativo sem lib extra"
+                                   do resto do frontend) + deteccao de entrada em trigger zone
+      StartDashboard.tsx (Fase 8-24) <- hub antigo em cards ("Comecar Hoje"/"Projeto"/"Trilha"),
+                                   sem uso desde a Fase 25 - StartPage nao aponta mais pra ele.
+                                   Mantido no repo por pedido explicito do Falves (nao apagado, ver
+                                   `docs/fase-25/resumo-implementacao-fase-25.md`), nao removido por
+                                   decisao tecnica
       WeeklyDetailPage.tsx        <- /start?weekly= - dias da semana + projeto + navegacao entre semanas
                                    (Fase 8); banner + trigger do PublicationModal quando
                                    `requiresPublicationToUnlock` (Fase 11); WeeklyReinforcementBadge
@@ -1779,7 +1798,7 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/selecionar-curso` | `GET /api/courses/available` + `POST /api/enrollments` | `CourseSelectionPage` (Fase 13b) - passo 3/3 |
 | `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7). Fora do shell `<App/>` desde a Fase 20 (full-bleed, `TodayRoute`) |
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco; Fase 8: tambem usada como "reprise" de um dia ja concluido, clicado a partir da Visao Semanal) |
-| `/start` | `GET /api/today` + `GET /api/weeklies/{id}` + `GET /api/courses` + `GET /api/courses/{id}` + `GET /api/users/me/gamification` (Fase 14) | `StartDashboard` (Fase 8) - hub "Comecar Hoje"/"Projeto desta Semana"/"Trilha Completa" |
+| `/start` (sem params) | `GET /api/today` + `GET /api/courses` + `GET /api/users/me/gamification` | `WorldMapPage` (Fase 25) - mapa/personagem, 5 casas levam pras telas abaixo. Era `StartDashboard` (Fase 8-24) |
 | `/start?course=` | `GET /api/courses/{courseId}` | `CourseDetailPage` (Fase 8) - trilha completa do curso |
 | `/start?course=&ranking=1` | `GET /api/courses/{courseId}/ranking?scope=` | `RankingPage` (Fase 16) - Score de Estudo, top 10 + posicao do usuario |
 | `/loja` | `GET /api/marketplace/catalog` + `POST .../purchase`\|`/equip`\|`/unequip` | `MarketplacePage` (Fase 17) - catalogo de cosmeticos |
@@ -2094,9 +2113,19 @@ CSS).
 | 22 | Sessao Expirada (Modal Global) | `docs/fase-22/resumo-implementacao-fase-22.md` |
 | 23 | Ligar Palavras (Matcher de 2 Colunas) | `docs/fase-23/resumo-implementacao-fase-23.md` |
 | 24 | Squad (Fase A) | `docs/fase-24/resumo-implementacao-fase-24.md` |
+| 25 (Parte A) | Mapa do Mundo (Navegacao) | `docs/fase-25/resumo-implementacao-fase-25.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
+- **Fase 25 e "Parte A" de proposito - varias pendencias conhecidas, nao esquecimento:**
+  personagem no `WorldMapPage` e so um placeholder geometrico (sem spritesheet/animacao de
+  caminhada ainda - o Falves vai procurar um asset pack de criacao de personagem compativel com o
+  estilo pixel art do mapa); o HUD sobreposto (GemBadge/StreakIndicator, reaproveitados
+  identicos do antigo `StartDashboard`) vai ser refeito em UI propria de pixel art (decisao do
+  Falves, ainda nao desenhada); sem colisao contra predio (decisao explicita da fase - so as 5
+  trigger zones das portas bloqueiam/liberam algo); coordenadas das trigger zones em
+  `worldConfig.ts` sao uma estimativa calibrada visualmente (ver `docs/fase-25/`), nao uma medicao
+  exaustiva - reajustar se alguma porta continuar "errada" na pratica.
 - O contrato da Api (rotas, DTOs, formato de erro) esta documentado na secao "Superficie da
   API" acima; o client tipado do frontend (`frontend/src/api/`) e o exemplo de referencia de
   como consumi-lo.

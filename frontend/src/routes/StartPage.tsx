@@ -4,21 +4,22 @@ import { useApiResource } from '../api/useApiResource';
 import { Centered, PageShell } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { WeeklyProjectPage } from './WeeklyProjectPage';
-import { StartDashboard } from './StartDashboard';
+import { WorldMapPage } from './world/WorldMapPage';
 import { CourseDetailPage } from './CourseDetailPage';
 import { WeeklyDetailPage } from './WeeklyDetailPage';
 import { RankingPage } from './RankingPage';
 
 /**
  * `/start` cobre 6 telas via query string (nao path params - ver docs/ARQUITETURA.md):
- * sem params -> StartDashboard (hub "hoje/projeto/trilha", Fase 8); ?course= -> CourseDetailPage;
- * ?course=&ranking= -> RankingPage (Fase 16); ?course=&weekly= -> WeeklyDetailPage;
- * ?course=&weekly=&daily= -> estado de uma Daily especifica (recapitulacao simples, sem polimento
- * - fora do escopo da Fase 8); ?course=&weekly=&project= -> projeto pratico da semana (Fase 7).
+ * sem params -> WorldMapPage (mapa/personagem, Fase 25 - substitui o antigo StartDashboard de
+ * cards da Fase 8); ?course= -> CourseDetailPage; ?course=&ranking= -> RankingPage (Fase 16);
+ * ?course=&weekly= -> WeeklyDetailPage; ?course=&weekly=&daily= -> estado de uma Daily especifica
+ * (recapitulacao simples, sem polimento - fora do escopo da Fase 8); ?course=&weekly=&project= ->
+ * projeto pratico da semana (Fase 7).
  *
  * A antiga CourseListView (lista de cursos) saiu na Fase 8: como so existe 1 Course Active nesta
- * fase (mesma premissa de GET /api/today - ver docs/ARQUITETURA.md), StartDashboard vai direto pro
- * "hoje" em vez de fazer o usuario escolher entre uma lista de 1 item so.
+ * fase (mesma premissa de GET /api/today - ver docs/ARQUITETURA.md), a tela sem params vai direto
+ * pro mapa de navegacao em vez de fazer o usuario escolher entre uma lista de 1 item so.
  */
 export function StartPage() {
   const [searchParams] = useSearchParams();
@@ -36,7 +37,7 @@ export function StartPage() {
   // semana anterior por cima da semana nova). Mesmo truque de App.tsx (key={location.pathname}).
   if (weeklyId) return <WeeklyDetailPage key={weeklyId} weeklyId={weeklyId} courseId={courseId} />;
   if (courseId) return <CourseDetailPage courseId={courseId} />;
-  return <StartDashboard />;
+  return <WorldMapPage />;
 }
 
 /** Recapitulacao simples de uma Daily especifica - sem o polimento das telas de navegacao da Fase 8, fora de escopo aqui. */
