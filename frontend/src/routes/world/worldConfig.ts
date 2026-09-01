@@ -15,19 +15,21 @@ export const START_POSITION = { x: 1152, y: 860 };
 
 export interface WorldTriggerZone {
   id: string;
-  /** Rotulo mostrado no modo de ajuste de zonas - nunca visivel pro usuario final. */
+  /** Rotulo mostrado tanto no letreiro sempre visivel (HouseLabel) quanto no modo de ajuste de zonas. */
   label: string;
   x: number;
   y: number;
   /** Raio do gatilho, em pixels do mundo. */
   radius: number;
+  /** Onde o letreiro flutua (perto do topo/fachada da construcao - NAO em cima da porta, que e `y`). */
+  labelY: number;
   /** Pra onde navegar ao entrar na zona - recebe o id do curso ativo (pode ser null). */
   to: (courseId: string | null) => string;
 }
 
 export const WORLD_TRIGGER_ZONES: WorldTriggerZone[] = [
   // Torre (topo-esquerda) -> sessao diaria.
-  { id: 'hoje', label: 'Hoje', x: 242, y: 530, radius: 46, to: () => '/hoje' },
+  { id: 'hoje', label: 'Hoje', x: 242, y: 530, radius: 46, labelY: 190, to: () => '/hoje' },
   // Castelo (topo-direita) -> trilha do curso (Ranking fica ancorado la dentro, como ja e hoje).
   {
     id: 'trilha',
@@ -35,12 +37,13 @@ export const WORLD_TRIGGER_ZONES: WorldTriggerZone[] = [
     x: 1958,
     y: 461,
     radius: 50,
+    labelY: 130,
     to: (courseId) => (courseId ? `/start?course=${courseId}` : '/start'),
   },
   // Casinha (baixo-esquerda) -> perfil.
-  { id: 'perfil', label: 'Perfil', x: 438, y: 1158, radius: 44, to: () => '/perfil' },
+  { id: 'perfil', label: 'Perfil', x: 438, y: 1158, radius: 44, labelY: 1000, to: () => '/perfil' },
   // Celeiro/fazenda (baixo-direita) -> loja de cosmeticos.
-  { id: 'loja', label: 'Loja', x: 1820, y: 1118, radius: 46, to: () => '/loja' },
+  { id: 'loja', label: 'Loja', x: 1820, y: 1118, radius: 46, labelY: 780, to: () => '/loja' },
   // Campo de treino (topo-centro) -> squad.
-  { id: 'squad', label: 'Squad', x: 806, y: 346, radius: 40, to: () => '/perfil?tab=squad' },
+  { id: 'squad', label: 'Squad', x: 806, y: 346, radius: 40, labelY: 160, to: () => '/perfil?tab=squad' },
 ];

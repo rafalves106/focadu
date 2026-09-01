@@ -1,8 +1,16 @@
+import type { ReactNode } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { HeaderUserBadge } from './components/HeaderUserBadge';
 
-export function App() {
+/**
+ * `children` opcional (Fase 25): quando usado como layout de rota (`/loja`, `/perfil`,
+ * `/conquistas`), continua vindo do `<Outlet/>` normal. `StartPage` (Fase 25) passa a chamar
+ * `<App>...</App>` manualmente pras 5 sub-telas de `/start?...` que ainda precisam do nav global -
+ * `/start` sem params (WorldMapPage) saiu do shell, mesmo tratamento full-bleed que `/hoje` ganhou
+ * na Fase 20, entao nao pode mais depender de rota aninhada pra decidir "com ou sem nav".
+ */
+export function App({ children }: { children?: ReactNode }) {
   // `key` pelo pathname: sem isso, navegar pra outra rota depois de um crash mantinha o boundary
   // "travado" (ele fica acima do <Outlet/>, nao remonta sozinho so por trocar de rota) - assim o
   // React remonta o ErrorBoundary (reseta hasError) a cada navegacao.
@@ -23,7 +31,7 @@ export function App() {
         <HeaderUserBadge />
       </nav>
       <ErrorBoundary key={location.pathname}>
-        <Outlet />
+        {children ?? <Outlet />}
       </ErrorBoundary>
     </div>
   );

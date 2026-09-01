@@ -7,6 +7,7 @@ import { Centered } from '../../components/Layout';
 import { ApiErrorScreen } from '../../components/errors/ApiErrorScreen';
 import { GemBadge } from '../../components/gamification/GemBadge';
 import { StreakIndicator } from '../../components/gamification/StreakIndicator';
+import { HouseLabel } from '../../components/world/HouseLabel';
 import { PlayerSprite } from '../../components/world/PlayerSprite';
 import { EmptyStateStartPage } from '../EmptyStateStartPage';
 import mapImage from '../../assets/world/mapa-vilarejo.png';
@@ -61,12 +62,19 @@ export function WorldMapPage() {
   const topPercent = (position.y / WORLD_HEIGHT) * 100;
 
   return (
-    <div className="flex min-h-[calc(100vh-57px)] items-center justify-center bg-black p-2">
+    <div className="flex h-screen w-screen items-center justify-center overflow-hidden bg-black">
+      {/* Truque de "contain" via CSS puro: width/height nascem em 100% (preenchem a tela toda),
+          mas os max-width/max-height cruzados (um derivado do outro eixo * proporcao do mundo)
+          garantem que so o eixo que sobra de fato encolhe - a imagem nunca estica nem corta,
+          sempre preenche o maximo da tela respeitando a proporcao real do mapa (2304x1296). */}
       <div
-        className="relative w-full max-w-full overflow-hidden rounded-lg"
+        className="relative overflow-hidden"
         style={{
           aspectRatio: `${WORLD_WIDTH} / ${WORLD_HEIGHT}`,
-          maxWidth: `calc((100vh - 57px - 1rem) * ${WORLD_WIDTH} / ${WORLD_HEIGHT})`,
+          width: '100%',
+          height: '100%',
+          maxWidth: `calc(100vh * ${WORLD_WIDTH} / ${WORLD_HEIGHT})`,
+          maxHeight: `calc(100vw * ${WORLD_HEIGHT} / ${WORLD_WIDTH})`,
         }}
       >
         <img
@@ -76,6 +84,10 @@ export function WorldMapPage() {
           className="h-full w-full select-none"
           style={{ imageRendering: 'pixelated' }}
         />
+
+        {WORLD_TRIGGER_ZONES.map((zone) => (
+          <HouseLabel key={zone.id} zone={zone} />
+        ))}
 
         {debugZones &&
           WORLD_TRIGGER_ZONES.map((zone) => <DebugZoneMarker key={zone.id} zone={zone} />)}
