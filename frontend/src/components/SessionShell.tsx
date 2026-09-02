@@ -46,10 +46,12 @@ export function QuickQuestionOrb() {
  * o cartao com borda/fundo - o Figma mostra a gravacao de voz flutuando direto sobre o fundo, sem
  * cartao ao redor (unico caso assim entre as 7 telas de sessao).
  *
- * `pt-20` (Fase 20, era `p-10` simetrico): PenaltyGauge/botao de configuracoes (TodayPage) sao
- * `fixed left-6/right-6 top-6` por cima de QUALQUER tela de sessao - antes, o nav global de
- * `<App/>` (~60px) coincidentemente dava essa folga; com `/hoje` full-bleed (Fase 20, sem nav), o
- * SessionTopBar colidia direto com os 2 icones sem essa margem extra.
+ * `pt-20` (Fase 20, era `p-10` simetrico): da folga pro `PenaltyGauge` (TodayPage), `fixed left-6`
+ * por cima de QUALQUER tela de sessao. Nasceu quando `/hoje` ficou full-bleed sem nenhum nav acima
+ * (Fase 20) - o `GlobalNav` voltou a aparecer em `/hoje` na Fase 25 (empurra o conteudo ~56px via
+ * fluxo normal, fora deste `pt-20`), mas o `PenaltyGauge` continua `fixed` (ignora fluxo) - o
+ * `pt-20` segue garantindo folga entre ele e o `SessionTopBar`, so que com margem mais folgada
+ * agora (o header em fluxo ja empurra tudo sozinho, isso aqui e so o extra pro badge fixo).
  */
 export function SessionLayout({
   eyebrow,

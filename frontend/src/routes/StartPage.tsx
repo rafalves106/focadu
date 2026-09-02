@@ -1,42 +1,113 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
+import { App } from '../App';
 import { Centered, PageShell } from '../components/Layout';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
+import { useIsMobile } from '../lib/useIsMobile';
 import { WeeklyProjectPage } from './WeeklyProjectPage';
+import { WorldMapPage } from './world/WorldMapPage';
 import { StartDashboard } from './StartDashboard';
 import { CourseDetailPage } from './CourseDetailPage';
 import { WeeklyDetailPage } from './WeeklyDetailPage';
 import { RankingPage } from './RankingPage';
 
 /**
+ * `/start` (Fase 25): fora do shell `<App/>` no roteador - mesmo motivo/tratamento de `/hoje`
+ * desde a Fase 20 (`TodayRoute`), porque a tela sem params (`WorldMapPage`, mapa/personagem)
+ * precisa ser full-bleed, sem o nav global por cima. As outras 5 sub-telas de `/start?...` ainda
+ * querem o nav (Hoje/Início) - como todas moram na mesma rota (query string, nao path param),
+ * quem decide "com ou sem nav" e o proprio `StartPage` chamando `<App>` manualmente (ver abaixo),
+ * nao mais o roteador. `StartRoute` repoe o `<ErrorBoundary key={pathname+search}>` que `<App/>`
+ * dava de graca antes (mesmo padrao de `TodayRoute` - `/start` tambem navega entre sub-telas via
+ * query string sem trocar de rota).
+ */
+export function StartRoute() {
+  const location = useLocation();
+  return (
+    <ErrorBoundary key={location.pathname + location.search}>
+      <StartPage />
+    </ErrorBoundary>
+  );
+}
+
+/**
  * `/start` cobre 6 telas via query string (nao path params - ver docs/ARQUITETURA.md):
- * sem params -> StartDashboard (hub "hoje/projeto/trilha", Fase 8); ?course= -> CourseDetailPage;
- * ?course=&ranking= -> RankingPage (Fase 16); ?course=&weekly= -> WeeklyDetailPage;
- * ?course=&weekly=&daily= -> estado de uma Daily especifica (recapitulacao simples, sem polimento
- * - fora do escopo da Fase 8); ?course=&weekly=&project= -> projeto pratico da semana (Fase 7).
+ * sem params -> WorldMapPage no desktop (mapa/personagem, Fase 25 - unica sem o nav do `<App/>`,
+ * ver `StartRoute` acima) ou StartDashboard no celular (Fase 8, ver "Fallback mobile" abaixo);
+ * ?course= -> CourseDetailPage; ?course=&ranking= -> RankingPage (Fase 16); ?course=&weekly= ->
+ * WeeklyDetailPage; ?course=&weekly=&daily= -> estado de uma Daily especifica (recapitulacao
+ * simples, sem polimento - fora do escopo da Fase 8); ?course=&weekly=&project= -> projeto
+ * pratico da semana (Fase 7).
  *
  * A antiga CourseListView (lista de cursos) saiu na Fase 8: como so existe 1 Course Active nesta
- * fase (mesma premissa de GET /api/today - ver docs/ARQUITETURA.md), StartDashboard vai direto pro
- * "hoje" em vez de fazer o usuario escolher entre uma lista de 1 item so.
+ * fase (mesma premissa de GET /api/today - ver docs/ARQUITETURA.md), a tela sem params vai direto
+ * pro mapa de navegacao em vez de fazer o usuario escolher entre uma lista de 1 item so.
+ *
+ * Fallback mobile (Fase 25): o mapa exige teclado (setas/WASD) pro personagem andar - sem sentido
+ * num touchscreen, entao celular (`useIsMobile`, viewport < 768px) continua vendo o hub de cards
+ * antigo (`StartDashboard`, guardado no repo desde que o mapa foi criado exatamente pra isso).
+ * `StartDashboard` roda dentro de `<App>` (GlobalNav) como sempre rodou - o `GlobalNav` em si
+ * ainda nao foi ajustado pra telas estreitas, ver docs/fase-25 pra essa pendencia.
  */
-export function StartPage() {
+function StartPage() {
   const [searchParams] = useSearchParams();
+  const isMobile = useIsMobile();
   const courseId = searchParams.get('course');
   const weeklyId = searchParams.get('weekly');
   const dailyId = searchParams.get('daily');
   const showProject = searchParams.get('project') !== null;
   const showRanking = searchParams.get('ranking') !== null;
 
-  if (showProject && weeklyId) return <WeeklyProjectPage weeklyId={weeklyId} courseId={courseId} />;
-  if (showRanking && courseId) return <RankingPage courseId={courseId} />;
-  if (dailyId) return <DailyView dailyId={dailyId} weeklyId={weeklyId} courseId={courseId} />;
+  if (showProject && weeklyId) {
+    return (
+      <App>
+        <WeeklyProjectPage weeklyId={weeklyId} courseId={courseId} />
+      </App>
+    );
+  }
+  if (showRanking && courseId) {
+    return (
+      <App>
+        <RankingPage courseId={courseId} />
+      </App>
+    );
+  }
+  if (dailyId) {
+    return (
+      <App>
+        <DailyView dailyId={dailyId} weeklyId={weeklyId} courseId={courseId} />
+      </App>
+    );
+  }
   // key={weeklyId}: sem isso, "Proximo Modulo" no PublicationModal (Fase 11) so troca a query
   // string - o componente continuaria montado com o modal ainda aberto (mostrando o sucesso da
   // semana anterior por cima da semana nova). Mesmo truque de App.tsx (key={location.pathname}).
-  if (weeklyId) return <WeeklyDetailPage key={weeklyId} weeklyId={weeklyId} courseId={courseId} />;
-  if (courseId) return <CourseDetailPage courseId={courseId} />;
-  return <StartDashboard />;
+  if (weeklyId) {
+    return (
+      <App>
+        <WeeklyDetailPage key={weeklyId} weeklyId={weeklyId} courseId={courseId} />
+      </App>
+    );
+  }
+  if (courseId) {
+    return (
+      <App>
+        <CourseDetailPage courseId={courseId} />
+      </App>
+    );
+  }
+  // Sem query params -> mapa no desktop, full-bleed, sem <App> por proposito (ver StartRoute);
+  // StartDashboard (dentro de <App>, mesmo shell de sempre) no celular - ver "Fallback mobile" acima.
+  if (isMobile) {
+    return (
+      <App>
+        <StartDashboard />
+      </App>
+    );
+  }
+  return <WorldMapPage />;
 }
 
 /** Recapitulacao simples de uma Daily especifica - sem o polimento das telas de navegacao da Fase 8, fora de escopo aqui. */
