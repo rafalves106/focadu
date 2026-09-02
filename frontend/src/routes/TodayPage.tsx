@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
-import { useAuth } from '../contexts/useAuth';
+import { useSettings } from '../contexts/useSettings';
 import { ActivityType, AnswerMode, ActivityStatus, DailyAccessMode, type DailyStateDto, type CompleteDailyResult } from '../api/types';
 import { classifyApiError, type ApiFailure } from '../lib/apiError';
 import { ActivityScreen, Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
-import { ErrorBoundary } from '../components/ErrorBoundary';
 import { QuizActivity } from '../components/QuizActivity';
 import { WordMatchActivity } from '../components/WordMatchActivity';
 import { ClozeFreeTextActivity } from '../components/ClozeFreeTextActivity';
@@ -16,7 +15,6 @@ import { ReadingActivity } from '../components/ReadingActivity';
 import { VideoActivity } from '../components/VideoActivity';
 import { CompletionSummary } from '../components/CompletionSummary';
 import { ReinforcementIntroScreen } from '../components/ReinforcementIntroScreen';
-import { SettingsMenu } from '../components/SettingsMenu';
 import { PenaltyGauge } from '../components/gamification/PenaltyGauge';
 
 // "Pino" do passo atual - so identifica QUAL atividade mostrar, nunca guarda uma copia dos dados
@@ -79,24 +77,12 @@ function useSessionExitGuard(active: boolean, onIntercept: () => void) {
 }
 
 /**
- * `/hoje` (Fase 20): fora do shell `<App/>` - full-bleed, mesmo tratamento de `/onboarding`/
- * `/login`, sem o nav global sobrepondo o PenaltyGauge/botao de configuracoes (fixos no topo,
- * pensados pra ocupar o canto real da viewport - pendencia identificada na Fase 19). `<App/>`
- * so contribuia com o nav (que aqui nao deve aparecer mesmo) e o `<ErrorBoundary key={pathname}>`
- * em torno do `<Outlet/>` - reposto aqui, so que com a key incluindo `search` tambem (nao so
- * `pathname`), ja que `/hoje` navega entre Dailies diferentes via `?daily=` sem trocar de rota
- * (ver TodayPage abaixo) - sem isso, um crash nao seria "esquecido" ao trocar de Daily.
- */
-export function TodayRoute() {
-  const location = useLocation();
-  return (
-    <ErrorBoundary key={location.pathname + location.search}>
-      <TodayPage />
-    </ErrorBoundary>
-  );
-}
-
-/**
+ * `/hoje` (Fase 25: voltou pra dentro do shell `<App/>`, ganhou o `GlobalNav` como todo o resto da
+ * plataforma - era full-bleed desde a Fase 20 pra nao colidir com o PenaltyGauge/botao de
+ * configuracoes fixos no topo, ver "PenaltyGauge" abaixo pro reajuste). `<App/>` cuida do
+ * `<ErrorBoundary key={pathname+search}>` agora (`+search` cobre `/hoje` navegando entre Dailies
+ * via `?daily=` sem trocar de rota - sem isso um crash nao seria "esquecido" ao trocar de Daily).
+ *
  * GET /api/today - a Daily ativa de hoje. Aceita um override opcional `?daily=` (nao documentado
  * como rota separada - so um parametro a mais na mesma rota `/hoje`) pra reaproveitar toda essa
  * tela ao navegar pra uma sessao de reforco recem-gerada (ver CompletionSummary), que e sempre
@@ -108,8 +94,7 @@ export function TodayRoute() {
 export function TodayPage() {
   const [searchParams] = useSearchParams();
   const overrideDailyId = searchParams.get('daily');
-  const navigate = useNavigate();
-  const { logout } = useAuth();
+  const settings = useSettings();
 
   const [daily, setDaily] = useState<DailyStateDto | null>(null);
   const [step, setStep] = useState<Step | null>(null);
@@ -117,7 +102,6 @@ export function TodayPage() {
   const [error, setError] = useState<ApiFailure | null>(null);
   const [completion, setCompletion] = useState<CompleteDailyResult | null>(null);
   const [completing, setCompleting] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [replayBaseline, setReplayBaseline] = useState<ReplayBaseline>(null);
   // Fase 15: gate local da ReinforcementIntroScreen - mesmo padrao de "started" das intros de
@@ -172,7 +156,7 @@ export function TodayPage() {
   // Sessao "ativa" = ja temos passo pra mostrar e ainda nao concluiu - cobre as telas de
   // atividade e o "done", mas nunca o loading/erro nem a CompletionSummary.
   const sessionActive = daily !== null && step !== null && completion === null;
-  useSessionExitGuard(sessionActive, () => setShowSettings((prev) => !prev));
+  useSessionExitGuard(sessionActive, settings.toggle);
 
   function handleContinue() {
     setStep(null);
@@ -205,27 +189,13 @@ export function TodayPage() {
   return (
     <>
       {renderStep()}
-      <div className="fixed left-6 top-6 z-40">
+      {/* top-[72px] (era top-6): Fase 25, o GlobalNav (h-14 = 56px) voltou a ficar por cima de
+          /hoje - precisa de clearance pra nao colidir. Botao de engrenagem proprio saiu (o item
+          "Configurações" do GlobalNav abre o mesmo <SettingsMenu>, agora 1 instancia so pro app
+          inteiro - ver SettingsProvider). */}
+      <div className="fixed left-6 top-[72px] z-40">
         <PenaltyGauge penaltyPoints={daily.penaltyPoints} penaltyThreshold={daily.penaltyThreshold} />
       </div>
-      <button
-        type="button"
-        onClick={() => setShowSettings(true)}
-        aria-label="Configurações"
-        className="fixed right-6 top-6 z-40 flex size-9 items-center justify-center rounded-full border border-surface-alt bg-surface text-secondary hover:border-accent hover:text-primary"
-      >
-        ⚙
-      </button>
-      <SettingsMenu
-        open={showSettings}
-        onClose={() => setShowSettings(false)}
-        onExit={() => {
-          window.location.href = '/start';
-        }}
-        onLogout={() => {
-          void logout().then(() => navigate('/login'));
-        }}
-      />
     </>
   );
 

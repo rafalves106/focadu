@@ -1,6 +1,6 @@
 ---
 name: curar-conteudo
-description: "Cura o conteúdo didático de um dia do curso Web Security da Focadu (texto cru, resumos falados, vídeo, quiz, cloze, ligar palavras, roleplay) e grava como docs/curadoria/<curso>/semana-N/dia-N.json. Use quando o usuário pedir para curar, montar ou gerar o conteúdo de um dia/semana do curso, revisar um dia.json existente contra o briefing, ou invocar /curar-conteudo."
+description: "Cura o conteúdo didático de um dia do curso Web Security da Focadu (texto cru, resumos falados, vídeo, quiz, cloze, ligar palavras, roleplay) e grava como secret/curadoria/<curso>/semana-N/dia-N.json. Use quando o usuário pedir para curar, montar ou gerar o conteúdo de um dia/semana do curso, revisar um dia.json existente contra o briefing, ou invocar /curar-conteudo."
 metadata:
   version: 1.0.0
 ---
@@ -9,12 +9,12 @@ metadata:
 
 ## Antes de qualquer coisa
 
-1. Leia **docs/curadoria/CURADORIA.md** por completo — filosofia, molde diário, schema do
+1. Leia **secret/curadoria/CURADORIA.md** por completo — filosofia, molde diário, schema do
    `.json`, estado atual e o roteiro completo dos 60 dias. É a fonte da verdade; este SKILL
    só orquestra o processo.
-2. Leia pelo menos um `dia-N.json` já pronto (ex: `docs/curadoria/web-security/semana-1/dia-1.json`)
+2. Leia pelo menos um `dia-N.json` já pronto (ex: `secret/curadoria/web-security/semana-1/dia-1.json`)
    como referência viva de estrutura e tom — a Semana 1 é a referência de qualidade.
-3. Olhe a pasta `docs/curadoria/web-security/semana-N/` para descobrir o que já existe e
+3. Olhe a pasta `secret/curadoria/web-security/semana-N/` para descobrir o que já existe e
    qual é o próximo `dayNumber` sem arquivo (cheque também a seção "Estado atual" do
    CURADORIA.md).
 
@@ -35,9 +35,9 @@ metadata:
    peça o restante — nunca invente conteúdo para preencher.
 5. **Valide** o JSON (`python3 -c "import json; json.load(open('...'))"` ou equivalente)
    antes de considerar pronto.
-6. **Grave** em `docs/curadoria/<curso-slug>/semana-N/dia-N.json` (curso piloto:
+6. **Grave** em `secret/curadoria/<curso-slug>/semana-N/dia-N.json` (curso piloto:
    `web-security`).
-7. **Atualize** a tabela "Estado atual" em `docs/curadoria/CURADORIA.md` marcando o dia
+7. **Atualize** a tabela "Estado atual" em `secret/curadoria/CURADORIA.md` marcando o dia
    recém-criado como concluído.
 
 ## Regras de Ouro (não negociáveis)
@@ -61,5 +61,5 @@ metadata:
 
 ## Referências
 
-- `docs/curadoria/CURADORIA.md` — filosofia, schema, roteiro completo, estado atual.
-- `docs/curadoria/web-security/semana-1/dia-1.json` a `dia-4.json` — exemplos canônicos.
+- `secret/curadoria/CURADORIA.md` — filosofia, schema, roteiro completo, estado atual.
+- `secret/curadoria/web-security/semana-1/dia-1.json` a `dia-4.json` — exemplos canônicos.

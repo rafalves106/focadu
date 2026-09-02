@@ -62,13 +62,11 @@ public class SeedWebSecurityCourseUseCase
         AddDay3(weeklyTemplate);
         AddDay4(weeklyTemplate);
 
-        weeklyTemplate.SetProjectSpec(
-            "Projeto da Semana 1: Reconhecimento de Trafego HTTP. Usando as DevTools do seu " +
-            "navegador (aba Network), capture o trafego HTTP real de pelo menos 3 requisicoes ao " +
-            "navegar em um site a sua escolha. Documente, para cada uma: os headers de request e " +
-            "response mais relevantes, quais cookies foram definidos/enviados, e se a conexao usa " +
-            "HTTPS/TLS (e por que isso importa). Publique essa analise como seu primeiro artefato " +
-            "publico (post no LinkedIn ou repositorio no GitHub).");
+        // Fase 25 (fechamento do Mes 1): projeto curado de verdade (secret/curadoria/web-security/
+        // semana-1/projeto.json, "Sniffer CLI") substitui o placeholder hardcoded original
+        // ("Reconhecimento de Trafego HTTP" via DevTools) - divergencia resolvida a favor do
+        // roteiro (mais alinhado ao tema de rede da semana), ver CURADORIA.md secao 4.
+        CuratedProjectImporter.ImportFile(weeklyTemplate, CuratedContentPath("web-security", "semana-1", "projeto.json"));
 
         return course;
     }

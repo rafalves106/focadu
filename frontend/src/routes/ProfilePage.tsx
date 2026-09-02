@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { api, ApiError } from '../api/client';
+import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
-import type { CosmeticItemDto, GamificationSummaryDto, MarketplaceCatalogDto } from '../api/types';
+import type { GamificationSummaryDto, MarketplaceCatalogDto } from '../api/types';
 import { Centered, PageShell } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { useAuth } from '../contexts/useAuth';
@@ -32,49 +31,27 @@ export function ProfilePage() {
     () => Promise.all([api.getGamification(), api.getMarketplaceCatalog()]).then(([gamification, catalog]) => ({ gamification, catalog })),
     [],
   );
-  const [catalogOverride, setCatalogOverride] = useState<MarketplaceCatalogDto | null>(null);
-  const [busyItemId, setBusyItemId] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
 
   if (!user) return null;
   if (loading) return <Centered text="Carregando perfil..." />;
   if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
   if (!data) return null;
 
-  const catalog = catalogOverride ?? data.catalog;
-
   function setTab(next: ProfileTab) {
     setSearchParams(next === 'info' ? {} : { tab: next });
-  }
-
-  async function runAction(itemId: string, action: () => Promise<MarketplaceCatalogDto>) {
-    setBusyItemId(itemId);
-    setActionError(null);
-    try {
-      setCatalogOverride(await action());
-    } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : 'Não foi possível completar a ação.');
-    } finally {
-      setBusyItemId(null);
-    }
   }
 
   return (
     <PageShell title="Perfil" backTo="/start">
       <div className="flex flex-col gap-6">
-        <ProfileHeader displayName={user.displayName} gamification={data.gamification} catalog={catalog} />
+        <ProfileHeader displayName={user.displayName} gamification={data.gamification} catalog={data.catalog} />
         <ProfileTabs tab={tab} onChange={setTab} />
 
         {tab === 'info' && <InformationTab user={user} gamification={data.gamification} />}
-        {tab === 'customizacao' && (
-          <CustomizationTab
-            catalog={catalog}
-            busyItemId={busyItemId}
-            actionError={actionError}
-            onEquip={(item: CosmeticItemDto) => runAction(item.id, () => api.equipCosmetic(item.id))}
-            onUnequip={(item: CosmeticItemDto) => runAction(item.id, () => api.unequipCosmetic(item.slot))}
-          />
-        )}
+        {/* EM BREVE (Fase 25) - ver CustomizationTab.tsx. Sem catalog/busyItemId/actionError/
+            onEquip/onUnequip enquanto isso (o `catalogOverride`/`runAction` que alimentavam esses
+            props saíram daqui - só existiam pra essa aba). */}
+        {tab === 'customizacao' && <CustomizationTab />}
         {tab === 'conquistas' && <ConquestsTab />}
         {tab === 'squad' && <SquadTab />}
       </div>

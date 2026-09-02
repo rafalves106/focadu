@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 23 - Ligar Palavras (Matcher de 2 Colunas)**.
+> Ultima fase que atualizou este documento: **Fase 25 (Parte A) - Mapa do Mundo (Navegacao)**.
 
 ## Visao geral do projeto
 
@@ -1523,19 +1523,27 @@ frontend/
   index.html, vite.config.ts, package.json, tsconfig*.json
   .env.example, .env.local (gitignorado - VITE_API_BASE_URL)
   src/
-    main.tsx              <- BrowserRouter + AuthProvider + Routes ("/" Splash, "/login" fora do
-                              ProtectedRoute; onboarding/onboarding/perfil/selecionar-curso/hoje
-                              fora do <App/> (Fase 12/13b/20) - so start/perfil/loja/admin/conteudo
-                              continuam dentro do shell; /conquistas vira
-                              <Navigate to="/perfil?tab=conquistas"/> desde a Fase 18; /hoje usa
-                              <TodayRoute/>, nao <TodayPage/> direto - ver routes/TodayPage.tsx)
-    App.tsx                <- shell com nav (Hoje / Inicio / Conteudo) + HeaderUserBadge (nome+
-                              moldura equipados, link pra /perfil - Fase 18) +
-                              <ErrorBoundary key={pathname}><Outlet/></ErrorBoundary> (Fase 10).
-                              /hoje NAO fica mais dentro deste shell desde a Fase 20 (full-bleed,
-                              mesmo tratamento de onboarding/login) - o nav fixo sobrepondo o
-                              PenaltyGauge/botao de configuracoes (pendencia da Fase 19) foi
-                              resolvido movendo a rota pra fora, nao ajustando o nav
+    main.tsx              <- BrowserRouter + AuthProvider + SettingsProvider (Fase 25, ver
+                              contexts/SettingsProvider.tsx) + Routes ("/" Splash, "/login" fora do
+                              ProtectedRoute; onboarding/onboarding/perfil/selecionar-curso/start
+                              fora do <App/> - so start SEM params fica sem shell de verdade, ver
+                              routes/StartPage.tsx; /hoje voltou pra DENTRO do <Route
+                              element={<App/>}> na Fase 25, usa <TodayPage/> direto - era
+                              <TodayRoute/> fora do shell desde a Fase 20, ver App.tsx abaixo);
+                              /conquistas vira <Navigate to="/perfil?tab=conquistas"/> desde a
+                              Fase 18)
+    App.tsx                <- shell com <GlobalNav/> (Fase 25, ver components/GlobalNav.tsx -
+                              substitui o antigo <nav> de 2 links) + <ErrorBoundary
+                              key={pathname+search}><Outlet/></ErrorBoundary> (Fase 10; `+search`
+                              desde a Fase 25, cobre /hoje trocando de Daily via `?daily=` sem
+                              trocar de pathname). `children` prop opcional (Fase 25) - StartPage
+                              chama `<App>...</App>` manualmente nas 5 sub-telas de `/start?...`
+                              que ainda querem o menu global (a 6a, sem params, fica sem shell,
+                              full-bleed - ver "Mapa do Mundo" abaixo). Fase 20-24: `/hoje` ficava
+                              fora deste shell (full-bleed) pro nav fixo nao sobrepor o
+                              PenaltyGauge/botao de configuracoes - Fase 25 reverteu isso
+                              (PenaltyGauge reposicionado, botao de configuracoes proprio removido -
+                              ver "Menu global unico" abaixo), `/hoje` volta a ganhar o shell
     index.css               <- @import "tailwindcss" + tokens @theme (paleta + fontes da identidade
                               visual, ver secao "Frontend" acima)
     assets/reading/          <- SVGs do design Figma (dots, play, check, orbe) - bytes exatos, Fase 7
@@ -1553,6 +1561,10 @@ frontend/
                                    unica pra "raridade -> cor", reaproveitado por
                                    EquippedFramePreview) + nameColorClass(token) - token do
                                    CosmeticItem equipado (Name, nao hex) -> classe de cor de verdade
+      worldPosition.ts                <- getSavedWorldPosition/saveWorldPosition (Fase 25) -
+                                   localStorage por userId, ultima posicao do personagem no mapa
+                                   (continuidade cosmetica, mesmo principio de nao-sincronizar-entre-
+                                   dispositivos ja usado pro limite de gravacao)
     contexts/
       authContextObject.ts         <- createContext + AuthContextValue (Fase 12) - so o objeto/tipo,
                                    separado do Provider e do hook pelo mesmo motivo de statusBadge.ts;
@@ -1560,6 +1572,17 @@ frontend/
                                    depender do proximo render do contexto pra saber quem logou
       AuthContext.tsx                <- AuthProvider (Fase 12) - carrega GET /api/auth/me 1x no mount
       useAuth.ts                      <- hook useAuth() (Fase 12)
+      settingsContextObject.ts         <- createContext + SettingsContextValue (Fase 25), mesmo
+                                   padrao de authContextObject.ts
+      SettingsProvider.tsx               <- Provider (Fase 25) - estado do SettingsMenu (Fase 7)
+                                   virou 1 instancia so pro app inteiro (antes era estado local de
+                                   TodayPage) - GlobalNav abre de qualquer tela, useSessionExitGuard
+                                   (TodayPage, ESC/voltar do navegador em sessao ativa) continua
+                                   abrindo tambem, agora os dois compartilham o mesmo estado.
+                                   Renderiza <SettingsMenu/> 1x como irmao de children (mesmo padrao
+                                   de AuthProvider+SessionExpiredModal). onExit continua
+                                   `window.location.href` (nao navigate) - preservado identico
+      useSettings.ts                      <- hook useSettings() (Fase 25), mesmo padrao de useAuth.ts
     api/
       types.ts               <- espelha os DTOs de Focadu.Application (enums como numero, com
                                    consts tipo ActivityType/AnswerMode/ActivityStatus/TerminalQuality/
@@ -1596,26 +1619,84 @@ frontend/
                                    StartDashboard quando GET /api/today devolve 404
                                    `nenhuma_matricula_ativa`; StreakIndicator fixo em 0 (Fase 14,
                                    sem chamada a API - quem nao se matriculou nunca tem streak)
-      TodayPage.tsx            <- /hoje (orquestra os 7 tipos de atividade, o menu de configuracoes
-                                   e o fluxo de conclusao - Fase 7); PenaltyGauge fixo no HUD +
-                                   ReinforcementIntroScreen como gate quando `daily.isReinforcement`
-                                   e nenhuma atividade ainda respondida (Fase 15). `TodayRoute`
-                                   (Fase 20, exportado deste arquivo) - wrapper com
-                                   `<ErrorBoundary key={pathname+search}>`, usado direto em
-                                   main.tsx no lugar de `<TodayPage/>` - repoe o boundary que
-                                   `<App/>` dava de graca antes de `/hoje` sair do shell dele
+      TodayPage.tsx            <- /hoje (orquestra os 7 tipos de atividade e o fluxo de conclusao -
+                                   Fase 7); PenaltyGauge fixo no HUD + ReinforcementIntroScreen
+                                   como gate quando `daily.isReinforcement` e nenhuma atividade
+                                   ainda respondida (Fase 15). Fase 25: `TodayRoute` removido (o
+                                   `<App/>` cobre o `<ErrorBoundary key={pathname+search}>` agora,
+                                   `/hoje` esta dentro do shell de novo) - `TodayPage` e o elemento
+                                   de rota direto; botao/estado proprio de Configuracoes saiu (usa
+                                   `useSettings()`, ver contexts/SettingsProvider.tsx), PenaltyGauge
+                                   `top-6` -> `top-[72px]` (limpa a altura do `GlobalNav`)
       StartPage.tsx             <- /start (so o roteador por query string - Fase 8: as 3 telas
                                    viraram arquivos proprios abaixo, StartPage so decide qual mostrar);
                                    `<WeeklyDetailPage key={weeklyId} .../>` desde a Fase 11 (ver
                                    "Bug real: modal preso ao trocar de Weekly" abaixo); `?ranking=1`
-                                   -> RankingPage (Fase 16, mesmo padrao de flag de `?project=`)
-      StartDashboard.tsx         <- /start sem params - hub "Comecar Hoje"/"Projeto"/"Trilha" (Fase 8);
-                                   renderiza EmptyStateStartPage no lugar do erro generico quando
-                                   `error.code === 'nenhuma_matricula_ativa'` (Fase 13b);
-                                   GemBadge/StreakIndicator no header via GET /api/users/me/
-                                   gamification (Fase 14); WeeklyReinforcementBadge (linkado pra
-                                   /start?weekly=) quando `weekly.hasPendingWeeklyReinforcement`
-                                   (Fase 15)
+                                   -> RankingPage (Fase 16, mesmo padrao de flag de `?project=`);
+                                   sem params -> `WorldMapPage` no desktop desde a Fase 25 (era
+                                   `StartDashboard` ate a Fase 24), `StartDashboard` de volta no
+                                   celular (`useIsMobile()`, viewport < 768px - mapa exige teclado,
+                                   sem sentido num touchscreen; `StartDashboard` roda dentro de
+                                   `<App>` como sempre rodou)
+      world/WorldMapPage.tsx     <- /start sem params (Fase 25, Parte A) - hub de entrada virou mapa
+                                   top-down (`assets/world/mapa-vilarejo.png`, arte trazida pelo
+                                   Falves) com personagem controlavel (setas/WASD, sem colisao contra
+                                   predio - so as 5 trigger zones das portas importam), FULL-BLEED
+                                   (unica tela sem `<GlobalNav/>`, ver App.tsx acima); GemBadge/
+                                   StreakIndicator sobrepostos no HUD (mesma fonte de dado da Fase 14
+                                   que o StartDashboard usava); guarda de `nenhuma_matricula_ativa`
+                                   preservada identica (renderiza EmptyStateStartPage). Posicao
+                                   persistida entre visitas via `lib/worldPosition.ts` (localStorage
+                                   por userId) - salva no instante de entrar numa casa (`handleEnterZone`
+                                   chama `pushAwayFromZone`, NAO a posicao exata do gatilho - fix
+                                   real, nascer dentro do proprio raio da trigger zone fazia o 1o
+                                   movimento re-disparar a mesma zona, personagem preso entrando e
+                                   saindo da mesma casa) e em segundo plano ~400ms depois que o
+                                   personagem para (`useEffect` debounced,
+                                   cobre sair sem passar por trigger zone). Personagem e
+                                   so placeholder (bolinha + indicador de direcao) - sem asset de
+                                   personagem ainda, ver "Fora de escopo" abaixo. `HouseLabel`
+                                   (components/world/) sempre visivel acima de cada porta - so o
+                                   titulo (Hoje/Trilha do Curso/etc), posicao derivada da propria
+                                   trigger zone (x igual, y = topo do circulo + gap). Botao "Ajustar
+                                   zonas" no canto (state local, sem query param) mostra os circulos
+                                   das 5 trigger zones + coordenada atual do personagem - nao e
+                                   feature, e ferramenta de calibracao contra a arte
+      world/worldConfig.ts        <- coordenadas das 5 trigger zones (espaco de pixels da imagem,
+                                   2304x1296) + pra onde cada uma navega - torre->Hoje, castelo->
+                                   Trilha do Curso (Ranking continua ancorado la dentro), casinha->
+                                   Perfil, celeiro->Loja, campo de treino->Squad
+      world/useWorldMovement.ts    <- hook do loop de movimento (keydown/keyup + requestAnimationFrame,
+                                   sem lib externa - mesmo principio de "fetch nativo sem lib extra"
+                                   do resto do frontend) + deteccao de entrada em trigger zone.
+                                   `normalizeKey` (Fase 25, fix real) - `event.key` vem maiusculo
+                                   com Caps Lock ligado/Shift segurado, nao batia com as entradas
+                                   minusculas de MOVE_VECTORS (WASD parava de funcionar
+                                   silenciosamente, setas continuavam OK por nao serem letras)
+      lib/useIsMobile.ts (Fase 25)   <- hook - true com viewport < 768px (breakpoint `md`), usado
+                                   por StartPage pro fallback mobile em /start
+      GlobalNav.tsx (Fase 25)       <- menu global unico (components/) - substitui o antigo <nav> de
+                                   2 links do App.tsx. Itens: Hoje, Trilha do Curso, Ranking (agora
+                                   item proprio, nao so ancorado dentro da Trilha), Squad, Loja,
+                                   Configuracoes (chama useSettings().open - ver
+                                   contexts/SettingsProvider.tsx) + HeaderUserBadge (Fase 18, ja
+                                   existia). Botao central "volta pro mapa" - placeholder (emoji),
+                                   sem PNG pixel art de verdade ainda (ver "Fora de escopo").
+                                   `courseId` resolvido com busca propria (GET /api/courses, mesmo
+                                   fallback Active->primeiro que WorldMapPage/StartDashboard sempre
+                                   usaram) - self-contained, mesmo padrao de HeaderUserBadge. Sem
+                                   destaque de "item ativo" (NavLink so compara pathname, destacaria
+                                   Trilha/Ranking juntos incorretamente - usa Link simples).
+                                   Responsivo (Fase 25, descoberto testando o fallback mobile - 7
+                                   itens + botao central + badge nao cabiam em ~390px): abaixo do
+                                   breakpoint `md`, os 2 grupos de texto viram um botao "☰" que abre
+                                   um menu suspenso em lista (fecha ao navegar); botao central e
+                                   HeaderUserBadge continuam sempre visiveis. Acima de `md`, layout
+                                   identico ao original
+      StartDashboard.tsx (Fase 8-24)  <- hub antigo em cards ("Comecar Hoje"/"Projeto"/"Trilha") -
+                                   volta a ter uso na Fase 25 como fallback mobile de `/start` (ver
+                                   `docs/fase-25/resumo-implementacao-fase-25.md`), nao removido por
+                                   decisao tecnica
       WeeklyDetailPage.tsx        <- /start?weekly= - dias da semana + projeto + navegacao entre semanas
                                    (Fase 8); banner + trigger do PublicationModal quando
                                    `requiresPublicationToUnlock` (Fase 11); WeeklyReinforcementBadge
@@ -1629,18 +1710,20 @@ frontend/
                                    original) - abas Semana/Mes/Curso (RankingScopeTabs), top 10
                                    (RankingTable) + posicao do usuario sempre visivel
                                    (CurrentUserRankingCard)
-      MarketplacePage.tsx        <- /loja (Fase 17, tela 14 do inventario original) - acessivel
-                                   clicando no GemBadge do header do StartDashboard; filtro por
-                                   slot (CosmeticSlotFilter) + grid (CosmeticItemCard);
-                                   comprar/equipar/desequipar cada um devolve o catalogo inteiro
-                                   recalculado, guardado em `catalogOverride` (derivado no render,
-                                   nunca via effect) - cai pro `data` original ate a 1a acao
-      ProfilePage.tsx            <- /perfil (Fase 18) - 3 abas via ?tab= (Informacoes/Customizacao/
-                                   Conquistas, default Informacoes); ProfileHeader (nome+moldura+
-                                   Gems+Streak) acima das abas, sempre visivel; catalogo (pra
-                                   equipar/desequipar na aba Customizacao) guardado em
-                                   `catalogOverride`, mesmo padrao derivado-no-render de
-                                   MarketplacePage
+      MarketplacePage.tsx        <- /loja (Fase 17, tela 14 do inventario original). Fase 25: "em
+                                   breve" (pedido do Falves - vai montar um kit inicial de pixel
+                                   art pros cosmeticos) - so `GemBadge` + `ComingSoon` (novo,
+                                   components/), filtro por slot (CosmeticSlotFilter) + grid
+                                   (CosmeticItemCard) saíram desta tela (arquivos continuam no
+                                   repo, sem uso); `purchaseCosmeticItem`/`equipCosmetic`/
+                                   `unequipCosmetic` (api/client.ts) intactos, so nao exercitados
+                                   aqui mais
+      ProfilePage.tsx            <- /perfil (Fase 18) - 4 abas via ?tab= (Informacoes/Customizacao/
+                                   Conquistas/Squad, default Informacoes); ProfileHeader (nome+
+                                   moldura+Gems+Streak) acima das abas, sempre visivel, le
+                                   `data.catalog` direto (Fase 25: `catalogOverride`/`busyItemId`/
+                                   `actionError`/`runAction` saíram - so existiam pra alimentar a
+                                   aba Customizacao, que virou "em breve", ver CustomizationTab.tsx)
       WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7)
       AdminContentPage.tsx       <- /admin/conteudo (autoria de CuratedContent, Fase 6) - navega
                                    com WeeklyTemplateId desde a Fase 13b (getCourseCurriculum/
@@ -1653,7 +1736,8 @@ frontend/
                                    colorido por raridade quando uma Moldura esta equipada, sem
                                    upload/ilustracao real); reaproveitado por ProfileHeader e
                                    HeaderUserBadge
-      HeaderUserBadge.tsx            <- Fase 18 - nome+moldura equipados no nav global (App.tsx),
+      HeaderUserBadge.tsx            <- Fase 18 - nome+moldura equipados no menu global (usado
+                                   dentro de GlobalNav.tsx desde a Fase 25, era direto em App.tsx),
                                    link pra /perfil; busca o catalogo sozinho, cai pro nome sem
                                    cor/moldura se ainda nao carregou (nao bloqueia o nav)
       auth/
@@ -1707,10 +1791,9 @@ frontend/
                                    (UserDto), link "Editar meus interesses" (-> /onboarding/
                                    perfil?edit=1), estatisticas basicas (cursos, Recorde de
                                    Streak, Score no curso ativo)
-        CustomizationTab.tsx                  <- inventario agrupado pelos 3 slots reais
-                                   (CosmeticSlot), reaproveita CosmeticItemCard tal como esta
-                                   (sem onPurchase); preview ao vivo e o ProfileHeader acima, nao
-                                   duplicado aqui
+        CustomizationTab.tsx                  <- Fase 18: inventario agrupado pelos 3 slots reais
+                                   (CosmeticSlot). Fase 25: "em breve" (mesmo motivo da
+                                   MarketplacePage) - componente sem props, so `ComingSoon`
         ConquestsTab.tsx                       <- BadgeGrid + ReferralCard movidos de
                                    AchievementsPage.tsx (removido) - mesmo conteudo, novo lar
       activities/                 <- primitivas visuais das atividades avaliaveis (Fase 9)
@@ -1743,7 +1826,9 @@ frontend/
                                    sidebar + orbe) que Reading/Video ja tinham como JSX proprio duplicado
       useMaterialSidebar.tsx      <- hook (Fase 19, arquivo proprio - co-exportar com SessionShell.tsx quebraria o fast refresh) - busca a Weekly e monta o MaterialSidebar com os itens/concluidos da Daily atual; reaproveitado pelas 7 telas de sessao
       MaterialSidebar.tsx         <- "Material de hoje", compartilhado por Reading/Video (Fase 7), demais telas de sessao desde a Fase 19 (via useMaterialSidebar). `activeContentId` virou nullable (so Reading/Video tem conteudo proprio pra destacar)
-      SettingsMenu.tsx            <- menu de configuracoes (overlay), montado em TodayPage (Fase 7)
+      SettingsMenu.tsx            <- menu de configuracoes (overlay), Fase 7 - so o componente
+                                   visual (props open/onClose/onExit/onLogout, sem estado proprio);
+                                   montado em SettingsProvider desde a Fase 25 (era TodayPage direto)
       StatusBadge.tsx              <- badge de status generico, so apresentacao (Fase 8)
       ProgressBar.tsx               <- barra de progresso generica, extraida de SessionTopBar (Fase 8)
       WeeklyProjectCard.tsx          <- card do projeto semanal, usado por StartDashboard e WeeklyDetailPage (Fase 8)
@@ -1777,9 +1862,9 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/onboarding` | `PUT /api/users/me/profile` (so no "Pular tour") | `OnboardingWelcomePage` (Fase 13b) - passo 1/3 |
 | `/onboarding/perfil` | `PUT /api/users/me/profile` | `ProfileInterviewPage` (Fase 13b) - passo 2/3, Entrevista de Perfil. `?edit=1` (Fase 18) - mesma tela em modo edicao, pre-populada, volta pro `/perfil` |
 | `/selecionar-curso` | `GET /api/courses/available` + `POST /api/enrollments` | `CourseSelectionPage` (Fase 13b) - passo 3/3 |
-| `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7). Fora do shell `<App/>` desde a Fase 20 (full-bleed, `TodayRoute`) |
+| `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7). Fora do shell `<App/>` da Fase 20 ate a 24 (full-bleed); dentro do shell de novo desde a Fase 25 (ganhou `GlobalNav`, PenaltyGauge reposicionado) |
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco; Fase 8: tambem usada como "reprise" de um dia ja concluido, clicado a partir da Visao Semanal) |
-| `/start` | `GET /api/today` + `GET /api/weeklies/{id}` + `GET /api/courses` + `GET /api/courses/{id}` + `GET /api/users/me/gamification` (Fase 14) | `StartDashboard` (Fase 8) - hub "Comecar Hoje"/"Projeto desta Semana"/"Trilha Completa" |
+| `/start` (sem params) | `GET /api/today` + `GET /api/courses` + `GET /api/users/me/gamification` | `WorldMapPage` (Fase 25) no desktop - mapa/personagem, 5 casas levam pras telas abaixo. `StartDashboard` (Fase 8-24) no celular (`useIsMobile()`, viewport < 768px) |
 | `/start?course=` | `GET /api/courses/{courseId}` | `CourseDetailPage` (Fase 8) - trilha completa do curso |
 | `/start?course=&ranking=1` | `GET /api/courses/{courseId}/ranking?scope=` | `RankingPage` (Fase 16) - Score de Estudo, top 10 + posicao do usuario |
 | `/loja` | `GET /api/marketplace/catalog` + `POST .../purchase`\|`/equip`\|`/unequip` | `MarketplacePage` (Fase 17) - catalogo de cosmeticos |
@@ -2094,9 +2179,31 @@ CSS).
 | 22 | Sessao Expirada (Modal Global) | `docs/fase-22/resumo-implementacao-fase-22.md` |
 | 23 | Ligar Palavras (Matcher de 2 Colunas) | `docs/fase-23/resumo-implementacao-fase-23.md` |
 | 24 | Squad (Fase A) | `docs/fase-24/resumo-implementacao-fase-24.md` |
+| 25 (Parte A) | Mapa do Mundo (Navegacao) | `docs/fase-25/resumo-implementacao-fase-25.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
+- **Fase 25 e "Parte A" de proposito - varias pendencias conhecidas, nao esquecimento:**
+  personagem no `WorldMapPage` e so um placeholder geometrico (sem spritesheet/animacao de
+  caminhada ainda - o Falves vai montar um kit inicial proprio, mesmo kit que cobre os itens da
+  Loja tambem, ver abaixo); o botao central do `GlobalNav` ("volta pro mapa") tambem e placeholder
+  (emoji, sem PNG pixel art proprio ainda); o HUD sobreposto no mapa (GemBadge/StreakIndicator) e o
+  proprio `GlobalNav` vao ser refeitos em UI propria de pixel art (decisao do Falves, ainda nao
+  desenhada); **Loja/Customizacao viraram "em breve"** (`ComingSoon`) ate esse kit inicial chegar -
+  os itens sempre foram bloco de cor solida por raridade, placeholder desde a Fase 17; mecanismo
+  de comprar/equipar continua intacto em `api/client.ts`, so as 2 telas pararam de exercitar;
+  sem colisao contra predio no mapa (decisao explicita da fase - so as 5 trigger zones
+  das portas bloqueiam/liberam algo); coordenadas das trigger zones/letreiros em `worldConfig.ts`
+  sao uma estimativa calibrada visualmente (ver `docs/fase-25/`), nao uma medicao exaustiva -
+  reajustar se alguma porta continuar "errada" na pratica. Posicao do personagem persistida
+  (`lib/worldPosition.ts`) e so `localStorage` - por navegador/dispositivo, nao por conta (nao
+  sincroniza entre aparelhos); vira campo de backend de verdade so se algum dia isso importar.
+  Um usuario de QA descartavel (`qa-fase25@example.com`) ficou no banco local, criado so pra
+  verificar `GlobalNav`/`/hoje`/fallback mobile com login real - sem endpoint de remocao de
+  usuario pra limpar via API. **Fallback mobile cobre so `/start` sem params** - as outras telas
+  (Loja/Perfil/Trilha/Ranking/Projeto/Squad/Hoje) nao passaram por auditoria de responsividade
+  nesta fase, so o `GlobalNav` (que aparece em todas) ganhou o tratamento `md:`/hamburguer.
+  `useIsMobile` e so largura de viewport (768px), sem checar touch/user-agent.
 - O contrato da Api (rotas, DTOs, formato de erro) esta documentado na secao "Superficie da
   API" acima; o client tipado do frontend (`frontend/src/api/`) e o exemplo de referencia de
   como consumi-lo.
