@@ -31,6 +31,23 @@ function clampToWorld(position: WorldPosition): WorldPosition {
     aba, digita outra URL). Entrar numa casa salva a posicao exata na hora, sem esperar isso. */
 const IDLE_SAVE_DELAY_MS = 400;
 
+/** Quanto empurrar o ponto de respawn pra fora do raio da trigger zone (Fase 25, fix real - ver
+    `pushAwayFromZone` abaixo). */
+const EXIT_PUSH_MARGIN = 40;
+
+/**
+ * Onde o personagem "nasce" ao voltar de uma casa - NAO em cima da porta (bug real: nascer dentro
+ * do proprio raio da trigger zone fazia o 1o movimento re-disparar a mesma zona na hora, o
+ * personagem ficava preso entrando e saindo da mesma casa sem conseguir andar pra longe).
+ * Deterministico a partir da propria zona (centro x, y = base do circulo + margem) - sempre um
+ * pouco abaixo da porta, fora do raio. Nesta arte especifica, toda porta tem caminho aberto logo
+ * abaixo (nunca parede) - empurrar pra baixo (+y) e seguro pras 5 zonas atuais; se uma zona futura
+ * tiver a porta virada pra outro lado, ajustar aqui (nao ha colisao real pra calcular sozinho).
+ */
+function pushAwayFromZone(zone: WorldTriggerZone): WorldPosition {
+  return clampToWorld({ x: zone.x, y: zone.y + zone.radius + EXIT_PUSH_MARGIN });
+}
+
 interface WorldData {
   courseId: string | null;
   gamification: GamificationSummaryDto;
@@ -49,10 +66,11 @@ interface WorldData {
  * Posicao persistida (Fase 25, pedido do Falves - "guardar a posicao pra ele voltar sempre do
  * mesmo lugar"): `localStorage` por usuario (ver lib/worldPosition.ts), nao backend - continuidade
  * cosmetica de navegacao, mesmo principio ja usado pro limite de gravacao (lib/settings.ts). 2
- * caminhos de escrita: (1) `handleEnterZone` salva a posicao EXATA na hora de entrar numa casa,
- * antes de navegar (cobre o caso comum - sempre volta bem na porta que usou pra sair); (2) o
- * `useEffect` de "assentou" salva em segundo plano ~400ms depois que o personagem para de se
- * mexer, cobre quem sai do mapa sem passar por uma trigger zone (fecha a aba, troca de URL).
+ * caminhos de escrita: (1) `handleEnterZone` salva um ponto logo ABAIXO da porta ao entrar numa
+ * casa, antes de navegar (`pushAwayFromZone` - nao a posicao exata do gatilho, ver comentario da
+ * funcao pro bug real que isso corrige); (2) o `useEffect` de "assentou" salva em segundo plano
+ * ~400ms depois que o personagem para de se mexer, cobre quem sai do mapa sem passar por uma
+ * trigger zone (fecha a aba, troca de URL).
  */
 export function WorldMapPage() {
   const navigate = useNavigate();
@@ -79,8 +97,8 @@ export function WorldMapPage() {
   }, [user]);
 
   const handleEnterZone = useCallback(
-    (zone: WorldTriggerZone, exitPosition: WorldPosition) => {
-      if (user) saveWorldPosition(user.id, exitPosition);
+    (zone: WorldTriggerZone) => {
+      if (user) saveWorldPosition(user.id, pushAwayFromZone(zone));
       navigate(zone.to(courseId));
     },
     [navigate, courseId, user],

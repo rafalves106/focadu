@@ -44,10 +44,7 @@ export function useWorldMovement({
   start: { x: number; y: number };
   bounds: { width: number; height: number };
   zones: WorldTriggerZone[];
-  /** Recebe a posicao exata (nao a do render anterior) - `WorldMapPage` usa isso pra salvar a
-      posicao de saida sem depender do state `position` (1 frame atrasado em relacao ao `next`
-      calculado aqui, uma corrida irrelevante pro movimento mas nao pra persistencia exata). */
-  onEnterZone: (zone: WorldTriggerZone, position: { x: number; y: number }) => void;
+  onEnterZone: (zone: WorldTriggerZone) => void;
 }) {
   const [position, setPosition] = useState(start);
   const [facing, setFacing] = useState<Direction>('down');
@@ -111,7 +108,7 @@ export function useWorldMovement({
         if (hitZone) {
           if (triggeredZoneIdRef.current !== hitZone.id) {
             triggeredZoneIdRef.current = hitZone.id;
-            onEnterZoneRef.current(hitZone, next);
+            onEnterZoneRef.current(hitZone);
           }
         } else {
           triggeredZoneIdRef.current = null;

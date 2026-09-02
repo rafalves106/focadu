@@ -1647,9 +1647,12 @@ frontend/
                                    que o StartDashboard usava); guarda de `nenhuma_matricula_ativa`
                                    preservada identica (renderiza EmptyStateStartPage). Posicao
                                    persistida entre visitas via `lib/worldPosition.ts` (localStorage
-                                   por userId) - salva no instante de entrar numa casa (`handleEnterZone`,
-                                   `useWorldMovement` repassa a posicao recem-calculada) e em segundo
-                                   plano ~400ms depois que o personagem para (`useEffect` debounced,
+                                   por userId) - salva no instante de entrar numa casa (`handleEnterZone`
+                                   chama `pushAwayFromZone`, NAO a posicao exata do gatilho - fix
+                                   real, nascer dentro do proprio raio da trigger zone fazia o 1o
+                                   movimento re-disparar a mesma zona, personagem preso entrando e
+                                   saindo da mesma casa) e em segundo plano ~400ms depois que o
+                                   personagem para (`useEffect` debounced,
                                    cobre sair sem passar por trigger zone). Personagem e
                                    so placeholder (bolinha + indicador de direcao) - sem asset de
                                    personagem ainda, ver "Fora de escopo" abaixo. `HouseLabel`

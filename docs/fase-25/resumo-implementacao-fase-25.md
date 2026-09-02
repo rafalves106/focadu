@@ -69,13 +69,13 @@
   "guardar a posição pra ele voltar sempre do mesmo lugar"): `localStorage` por usuário, não
   backend - mesmo princípio de `lib/settings.ts` (continuidade cosmética de navegação, não
   progresso de verdade, não precisa sincronizar entre dispositivos). Dois caminhos de escrita: (1)
-  `handleEnterZone` salva a posição EXATA no instante de entrar numa casa, antes de navegar -
-  cobre o caso comum, sempre volta bem na porta que usou pra sair (`useWorldMovement` passou a
-  repassar a posição recém-calculada pro callback, não só a zona, pra não depender do state
-  `position` do render anterior); (2) um `useEffect` debounced salva em segundo plano ~400ms
-  depois que o personagem para de se mexer - cobre quem sai do mapa sem passar por uma trigger
-  zone (fecha a aba, digita outra URL). Posição salva é clampada aos limites do mapa atual ao
-  carregar (defensivo contra um `localStorage` antigo de antes de trocar a imagem do mapa).
+  `handleEnterZone` salva um ponto logo abaixo da porta ao entrar numa casa, antes de navegar -
+  **não** a posição exata do gatilho (isso foi corrigido depois, ver "personagem bugava preso na
+  porta" mais abaixo - `pushAwayFromZone` calcula o ponto de verdade); (2) um `useEffect`
+  debounced salva em segundo plano ~400ms depois que o personagem para de se mexer - cobre quem
+  sai do mapa sem passar por uma trigger zone (fecha a aba, digita outra URL). Posição salva é
+  clampada aos limites do mapa atual ao carregar (defensivo contra um `localStorage` antigo de
+  antes de trocar a imagem do mapa).
 - **Loja e Customização viraram "em breve"** (pedido do Falves - ele vai montar um kit inicial de
   pixel art pros cosméticos, combinando com a identidade visual nova do mapa/personagem; os itens
   atuais sempre foram bloco de cor sólida por raridade, placeholder desde a Fase 17). Novo
@@ -88,6 +88,18 @@
   `purchaseCosmeticItem`/`equipCosmetic`/`unequipCosmetic` (`api/client.ts`) continuam intactos -
   só as 2 telas pararam de exercitar esse fluxo; reverter é trazer de volta o conteúdo anterior
   (preservado no histórico do Git).
+- **Fix real: personagem "bugava" preso na porta ao voltar de uma casa** (relatado pelo Falves -
+  "as vezes ele buga lá dentro"). Causa raiz: `handleEnterZone` salvava a posição EXATA do
+  gatilho (dentro do próprio raio da trigger zone); na próxima visita ao mapa, o personagem
+  nascia ali dentro e o 1º movimento, por menor que fosse, ainda estava dentro do raio -
+  `triggeredZoneIdRef` (nasce `null` a cada montagem) via a zona de novo como "nova" e disparava
+  `onEnterZone` outra vez, teleportando de volta pra dentro da mesma casa - o personagem ficava
+  preso entrando e saindo sem conseguir se afastar. `pushAwayFromZone` (novo,
+  `EXIT_PUSH_MARGIN = 40`) resolve na origem: o que é salvo agora não é mais o ponto exato do
+  gatilho, é um ponto determinístico logo abaixo da porta (`zone.x`, `zone.y + zone.radius + 40`)
+  - sempre fora do raio, então o próximo movimento nunca re-dispara a mesma zona. Só funciona
+  porque, nesta arte específica, toda porta tem caminho aberto logo abaixo (nunca parede) -
+  documentado como suposição no código, não medido caso a caso.
 - **Fix: WASD parava de funcionar com Caps Lock ligado (ou Shift segurado)** - `event.key` vem
   maiúsculo nesse caso ("W"/"A"/"S"/"D"), e não batia com as entradas minúsculas de
   `MOVE_VECTORS` em `useWorldMovement.ts` - o movimento parava silenciosamente, sem erro nenhum
@@ -203,7 +215,8 @@ frontend/src/
   direto) + voltar: personagem reaparece exatamente onde parou (confirmado por coordenada exibida
   no modo "Ajustar zonas"), não na praça - caminho do `useEffect` debounced. Andar até a zona
   "Hoje" e entrar SEM esperar o debounce (menos de 400ms) + voltar pro mapa: personagem reaparece
-  bem na porta da torre - caminho de `handleEnterZone` (salva antes de navegar).
+  logo abaixo da porta da torre (`pushAwayFromZone`, não mais em cima do gatilho - ver fix do
+  "bugava preso na porta" abaixo) - caminho de `handleEnterZone` (salva antes de navegar).
 - **`GlobalNav`/`SettingsProvider`/reposicionamento do `PenaltyGauge`: verificado de ponta a ponta
   com login real** (usuário de QA descartável, criado via API só pra este teste - `qa-fase25@
   example.com`, matriculado em Web Security, nunca a conta do Falves): login -> `/start` (mapa,
@@ -212,6 +225,10 @@ frontend/src/
   mapa -> `/hoje` (`GlobalNav` aparece, `PenaltyGauge` em `y=72`, nav termina em `y=56` - **sem
   colisão**, confirmado por bounding box) -> ESC durante a sessão ainda abre o mesmo modal de
   Configurações (context compartilhado funcionando). Screenshots de cada passo revisados.
+- **Fix do "bugava preso na porta": reproduzido e confirmado corrigido.** Entrar em "Hoje" +
+  voltar pro mapa: coordenada de respawn bate exatamente com o cálculo (`x: 242 · y: 616` -
+  `zone.x`, `zone.y + zone.radius + 40`, fora do raio de 46). Andar em qualquer direção a partir
+  daí (direita, depois cima) - continua em `/start`, nunca reentra em `/hoje` sozinho.
 - **Loja/Customização "em breve": conferido ao vivo com o mesmo usuário de QA** - `/loja` mostra
   o bloco "Loja em breve" + Gems reais, sem grid de itens; `/perfil?tab=customizacao` mostra
   "Customização em breve"; aba "Informações" (não afetada) continua normal, confirmando que só as
@@ -252,7 +269,10 @@ frontend/src/
    próxima iteração - exigiria mapear os retângulos sólidos de cada construção.
 7. **Coordenadas das trigger zones/letreiros são uma calibração visual, não uma medição
    exaustiva** - bateram nas estimativas (ver "Testes"), mas se alguma porta parecer "errada" no
-   uso real, é só ajustar `x`/`y`/`radius` em `worldConfig.ts`.
+   uso real, é só ajustar `x`/`y`/`radius` em `worldConfig.ts`. `pushAwayFromZone` (respawn) parte
+   da mesma suposição visual - "sempre empurra pra baixo (+y)" assume que toda porta tem caminho
+   aberto embaixo, verdade pras 5 zonas atuais nesta arte específica, mas não é uma regra
+   genérica; um mapa/zona futuro com porta virada pra outro lado precisaria de ajuste manual ali.
 8. **`StartDashboard.tsx` voltou a ter uso** (fallback mobile) - deixou de estar órfão. Ainda sem
    nenhuma alteração de conteúdo desde a Fase 8-24 (Gems/Streak/StreakLostModal/WeeklyProjectCard
    continuam iguais); se merece um passe de fidelidade visual pra combinar com o resto da
