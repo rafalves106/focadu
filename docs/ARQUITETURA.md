@@ -1707,18 +1707,20 @@ frontend/
                                    original) - abas Semana/Mes/Curso (RankingScopeTabs), top 10
                                    (RankingTable) + posicao do usuario sempre visivel
                                    (CurrentUserRankingCard)
-      MarketplacePage.tsx        <- /loja (Fase 17, tela 14 do inventario original) - acessivel
-                                   clicando no GemBadge do header do StartDashboard; filtro por
-                                   slot (CosmeticSlotFilter) + grid (CosmeticItemCard);
-                                   comprar/equipar/desequipar cada um devolve o catalogo inteiro
-                                   recalculado, guardado em `catalogOverride` (derivado no render,
-                                   nunca via effect) - cai pro `data` original ate a 1a acao
-      ProfilePage.tsx            <- /perfil (Fase 18) - 3 abas via ?tab= (Informacoes/Customizacao/
-                                   Conquistas, default Informacoes); ProfileHeader (nome+moldura+
-                                   Gems+Streak) acima das abas, sempre visivel; catalogo (pra
-                                   equipar/desequipar na aba Customizacao) guardado em
-                                   `catalogOverride`, mesmo padrao derivado-no-render de
-                                   MarketplacePage
+      MarketplacePage.tsx        <- /loja (Fase 17, tela 14 do inventario original). Fase 25: "em
+                                   breve" (pedido do Falves - vai montar um kit inicial de pixel
+                                   art pros cosmeticos) - so `GemBadge` + `ComingSoon` (novo,
+                                   components/), filtro por slot (CosmeticSlotFilter) + grid
+                                   (CosmeticItemCard) saíram desta tela (arquivos continuam no
+                                   repo, sem uso); `purchaseCosmeticItem`/`equipCosmetic`/
+                                   `unequipCosmetic` (api/client.ts) intactos, so nao exercitados
+                                   aqui mais
+      ProfilePage.tsx            <- /perfil (Fase 18) - 4 abas via ?tab= (Informacoes/Customizacao/
+                                   Conquistas/Squad, default Informacoes); ProfileHeader (nome+
+                                   moldura+Gems+Streak) acima das abas, sempre visivel, le
+                                   `data.catalog` direto (Fase 25: `catalogOverride`/`busyItemId`/
+                                   `actionError`/`runAction` saíram - so existiam pra alimentar a
+                                   aba Customizacao, que virou "em breve", ver CustomizationTab.tsx)
       WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7)
       AdminContentPage.tsx       <- /admin/conteudo (autoria de CuratedContent, Fase 6) - navega
                                    com WeeklyTemplateId desde a Fase 13b (getCourseCurriculum/
@@ -1786,10 +1788,9 @@ frontend/
                                    (UserDto), link "Editar meus interesses" (-> /onboarding/
                                    perfil?edit=1), estatisticas basicas (cursos, Recorde de
                                    Streak, Score no curso ativo)
-        CustomizationTab.tsx                  <- inventario agrupado pelos 3 slots reais
-                                   (CosmeticSlot), reaproveita CosmeticItemCard tal como esta
-                                   (sem onPurchase); preview ao vivo e o ProfileHeader acima, nao
-                                   duplicado aqui
+        CustomizationTab.tsx                  <- Fase 18: inventario agrupado pelos 3 slots reais
+                                   (CosmeticSlot). Fase 25: "em breve" (mesmo motivo da
+                                   MarketplacePage) - componente sem props, so `ComingSoon`
         ConquestsTab.tsx                       <- BadgeGrid + ReferralCard movidos de
                                    AchievementsPage.tsx (removido) - mesmo conteudo, novo lar
       activities/                 <- primitivas visuais das atividades avaliaveis (Fase 9)
@@ -2181,11 +2182,14 @@ CSS).
 
 - **Fase 25 e "Parte A" de proposito - varias pendencias conhecidas, nao esquecimento:**
   personagem no `WorldMapPage` e so um placeholder geometrico (sem spritesheet/animacao de
-  caminhada ainda - o Falves vai procurar um asset pack de criacao de personagem compativel com o
-  estilo pixel art do mapa); o botao central do `GlobalNav` ("volta pro mapa") tambem e placeholder
+  caminhada ainda - o Falves vai montar um kit inicial proprio, mesmo kit que cobre os itens da
+  Loja tambem, ver abaixo); o botao central do `GlobalNav` ("volta pro mapa") tambem e placeholder
   (emoji, sem PNG pixel art proprio ainda); o HUD sobreposto no mapa (GemBadge/StreakIndicator) e o
   proprio `GlobalNav` vao ser refeitos em UI propria de pixel art (decisao do Falves, ainda nao
-  desenhada); sem colisao contra predio no mapa (decisao explicita da fase - so as 5 trigger zones
+  desenhada); **Loja/Customizacao viraram "em breve"** (`ComingSoon`) ate esse kit inicial chegar -
+  os itens sempre foram bloco de cor solida por raridade, placeholder desde a Fase 17; mecanismo
+  de comprar/equipar continua intacto em `api/client.ts`, so as 2 telas pararam de exercitar;
+  sem colisao contra predio no mapa (decisao explicita da fase - so as 5 trigger zones
   das portas bloqueiam/liberam algo); coordenadas das trigger zones/letreiros em `worldConfig.ts`
   sao uma estimativa calibrada visualmente (ver `docs/fase-25/`), nao uma medicao exaustiva -
   reajustar se alguma porta continuar "errada" na pratica. Posicao do personagem persistida

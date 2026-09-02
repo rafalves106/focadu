@@ -76,6 +76,18 @@
   depois que o personagem para de se mexer - cobre quem sai do mapa sem passar por uma trigger
   zone (fecha a aba, digita outra URL). Posição salva é clampada aos limites do mapa atual ao
   carregar (defensivo contra um `localStorage` antigo de antes de trocar a imagem do mapa).
+- **Loja e Customização viraram "em breve"** (pedido do Falves - ele vai montar um kit inicial de
+  pixel art pros cosméticos, combinando com a identidade visual nova do mapa/personagem; os itens
+  atuais sempre foram bloco de cor sólida por raridade, placeholder desde a Fase 17). Novo
+  componente compartilhado `ComingSoon.tsx` (icone + título + descrição, mesmo espírito do
+  `ComingSoonBadge` do `SettingsMenu` só que como bloco de seção inteira). `MarketplacePage`
+  manteve só o `GemBadge` (saldo real, sem motivo pra esconder) + o bloco "em breve" no lugar do
+  filtro por slot/grid de itens. `CustomizationTab` virou um componente sem props, só o bloco "em
+  breve" - `ProfilePage` parou de manter `catalogOverride`/`busyItemId`/`actionError`/`runAction`
+  (só existiam pra alimentar essa aba), usa `data.catalog` direto pro `ProfileHeader`.
+  `purchaseCosmeticItem`/`equipCosmetic`/`unequipCosmetic` (`api/client.ts`) continuam intactos -
+  só as 2 telas pararam de exercitar esse fluxo; reverter é trazer de volta o conteúdo anterior
+  (preservado no histórico do Git).
 - **Fix: WASD parava de funcionar com Caps Lock ligado (ou Shift segurado)** - `event.key` vem
   maiúsculo nesse caso ("W"/"A"/"S"/"D"), e não batia com as entradas minúsculas de
   `MOVE_VECTORS` em `useWorldMovement.ts` - o movimento parava silenciosamente, sem erro nenhum
@@ -151,6 +163,9 @@ frontend/src/
   lib/
     worldPosition.ts               <- getSavedWorldPosition/saveWorldPosition (localStorage por userId)
     useIsMobile.ts                  <- hook - viewport < 768px, usado por StartPage pro fallback mobile
+  components/
+    ComingSoon.tsx                   <- bloco "em breve" reutilizavel (icone+titulo+descricao),
+                                    usado por MarketplacePage e CustomizationTab
   contexts/
     settingsContextObject.ts      <- createContext + tipo (SettingsContextValue)
     SettingsProvider.tsx           <- Provider - estado do SettingsMenu + renderiza o modal 1x pro app inteiro
@@ -197,6 +212,10 @@ frontend/src/
   mapa -> `/hoje` (`GlobalNav` aparece, `PenaltyGauge` em `y=72`, nav termina em `y=56` - **sem
   colisão**, confirmado por bounding box) -> ESC durante a sessão ainda abre o mesmo modal de
   Configurações (context compartilhado funcionando). Screenshots de cada passo revisados.
+- **Loja/Customização "em breve": conferido ao vivo com o mesmo usuário de QA** - `/loja` mostra
+  o bloco "Loja em breve" + Gems reais, sem grid de itens; `/perfil?tab=customizacao` mostra
+  "Customização em breve"; aba "Informações" (não afetada) continua normal, confirmando que só as
+  2 telas certas mudaram.
 - **Fix do WASD: reproduzido e confirmado corrigido via `dispatchEvent`** de um `KeyboardEvent`
   com `key: 'D'` (exatamente o que Caps Lock produz) - antes da correção o personagem não se
   movia; depois, move igual à tecla minúscula.
@@ -213,35 +232,41 @@ frontend/src/
    entre aparelhos (ex: logar no celular não traz a posição salva no computador). Aceitável pro
    caso de uso (é só onde o personagem "estava parado", não dado real) - se algum dia precisar
    sincronizar de verdade, vira um campo persistido no backend (`User` ou algo à parte).
-2. **Personagem sem arte de verdade ainda** - Falves vai procurar um asset pack free de criação
-   de personagem compatível com o estilo do mapa (spritesheet com idle/andando nas 4 direções).
-   Quando chegar, é só substituir o conteúdo de `PlayerSprite.tsx`.
+2. **Personagem sem arte de verdade ainda** - Falves vai montar um kit inicial próprio (spritesheet
+   com idle/andando nas 4 direções, compatível com o estilo do mapa) - inclui tanto os sprites do
+   personagem quanto os itens da Loja (ver item 4a abaixo), o mesmo kit cobre os dois. Quando
+   chegar, é só substituir o conteúdo de `PlayerSprite.tsx`.
 3. **Botão central do `GlobalNav` sem arte de verdade ainda** - emoji 🗺️ como placeholder até o
    Falves trazer o PNG pixel art próprio ("onde o player volta pro mapa"). Troca é só substituir
    o conteúdo de `MapButton` (dentro de `GlobalNav.tsx`) por um `<img>`.
-4. **HUD do mapa (Gems/Streak) e o `GlobalNav` em si vão ser redesenhados em pixel art** - hoje
+4. **Loja/Customização pausadas ("em breve") até o kit inicial chegar** - `MarketplacePage`/
+   `CustomizationTab` mostram `ComingSoon` no lugar da grade de itens (ver "O que foi
+   implementado" acima). Quando os itens de verdade chegarem, uma fase futura reconstrói essas 2
+   telas contra a arte real - o mecanismo de compra/equipar (`api/client.ts`,
+   `CosmeticItemCard`/`CosmeticSlotFilter`) continua intacto, só não está sendo exercitado.
+5. **HUD do mapa (Gems/Streak) e o `GlobalNav` em si vão ser redesenhados em pixel art** - hoje
    são os componentes "modernos" (pill arredondada) já existentes desde a Fase 14/18, só
    reposicionados/reorganizados. Falves confirmou que pretende refazer essa UI depois.
-5. **Sem colisão contra parede no mapa** - decisão explícita da fase pra entregar mais rápido. Se
+6. **Sem colisão contra parede no mapa** - decisão explícita da fase pra entregar mais rápido. Se
    incomodar visualmente na prática (personagem "afundando" numa construção), é candidato a uma
    próxima iteração - exigiria mapear os retângulos sólidos de cada construção.
-6. **Coordenadas das trigger zones/letreiros são uma calibração visual, não uma medição
+7. **Coordenadas das trigger zones/letreiros são uma calibração visual, não uma medição
    exaustiva** - bateram nas estimativas (ver "Testes"), mas se alguma porta parecer "errada" no
    uso real, é só ajustar `x`/`y`/`radius` em `worldConfig.ts`.
-7. **`StartDashboard.tsx` voltou a ter uso** (fallback mobile) - deixou de estar órfão. Ainda sem
+8. **`StartDashboard.tsx` voltou a ter uso** (fallback mobile) - deixou de estar órfão. Ainda sem
    nenhuma alteração de conteúdo desde a Fase 8-24 (Gems/Streak/StreakLostModal/WeeklyProjectCard
    continuam iguais); se merece um passe de fidelidade visual pra combinar com o resto da
    identidade atual é decisão em aberto, não urgente (ele já era funcional).
-8. **Fallback mobile cobre só `/start` sem params** - as outras telas (Loja/Perfil/Trilha/Ranking/
+9. **Fallback mobile cobre só `/start` sem params** - as outras telas (Loja/Perfil/Trilha/Ranking/
    Projeto/Squad/Hoje) não passaram por uma auditoria de responsividade nesta fase, só o
    `GlobalNav` que aparece em todas elas ganhou o tratamento `md:`/hambúrguer. Cada tela em si
    pode ou não se comportar bem numa viewport estreita - não verificado sistematicamente.
-9. **`useIsMobile` é só largura de viewport (breakpoint `md`, 768px)**, sem checar touch/user-agent
+10. **`useIsMobile` é só largura de viewport (breakpoint `md`, 768px)**, sem checar touch/user-agent
    - uma janela de desktop redimensionada pra estreito também cai no fallback do `StartDashboard`.
    Aceitável pro caso de uso real (não há teclado confiável só pela largura pra decidir diferente).
-10. **Usuário de QA descartável ficou no banco local** (`qa-fase25@example.com`, matriculado em Web
+11. **Usuário de QA descartável ficou no banco local** (`qa-fase25@example.com`, matriculado em Web
     Security) - criado só pra verificar o `GlobalNav`/`/hoje`/fallback mobile com login real, sem
     endpoint de remoção de usuário no domínio pra limpar via API. Inofensivo (banco de dev local),
     mas fica registrado - remover via SQL direto se incomodar.
-11. **Sem mudança nenhuma de backend nesta fase** - é 100% frontend/navegação; nenhum DTO, endpoint
+12. **Sem mudança nenhuma de backend nesta fase** - é 100% frontend/navegação; nenhum DTO, endpoint
    ou entidade de domínio foi tocado.
