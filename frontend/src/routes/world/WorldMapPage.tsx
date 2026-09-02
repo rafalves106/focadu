@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useApiResource } from '../../api/useApiResource';
+import { useAuth } from '../../contexts/useAuth';
 import { CourseStatus, type GamificationSummaryDto } from '../../api/types';
 import { Centered } from '../../components/Layout';
 import { ApiErrorScreen } from '../../components/errors/ApiErrorScreen';
@@ -11,8 +12,24 @@ import { HouseLabel } from '../../components/world/HouseLabel';
 import { PlayerSprite } from '../../components/world/PlayerSprite';
 import { EmptyStateStartPage } from '../EmptyStateStartPage';
 import mapImage from '../../assets/world/mapa-vilarejo.png';
+import { getSavedWorldPosition, saveWorldPosition, type WorldPosition } from '../../lib/worldPosition';
 import { START_POSITION, WORLD_HEIGHT, WORLD_TRIGGER_ZONES, WORLD_WIDTH, type WorldTriggerZone } from './worldConfig';
 import { useWorldMovement } from './useWorldMovement';
+
+/** Mantem a posicao salva dentro dos limites do mapa atual - defensivo contra um `localStorage`
+    antigo de antes de trocar a imagem por uma de outro tamanho (personagem nao pode nascer fora
+    da tela). */
+function clampToWorld(position: WorldPosition): WorldPosition {
+  return {
+    x: Math.min(Math.max(position.x, 0), WORLD_WIDTH),
+    y: Math.min(Math.max(position.y, 0), WORLD_HEIGHT),
+  };
+}
+
+/** Depois de quanto tempo parado o personagem "assenta" e a posicao e persistida em segundo plano
+    (ver useEffect abaixo) - cobre quem sai do mapa sem passar por uma trigger zone (ex: fecha a
+    aba, digita outra URL). Entrar numa casa salva a posicao exata na hora, sem esperar isso. */
+const IDLE_SAVE_DELAY_MS = 400;
 
 interface WorldData {
   courseId: string | null;
@@ -28,9 +45,18 @@ interface WorldData {
  * Guarda de "sem matricula ainda" preservada identica ao StartDashboard (mesmo erro
  * `nenhuma_matricula_ativa` de `api.getToday()`) - EmptyStateStartPage continua sendo a tela real
  * pra quem ainda nao tem progresso nenhum pra navegar no mapa.
+ *
+ * Posicao persistida (Fase 25, pedido do Falves - "guardar a posicao pra ele voltar sempre do
+ * mesmo lugar"): `localStorage` por usuario (ver lib/worldPosition.ts), nao backend - continuidade
+ * cosmetica de navegacao, mesmo principio ja usado pro limite de gravacao (lib/settings.ts). 2
+ * caminhos de escrita: (1) `handleEnterZone` salva a posicao EXATA na hora de entrar numa casa,
+ * antes de navegar (cobre o caso comum - sempre volta bem na porta que usou pra sair); (2) o
+ * `useEffect` de "assentou" salva em segundo plano ~400ms depois que o personagem para de se
+ * mexer, cobre quem sai do mapa sem passar por uma trigger zone (fecha a aba, troca de URL).
  */
 export function WorldMapPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [debugZones, setDebugZones] = useState(false);
 
   const { data, error, loading, retry } = useApiResource<WorldData>(
@@ -44,14 +70,37 @@ export function WorldMapPage() {
   );
 
   const courseId = data?.courseId ?? null;
-  const handleEnterZone = useCallback((zone: WorldTriggerZone) => navigate(zone.to(courseId)), [navigate, courseId]);
+
+  // So le o localStorage 1x por usuario (nao a cada render) - `useWorldMovement` so usa `start`
+  // pra semear o state inicial (useState(start)), mudar essa referencia depois nao move ninguem.
+  const startPosition = useMemo(() => {
+    const saved = user ? getSavedWorldPosition(user.id) : null;
+    return saved ? clampToWorld(saved) : START_POSITION;
+  }, [user]);
+
+  const handleEnterZone = useCallback(
+    (zone: WorldTriggerZone, exitPosition: WorldPosition) => {
+      if (user) saveWorldPosition(user.id, exitPosition);
+      navigate(zone.to(courseId));
+    },
+    [navigate, courseId, user],
+  );
 
   const { position, facing } = useWorldMovement({
-    start: START_POSITION,
+    start: startPosition,
     bounds: { width: WORLD_WIDTH, height: WORLD_HEIGHT },
     zones: WORLD_TRIGGER_ZONES,
     onEnterZone: handleEnterZone,
   });
+
+  // Salva em segundo plano depois que o personagem fica parado por IDLE_SAVE_DELAY_MS - o timeout
+  // e recriado (e o anterior cancelado, ver cleanup) a cada posicao nova, entao so dispara de
+  // verdade quando o movimento realmente parou (debounce classico via cleanup de useEffect).
+  useEffect(() => {
+    if (!user) return;
+    const timeout = setTimeout(() => saveWorldPosition(user.id, position), IDLE_SAVE_DELAY_MS);
+    return () => clearTimeout(timeout);
+  }, [user, position]);
 
   if (loading) return <Centered text="Carregando o mapa..." />;
   if (error?.code === 'nenhuma_matricula_ativa') return <EmptyStateStartPage />;

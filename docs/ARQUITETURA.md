@@ -1561,6 +1561,10 @@ frontend/
                                    unica pra "raridade -> cor", reaproveitado por
                                    EquippedFramePreview) + nameColorClass(token) - token do
                                    CosmeticItem equipado (Name, nao hex) -> classe de cor de verdade
+      worldPosition.ts                <- getSavedWorldPosition/saveWorldPosition (Fase 25) -
+                                   localStorage por userId, ultima posicao do personagem no mapa
+                                   (continuidade cosmetica, mesmo principio de nao-sincronizar-entre-
+                                   dispositivos ja usado pro limite de gravacao)
     contexts/
       authContextObject.ts         <- createContext + AuthContextValue (Fase 12) - so o objeto/tipo,
                                    separado do Provider e do hook pelo mesmo motivo de statusBadge.ts;
@@ -1638,7 +1642,12 @@ frontend/
                                    (unica tela sem `<GlobalNav/>`, ver App.tsx acima); GemBadge/
                                    StreakIndicator sobrepostos no HUD (mesma fonte de dado da Fase 14
                                    que o StartDashboard usava); guarda de `nenhuma_matricula_ativa`
-                                   preservada identica (renderiza EmptyStateStartPage). Personagem e
+                                   preservada identica (renderiza EmptyStateStartPage). Posicao
+                                   persistida entre visitas via `lib/worldPosition.ts` (localStorage
+                                   por userId) - salva no instante de entrar numa casa (`handleEnterZone`,
+                                   `useWorldMovement` repassa a posicao recem-calculada) e em segundo
+                                   plano ~400ms depois que o personagem para (`useEffect` debounced,
+                                   cobre sair sem passar por trigger zone). Personagem e
                                    so placeholder (bolinha + indicador de direcao) - sem asset de
                                    personagem ainda, ver "Fora de escopo" abaixo. `HouseLabel`
                                    (components/world/) sempre visivel acima de cada porta - so o
@@ -2165,9 +2174,12 @@ CSS).
   desenhada); sem colisao contra predio no mapa (decisao explicita da fase - so as 5 trigger zones
   das portas bloqueiam/liberam algo); coordenadas das trigger zones/letreiros em `worldConfig.ts`
   sao uma estimativa calibrada visualmente (ver `docs/fase-25/`), nao uma medicao exaustiva -
-  reajustar se alguma porta continuar "errada" na pratica. Um usuario de QA descartavel
-  (`qa-fase25@example.com`) ficou no banco local, criado so pra verificar `GlobalNav`/`/hoje` com
-  login real - sem endpoint de remocao de usuario pra limpar via API.
+  reajustar se alguma porta continuar "errada" na pratica. Posicao do personagem persistida
+  (`lib/worldPosition.ts`) e so `localStorage` - por navegador/dispositivo, nao por conta (nao
+  sincroniza entre aparelhos); vira campo de backend de verdade so se algum dia isso importar.
+  Um usuario de QA descartavel (`qa-fase25@example.com`) ficou no banco local, criado so pra
+  verificar `GlobalNav`/`/hoje` com login real - sem endpoint de remocao de usuario pra limpar via
+  API.
 - O contrato da Api (rotas, DTOs, formato de erro) esta documentado na secao "Superficie da
   API" acima; o client tipado do frontend (`frontend/src/api/`) e o exemplo de referencia de
   como consumi-lo.

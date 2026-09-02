@@ -65,6 +65,17 @@
   de `TodayPage` (o item "Configurações" do `GlobalNav` cobre o mesmo caso); `PenaltyGauge`
   continua `fixed`, só que `top-[72px]` em vez de `top-6` (limpa a altura do header, 56px + 16px
   de respiro) - verificado ao vivo, sem colisão.
+- **Posição do personagem persistida entre visitas** (`lib/worldPosition.ts`, pedido do Falves -
+  "guardar a posição pra ele voltar sempre do mesmo lugar"): `localStorage` por usuário, não
+  backend - mesmo princípio de `lib/settings.ts` (continuidade cosmética de navegação, não
+  progresso de verdade, não precisa sincronizar entre dispositivos). Dois caminhos de escrita: (1)
+  `handleEnterZone` salva a posição EXATA no instante de entrar numa casa, antes de navegar -
+  cobre o caso comum, sempre volta bem na porta que usou pra sair (`useWorldMovement` passou a
+  repassar a posição recém-calculada pro callback, não só a zona, pra não depender do state
+  `position` do render anterior); (2) um `useEffect` debounced salva em segundo plano ~400ms
+  depois que o personagem para de se mexer - cobre quem sai do mapa sem passar por uma trigger
+  zone (fecha a aba, digita outra URL). Posição salva é clampada aos limites do mapa atual ao
+  carregar (defensivo contra um `localStorage` antigo de antes de trocar a imagem do mapa).
 - **Menu de Configurações virou 1 instância só pro app inteiro** (`SettingsProvider`, novo
   Context): antes `SettingsMenu` só existia dentro de `TodayPage` (seu próprio estado local). Com
   o `GlobalNav` podendo abri-lo de qualquer tela E `/hoje` ainda precisando que ESC/voltar do
@@ -118,6 +129,8 @@ frontend/src/
     PlayerSprite.tsx            <- placeholder do personagem (bolinha + sombra + indicador de direção)
     HouseLabel.tsx               <- letreiro sempre visivel acima de cada porta (so o titulo)
   components/GlobalNav.tsx       <- menu global unico, substitui o <nav> antigo do App.tsx
+  lib/
+    worldPosition.ts               <- getSavedWorldPosition/saveWorldPosition (localStorage por userId)
   contexts/
     settingsContextObject.ts      <- createContext + tipo (SettingsContextValue)
     SettingsProvider.tsx           <- Provider - estado do SettingsMenu + renderiza o modal 1x pro app inteiro
@@ -149,6 +162,12 @@ frontend/src/
 - Mapa full-bleed: testado via Playwright em 3 proporções de viewport (16:9 exato - preenche
   100% sem barra nenhuma; janela mais larga - pillarbox; janela mais alta - letterbox) - preenche
   o máximo em qualquer caso sem esticar a imagem.
+- **Posição persistida: verificado de ponta a ponta com o mesmo usuário de QA.** 1ª visita spawna
+  na `START_POSITION` (praça central). Andar e sair SEM entrar em nenhuma casa (troca de URL
+  direto) + voltar: personagem reaparece exatamente onde parou (confirmado por coordenada exibida
+  no modo "Ajustar zonas"), não na praça - caminho do `useEffect` debounced. Andar até a zona
+  "Hoje" e entrar SEM esperar o debounce (menos de 400ms) + voltar pro mapa: personagem reaparece
+  bem na porta da torre - caminho de `handleEnterZone` (salva antes de navegar).
 - **`GlobalNav`/`SettingsProvider`/reposicionamento do `PenaltyGauge`: verificado de ponta a ponta
   com login real** (usuário de QA descartável, criado via API só pra este teste - `qa-fase25@
   example.com`, matriculado em Web Security, nunca a conta do Falves): login -> `/start` (mapa,
@@ -160,28 +179,32 @@ frontend/src/
 
 ## Dúvidas ou pontos abertos para a próxima fase
 
-1. **Personagem sem arte de verdade ainda** - Falves vai procurar um asset pack free de criação
+1. **Posição salva é por navegador/dispositivo, não por conta** - `localStorage` não sincroniza
+   entre aparelhos (ex: logar no celular não traz a posição salva no computador). Aceitável pro
+   caso de uso (é só onde o personagem "estava parado", não dado real) - se algum dia precisar
+   sincronizar de verdade, vira um campo persistido no backend (`User` ou algo à parte).
+2. **Personagem sem arte de verdade ainda** - Falves vai procurar um asset pack free de criação
    de personagem compatível com o estilo do mapa (spritesheet com idle/andando nas 4 direções).
    Quando chegar, é só substituir o conteúdo de `PlayerSprite.tsx`.
-2. **Botão central do `GlobalNav` sem arte de verdade ainda** - emoji 🗺️ como placeholder até o
+3. **Botão central do `GlobalNav` sem arte de verdade ainda** - emoji 🗺️ como placeholder até o
    Falves trazer o PNG pixel art próprio ("onde o player volta pro mapa"). Troca é só substituir
    o conteúdo de `MapButton` (dentro de `GlobalNav.tsx`) por um `<img>`.
-3. **HUD do mapa (Gems/Streak) e o `GlobalNav` em si vão ser redesenhados em pixel art** - hoje
+4. **HUD do mapa (Gems/Streak) e o `GlobalNav` em si vão ser redesenhados em pixel art** - hoje
    são os componentes "modernos" (pill arredondada) já existentes desde a Fase 14/18, só
    reposicionados/reorganizados. Falves confirmou que pretende refazer essa UI depois.
-4. **Sem colisão contra parede no mapa** - decisão explícita da fase pra entregar mais rápido. Se
+5. **Sem colisão contra parede no mapa** - decisão explícita da fase pra entregar mais rápido. Se
    incomodar visualmente na prática (personagem "afundando" numa construção), é candidato a uma
    próxima iteração - exigiria mapear os retângulos sólidos de cada construção.
-5. **Coordenadas das trigger zones/letreiros são uma calibração visual, não uma medição
+6. **Coordenadas das trigger zones/letreiros são uma calibração visual, não uma medição
    exaustiva** - bateram nas estimativas (ver "Testes"), mas se alguma porta parecer "errada" no
    uso real, é só ajustar `x`/`y`/`radius` em `worldConfig.ts`.
-6. **`StartDashboard.tsx` está órfão no repo** - sem import nenhum apontando pra ele, mantido a
+7. **`StartDashboard.tsx` está órfão no repo** - sem import nenhum apontando pra ele, mantido a
    pedido do Falves. Uma fase futura vai precisar decidir se algum trecho dele (ex: lógica do
    `StreakLostModal`, `WeeklyProjectCard` no hub) volta a ser usado em algum lugar, ou se o arquivo
    é removido de vez.
-7. **Usuário de QA descartável ficou no banco local** (`qa-fase25@example.com`, matriculado em Web
+8. **Usuário de QA descartável ficou no banco local** (`qa-fase25@example.com`, matriculado em Web
    Security) - criado só pra verificar o `GlobalNav`/`/hoje` com login real, sem endpoint de
    remoção de usuário no domínio pra limpar via API. Inofensivo (banco de dev local), mas fica
    registrado - remover via SQL direto se incomodar.
-8. **Sem mudança nenhuma de backend nesta fase** - é 100% frontend/navegação; nenhum DTO, endpoint
+9. **Sem mudança nenhuma de backend nesta fase** - é 100% frontend/navegação; nenhum DTO, endpoint
    ou entidade de domínio foi tocado.
