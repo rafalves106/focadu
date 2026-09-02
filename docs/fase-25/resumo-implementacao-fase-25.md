@@ -76,6 +76,25 @@
   depois que o personagem para de se mexer - cobre quem sai do mapa sem passar por uma trigger
   zone (fecha a aba, digita outra URL). Posição salva é clampada aos limites do mapa atual ao
   carregar (defensivo contra um `localStorage` antigo de antes de trocar a imagem do mapa).
+- **Fix: WASD parava de funcionar com Caps Lock ligado (ou Shift segurado)** - `event.key` vem
+  maiúsculo nesse caso ("W"/"A"/"S"/"D"), e não batia com as entradas minúsculas de
+  `MOVE_VECTORS` em `useWorldMovement.ts` - o movimento parava silenciosamente, sem erro nenhum
+  (as setas continuavam funcionando, por não serem letras - só o WASD "sumia", exatamente o
+  sintoma relatado). `normalizeKey` (novo, lowercase só em teclas de 1 caractere - `ArrowUp` etc
+  não precisam) corrige. Reproduzido e confirmado corrigido via `dispatchEvent` direto de um
+  `KeyboardEvent` com `key: 'D'` antes/depois da correção.
+- **Fallback mobile em `/start`** (pedido do Falves - "caso o usuário acesse pelo telefone,
+  iremos utilizar a tela antiga"): `useIsMobile()` (novo, `lib/useIsMobile.ts` - viewport <
+  768px, mesmo breakpoint `md` já usado em CSS pelo resto do app) decide entre `WorldMapPage`
+  (mapa, exige teclado) e `StartDashboard` (hub de cards antigo) em `/start` sem params -
+  exatamente por isso o `StartDashboard` tinha ficado guardado no repo sem uso desde o início
+  desta fase, não foi acaso. `StartDashboard` roda dentro de `<App>` (`GlobalNav`) no fallback,
+  mesmo shell que sempre usou.
+- **`GlobalNav` virou responsivo** (descoberto ao vivo testando o fallback mobile acima - 7 itens
+  + botão central + badge não cabiam em ~390px, texto cortado/sobrepondo). Abaixo do breakpoint
+  `md`, os 2 grupos de texto (esquerdo/direito) viram um botão "☰" que abre um menu suspenso em
+  lista (fecha sozinho ao navegar); botão central e `HeaderUserBadge` continuam sempre visíveis
+  na barra. Acima de `md`, layout idêntico ao original - verificado que nada mudou no desktop.
 - **Menu de Configurações virou 1 instância só pro app inteiro** (`SettingsProvider`, novo
   Context): antes `SettingsMenu` só existia dentro de `TodayPage` (seu próprio estado local). Com
   o `GlobalNav` podendo abri-lo de qualquer tela E `/hoje` ainda precisando que ESC/voltar do
@@ -131,6 +150,7 @@ frontend/src/
   components/GlobalNav.tsx       <- menu global unico, substitui o <nav> antigo do App.tsx
   lib/
     worldPosition.ts               <- getSavedWorldPosition/saveWorldPosition (localStorage por userId)
+    useIsMobile.ts                  <- hook - viewport < 768px, usado por StartPage pro fallback mobile
   contexts/
     settingsContextObject.ts      <- createContext + tipo (SettingsContextValue)
     SettingsProvider.tsx           <- Provider - estado do SettingsMenu + renderiza o modal 1x pro app inteiro
@@ -150,7 +170,8 @@ frontend/src/
                                     ErrorBoundary key ganhou +search
   main.tsx                            <- (editado) <SettingsProvider> envolvendo as rotas, /hoje
                                     voltou pra dentro de <Route element={<App/>}>
-  routes/StartDashboard.tsx         <- (sem alteração de conteúdo) mantido no repo, sem uso
+  routes/StartDashboard.tsx         <- (sem alteração de conteúdo) volta a ter uso - fallback
+                                    mobile de `/start`, ver StartPage.tsx
 ```
 
 ## Testes
@@ -176,6 +197,15 @@ frontend/src/
   mapa -> `/hoje` (`GlobalNav` aparece, `PenaltyGauge` em `y=72`, nav termina em `y=56` - **sem
   colisão**, confirmado por bounding box) -> ESC durante a sessão ainda abre o mesmo modal de
   Configurações (context compartilhado funcionando). Screenshots de cada passo revisados.
+- **Fix do WASD: reproduzido e confirmado corrigido via `dispatchEvent`** de um `KeyboardEvent`
+  com `key: 'D'` (exatamente o que Caps Lock produz) - antes da correção o personagem não se
+  movia; depois, move igual à tecla minúscula.
+- **Fallback mobile: verificado num viewport de 390x844 (iPhone-ish)** com o mesmo usuário de QA -
+  `/start` renderiza `StartDashboard` (não `WorldMapPage`), confirmado checando ausência da
+  `<img alt="Mapa da Focadu">` na página. `GlobalNav` responsivo testado no mesmo viewport: barra
+  colapsada (hambúrguer + botão central + badge, tudo visível sem corte), menu aberto (lista dos
+  6 itens), clique num item navega e fecha o menu sozinho. Desktop (1440px) conferido de novo no
+  mesmo teste - hambúrguer ausente, layout idêntico ao de antes desta rodada.
 
 ## Dúvidas ou pontos abertos para a próxima fase
 
@@ -198,13 +228,20 @@ frontend/src/
 6. **Coordenadas das trigger zones/letreiros são uma calibração visual, não uma medição
    exaustiva** - bateram nas estimativas (ver "Testes"), mas se alguma porta parecer "errada" no
    uso real, é só ajustar `x`/`y`/`radius` em `worldConfig.ts`.
-7. **`StartDashboard.tsx` está órfão no repo** - sem import nenhum apontando pra ele, mantido a
-   pedido do Falves. Uma fase futura vai precisar decidir se algum trecho dele (ex: lógica do
-   `StreakLostModal`, `WeeklyProjectCard` no hub) volta a ser usado em algum lugar, ou se o arquivo
-   é removido de vez.
-8. **Usuário de QA descartável ficou no banco local** (`qa-fase25@example.com`, matriculado em Web
-   Security) - criado só pra verificar o `GlobalNav`/`/hoje` com login real, sem endpoint de
-   remoção de usuário no domínio pra limpar via API. Inofensivo (banco de dev local), mas fica
-   registrado - remover via SQL direto se incomodar.
-9. **Sem mudança nenhuma de backend nesta fase** - é 100% frontend/navegação; nenhum DTO, endpoint
+7. **`StartDashboard.tsx` voltou a ter uso** (fallback mobile) - deixou de estar órfão. Ainda sem
+   nenhuma alteração de conteúdo desde a Fase 8-24 (Gems/Streak/StreakLostModal/WeeklyProjectCard
+   continuam iguais); se merece um passe de fidelidade visual pra combinar com o resto da
+   identidade atual é decisão em aberto, não urgente (ele já era funcional).
+8. **Fallback mobile cobre só `/start` sem params** - as outras telas (Loja/Perfil/Trilha/Ranking/
+   Projeto/Squad/Hoje) não passaram por uma auditoria de responsividade nesta fase, só o
+   `GlobalNav` que aparece em todas elas ganhou o tratamento `md:`/hambúrguer. Cada tela em si
+   pode ou não se comportar bem numa viewport estreita - não verificado sistematicamente.
+9. **`useIsMobile` é só largura de viewport (breakpoint `md`, 768px)**, sem checar touch/user-agent
+   - uma janela de desktop redimensionada pra estreito também cai no fallback do `StartDashboard`.
+   Aceitável pro caso de uso real (não há teclado confiável só pela largura pra decidir diferente).
+10. **Usuário de QA descartável ficou no banco local** (`qa-fase25@example.com`, matriculado em Web
+    Security) - criado só pra verificar o `GlobalNav`/`/hoje`/fallback mobile com login real, sem
+    endpoint de remoção de usuário no domínio pra limpar via API. Inofensivo (banco de dev local),
+    mas fica registrado - remover via SQL direto se incomodar.
+11. **Sem mudança nenhuma de backend nesta fase** - é 100% frontend/navegação; nenhum DTO, endpoint
    ou entidade de domínio foi tocado.

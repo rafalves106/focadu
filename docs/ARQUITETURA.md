@@ -1633,8 +1633,11 @@ frontend/
                                    `<WeeklyDetailPage key={weeklyId} .../>` desde a Fase 11 (ver
                                    "Bug real: modal preso ao trocar de Weekly" abaixo); `?ranking=1`
                                    -> RankingPage (Fase 16, mesmo padrao de flag de `?project=`);
-                                   sem params -> `WorldMapPage` desde a Fase 25 (era `StartDashboard`
-                                   ate a Fase 24)
+                                   sem params -> `WorldMapPage` no desktop desde a Fase 25 (era
+                                   `StartDashboard` ate a Fase 24), `StartDashboard` de volta no
+                                   celular (`useIsMobile()`, viewport < 768px - mapa exige teclado,
+                                   sem sentido num touchscreen; `StartDashboard` roda dentro de
+                                   `<App>` como sempre rodou)
       world/WorldMapPage.tsx     <- /start sem params (Fase 25, Parte A) - hub de entrada virou mapa
                                    top-down (`assets/world/mapa-vilarejo.png`, arte trazida pelo
                                    Falves) com personagem controlavel (setas/WASD, sem colisao contra
@@ -1662,7 +1665,13 @@ frontend/
                                    Perfil, celeiro->Loja, campo de treino->Squad
       world/useWorldMovement.ts    <- hook do loop de movimento (keydown/keyup + requestAnimationFrame,
                                    sem lib externa - mesmo principio de "fetch nativo sem lib extra"
-                                   do resto do frontend) + deteccao de entrada em trigger zone
+                                   do resto do frontend) + deteccao de entrada em trigger zone.
+                                   `normalizeKey` (Fase 25, fix real) - `event.key` vem maiusculo
+                                   com Caps Lock ligado/Shift segurado, nao batia com as entradas
+                                   minusculas de MOVE_VECTORS (WASD parava de funcionar
+                                   silenciosamente, setas continuavam OK por nao serem letras)
+      lib/useIsMobile.ts (Fase 25)   <- hook - true com viewport < 768px (breakpoint `md`), usado
+                                   por StartPage pro fallback mobile em /start
       GlobalNav.tsx (Fase 25)       <- menu global unico (components/) - substitui o antigo <nav> de
                                    2 links do App.tsx. Itens: Hoje, Trilha do Curso, Ranking (agora
                                    item proprio, nao so ancorado dentro da Trilha), Squad, Loja,
@@ -1674,10 +1683,15 @@ frontend/
                                    fallback Active->primeiro que WorldMapPage/StartDashboard sempre
                                    usaram) - self-contained, mesmo padrao de HeaderUserBadge. Sem
                                    destaque de "item ativo" (NavLink so compara pathname, destacaria
-                                   Trilha/Ranking juntos incorretamente - usa Link simples)
-      StartDashboard.tsx (Fase 8-24) <- hub antigo em cards ("Comecar Hoje"/"Projeto"/"Trilha"),
-                                   sem uso desde a Fase 25 - StartPage nao aponta mais pra ele.
-                                   Mantido no repo por pedido explicito do Falves (nao apagado, ver
+                                   Trilha/Ranking juntos incorretamente - usa Link simples).
+                                   Responsivo (Fase 25, descoberto testando o fallback mobile - 7
+                                   itens + botao central + badge nao cabiam em ~390px): abaixo do
+                                   breakpoint `md`, os 2 grupos de texto viram um botao "☰" que abre
+                                   um menu suspenso em lista (fecha ao navegar); botao central e
+                                   HeaderUserBadge continuam sempre visiveis. Acima de `md`, layout
+                                   identico ao original
+      StartDashboard.tsx (Fase 8-24)  <- hub antigo em cards ("Comecar Hoje"/"Projeto"/"Trilha") -
+                                   volta a ter uso na Fase 25 como fallback mobile de `/start` (ver
                                    `docs/fase-25/resumo-implementacao-fase-25.md`), nao removido por
                                    decisao tecnica
       WeeklyDetailPage.tsx        <- /start?weekly= - dias da semana + projeto + navegacao entre semanas
@@ -1846,7 +1860,7 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/selecionar-curso` | `GET /api/courses/available` + `POST /api/enrollments` | `CourseSelectionPage` (Fase 13b) - passo 3/3 |
 | `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7). Fora do shell `<App/>` da Fase 20 ate a 24 (full-bleed); dentro do shell de novo desde a Fase 25 (ganhou `GlobalNav`, PenaltyGauge reposicionado) |
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco; Fase 8: tambem usada como "reprise" de um dia ja concluido, clicado a partir da Visao Semanal) |
-| `/start` (sem params) | `GET /api/today` + `GET /api/courses` + `GET /api/users/me/gamification` | `WorldMapPage` (Fase 25) - mapa/personagem, 5 casas levam pras telas abaixo. Era `StartDashboard` (Fase 8-24) |
+| `/start` (sem params) | `GET /api/today` + `GET /api/courses` + `GET /api/users/me/gamification` | `WorldMapPage` (Fase 25) no desktop - mapa/personagem, 5 casas levam pras telas abaixo. `StartDashboard` (Fase 8-24) no celular (`useIsMobile()`, viewport < 768px) |
 | `/start?course=` | `GET /api/courses/{courseId}` | `CourseDetailPage` (Fase 8) - trilha completa do curso |
 | `/start?course=&ranking=1` | `GET /api/courses/{courseId}/ranking?scope=` | `RankingPage` (Fase 16) - Score de Estudo, top 10 + posicao do usuario |
 | `/loja` | `GET /api/marketplace/catalog` + `POST .../purchase`\|`/equip`\|`/unequip` | `MarketplacePage` (Fase 17) - catalogo de cosmeticos |
@@ -2178,8 +2192,11 @@ CSS).
   (`lib/worldPosition.ts`) e so `localStorage` - por navegador/dispositivo, nao por conta (nao
   sincroniza entre aparelhos); vira campo de backend de verdade so se algum dia isso importar.
   Um usuario de QA descartavel (`qa-fase25@example.com`) ficou no banco local, criado so pra
-  verificar `GlobalNav`/`/hoje` com login real - sem endpoint de remocao de usuario pra limpar via
-  API.
+  verificar `GlobalNav`/`/hoje`/fallback mobile com login real - sem endpoint de remocao de
+  usuario pra limpar via API. **Fallback mobile cobre so `/start` sem params** - as outras telas
+  (Loja/Perfil/Trilha/Ranking/Projeto/Squad/Hoje) nao passaram por auditoria de responsividade
+  nesta fase, so o `GlobalNav` (que aparece em todas) ganhou o tratamento `md:`/hamburguer.
+  `useIsMobile` e so largura de viewport (768px), sem checar touch/user-agent.
 - O contrato da Api (rotas, DTOs, formato de erro) esta documentado na secao "Superficie da
   API" acima; o client tipado do frontend (`frontend/src/api/`) e o exemplo de referencia de
   como consumi-lo.

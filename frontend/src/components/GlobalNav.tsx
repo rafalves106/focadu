@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
@@ -21,37 +21,99 @@ import { HeaderUserBadge } from './HeaderUserBadge';
  * pathname `/start` com querys diferentes, e `NavLink` so compara pathname por padrao (destacaria
  * os dois ao mesmo tempo, incorreto). Nao vale a complexidade de comparar `location.search` a mao
  * pra uma UI que o Falves ja disse que vai redesenhar em pixel art depois.
+ *
+ * Responsivo (Fase 25, adicionado depois de ver o menu quebrado ao vivo num viewport de celular -
+ * 7 itens + botao central + badge nao cabem em ~390px): abaixo do breakpoint `md` (768px, mesmo
+ * limiar de `useIsMobile`), os 2 grupos de texto viram um botao "☰" que abre um menu suspenso em
+ * lista - so o botao central e o `HeaderUserBadge` continuam sempre visiveis na barra. Acima de
+ * `md`, layout identico ao original (3 grupos numa linha so).
  */
 export function GlobalNav() {
   const settings = useSettings();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: courses } = useApiResource(() => api.getCourses(), []);
   const activeCourse = courses?.find((c) => c.status === CourseStatus.Active) ?? courses?.[0] ?? null;
   const courseId = activeCourse?.id ?? null;
 
+  const trilhaHref = courseId ? `/start?course=${courseId}` : '/start';
+  const rankingHref = courseId ? `/start?course=${courseId}&ranking=1` : '/start';
+  const closeMobileMenu = () => setMobileMenuOpen(false);
+
   return (
-    <nav className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-surface-alt bg-surface px-4">
-      <div className="flex flex-1 items-center gap-1">
-        <NavItem to="/hoje">Hoje</NavItem>
-        <NavItem to={courseId ? `/start?course=${courseId}` : '/start'}>Trilha do Curso</NavItem>
-        <NavItem to={courseId ? `/start?course=${courseId}&ranking=1` : '/start'}>Ranking</NavItem>
-      </div>
+    <nav className="sticky top-0 z-30 border-b border-surface-alt bg-surface">
+      <div className="flex h-14 items-center justify-between gap-2 px-4">
+        {/* Desktop (md+): grupo esquerdo. */}
+        <div className="hidden flex-1 items-center gap-1 md:flex">
+          <NavItem to="/hoje">Hoje</NavItem>
+          <NavItem to={trilhaHref}>Trilha do Curso</NavItem>
+          <NavItem to={rankingHref}>Ranking</NavItem>
+        </div>
 
-      <MapButton />
-
-      <div className="flex flex-1 items-center justify-end gap-1">
-        <NavItem to="/perfil?tab=squad">Squad</NavItem>
-        <NavItem to="/loja">Loja</NavItem>
+        {/* Mobile (abaixo de md): hamburguer no lugar dos 2 grupos de texto. */}
         <button
           type="button"
-          onClick={settings.open}
-          className="rounded-lg px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary"
+          onClick={() => setMobileMenuOpen((v) => !v)}
+          aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+          aria-expanded={mobileMenuOpen}
+          className="flex size-9 shrink-0 items-center justify-center rounded-lg text-lg text-secondary hover:text-primary md:hidden"
         >
-          Configurações
+          {mobileMenuOpen ? '✕' : '☰'}
         </button>
-        <div className="ml-2 shrink-0">
+
+        <MapButton />
+
+        {/* Desktop (md+): grupo direito. */}
+        <div className="hidden flex-1 items-center justify-end gap-1 md:flex">
+          <NavItem to="/perfil?tab=squad">Squad</NavItem>
+          <NavItem to="/loja">Loja</NavItem>
+          <button
+            type="button"
+            onClick={settings.open}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary"
+          >
+            Configurações
+          </button>
+          <div className="ml-2 shrink-0">
+            <HeaderUserBadge />
+          </div>
+        </div>
+
+        {/* Mobile: badge sempre visivel, sem o resto do grupo direito (ver menu suspenso abaixo). */}
+        <div className="shrink-0 md:hidden">
           <HeaderUserBadge />
         </div>
       </div>
+
+      {/* Mobile: menu suspenso com todos os itens em lista - fecha sozinho ao navegar. */}
+      {mobileMenuOpen && (
+        <div className="flex flex-col gap-1 border-t border-surface-alt p-2 md:hidden">
+          <MobileNavItem to="/hoje" onNavigate={closeMobileMenu}>
+            Hoje
+          </MobileNavItem>
+          <MobileNavItem to={trilhaHref} onNavigate={closeMobileMenu}>
+            Trilha do Curso
+          </MobileNavItem>
+          <MobileNavItem to={rankingHref} onNavigate={closeMobileMenu}>
+            Ranking
+          </MobileNavItem>
+          <MobileNavItem to="/perfil?tab=squad" onNavigate={closeMobileMenu}>
+            Squad
+          </MobileNavItem>
+          <MobileNavItem to="/loja" onNavigate={closeMobileMenu}>
+            Loja
+          </MobileNavItem>
+          <button
+            type="button"
+            onClick={() => {
+              closeMobileMenu();
+              settings.open();
+            }}
+            className="rounded-lg px-3 py-2.5 text-left text-sm font-medium text-secondary hover:bg-surface-alt hover:text-primary"
+          >
+            Configurações
+          </button>
+        </div>
+      )}
     </nav>
   );
 }
@@ -59,6 +121,18 @@ export function GlobalNav() {
 function NavItem({ to, children }: { to: string; children: ReactNode }) {
   return (
     <Link to={to} className="rounded-lg px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary">
+      {children}
+    </Link>
+  );
+}
+
+function MobileNavItem({ to, onNavigate, children }: { to: string; onNavigate: () => void; children: ReactNode }) {
+  return (
+    <Link
+      to={to}
+      onClick={onNavigate}
+      className="rounded-lg px-3 py-2.5 text-sm font-medium text-secondary hover:bg-surface-alt hover:text-primary"
+    >
       {children}
     </Link>
   );

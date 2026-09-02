@@ -19,6 +19,17 @@ const MOVE_VECTORS: Record<string, readonly [number, number]> = {
 const SPEED = 260;
 
 /**
+ * `event.key` vem maiusculo com Caps Lock ligado (ou Shift segurado) - "W"/"A"/"S"/"D" nao batiam
+ * com as entradas minusculas de `MOVE_VECTORS` e o movimento parava silenciosamente (bug real,
+ * reproduzido - setas continuavam funcionando por nao serem letras, so o WASD "sumia"). So letras
+ * unicas precisam de normalizacao - `ArrowUp` etc ja sao inequivocas, tocar nelas so arriscaria
+ * introduzir um bug novo a toa.
+ */
+function normalizeKey(key: string): string {
+  return key.length === 1 ? key.toLowerCase() : key;
+}
+
+/**
  * Loop de movimento do personagem no mapa (Fase 25) - teclado (setas/WASD) + requestAnimationFrame,
  * sem colisao contra predio (decisao da fase: so as 5 trigger zones das portas importam). `position`
  * e `facing` re-renderizam o chamador a cada frame com tecla pressionada (aceitavel - o mapa e a
@@ -53,12 +64,13 @@ export function useWorldMovement({
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (!(event.key in MOVE_VECTORS)) return;
-      pressedRef.current.add(event.key);
+      const key = normalizeKey(event.key);
+      if (!(key in MOVE_VECTORS)) return;
+      pressedRef.current.add(key);
       event.preventDefault();
     }
     function handleKeyUp(event: KeyboardEvent) {
-      pressedRef.current.delete(event.key);
+      pressedRef.current.delete(normalizeKey(event.key));
     }
     // Alt-tab/troca de janela com tecla segurada nunca dispara keyup - sem isso o personagem
     // ficaria andando sozinho depois que a aba voltasse a ficar visivel.
