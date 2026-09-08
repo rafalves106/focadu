@@ -1,15 +1,14 @@
 using Focadu.Domain.Courses;
-using Focadu.Domain.Dailies;
-using Focadu.Domain.Enums;
+using Focadu.Domain.Monthlies;
 using Focadu.Domain.Repositories;
 using Focadu.Domain.Weeklies;
 
 namespace Focadu.Application.Seed;
 
 /// <summary>
-/// Popula o curso piloto "Web Security" (Monthly 1, WeeklyTemplate 1, 4 DailyTemplates) com o
-/// conteudo real da Semana 1. Idempotente: se o Course "Web Security" ja existir (por nome), nao
-/// insere nada de novo.
+/// Popula o curso piloto "Web Security" (4 Monthlies / 12 WeeklyTemplates / 60 DailyTemplates)
+/// com o curriculo real das 12 semanas (ver secret/curadoria/CURADORIA.md). Idempotente: se o
+/// Course "Web Security" ja existir (por nome), nao insere nada de novo.
 ///
 /// Fase 13: so cria a estrutura TEMPLATE (Course/Monthly/WeeklyTemplate/DailyTemplate/
 /// DailyActivity/CuratedContent) - sem datas reais, sem Weekly/Daily-instancia. Isso passou a ser
@@ -24,6 +23,7 @@ namespace Focadu.Application.Seed;
 public class SeedWebSecurityCourseUseCase
 {
     private const string CourseName = "Web Security";
+    private const string CourseSlug = "web-security";
 
     private readonly ICourseRepository _courseRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -47,6 +47,13 @@ public class SeedWebSecurityCourseUseCase
         return new SeedResult(AlreadyExisted: false, CourseId: course.Id);
     }
 
+    /// <summary>
+    /// Monta o curso inteiro (12 semanas / 4 modulos, ver CURADORIA.md secao 5) a partir do
+    /// conteudo curado em disco. Cada modulo agrupa 3 WeeklyTemplates; cada semana importa seus 5
+    /// dias + 1 projeto pratico via ImportWeek. Semana 1 fica de fora do loop generico so por ja
+    /// ter sido escrita a mao antes do CuratedDayImporter existir - manter aqui em vez de migrar
+    /// evita mexer num trecho ja testado sem necessidade.
+    /// </summary>
     private Course BuildCourse()
     {
         var course = new Course(CourseName);
@@ -54,37 +61,125 @@ public class SeedWebSecurityCourseUseCase
         course.SetCatalogInfo(
             "Domine fundamentos de seguranca web na pratica - HTTP, autenticacao, e as vulnerabilidades mais comuns do OWASP Top 10.");
 
-        var monthly = course.AddMonthly(1, "Fundamentos e OWASP Top 10");
-        var weeklyTemplate = monthly.AddWeeklyTemplate(1, "Fundamentos HTTP", "HTTP, Headers, Cookies e HTTPS/TLS");
+        // MODULO 1: Fundamentos de Arquitetura Web, Redes e Superficie de Ataque (Semanas 1-3).
+        var modulo1 = course.AddMonthly(1, "Fundamentos e OWASP Top 10");
 
-        AddDay1(weeklyTemplate);
-        AddDay2(weeklyTemplate);
-        AddDay3(weeklyTemplate);
-        AddDay4(weeklyTemplate);
-
+        var semana1 = modulo1.AddWeeklyTemplate(1, "Fundamentos HTTP", "HTTP, Headers, Cookies e HTTPS/TLS");
+        AddDay1(semana1);
+        AddDay2(semana1);
+        AddDay3(semana1);
+        AddDay4(semana1);
+        AddDay5(semana1);
         // Fase 25 (fechamento do Mes 1): projeto curado de verdade (secret/curadoria/web-security/
         // semana-1/projeto.json, "Sniffer CLI") substitui o placeholder hardcoded original
         // ("Reconhecimento de Trafego HTTP" via DevTools) - divergencia resolvida a favor do
         // roteiro (mais alinhado ao tema de rede da semana), ver CURADORIA.md secao 4.
-        CuratedProjectImporter.ImportFile(weeklyTemplate, CuratedContentPath("web-security", "semana-1", "projeto.json"));
+        CuratedProjectImporter.ImportFile(semana1, CuratedContentPath("semana-1", "projeto.json"));
+
+        var semana2 = modulo1.AddWeeklyTemplate(2, "Identidade e Controle de Acesso",
+            "Cookies, JWT, RBAC/ABAC, CORS e Headers de Seguranca");
+        ImportWeek(semana2, "semana-2", 6, 10);
+
+        var semana3 = modulo1.AddWeeklyTemplate(3, "Mapeamento de Ativos e Reconhecimento",
+            "EASM, OSINT, Nmap, Fuzzing e Modelagem de Ameacas (STRIDE)");
+        ImportWeek(semana3, "semana-3", 11, 15);
+
+        // MODULO 2: Vulnerabilidades Web Profundas & OWASP Top 10 (Semanas 4-6).
+        var modulo2 = course.AddMonthly(2, "Vulnerabilidades Web Profundas & OWASP Top 10");
+
+        var semana4 = modulo2.AddWeeklyTemplate(4, "Injecoes e Manipulacao de Dados",
+            "SQLi, Queries Parametrizadas, Command Injection, LFI/RFI e SSTI");
+        ImportWeek(semana4, "semana-4", 16, 20);
+
+        var semana5 = modulo2.AddWeeklyTemplate(5, "Ataques Client-Side e Quebra de Acesso",
+            "XSS, CSP Avancado, CSRF, BOLA (IDOR) e BFLA");
+        ImportWeek(semana5, "semana-5", 21, 25);
+
+        var semana6 = modulo2.AddWeeklyTemplate(6, "Vulnerabilidades Avancadas de Servidor",
+            "SSRF, Deserializacao Insegura, XXE, Broken Business Logic e Mass Assignment");
+        ImportWeek(semana6, "semana-6", 26, 30);
+
+        // MODULO 3: Criptografia Aplicada, Secure Coding & DevSecOps (Semanas 7-9).
+        var modulo3 = course.AddMonthly(3, "Criptografia Aplicada, Secure Coding & DevSecOps");
+
+        var semana7 = modulo3.AddWeeklyTemplate(7, "Criptografia para Desenvolvedores",
+            "AES-GCM, RSA/ECC, Argon2, PKI e Gestao de Segredos");
+        ImportWeek(semana7, "semana-7", 31, 35);
+
+        var semana8 = modulo3.AddWeeklyTemplate(8, "Seguranca na Pipeline CI/CD",
+            "SAST, SCA, DAST, Hardening de Docker e IaC Security");
+        ImportWeek(semana8, "semana-8", 36, 40);
+
+        var semana9 = modulo3.AddWeeklyTemplate(9, "Arquitetura de Identidade e Zero Trust",
+            "OAuth 2.0 (PKCE), OIDC, MFA, Zero Trust e SSO/SAML");
+        ImportWeek(semana9, "semana-9", 41, 45);
+
+        // MODULO 4: Nuvem, Deteccao de Ameacas, Forense e Red/Blue Team (Semanas 10-12).
+        var modulo4 = course.AddMonthly(4, "Nuvem, Deteccao de Ameacas, Forense e Red/Blue Team");
+
+        var semana10 = modulo4.AddWeeklyTemplate(10, "Cloud Security",
+            "IAM na Nuvem, Storage Misconfigs (S3), Kubernetes RBAC, CloudTrail e Serverless");
+        ImportWeek(semana10, "semana-10", 46, 50);
+
+        var semana11 = modulo4.AddWeeklyTemplate(11, "Resposta a Incidentes e Forense",
+            "Metodologia NIST/SANS, SIEM, Sigma/YARA, MITRE ATT&CK e Analise de Logs");
+        ImportWeek(semana11, "semana-11", 51, 55);
+
+        var semana12 = modulo4.AddWeeklyTemplate(12, "Capstone e Defesa em Profundidade",
+            "Defesa em Profundidade, Evasao, Purple Teaming, Gestao de Risco Executivo e IA Ofensiva");
+        ImportWeek(semana12, "semana-12", 56, 60);
 
         return course;
     }
 
+    /// <summary>
+    /// Importa uma semana inteira (5 dias + 1 projeto pratico) do curriculo curado. Generico por
+    /// design (mesmo raciocinio do CuratedDayImporter): o roteiro real tem 60 dias / 12 semanas,
+    /// entao um metodo AddWeekN por semana nao escalaria nem seria confiavel pra transcrever a
+    /// mao. firstDay/lastDay (em vez de assumir sempre 5 dias por formula) documenta
+    /// explicitamente o intervalo real de cada semana e evita erro silencioso caso uma semana
+    /// futura fuja da convencao de 5 dias.
+    /// </summary>
+    private static void ImportWeek(WeeklyTemplate weeklyTemplate, string weekFolder, int firstDay, int lastDay)
+    {
+        for (var dayNumber = firstDay; dayNumber <= lastDay; dayNumber++)
+            CuratedDayImporter.ImportFile(weeklyTemplate, CuratedContentPath(weekFolder, $"dia-{dayNumber}.json"));
+
+        CuratedProjectImporter.ImportFile(weeklyTemplate, CuratedContentPath(weekFolder, "projeto.json"));
+    }
+
     // Fase 21: conteudo curado de verdade (secret/curadoria/web-security/semana-1/dia-1.json),
-    // carregado via CuratedDayImporter em vez do placeholder hardcoded que existia aqui (o "TODO:
-    // substituir pelo texto completo curado" original). Dias 2-4 abaixo continuam no placeholder -
-    // so o dia 1 foi pedido pra teste; trocar os outros e a mesma 1 linha quando chegar a vez.
+    // carregado via CuratedDayImporter. Fase 26 (fechamento do curriculo): Dias 2-5 migrados do
+    // placeholder hardcoded ("TODO: substituir pelo texto completo curado") pro mesmo importer,
+    // agora que a curadoria real dos 5 dias da Semana 1 esta completa (CURADORIA.md secao 4).
     private static void AddDay1(WeeklyTemplate weeklyTemplate) =>
-        CuratedDayImporter.ImportFile(weeklyTemplate, CuratedContentPath("web-security", "semana-1", "dia-1.json"));
+        CuratedDayImporter.ImportFile(weeklyTemplate, CuratedContentPath("semana-1", "dia-1.json"));
+
+    private static void AddDay2(WeeklyTemplate weeklyTemplate) =>
+        CuratedDayImporter.ImportFile(weeklyTemplate, CuratedContentPath("semana-1", "dia-2.json"));
+
+    private static void AddDay3(WeeklyTemplate weeklyTemplate) =>
+        CuratedDayImporter.ImportFile(weeklyTemplate, CuratedContentPath("semana-1", "dia-3.json"));
+
+    private static void AddDay4(WeeklyTemplate weeklyTemplate) =>
+        CuratedDayImporter.ImportFile(weeklyTemplate, CuratedContentPath("semana-1", "dia-4.json"));
+
+    private static void AddDay5(WeeklyTemplate weeklyTemplate) =>
+        CuratedDayImporter.ImportFile(weeklyTemplate, CuratedContentPath("semana-1", "dia-5.json"));
 
     /// <summary>
-    /// Acha secret/curadoria/&lt;curso&gt;/&lt;pastaSemana&gt;/&lt;arquivo&gt; a partir da raiz do
-    /// repo (achada subindo ate encontrar .git) - o seed roda via `dotnet run -- seed`, que pode
-    /// ser disparado tanto da raiz do repo quanto de backend/, entao nao da pra assumir
-    /// Directory.GetCurrentDirectory() direto.
+    /// Acha secret/curadoria/web-security/&lt;pastaSemana&gt;/&lt;arquivo&gt; - o seed roda via
+    /// `dotnet run -- seed`, que pode ser disparado tanto da raiz do repo quanto de backend/, entao
+    /// nao da pra assumir Directory.GetCurrentDirectory() direto; sobe ate achar um `.git`.
+    ///
+    /// `secret/` e gitignored neste repo (`focadu/`) - o arranjo original previa essa pasta
+    /// existindo localmente dentro do proprio repo (symlink ou copia manual, nunca commitada). Na
+    /// pratica, o conteudo curado hoje mora num repositorio IRMAO separado (`focadu-secret/`, com
+    /// seu proprio `.git`), lado a lado com este. Por isso tenta as duas localizacoes, nessa ordem:
+    /// 1) raiz-deste-repo/secret/... (compatibilidade com quem tiver o symlink local).
+    /// 2) pasta-irma/focadu-secret/... (arranjo real de hoje, 2 repos lado a lado).
     /// </summary>
-    private static string CuratedContentPath(string courseSlug, string weekFolder, string fileName)
+    private static string CuratedContentPath(string weekFolder, string fileName)
     {
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, ".git")))
@@ -93,157 +188,21 @@ public class SeedWebSecurityCourseUseCase
         var repoRoot = dir?.FullName
             ?? throw new InvalidOperationException("Nao foi possivel localizar a raiz do repositorio (procurando por .git) para achar o conteudo curado.");
 
-        return Path.Combine(repoRoot, "secret", "curadoria", courseSlug, weekFolder, fileName);
-    }
+        var nested = Path.Combine(repoRoot, "secret", "curadoria", CourseSlug, weekFolder, fileName);
+        if (File.Exists(nested))
+            return nested;
 
-    private static void AddDay2(WeeklyTemplate weeklyTemplate)
-    {
-        var dailyTemplate = weeklyTemplate.AddDailyTemplate(2);
+        var siblingParent = Directory.GetParent(repoRoot)?.FullName;
+        var sibling = siblingParent is null
+            ? null
+            : Path.Combine(siblingParent, "focadu-secret", "curadoria", CourseSlug, weekFolder, fileName);
+        if (sibling is not null && File.Exists(sibling))
+            return sibling;
 
-        // TODO: substituir pelo texto completo curado
-        var reading = weeklyTemplate.AddCuratedContent(CuratedContentType.Reading, "Headers: os bilhetes que viajam junto com cada pedido",
-            "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers",
-            "Headers sao metadados que viajam junto com toda requisicao e resposta HTTP - definem " +
-            "tipo de conteudo, cache, autenticacao e boa parte do que faz (ou quebra) a seguranca " +
-            "de uma aplicacao web.");
-
-        var video = weeklyTemplate.AddCuratedContent(CuratedContentType.Video, "HTTP Crash Course & Exploration",
-            "https://www.youtube.com/watch?v=iYM2zFP3Zn0");
-
-        // Ordem da sequencia do dia (Fase 7): leitura -> video -> atividades avaliaveis.
-        dailyTemplate.AddActivity(ActivityType.Reading, 0, AnswerMode.MultipleChoice, contentId: reading.Id);
-        dailyTemplate.AddActivity(ActivityType.Video, 1, AnswerMode.MultipleChoice, contentId: video.Id);
-
-        var quiz = dailyTemplate.AddActivity(ActivityType.Quiz, 2, AnswerMode.MultipleChoice,
-            prompt: "Qual header HTTP informa ao navegador o tipo de conteudo do corpo da resposta (ex: text/html, application/json)?");
-        quiz.AddQuizOption("Content-Type", true);
-        quiz.AddQuizOption("Content-Length", false);
-        quiz.AddQuizOption("Accept-Language", false);
-
-        // WordMatch (Fase 23): 1 unica DailyActivity guarda o grupo de pares inteiro (antes da
-        // Fase 23, 1 termo = 1 DailyActivity com QuizOptions fabricadas como distratores - ver
-        // docs/ARQUITETURA.md). AnswerMode nao importa pra WordMatch (Score vem de
-        // ScoreFromWordMatchMatches, nunca de AnswerMode), mantido MultipleChoice so pelo
-        // parametro ser obrigatorio.
-        var wordMatch = dailyTemplate.AddActivity(ActivityType.WordMatch, 3, AnswerMode.MultipleChoice);
-        wordMatch.AddWordMatchPair("Content-Type", "Diz ao destinatario qual e o formato do conteudo no corpo da mensagem (ex: text/html, application/json)");
-        wordMatch.AddWordMatchPair("Cache-Control", "Define por quanto tempo e de que forma a resposta pode ser armazenada em cache");
-    }
-
-    private static void AddDay3(WeeklyTemplate weeklyTemplate)
-    {
-        var dailyTemplate = weeklyTemplate.AddDailyTemplate(3);
-
-        // TODO: substituir pelo texto completo curado
-        var reading = weeklyTemplate.AddCuratedContent(CuratedContentType.Reading, "Cookies e sessões: dando memória a um protocolo que esquece tudo",
-            "https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies",
-            "HTTP e stateless: cada requisicao chega sem memoria da anterior. Cookies sao o " +
-            "mecanismo que o servidor usa pra reconhecer o mesmo usuario entre requisicoes, " +
-            "sustentando sessoes de login.");
-
-        // Curadoria de video ainda nao fechada para os dias 3 e 4.
-        var video = weeklyTemplate.AddCuratedContent(CuratedContentType.Video, "Vídeo a confirmar", null,
-            "Curadoria pendente - video ainda nao definido para este dia.");
-
-        // Ordem da sequencia do dia (Fase 7): leitura -> video -> atividades avaliaveis.
-        dailyTemplate.AddActivity(ActivityType.Reading, 0, AnswerMode.MultipleChoice, contentId: reading.Id);
-        dailyTemplate.AddActivity(ActivityType.Video, 1, AnswerMode.MultipleChoice, contentId: video.Id);
-
-        var quiz = dailyTemplate.AddActivity(ActivityType.Quiz, 2, AnswerMode.MultipleChoice,
-            prompt: "Por que HTTP precisa de cookies para manter uma sessao de login?");
-        quiz.AddQuizOption("Porque HTTP e stateless - cada requisicao e independente, sem memoria da anterior", true);
-        quiz.AddQuizOption("Porque HTTP exige certificado de cliente em toda requisicao", false);
-        quiz.AddQuizOption("Porque o servidor mantem a conexao TCP aberta indefinidamente com o navegador", false);
-
-        // Cloze/MultipleChoice (Fase 4): mesma mecanica do Quiz (SelectedOptionId), so reaproveitada.
-        var clozeChoice = dailyTemplate.AddActivity(ActivityType.Cloze, 3, AnswerMode.MultipleChoice,
-            prompt: "Complete a frase: um cookie marcado como ___ nao pode ser lido via JavaScript, " +
-                "o que dificulta o roubo do cookie de sessao por um ataque de XSS.");
-        clozeChoice.AddQuizOption("HttpOnly", true);
-        clozeChoice.AddQuizOption("Secure", false);
-        clozeChoice.AddQuizOption("SameSite=Strict", false);
-
-        // Cloze/FreeText (Fase 4, "usado para codigo"): resposta comparada no servidor contra
-        // ExpectedAnswer (ver SubmitActivityResponseUseCase.ScoreFromFreeTextAnswer).
-        dailyTemplate.AddActivity(ActivityType.Cloze, 4, AnswerMode.FreeText,
-            prompt: "Complete o codigo: document.___ = 'nome=valor; path=/'; " +
-                "(a propriedade do objeto document usada para definir um cookie via JavaScript)",
-            expectedAnswer: "cookie");
-    }
-
-    private static void AddDay4(WeeklyTemplate weeklyTemplate)
-    {
-        var dailyTemplate = weeklyTemplate.AddDailyTemplate(4);
-
-        // TODO: substituir pelo texto completo curado
-        var reading = weeklyTemplate.AddCuratedContent(CuratedContentType.Reading, "HTTPS e TLS: o capacete da sua conexão",
-            "https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Transport_Layer_Security",
-            "TLS envolve a conexao HTTP numa camada de criptografia e autenticacao: garante que " +
-            "ninguem no meio do caminho leia ou altere os dados, e que o servidor e realmente " +
-            "quem diz ser.");
-
-        // Curadoria de video ainda nao fechada para os dias 3 e 4.
-        var video = weeklyTemplate.AddCuratedContent(CuratedContentType.Video, "Vídeo a confirmar", null,
-            "Curadoria pendente - video ainda nao definido para este dia.");
-
-        // Ordem da sequencia do dia (Fase 7): leitura -> video -> atividades avaliaveis.
-        dailyTemplate.AddActivity(ActivityType.Reading, 0, AnswerMode.MultipleChoice, contentId: reading.Id);
-        dailyTemplate.AddActivity(ActivityType.Video, 1, AnswerMode.MultipleChoice, contentId: video.Id);
-
-        var quiz = dailyTemplate.AddActivity(ActivityType.Quiz, 2, AnswerMode.MultipleChoice,
-            prompt: "O que o TLS garante numa conexao HTTPS que o HTTP puro nao garante?");
-        quiz.AddQuizOption("Confidencialidade e integridade dos dados em transito, alem de autenticar o servidor via certificado", true);
-        quiz.AddQuizOption("Que o servidor nunca sofrera ataques de SQL Injection", false);
-        quiz.AddQuizOption("Que a senha do usuario nunca precisa ser validada no backend", false);
-
-        AddTlsRoleplay(dailyTemplate);
-    }
-
-    /// <summary>
-    /// Roleplay (Fase 4) com 3 niveis: "start" -> 2 caminhos -> 3 desfechos terminais, cada um
-    /// com uma TerminalQuality diferente (Ideal/Suboptimal/Poor), pra exercitar os 3 valores no
-    /// calculo de Score (ver SubmitActivityResponseUseCase.ScoreFromRoleplayTerminalNode).
-    /// "start" e a convencao adotada pro node inicial de todo Roleplay (nao ha campo IsStart no
-    /// dominio - o frontend procura o node com NodeKey = "start").
-    /// </summary>
-    private static void AddTlsRoleplay(DailyTemplate dailyTemplate)
-    {
-        var roleplay = dailyTemplate.AddActivity(ActivityType.Roleplay, 3, AnswerMode.FreeText,
-            prompt: "Voce e o dev responsavel por decidir a configuracao de TLS de um novo servico interno.");
-
-        var start = roleplay.AddRoleplayNode("start",
-            "Sua equipe esta subindo um novo servico interno que so sera acessado por outros " +
-            "servidores da mesma rede privada, nunca pela internet. Alguem sugere pular o HTTPS " +
-            "\"porque e rede interna, ninguem vai interceptar\". O que voce faz?");
-
-        var httpOnly = roleplay.AddRoleplayNode("trafego_sem_tls",
-            "Voces sobem o servico em HTTP puro. Meses depois, uma auditoria de seguranca " +
-            "encontra o trafego de credenciais internas passando em texto claro pela rede, e " +
-            "aponta isso como uma falha grave.");
-
-        var suboptimalEnd = roleplay.AddRoleplayNode("corrige_depois",
-            "Voce reconhece o erro e migra pra HTTPS imediatamente. O problema e corrigido, mas " +
-            "o incidente ja ficou registrado como achado de auditoria - o time perde tempo depois " +
-            "explicando por que a decisao inicial foi tomada.",
-            isTerminal: true, terminalQuality: TerminalQuality.Suboptimal);
-
-        var poorEnd = roleplay.AddRoleplayNode("defende_http",
-            "Voce argumenta que \"rede interna ja e segura por definicao\". A auditoria discorda: " +
-            "qualquer pessoa com acesso a rede (um servico comprometido, um insider) conseguiria " +
-            "interceptar tudo, e voces nao tinham nenhuma camada extra de protecao.",
-            isTerminal: true, terminalQuality: TerminalQuality.Poor);
-
-        var idealEnd = roleplay.AddRoleplayNode("https_interno",
-            "Voce configura HTTPS com um certificado interno (assinado por uma CA propria da " +
-            "empresa), garantindo que mesmo o trafego dentro da rede privada esteja protegido " +
-            "contra interceptacao e adulteracao - inclusive de outros times/servicos na mesma rede.",
-            isTerminal: true, terminalQuality: TerminalQuality.Ideal);
-
-        start.AddOption("Concordo, e uso HTTP simples so nessa rede interna", httpOnly.Id);
-        start.AddOption("Insisto em usar HTTPS mesmo internamente, com certificado proprio", idealEnd.Id);
-
-        httpOnly.AddOption("Reconheco o erro e migro pra HTTPS imediatamente", suboptimalEnd.Id);
-        httpOnly.AddOption("Argumento que \"rede interna e segura por definicao\"", poorEnd.Id);
+        throw new InvalidOperationException(
+            $"Conteudo curado nao encontrado. Procurado em '{nested}'" +
+            (sibling is not null ? $" e em '{sibling}'" : "") +
+            " - confirme que o repositorio focadu-secret esta clonado ao lado deste, ou que existe uma pasta/symlink 'secret/' local.");
     }
 }
 

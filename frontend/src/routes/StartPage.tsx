@@ -5,9 +5,9 @@ import { App } from '../App';
 import { Centered, PageShell } from '../components/Layout';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
-import { useIsMobile } from '../lib/useIsMobile';
 import { WeeklyProjectPage } from './WeeklyProjectPage';
-import { WorldMapPage } from './world/WorldMapPage';
+// WorldMapPage (Fase 25, mapa/personagem) desativado por enquanto - ver comentario de StartPage
+// abaixo. Import removido so por ficar sem uso (o arquivo world/WorldMapPage.tsx nao foi tocado).
 import { StartDashboard } from './StartDashboard';
 import { CourseDetailPage } from './CourseDetailPage';
 import { WeeklyDetailPage } from './WeeklyDetailPage';
@@ -22,6 +22,10 @@ import { RankingPage } from './RankingPage';
  * nao mais o roteador. `StartRoute` repoe o `<ErrorBoundary key={pathname+search}>` que `<App/>`
  * dava de graca antes (mesmo padrao de `TodayRoute` - `/start` tambem navega entre sub-telas via
  * query string sem trocar de rota).
+ *
+ * Com o mapa desativado (ver StartPage abaixo), toda sub-tela de `/start` hoje roda dentro de
+ * `<App>` - mas o `ErrorBoundary` aqui fora continua fazendo falta (mesmo motivo de sempre), entao
+ * `StartRoute` nao muda quando o mapa volta.
  */
 export function StartRoute() {
   const location = useLocation();
@@ -34,26 +38,23 @@ export function StartRoute() {
 
 /**
  * `/start` cobre 6 telas via query string (nao path params - ver docs/ARQUITETURA.md):
- * sem params -> WorldMapPage no desktop (mapa/personagem, Fase 25 - unica sem o nav do `<App/>`,
- * ver `StartRoute` acima) ou StartDashboard no celular (Fase 8, ver "Fallback mobile" abaixo);
- * ?course= -> CourseDetailPage; ?course=&ranking= -> RankingPage (Fase 16); ?course=&weekly= ->
- * WeeklyDetailPage; ?course=&weekly=&daily= -> estado de uma Daily especifica (recapitulacao
- * simples, sem polimento - fora do escopo da Fase 8); ?course=&weekly=&project= -> projeto
- * pratico da semana (Fase 7).
+ * sem params -> StartDashboard (hub de cards, Fase 8); ?course= -> CourseDetailPage; ?course=&
+ * ranking= -> RankingPage (Fase 16); ?course=&weekly= -> WeeklyDetailPage; ?course=&weekly=&daily=
+ * -> estado de uma Daily especifica (recapitulacao simples, sem polimento - fora do escopo da
+ * Fase 8); ?course=&weekly=&project= -> projeto pratico da semana (Fase 7).
  *
  * A antiga CourseListView (lista de cursos) saiu na Fase 8: como so existe 1 Course Active nesta
  * fase (mesma premissa de GET /api/today - ver docs/ARQUITETURA.md), a tela sem params vai direto
- * pro mapa de navegacao em vez de fazer o usuario escolher entre uma lista de 1 item so.
+ * pro hub em vez de fazer o usuario escolher entre uma lista de 1 item so.
  *
- * Fallback mobile (Fase 25): o mapa exige teclado (setas/WASD) pro personagem andar - sem sentido
- * num touchscreen, entao celular (`useIsMobile`, viewport < 768px) continua vendo o hub de cards
- * antigo (`StartDashboard`, guardado no repo desde que o mapa foi criado exatamente pra isso).
- * `StartDashboard` roda dentro de `<App>` (GlobalNav) como sempre rodou - o `GlobalNav` em si
- * ainda nao foi ajustado pra telas estreitas, ver docs/fase-25 pra essa pendencia.
+ * Mapa/personagem (Fase 25, WorldMapPage) desativado por enquanto pro lancamento (pedido do
+ * usuario, 2026-09-08) - StartDashboard volta a ser a tela sem params tanto no desktop quanto no
+ * celular (antes desta mudanca, so o celular via StartDashboard - ver "Fallback mobile" no
+ * historico deste arquivo). Reativar: restaurar o branch `isMobile ? StartDashboard : WorldMapPage`
+ * que existia aqui (WorldMapPage e StartRoute continuam intactos, ninguem mais foi tocado).
  */
 function StartPage() {
   const [searchParams] = useSearchParams();
-  const isMobile = useIsMobile();
   const courseId = searchParams.get('course');
   const weeklyId = searchParams.get('weekly');
   const dailyId = searchParams.get('daily');
@@ -98,16 +99,13 @@ function StartPage() {
       </App>
     );
   }
-  // Sem query params -> mapa no desktop, full-bleed, sem <App> por proposito (ver StartRoute);
-  // StartDashboard (dentro de <App>, mesmo shell de sempre) no celular - ver "Fallback mobile" acima.
-  if (isMobile) {
-    return (
-      <App>
-        <StartDashboard />
-      </App>
-    );
-  }
-  return <WorldMapPage />;
+  // Sem query params -> StartDashboard (hub de cards), dentro de <App> como qualquer outra sub-tela
+  // - mapa (WorldMapPage) desativado por enquanto, ver comentario da funcao acima.
+  return (
+    <App>
+      <StartDashboard />
+    </App>
+  );
 }
 
 /** Recapitulacao simples de uma Daily especifica - sem o polimento das telas de navegacao da Fase 8, fora de escopo aqui. */

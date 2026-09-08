@@ -1637,8 +1637,16 @@ frontend/
                                    `StartDashboard` ate a Fase 24), `StartDashboard` de volta no
                                    celular (`useIsMobile()`, viewport < 768px - mapa exige teclado,
                                    sem sentido num touchscreen; `StartDashboard` roda dentro de
-                                   `<App>` como sempre rodou)
+                                   `<App>` como sempre rodou). **Desativado pro lancamento (pos-
+                                   Fase 26, commit `51bd45c`)**: sem params volta a cair sempre em
+                                   `StartDashboard`, desktop e celular - `isMobile`/`WorldMapPage`
+                                   pararam de ser referenciados aqui (nada apagado, so o `if`
+                                   sumiu). Reverter e restaurar o branch acima, ver comentario em
+                                   `StartPage.tsx`
       world/WorldMapPage.tsx     <- /start sem params (Fase 25, Parte A) - hub de entrada virou mapa
+                                   top-down. **Sem referencia em StartPage desde o lancamento pos-
+                                   Fase 26** (ver nota acima) - arquivo intacto, so nao esta no
+                                   caminho de nenhuma rota no momento
                                    top-down (`assets/world/mapa-vilarejo.png`, arte trazida pelo
                                    Falves) com personagem controlavel (setas/WASD, sem colisao contra
                                    predio - so as 5 trigger zones das portas importam), FULL-BLEED
@@ -1864,7 +1872,7 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/selecionar-curso` | `GET /api/courses/available` + `POST /api/enrollments` | `CourseSelectionPage` (Fase 13b) - passo 3/3 |
 | `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7). Fora do shell `<App/>` da Fase 20 ate a 24 (full-bleed); dentro do shell de novo desde a Fase 25 (ganhou `GlobalNav`, PenaltyGauge reposicionado) |
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco; Fase 8: tambem usada como "reprise" de um dia ja concluido, clicado a partir da Visao Semanal) |
-| `/start` (sem params) | `GET /api/today` + `GET /api/courses` + `GET /api/users/me/gamification` | `WorldMapPage` (Fase 25) no desktop - mapa/personagem, 5 casas levam pras telas abaixo. `StartDashboard` (Fase 8-24) no celular (`useIsMobile()`, viewport < 768px) |
+| `/start` (sem params) | `GET /api/today` + `GET /api/courses` + `GET /api/users/me/gamification` | `StartDashboard` (Fase 8-24, e de volta desktop+celular pos-Fase 26 - `WorldMapPage` da Fase 25 desativado pro lancamento, ver nota em "Frontend" acima) |
 | `/start?course=` | `GET /api/courses/{courseId}` | `CourseDetailPage` (Fase 8) - trilha completa do curso |
 | `/start?course=&ranking=1` | `GET /api/courses/{courseId}/ranking?scope=` | `RankingPage` (Fase 16) - Score de Estudo, top 10 + posicao do usuario |
 | `/loja` | `GET /api/marketplace/catalog` + `POST .../purchase`\|`/equip`\|`/unequip` | `MarketplacePage` (Fase 17) - catalogo de cosmeticos |
@@ -2180,9 +2188,25 @@ CSS).
 | 23 | Ligar Palavras (Matcher de 2 Colunas) | `docs/fase-23/resumo-implementacao-fase-23.md` |
 | 24 | Squad (Fase A) | `docs/fase-24/resumo-implementacao-fase-24.md` |
 | 25 (Parte A) | Mapa do Mundo (Navegacao) | `docs/fase-25/resumo-implementacao-fase-25.md` |
+| 26 | Fechamento do Curriculo Web Security (Semanas 2-12) | `docs/fase-26/resumo-implementacao-fase-26.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
+- **Seed nao e upsert - reseedar um curso que ja existe exige apagar manualmente primeiro, na
+  ordem certa** (Fase 26): `SeedWebSecurityCourseUseCase` e idempotente **por nome** (se o `Course`
+  ja existe, nao insere nada de novo, nao atualiza). Pra recarregar do zero: `RoleplayOptions`
+  primeiro (FK `NextNodeId` e `RESTRICT`, auto-referencia - apagar o `Course` direto em cascata
+  bate nela) -> `Enrollments` (cascata pra `Weeklies`/`Dailies`/etc. - precisa ir **antes** do
+  `Course`, porque `Weeklies.WeeklyTemplateId`/`Dailies.DailyTemplateId` tambem sao `RESTRICT`
+  contra os Templates que o `Course` apagaria em cascata) -> `Courses`. Um `DELETE FROM "Courses"`
+  direto esbarra nas 2 constraints acima.
+- **Conteudo curado (`secret/curadoria/`) hoje mora num repositorio irmao separado**
+  (`focadu-secret/`, com `.git` proprio, ao lado de `focadu/`) - `CuratedContentPath` (Seed) e
+  `CuratedContentAllFilesTests` tentam `<raiz-deste-repo>/secret/...` primeiro (compatibilidade com
+  quem tiver symlink local) e caem pro repo irmao se nao acharem. Lembrar de `git pull` no repo
+  irmao antes de rodar o seed - o conteudo pode estar atrasado ali sem nenhum aviso no `focadu/`.
+  `CuratedContentAllFilesTests` importa todo `dia-N.json`/`projeto.json` contra os importers reais
+  sem precisar de banco - roda antes de qualquer seed real pra pegar erro de schema/enum cedo.
 - **Fase 25 e "Parte A" de proposito - varias pendencias conhecidas, nao esquecimento:**
   personagem no `WorldMapPage` e so um placeholder geometrico (sem spritesheet/animacao de
   caminhada ainda - o Falves vai montar um kit inicial proprio, mesmo kit que cobre os itens da
