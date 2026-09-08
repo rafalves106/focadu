@@ -12,6 +12,12 @@ namespace Focadu.Application.Dailies;
 /// (IContentEvaluationService) -> Score/Passed vem inteiramente da avaliacao (nunca do cliente -
 /// mesma garantia ja estabelecida pros outros 4 tipos desde a Fase 4) -> grava a resposta e checa
 /// reforco, via ActivityResponseRecorder (compartilhado com SubmitActivityResponseUseCase).
+///
+/// Fase 27: busca `Interests`/`AdditionalProfileNotes` do usuario (mesmo dado que a Entrevista de
+/// Perfil da Fase 13b ja captura) e repassa no `ContentEvaluationRequest` - GroqContentEvaluation
+/// Service usa isso so no FEEDBACK, nunca no Score. Usuario sem perfil preenchido (Interests vazio
+/// e AdditionalProfileNotes null) nao muda nada - PersonalizationPromptBuilder retorna null e o
+/// prompt fica identico ao de antes desta fase.
 /// </summary>
 public class SubmitVoiceSummaryResponseUseCase
 {
@@ -24,6 +30,7 @@ public class SubmitVoiceSummaryResponseUseCase
     public const long MaxAudioSizeBytes = 25 * 1024 * 1024;
 
     private readonly IWeeklyRepository _weeklyRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
     private readonly IAudioTranscriptionService _transcriptionService;
@@ -31,12 +38,14 @@ public class SubmitVoiceSummaryResponseUseCase
 
     public SubmitVoiceSummaryResponseUseCase(
         IWeeklyRepository weeklyRepository,
+        IUserRepository userRepository,
         IUnitOfWork unitOfWork,
         IClock clock,
         IAudioTranscriptionService transcriptionService,
         IContentEvaluationService evaluationService)
     {
         _weeklyRepository = weeklyRepository;
+        _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _clock = clock;
         _transcriptionService = transcriptionService;
@@ -92,8 +101,14 @@ public class SubmitVoiceSummaryResponseUseCase
         // coisa (o BodyText da leitura) - se ja caiu no fallback do Prompt como referencia,
         // repeti-lo tambem aqui seria redundante.
         var contextText = referenceContent?.BodyText is not null ? activity.Prompt : null;
+
+        // Fase 27: perfil e so pra enriquecer o FEEDBACK (ver doc da classe) - usuario nao
+        // encontrado (nunca deveria acontecer, JWT ja garante usuario existente) so significa
+        // "sem personalizacao", nao falha a submissao.
+        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
         var evaluation = await _evaluationService.EvaluateAsync(
-            new ContentEvaluationRequest(referenceText, transcript, contextText), cancellationToken);
+            new ContentEvaluationRequest(referenceText, transcript, contextText, user?.Interests, user?.AdditionalProfileNotes),
+            cancellationToken);
 
         return await ActivityResponseRecorder.RecordAsync(
             weekly, daily, activityId, evaluation.Score, transcript, justification: null, evaluation.Feedback,

@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
+using Focadu.Application.Shared;
 
 namespace Focadu.Infrastructure.Services;
 
@@ -106,13 +107,21 @@ public class GroqContentEvaluationService : IContentEvaluationService
             ? string.Empty
             : $"Instrução original da atividade: {request.ContextText}\n\n";
 
+        // Fase 27: mesmo perfil que a Fase 21/22 ja usava so pra analogia de Leitura
+        // (IAnalogyGenerationService) - aqui entra no FEEDBACK, nunca no calculo do Score (a nota
+        // continua so sobre correcao/clareza, ver instrucao final abaixo).
+        var personalization = PersonalizationPromptBuilder.BuildInstruction(request.UserInterests, request.UserNotes);
+        var personalizationBlock = personalization is null ? string.Empty : $"{personalization}\n\n";
+
         return
             $"Conteúdo de referência que o aluno deveria ter estudado:\n\"\"\"\n{request.ExpectedAnswer}\n\"\"\"\n\n" +
             $"Resumo falado pelo aluno (transcrito):\n\"\"\"\n{request.UserAnswer}\n\"\"\"\n\n" +
             instruction +
+            personalizationBlock +
             "Avalie considerando: (1) se o conteúdo do resumo está correto e completo em relação " +
             "à referência; (2) a clareza da explicação (organização, precisão de linguagem). " +
-            "Combine os dois aspectos numa única nota de 0 a 100.";
+            "Combine os dois aspectos numa única nota de 0 a 100. No feedback (nunca na nota), " +
+            "conecte sua explicação a um interesse do aluno quando isso ajudar a fixar o conceito.";
     }
 
     /// <summary>
