@@ -683,6 +683,25 @@ interesse nenhum cadastrado (perfil ainda nao completado, ou completado so com t
 `CompleteProfile` aceita isso), ou fora do tipo `Reading`, simplesmente nao gera nada - nunca
 bloqueia a leitura em si; falha do Groq na geracao tambem so degrada pra "sem analogias dessa vez".
 
+**Fase 27: personalizacao estendida pra avaliacao de voz + rascunho de LinkedIn.** A Fase 21 so
+cobria Leitura - `secret/MESTRE.md` secao 12 ainda listava "nenhum outro prompt de IA consome o
+perfil" como pendencia (documento estava desatualizado nesse ponto, corrigido). Agora
+`SubmitVoiceSummaryResponseUseCase` e `GenerateLinkedInDraftUseCase` tambem buscam `Interests`/
+`AdditionalProfileNotes` do usuario (`IUserRepository.GetByIdAsync`) e repassam pro prompt -
+`PersonalizationPromptBuilder` (`Focadu.Application.Shared`, publico ao contrario do resto da pasta
+porque os adapters Groq moram em `Focadu.Infrastructure`) centraliza o texto da instrucao ("use
+como analogia quando ajudar a explicar, sem forcar") pra nao duplicar a mesma frase nos 2
+chamadores; retorna `null` sem interesses/notas, prompt fica identico ao de antes desta fase.
+**Nunca entra no Score** - `GroqContentEvaluationService.BuildUserPrompt` injeta a instrucao so no
+paragrafo de FEEDBACK, a nota continua vindo so de correcao/clareza (mesma garantia da Fase 4: nota
+sempre recalculada no servidor, nunca influenciada por dado subjetivo do perfil).
+`EvaluateWeeklyProjectUseCase` (avaliacao de projeto, mesmo `ContentEvaluationRequest`) foi deixado
+de fora de proposito - decisao explicita, feedback sobre codigo nao ganha com analogia de hobby.
+Sem teste dedicado pra `SubmitVoiceSummaryResponseUseCase`/`GenerateLinkedInDraftUseCase` (mesmo gap
+ja documentado - "casos de uso simples... nunca tiveram teste dedicado", verificacao ao vivo);
+`PersonalizationPromptBuilder.BuildInstruction` (a parte pura) tem teste dedicado
+(`PersonalizationPromptBuilderTests`).
+
 **`EquippedNameColor` no Ranking - token estavel, nao hex.** `GetCourseRankingUseCase` resolve, por
 Enrollment, o `Name` do `CosmeticItem` equipado no slot `NameColor` (ex: "Verde Neon") e devolve em
 `RankingEntryDto.EquippedNameColor`. O frontend mapeia token -> cor de verdade
@@ -2189,6 +2208,7 @@ CSS).
 | 24 | Squad (Fase A) | `docs/fase-24/resumo-implementacao-fase-24.md` |
 | 25 (Parte A) | Mapa do Mundo (Navegacao) | `docs/fase-25/resumo-implementacao-fase-25.md` |
 | 26 | Fechamento do Curriculo Web Security (Semanas 2-12) | `docs/fase-26/resumo-implementacao-fase-26.md` |
+| 27 | Personalizacao por Analogia Estendida (Voz + LinkedIn) | `docs/fase-27/resumo-implementacao-fase-27.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
