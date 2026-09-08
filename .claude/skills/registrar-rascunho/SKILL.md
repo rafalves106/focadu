@@ -59,7 +59,7 @@ metadata:
 ```markdown
 # Rascunho — <Título Curto>
 
-> Ideia/visão ainda não reconciliada com o estado implementado (ver `docs/MESTRE.md`).
+> Ideia/visão ainda não reconciliada com o estado implementado (ver `secret/MESTRE.md`).
 
 **Nível de elaboração:** <🌱 Semente | 🌿 Esboço | 🌳 Detalhado>
 
