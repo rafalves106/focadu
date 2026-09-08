@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { ProgressBar } from './ProgressBar';
-import quickQuestionOrb from '../assets/reading/quick-question-orb.svg';
 
 /**
  * Chrome compartilhado pelas telas de sessao "estilo Figma" (Leitura, Video, Feedback IA, Projeto
@@ -36,7 +35,11 @@ export function SessionTopBar({
 }
 
 export function QuickQuestionOrb() {
-  return <img src={quickQuestionOrb} alt="" className="pointer-events-none fixed bottom-10 right-10 size-16" />;
+  // Desativado por enquanto (pedido do usuario) - o orbe promete um chat instantaneo com IA que
+  // ainda nao existe (so ideia registrada em secret/rascunhos/visual-ui-ux.md, "Suporte Rapido de
+  // IA"). Reativar aqui basta: e o unico ponto de renderizacao, os 2 call sites (SessionLayout e
+  // WeeklyProjectPage) nao precisam mudar.
+  return null;
 }
 
 /**
