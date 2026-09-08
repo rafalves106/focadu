@@ -41,6 +41,12 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5282';
 // que esse, senao a TimeoutError apareceria antes do backend ter chance de responder de verdade.
 const DEFAULT_TIMEOUT_MS = 10_000;
 const VOICE_SUMMARY_TIMEOUT_MS = 70_000;
+// Fase 27b: submeter o projeto agora avalia na hora (GitHub fetch + 1 chamada Groq, sequencial no
+// backend, ver SubmitWeeklyProjectUseCase/EvaluateWeeklyProjectUseCase) - mesmo motivo do timeout
+// de VoiceSummary acima, so um pouco mais curto (1 chamada Groq sem retry, nao 2). Falha na
+// avaliacao (incluindo timeout do lado do servidor) nunca falha a submissao em si - o pior caso
+// aqui e a TimeoutError aparecer sem a nota, nao a URL deixar de ser salva.
+const WEEKLY_PROJECT_SUBMIT_TIMEOUT_MS = 45_000;
 
 /** Erro de Api com o mesmo { error, message } que Focadu.Api.ErrorHandling.ApiExceptionHandler sempre devolve. */
 export class ApiError extends Error {
@@ -153,6 +159,7 @@ export const api = {
     request<WeeklyProjectDto>(`/api/weeklies/${weeklyId}/project/submit`, {
       method: 'POST',
       body: JSON.stringify({ submissionUrl }),
+      timeoutMs: WEEKLY_PROJECT_SUBMIT_TIMEOUT_MS,
     }),
   // Publicacao publica do modulo (Fase 11) - prova de aprendizado exigida ao completar uma Weekly.
   getPublicationStatus: (weeklyId: string) => request<ModulePublicationDto>(`/api/weeklies/${weeklyId}/publication/status`),

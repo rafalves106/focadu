@@ -863,7 +863,11 @@ GitHub) antes da proxima Weekly liberar.
 - **`EvaluateWeeklyProjectUseCase`** (novo, Fase 11): `WeeklyProject.Evaluate()` existia desde a
   Fase 1 sem endpoint (pendencia documentada desde a Fase 7) - sem ele, `IsModuleComplete()`
   nunca seria `true` de verdade. `POST /api/weeklies/{weeklyId}/project/evaluate`, so backend,
-  sem UI (nao ha papel de "revisor" neste app de usuario unico).
+  sem tela propria (nao ha papel de "revisor" neste app de usuario unico). **Ate a Fase 27b, nada
+  no frontend chamava esse endpoint** - `SubmitWeeklyProjectUseCase` agora dispara essa avaliacao
+  automaticamente logo apos aceitar a URL (composicao, chama `EvaluateWeeklyProjectUseCase.
+  ExecuteAsync` por dentro), entao o bloqueio acima passou de "nunca engata de verdade" pra
+  funcional - ver "Fase 27b" no changelog de fases.
 - **Geracao do rascunho de LinkedIn** (`GenerateLinkedInDraftUseCase` + `GroqDraftGenerationService`):
   usa `Weekly.Theme` (ou `Title`) + ate 3 titulos de `CuratedContent` (`Reading`/`Video`) como
   contexto - **nao** usa `AiFeedback` de nenhuma `ActivityResponse` de proposito (evita vazar o
@@ -928,7 +932,7 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | 🔒 POST | `/api/curated-content` | `CreateCuratedContentUseCase` (Fase 4) | 201, 400/404 - Fase 13: campo `weeklyTemplateId` (era `weeklyId`) |
 | 🔒 PUT | `/api/curated-content/{id}` | `UpdateCuratedContentUseCase` (Fase 4) | 200, 400/404 |
 | 🔒 POST | `/api/weeklies/{weeklyId}/project/submit` | `SubmitWeeklyProjectUseCase` (Fase 7) | 200, 400/404 - `WeeklyProject.Submit` existia desde a Fase 1, so faltava endpoint |
-| 🔒 POST | `/api/weeklies/{weeklyId}/project/evaluate` | `EvaluateWeeklyProjectUseCase` (Fase 11) | 200, 400/404 - `WeeklyProject.Evaluate` existia desde a Fase 1, so faltava endpoint (so backend, sem UI). Fase 16: virou PUT com corpo `{score, feedback}` obrigatorio. Fase 21: voltou a ser POST sem corpo - nota/feedback agora vem da IA (GitHub + Groq, ver secao acima) |
+| 🔒 POST | `/api/weeklies/{weeklyId}/project/evaluate` | `EvaluateWeeklyProjectUseCase` (Fase 11) | 200, 400/404 - `WeeklyProject.Evaluate` existia desde a Fase 1, so faltava endpoint (so backend, sem tela propria). Fase 16: virou PUT com corpo `{score, feedback}` obrigatorio. Fase 21: voltou a ser POST sem corpo - nota/feedback agora vem da IA (GitHub + Groq, ver secao acima). Fase 27b: `SubmitWeeklyProjectUseCase` passou a chamar isso sozinho (composicao) logo apos o submit - nenhum chamador HTTP direto novo, o endpoint continua existindo do mesmo jeito |
 | 🔒 GET | `/api/courses/{courseId}/ranking?scope=` | `GetCourseRankingUseCase` (Fase 16) | 200 (`RankingResultDto`) - `scope` = `weekly`\|`monthly`\|`course`, default `course` se omitido. Fase 18: `RankingEntryDto` ganhou `EquippedNameColor` (Name do cosmetico equipado, nao hex - ver secao abaixo) |
 | 🔒 GET | `/api/users/me/badges` | `GetUserBadgesUseCase` (Fase 17) | 200 (`UserBadgesDto`, 5 badges calculados sob demanda) |
 | 🔒 GET | `/api/users/me/referral` | `GetReferralInfoUseCase` (Fase 17) | 200 (`ReferralInfoDto`) - gera o `ReferralCode` na 1a consulta |
@@ -2166,7 +2170,9 @@ CSS).
 - **Resolvido na Fase 11, nao e mais pendencia:** `WeeklyProject.Evaluate()` ganhou endpoint
   (`POST .../project/evaluate`, `EvaluateWeeklyProjectUseCase`) - so backend, sem UI (nao ha papel
   de "revisor" neste app de usuario unico), mas necessario pra `IsModuleComplete()` algum dia
-  virar `true` de verdade.
+  virar `true` de verdade. **Ressalva que durou ate a Fase 27b:** o endpoint existir nao bastava -
+  nada no frontend o chamava, entao `IsModuleComplete()` de fato nunca virava `true` pra usuario
+  nenhum ate `SubmitWeeklyProjectUseCase` passar a disparar a avaliacao sozinho.
 - **Resolvido na Fase 10, nao e mais pendencia:** telas de erro no frontend (sem conexao, timeout,
   vazio, erro generico) - antes uma falha de fetch so mostrava texto vermelho solto
   (`<Centered text={error} tone="alert" />`).
@@ -2209,6 +2215,7 @@ CSS).
 | 25 (Parte A) | Mapa do Mundo (Navegacao) | `docs/fase-25/resumo-implementacao-fase-25.md` |
 | 26 | Fechamento do Curriculo Web Security (Semanas 2-12) | `docs/fase-26/resumo-implementacao-fase-26.md` |
 | 27 | Personalizacao por Analogia Estendida (Voz + LinkedIn) | `docs/fase-27/resumo-implementacao-fase-27.md` |
+| 27b | Avaliacao Automatica do Projeto Semanal | `docs/fase-27b/resumo-implementacao-fase-27b.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
