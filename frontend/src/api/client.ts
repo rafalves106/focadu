@@ -2,6 +2,7 @@ import {
   COSMETIC_SLOT_NAMES,
   PUBLICATION_PLATFORM_NAMES,
   type ApiErrorBody,
+  type AiProviderStatusDto,
   type AvailableCourseDto,
   type CompleteDailyResult,
   type CosmeticSlot,
@@ -222,4 +223,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ slot: COSMETIC_SLOT_NAMES[slot] }),
     }),
+  // Status de IA (Fase 28) - badge do GlobalNav, ver AiStatusBadge.tsx.
+  getAiProviderStatus: () => request<AiProviderStatusDto[]>('/api/system/ai-status'),
 };

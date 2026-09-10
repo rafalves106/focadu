@@ -16,6 +16,7 @@ using Focadu.Application.Ranking;
 using Focadu.Application.Referrals;
 using Focadu.Application.Seed;
 using Focadu.Application.Squads;
+using Focadu.Application.System;
 using Focadu.Application.Users;
 using Focadu.Application.Weeklies;
 using Focadu.Domain.Enums;
@@ -367,6 +368,17 @@ api.MapPost("/marketplace/unequip", async (ClaimsPrincipal principal, UnequipCos
     })
     .RequireAuthorization()
     .WithName("UnequipCosmetic");
+
+// --- Status de IA (Fase 28) -------------------------------------------------------------------
+// Badge do GlobalNav (frontend) - sinaliza quando a Groq (ou outra IA futura) esta fora do ar, pra
+// ajudar a decidir quando trocar a chave ou desativar atividades que dependem dela. Atras de auth
+// (o app inteiro so mostra o GlobalNav pra usuario logado) mas sem RequireAuthorization mais
+// granular - nao e dado por usuario, so exposicao geral do estado do provedor.
+
+api.MapGet("/system/ai-status", async (GetAiProviderStatusUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(ct)))
+    .RequireAuthorization()
+    .WithName("GetAiProviderStatus");
 
 // --- Matricula (Fase 13) ---------------------------------------------------------------------
 

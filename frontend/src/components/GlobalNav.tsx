@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { CourseStatus } from '../api/types';
 import { useSettings } from '../contexts/useSettings';
+import { AiStatusBadge } from './AiStatusBadge';
 import { HeaderUserBadge } from './HeaderUserBadge';
 
 /**
@@ -25,8 +26,11 @@ import { HeaderUserBadge } from './HeaderUserBadge';
  * Responsivo (Fase 25, adicionado depois de ver o menu quebrado ao vivo num viewport de celular -
  * 7 itens + botao central + badge nao cabem em ~390px): abaixo do breakpoint `md` (768px, mesmo
  * limiar de `useIsMobile`), os 2 grupos de texto viram um botao "☰" que abre um menu suspenso em
- * lista - so o botao central e o `HeaderUserBadge` continuam sempre visiveis na barra. Acima de
- * `md`, layout identico ao original (3 grupos numa linha so).
+ * lista - so o botao central, `AiStatusBadge` e `HeaderUserBadge` continuam sempre visiveis na
+ * barra. Acima de `md`, layout identico ao original (3 grupos numa linha so).
+ *
+ * `AiStatusBadge` (Fase 28) - badge persistente de status de IA (hoje so Groq), mesmo padrao
+ * "self-contained" de `HeaderUserBadge` descrito acima.
  */
 export function GlobalNav() {
   const settings = useSettings();
@@ -73,13 +77,15 @@ export function GlobalNav() {
           >
             Configurações
           </button>
-          <div className="ml-2 shrink-0">
+          <div className="ml-2 flex shrink-0 items-center gap-2">
+            <AiStatusBadge />
             <HeaderUserBadge />
           </div>
         </div>
 
-        {/* Mobile: badge sempre visivel, sem o resto do grupo direito (ver menu suspenso abaixo). */}
-        <div className="shrink-0 md:hidden">
+        {/* Mobile: os 2 badges sempre visiveis, sem o resto do grupo direito (ver menu suspenso abaixo). */}
+        <div className="flex shrink-0 items-center gap-2 md:hidden">
+          <AiStatusBadge />
           <HeaderUserBadge />
         </div>
       </div>

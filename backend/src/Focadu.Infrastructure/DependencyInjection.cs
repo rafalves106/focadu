@@ -79,6 +79,14 @@ public static class DependencyInjection
         // proprio (prompt de analogia por interesse, nao de resumo falado nem de codigo).
         services.AddHttpClient<IAnalogyGenerationService, GroqAnalogyGenerationService>(
             client => ConfigureGroqClient(client, GroqDefaultTimeout));
+        // Status da IA (Fase 28): badge do GlobalNav no frontend - GroqHealthCheckService e
+        // Singleton (guarda cache em memoria, ver comentario na classe), entao usa
+        // IHttpClientFactory.CreateClient(nome) em vez de AddHttpClient<TService> (que registraria
+        // o servico como Transient). Timeout bem menor que os outros clientes Groq (5s, sem retry) -
+        // e so um ping de "esta no ar?", nunca deve travar o badge esperando.
+        services.AddHttpClient(GroqHealthCheckService.GroqHealthCheckHttpClientName,
+            client => ConfigureGroqClient(client, TimeSpan.FromSeconds(5)));
+        services.AddSingleton<IAiProviderHealthCheck, GroqHealthCheckService>();
 
         // GitHub (Fase 11) - token ausente nao impede o app de subir, so as chamadas do
         // GitHubService falham (com erro claro) quando de fato invocadas sem ele configurado

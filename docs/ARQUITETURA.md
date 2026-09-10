@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 25 (Parte A) - Mapa do Mundo (Navegacao)**.
+> Ultima fase que atualizou este documento: **Fase 28 - Status de IA (badge no GlobalNav)**.
 
 ## Visao geral do projeto
 
@@ -139,7 +139,9 @@ src/
     Ports/                          <- IClock, IContentEvaluationService, IAudioTranscriptionService
                                        (adapters concretos desde a Fase 5, ver Focadu.Infrastructure/Services),
                                        IDraftGenerationService, IGitHubService (Fase 11, ver secao propria),
-                                       IPasswordHasher, IJwtTokenService (Fase 12, ver secao propria)
+                                       IPasswordHasher, IJwtTokenService (Fase 12, ver secao propria),
+                                       IAiProviderHealthCheck (Fase 28 - status de IA, 1 impl por
+                                       provedor, agregadas via IEnumerable no use case)
     Exceptions/                     <- NotFoundException, ConflictException, ValidationException,
                                        ExternalServiceException (Fase 5 - erro de servico externo)
     Shared/                         <- DTOs reaproveitados entre modulos (ex: sessoes de reforco,
@@ -183,6 +185,7 @@ src/
     Seed/                            <- SeedWebSecurityCourseUseCase (Fase 13: so popula
                                        TEMPLATE, sem IClock/distribuicao de datas - isso virou
                                        trabalho de EnrollUserInCourseUseCase)
+    System/                          <- GetAiProviderStatusUseCase (Fase 28), Dto no mesmo arquivo
     DependencyInjection.cs
   Focadu.Infrastructure/
     Persistence/
@@ -215,6 +218,8 @@ src/
                                              de LinkedIn, mesmo HttpClient/erro do Groq, sem JSON mode)
       GitHubOptions.cs                    <- Token do GitHub (Fase 11)
       GitHubService.cs                     <- adapter de IGitHubService (Fase 11, ver secao propria)
+      GroqHealthCheckService.cs             <- adapter de IAiProviderHealthCheck (Fase 28) -
+                                                Singleton, cache em memoria de 45s, ver secao Groq
       BCryptPasswordHasher.cs               <- adapter de IPasswordHasher via BCrypt.Net-Next (Fase 12)
       JwtOptions.cs                          <- SecretKey de assinatura dos JWT (Fase 12)
       JwtTokenService.cs                      <- adapter de IJwtTokenService (Fase 12, so gera - ver secao propria)
@@ -949,6 +954,7 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | 🔒 POST | `/api/squads/join` | `JoinSquadUseCase` (Fase 24) | 200 (`SquadDto`), 404 `codigo_invalido`, 409 `ja_esta_em_squad` |
 | 🔒 DELETE | `/api/squads/members/{userId}` | `LeaveSquadUseCase` (se `{userId}` = usuario logado) ou `RemoveMemberUseCase` (Fase 24) | 204, 404 `squad_nao_encontrado`/`membro_nao_encontrado`, 409 `dono_nao_pode_sair`/`dono_nao_pode_se_remover` |
 | 🔒 GET | `/api/squads/me/ranking?scope=&page=` | `GetSquadRankingUseCase` (Fase 24) | 200 (`SquadRankingResultDto`) - gera `JoinCode` na 1a consulta (lazy), `Members` paginado (Fase 24c), 404 `squad_nao_encontrado` |
+| 🔒 GET | `/api/system/ai-status` | `GetAiProviderStatusUseCase` (Fase 28) | 200 (array de `AiProviderStatusDto` - hoje so Groq), nunca 404/erro (a checagem em si nunca lanca, ver secao Groq abaixo) |
 
 As rotas da Api sao caminhos REST simples (`/api/weeklies/{weeklyId}`), **nao** um espelho das
 rotas do frontend (`/start?course=&weekly=`) - o frontend usa query string no seu proprio router
@@ -1355,6 +1361,32 @@ falha o startup se ausente) - so as duas chamadas à Groq falham, com um erro cl
 (`groq_api_key_nao_configurada`, 502) em vez de um 401 sem contexto vindo da Groq. Chave obtida em
 [console.groq.com](https://console.groq.com).
 
+### Status de IA (badge no GlobalNav, Fase 28)
+
+`GET /api/system/ai-status` devolve o status de cada `IAiProviderHealthCheck` registrado (hoje so
+`GroqHealthCheckService`) - pensado pra ajudar o Falves a perceber de relance, direto na tela, quando
+precisa trocar a chave da Groq ou desativar uma atividade que depende de IA (VoiceSummary, avaliacao
+de projeto, rascunho de LinkedIn, analogia de leitura - todas usam a mesma `Groq:ApiKey`).
+
+- **Ping de verdade, nao so "a chave existe":** `GroqHealthCheckService` faz `GET models` (lista o
+  catalogo de modelos da Groq) - leve, nao consome cota de geracao, mas confirma que a chave e
+  valida e a Groq esta respondendo, nao so que uma env var esta preenchida.
+- **`Configured=false` nunca tenta a chamada** - mesma distincao de "nao configurado" vs "configurado
+  mas fora do ar" que os outros adapters Groq ja fazem.
+- **Cache de 45s em memoria** (dentro do proprio `GroqHealthCheckService`, `Singleton` - unico
+  adapter Groq que nao e `Transient` via `AddHttpClient<TService>`, ver `DependencyInjection.cs`):
+  varios usuarios com o GlobalNav aberto ao mesmo tempo geram no maximo 1 chamada de teste a cada
+  45s, nao 1 por requisicao de badge. `SemaphoreSlim` evita 2 chamadas simultaneas quando o cache
+  expira com requisicoes concorrentes.
+- **Nunca lanca `ExternalServiceException`** - ao contrario dos outros adapters Groq, uma falha de
+  rede/timeout aqui vira `Available=false` + `ErrorMessage` no DTO, nao um erro HTTP - o endpoint
+  sempre devolve 200, o proprio "esta fora do ar" e um resultado valido, nao uma excecao.
+- Endpoint atras de `.RequireAuthorization()` (mesmo criterio "app so mostra GlobalNav pra usuario
+  logado"), mas sem filtro por usuario - o status do provedor e global, nao por conta.
+- **Frontend:** `AiStatusBadge.tsx` (badge no `GlobalNav`, ver secao Frontend abaixo) faz polling a
+  cada 45s (mesma janela do cache do backend) e mostra um ponto verde/ambar/vermelho/cinza -
+  clicar expande o detalhe por provedor (nome, status, `errorMessage`).
+
 ## GitHub (commit de resumo do modulo, Fase 11)
 
 `IGitHubService` (`Focadu.Infrastructure.Services.GitHubService`) e um adapter via `HttpClient`
@@ -1711,7 +1743,8 @@ frontend/
                                    item proprio, nao so ancorado dentro da Trilha), Squad, Loja,
                                    Configuracoes (chama useSettings().open - ver
                                    contexts/SettingsProvider.tsx) + HeaderUserBadge (Fase 18, ja
-                                   existia). Botao central "volta pro mapa" - placeholder (emoji),
+                                   existia) + AiStatusBadge (Fase 28 - status de IA, ver secao
+                                   Groq/frontend). Botao central "volta pro mapa" - placeholder (emoji),
                                    sem PNG pixel art de verdade ainda (ver "Fora de escopo").
                                    `courseId` resolvido com busca propria (GET /api/courses, mesmo
                                    fallback Active->primeiro que WorldMapPage/StartDashboard sempre
@@ -1721,9 +1754,9 @@ frontend/
                                    Responsivo (Fase 25, descoberto testando o fallback mobile - 7
                                    itens + botao central + badge nao cabiam em ~390px): abaixo do
                                    breakpoint `md`, os 2 grupos de texto viram um botao "☰" que abre
-                                   um menu suspenso em lista (fecha ao navegar); botao central e
-                                   HeaderUserBadge continuam sempre visiveis. Acima de `md`, layout
-                                   identico ao original
+                                   um menu suspenso em lista (fecha ao navegar); botao central,
+                                   AiStatusBadge e HeaderUserBadge continuam sempre visiveis. Acima
+                                   de `md`, layout identico ao original
       StartDashboard.tsx (Fase 8-24)  <- hub antigo em cards ("Comecar Hoje"/"Projeto"/"Trilha") -
                                    volta a ter uso na Fase 25 como fallback mobile de `/start` (ver
                                    `docs/fase-25/resumo-implementacao-fase-25.md`), nao removido por
@@ -1771,6 +1804,11 @@ frontend/
                                    dentro de GlobalNav.tsx desde a Fase 25, era direto em App.tsx),
                                    link pra /perfil; busca o catalogo sozinho, cai pro nome sem
                                    cor/moldura se ainda nao carregou (nao bloqueia o nav)
+      AiStatusBadge.tsx              <- Fase 28 - badge de status de IA no menu global, ao lado de
+                                   HeaderUserBadge (mesmo padrao self-contained). Ponto verde/ambar/
+                                   vermelho/cinza (GET /api/system/ai-status, polling a cada 45s -
+                                   mesma janela do cache do backend); clique expande painel com o
+                                   detalhe por provedor (nome, status, mensagem de erro)
       auth/
         LoginForm.tsx                <- email + senha (Fase 12); onSuccess recebe o UserDto (Fase 13b)
         RegisterForm.tsx              <- nome + email + senha + confirmacao (Fase 12); onSuccess
@@ -2216,6 +2254,7 @@ CSS).
 | 26 | Fechamento do Curriculo Web Security (Semanas 2-12) | `docs/fase-26/resumo-implementacao-fase-26.md` |
 | 27 | Personalizacao por Analogia Estendida (Voz + LinkedIn) | `docs/fase-27/resumo-implementacao-fase-27.md` |
 | 27b | Avaliacao Automatica do Projeto Semanal | `docs/fase-27b/resumo-implementacao-fase-27b.md` |
+| 28 | Status de IA (badge no GlobalNav) | `docs/fase-28/resumo-implementacao-fase-28.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
