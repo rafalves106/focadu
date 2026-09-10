@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { WeeklyProjectStatus, type WeeklyProjectDto } from '../api/types';
 import { StatusBadge } from './StatusBadge';
 import type { StatusBadgeTone } from '../lib/statusBadge';
+import { toPlainTextPreview } from '../lib/textPreview';
 
 const STATUS_BADGE: Record<WeeklyProjectStatus, { icon: string; label: string; tone: StatusBadgeTone }> = {
   [WeeklyProjectStatus.Pending]: { icon: '⭕', label: 'PENDENTE', tone: 'muted' },
@@ -48,7 +49,7 @@ export function WeeklyProjectCard({
         </div>
         <StatusBadge {...badge} />
       </div>
-      <p className="line-clamp-2 text-sm leading-relaxed text-secondary">{project.specText}</p>
+      <p className="line-clamp-2 text-sm leading-relaxed text-secondary">{toPlainTextPreview(project.specText)}</p>
       <Link
         to={`/start?course=${courseId ?? ''}&weekly=${weeklyId}&project=1`}
         className="self-start rounded-xl bg-project px-5 py-2.5 text-sm font-bold text-base"

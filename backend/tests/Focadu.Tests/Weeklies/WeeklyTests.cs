@@ -120,8 +120,12 @@ public class WeeklyTests
         pastDaily.SubmitActivityResponse(pastActivity.Id, 100);
         pastDaily.Complete();
 
+        // Start() direto (nao via Weekly.StartOrResumeDaily): completar pastDaily consumiu a
+        // "cota diaria" de hoje (regra nova), entao passar pelo guard de acesso da Weekly bloquearia
+        // este setup - o que importa aqui e so ter uma segunda Daily InProgress, nao validar a
+        // entrada dela.
         var todayDaily = DailyFixtures.NewDaily(weekly, 2, today);
-        weekly.StartOrResumeDaily(todayDaily.Id, today);
+        todayDaily.Start();
 
         Assert.Equal(DailyAccessMode.ReadOnly, weekly.EvaluateDailyAccess(pastDaily.Id, today));
     }
@@ -134,6 +138,50 @@ public class WeeklyTests
         var pastDaily = DailyFixtures.NewDaily(weekly, 1, today.AddDays(-3));
 
         Assert.Equal(DailyAccessMode.ReadOnly, weekly.EvaluateDailyAccess(pastDaily.Id, today));
+    }
+
+    [Fact]
+    public void EvaluateDailyAccess_ResumesAbandonedPastDaily_RegardlessOfDate()
+    {
+        // Cenario reportado: Daily iniciada ha alguns dias e nunca concluida nao pode ficar presa
+        // pra sempre - precisa continuar acessivel pra retomar de onde parou.
+        var weekly = DailyFixtures.NewWeekly();
+        var today = DailyFixtures.Today;
+        var abandonedDaily = DailyFixtures.NewDaily(weekly, 1, today.AddDays(-2));
+        abandonedDaily.Start();
+
+        Assert.Equal(DailyAccessMode.Resume, weekly.EvaluateDailyAccess(abandonedDaily.Id, today));
+    }
+
+    [Fact]
+    public void EvaluateDailyAccess_BlocksStartingTodaysDaily_WhenAnEarlierDailyIsStillInProgress()
+    {
+        // Reproduz o bug: Daily de um dia anterior fica InProgress (abandonada) e a checagem
+        // antiga so olhava Dailies com Date == hoje, entao liberava a Daily de hoje mesmo assim -
+        // resultado eram duas Dailies "Em andamento" ao mesmo tempo.
+        var weekly = DailyFixtures.NewWeekly();
+        var today = DailyFixtures.Today;
+        var abandonedDaily = DailyFixtures.NewDaily(weekly, 1, today.AddDays(-1));
+        abandonedDaily.Start();
+        var todayDaily = DailyFixtures.NewDaily(weekly, 2, today);
+
+        Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(todayDaily.Id, today));
+    }
+
+    [Fact]
+    public void EvaluateDailyAccess_BlocksStartingAnotherDaily_AfterCatchingUpAnAbandonedDailyToday()
+    {
+        // Retomar e concluir hoje um dia atrasado conta como a Daily de hoje - nao da pra fazer
+        // duas "rodadas" no mesmo dia corrido.
+        var weekly = DailyFixtures.NewWeekly();
+        var today = DailyFixtures.Today;
+        var (abandonedDaily, activity) = DailyFixtures.NewDailyWithOneActivity(weekly, 1, today.AddDays(-1));
+        abandonedDaily.Start();
+        abandonedDaily.SubmitActivityResponse(activity.Id, 100);
+        abandonedDaily.Complete();
+        var todayDaily = DailyFixtures.NewDaily(weekly, 2, today);
+
+        Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(todayDaily.Id, today));
     }
 
     [Fact]

@@ -90,6 +90,24 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
 
           <div className="h-px bg-stroke" />
 
+          {/* Fase 27b: Score/Feedback existem no dominio desde a Fase 16 mas nunca apareciam aqui -
+              nada disparava a avaliacao pela UI antes desta fase (ver SubmitWeeklyProjectUseCase).
+              Estilo proprio (nao FeedbackPanel, usado pelas 5 atividades da Daily) porque projeto
+              nao tem conceito de passed/reprovado - uma vez avaliado, nao ha reenvio (WeeklyProject.
+              Submit bloqueia depois de Evaluated), so a nota fica registrada. */}
+          {project.status === WeeklyProjectStatus.Evaluated && (
+            <div className="flex flex-col gap-3 rounded-xl border border-project/40 bg-surface-alt p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">Avaliação</p>
+                <p className="text-2xl font-bold text-project">
+                  {project.score}
+                  <span className="text-sm font-medium text-muted">/100</span>
+                </p>
+              </div>
+              {project.feedback && <p className="text-sm text-secondary">{project.feedback}</p>}
+            </div>
+          )}
+
           {project.submissionUrl && (
             <div className="flex flex-col gap-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted">Sua submissão</p>
@@ -113,6 +131,9 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
                   className="rounded-xl border border-stroke bg-surface-alt px-4 py-3 text-primary outline-none focus:border-project"
                 />
               </label>
+              {/* Fase 27b: repositorio GitHub publico e avaliado na hora (nota + feedback acima) -
+                  qualquer outra URL (ex: post do LinkedIn) so fica registrada, sem nota automatica. */}
+              <p className="text-xs text-muted">Repositórios GitHub públicos recebem nota automática ao enviar.</p>
 
               {submitError && <p className="text-sm text-alert">{submitError}</p>}
 
