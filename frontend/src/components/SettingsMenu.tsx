@@ -22,18 +22,17 @@ function ComingSoonBadge() {
  * arvore por tras manualmente). Acionado por ESC/voltar do navegador durante uma sessao ativa (ver
  * TodayPage) ou pelo botao de engrenagem.
  *
- * "Fechar (ESC)" (onClose), "Sair e salvar progresso" (onExit, so navega pra /start - o progresso
- * ja esta salvo no servidor a cada resposta enviada, nao ha nada extra pra "salvar") e
- * "Sair da Conta" (onLogout, Fase 13 - agora existe conta de verdade, ver docs/fase-12) sao acoes
- * reais desde a Fase 7. onLogout pede confirmacao simples (window.confirm) antes de executar -
- * evita logout acidental no meio de uma sessao.
+ * "Fechar (ESC)" (onClose) e "Sair da Conta" (onLogout, Fase 13 - agora existe conta de verdade,
+ * ver docs/fase-12) sao acoes reais desde a Fase 7. onLogout pede confirmacao simples
+ * (window.confirm) antes de executar - evita logout acidental no meio de uma sessao.
  *
  * Fase 20: "Sair da Conta" virou o botao vermelho de largura total do Figma (era link de texto
- * simples, divergencia documentada desde a Fase 13a) - "Fechar (ESC)"/"Sair e salvar progresso"
- * continuam texto discreto acima dele (o Figma so mostra "Fechar (ESC)" + o botao de logout, sem
- * a 3a acao - mas "Sair e salvar progresso" e um caminho de saida real, tirar reduziria
- * funcionalidade so pra bater com o mockup, entao ficou como uma 2a linha discreta em vez de
- * removida).
+ * simples, divergencia documentada desde a Fase 13a) - "Fechar (ESC)" continua texto discreto
+ * acima dele, batendo com o Figma.
+ *
+ * 2026-09-10: removido "Sair e salvar progresso" (onExit) - so navegava pra /start sem salvar nada
+ * extra (o progresso ja e salvo no servidor a cada resposta enviada), acao redundante com
+ * "Fechar (ESC)"/fechar o navegador.
  *
  * 2026-08-28: "Limite de gravação" virou select real (persistido em localStorage, ver
  * frontend/src/lib/settings.ts, lido por VoiceSummaryActivity), "Perfil e Analogias" -> Editar
@@ -45,12 +44,10 @@ function ComingSoonBadge() {
 export function SettingsMenu({
   open,
   onClose,
-  onExit,
   onLogout,
 }: {
   open: boolean;
   onClose: () => void;
-  onExit: () => void;
   onLogout: () => void;
 }) {
   const navigate = useNavigate();
@@ -174,9 +171,6 @@ export function SettingsMenu({
         <div className="flex flex-col items-center gap-2 pt-1">
           <button type="button" onClick={onClose} className="text-xs text-secondary hover:text-primary">
             Fechar (ESC)
-          </button>
-          <button type="button" onClick={onExit} className="text-xs font-semibold text-secondary hover:text-primary hover:underline">
-            Sair e salvar progresso
           </button>
         </div>
 
