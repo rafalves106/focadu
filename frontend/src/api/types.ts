@@ -290,6 +290,8 @@ export interface WeeklyProjectDto {
 export interface WeeklyDetailDto {
   id: string;
   monthlyId: string;
+  /** Fase 29: resolvido no backend via Monthly.CourseId - o Caderninho de Anotacoes usa isso pra montar o link "CADERNINHO" e o autocomplete de tags a partir do contexto de uma Daily em andamento. */
+  courseId: string;
   number: number;
   title: string;
   theme: string | null;
@@ -521,4 +523,28 @@ export interface AiProviderStatusDto {
   available: boolean;
   errorMessage: string | null;
   checkedAt: string;
+}
+
+/**
+ * Caderninho de Anotacoes (Fase 29). weekNumber/dayNumber/dailyDate vem do backend (Note nunca
+ * duplica isso - so guarda dailyId) - resolvidos pelo caso de uso, pra UI mostrar o vinculo
+ * "Semana X, Dia Y" sem precisar de uma 2a chamada.
+ */
+export interface NoteDto {
+  id: string;
+  dailyId: string;
+  weekNumber: number;
+  dayNumber: number;
+  dailyDate: string;
+  content: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ListNotesFilter {
+  from?: string;
+  to?: string;
+  q?: string;
+  tag?: string;
 }

@@ -12,6 +12,7 @@ using Focadu.Application.Enrollments;
 using Focadu.Application.Exceptions;
 using Focadu.Application.Gamification;
 using Focadu.Application.Marketplace;
+using Focadu.Application.Notes;
 using Focadu.Application.Ranking;
 using Focadu.Application.Referrals;
 using Focadu.Application.Seed;
@@ -623,6 +624,54 @@ api.MapPost("/dailies/{dailyId}/complete", async (ClaimsPrincipal principal, str
     })
     .RequireAuthorization()
     .WithName("CompleteDaily");
+
+// --- Caderninho de Anotacoes (Fase 29) ------------------------------------------------------
+
+api.MapPost("/dailies/{dailyId}/notes", async (ClaimsPrincipal principal, string dailyId, CreateNoteRequest? request, CreateNoteUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(dailyId, "dailyId");
+        var result = await useCase.ExecuteAsync(CurrentUserId(principal), id, request?.Content ?? string.Empty, request?.Tags, ct);
+        return Results.Created($"/api/notes/{result.Id}", result);
+    })
+    .RequireAuthorization()
+    .WithName("CreateNote");
+
+api.MapPut("/notes/{noteId}", async (ClaimsPrincipal principal, string noteId, UpdateNoteRequest? request, EditNoteUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(noteId, "noteId");
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, request?.Content ?? string.Empty, request?.Tags, ct));
+    })
+    .RequireAuthorization()
+    .WithName("EditNote");
+
+api.MapDelete("/notes/{noteId}", async (ClaimsPrincipal principal, string noteId, DeleteNoteUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(noteId, "noteId");
+        await useCase.ExecuteAsync(CurrentUserId(principal), id, ct);
+        return Results.NoContent();
+    })
+    .RequireAuthorization()
+    .WithName("DeleteNote");
+
+// Filtros opcionais na query string (from/to/q/tag) - binding automatico do minimal API, sem
+// RouteParsing (DateOnly/string ja implementam TryParse/sao string direto).
+api.MapGet("/courses/{courseId}/notes", async (
+        ClaimsPrincipal principal, string courseId, DateOnly? from, DateOnly? to, string? q, string? tag,
+        ListNotesUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(courseId, "courseId");
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, from, to, q, tag, ct));
+    })
+    .RequireAuthorization()
+    .WithName("ListNotes");
+
+api.MapGet("/courses/{courseId}/notes/tags", async (ClaimsPrincipal principal, string courseId, ListNoteTagsUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(courseId, "courseId");
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
+    })
+    .RequireAuthorization()
+    .WithName("ListNoteTags");
 
 app.Run();
 

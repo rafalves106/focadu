@@ -1,12 +1,16 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { CourseStatus, type DailyStatusSummaryDto, type WeeklyOverviewDto } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { EmptyStateError } from '../components/errors/EmptyStateError';
+import { CourseDetailTabs, type CourseDetailTab } from '../components/notebook/CourseDetailTabs';
+import { NotebookTab } from '../components/notebook/NotebookTab';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
 import { ProgressBar } from '../components/ProgressBar';
+
+const VALID_TABS: CourseDetailTab[] = ['conteudo', 'caderninho'];
 
 const DAY_MINI_TONE: Record<number, string> = {
   0: 'border-transparent bg-surface-alt text-muted', // Locked
@@ -26,6 +30,21 @@ const DAY_MINI_TONE: Record<number, string> = {
  */
 export function CourseDetailPage({ courseId }: { courseId: string }) {
   const { data: course, error, loading, retry } = useApiResource(() => api.getCourse(courseId), [courseId]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const tab: CourseDetailTab = VALID_TABS.includes(tabParam as CourseDetailTab) ? (tabParam as CourseDetailTab) : 'conteudo';
+
+  // Preserva os outros params da URL (course=, e qualquer outro que StartPage venha a ler) - `/start`
+  // e uma rota so orientada por query string (ver StartPage.tsx), diferente de /perfil?tab= (unico
+  // param que importa la), entao nao da pra so substituir tudo como ProfileTabs faz.
+  function setTab(next: CourseDetailTab) {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (next === 'conteudo') params.delete('tab');
+      else params.set('tab', next);
+      return params;
+    });
+  }
 
   if (loading) return <Centered text="Carregando curso..." />;
   if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
@@ -56,21 +75,30 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
           </div>
         </div>
 
+        {/* Fase 29: Conteudo Programatico + Caderninho como abas (antes era single-view) -
+            Conteudo Programatico mantem o visual ATUAL, so ganhou o envolvo de abas (decisao do
+            rascunho: reskin fora de escopo desta fase). Resumo do Curso na coluna da direita fica
+            fora das abas (info do Course inteiro, nao de uma aba especifica). */}
         <div className="flex flex-col gap-4">
-          <p className="text-sm font-bold uppercase tracking-wide text-muted">Conteúdo Programático</p>
-          <div className="flex flex-col gap-3">
-            {weeks.map((weekly, index) => (
-              <WeekSummaryCard
-                key={weekly.id}
-                weekly={weekly}
-                courseId={courseId}
-                isLocked={weeks[index - 1]?.requiresPublicationToUnlock ?? false}
-              />
-            ))}
-          </div>
-          {weeks.length === 0 && (
-            <EmptyStateError title="Nenhuma semana cadastrada" description="Este curso ainda não tem semanas cadastradas." />
+          <CourseDetailTabs tab={tab} onChange={setTab} />
+
+          {tab === 'conteudo' && (
+            <div className="flex flex-col gap-3">
+              {weeks.map((weekly, index) => (
+                <WeekSummaryCard
+                  key={weekly.id}
+                  weekly={weekly}
+                  courseId={courseId}
+                  isLocked={weeks[index - 1]?.requiresPublicationToUnlock ?? false}
+                />
+              ))}
+              {weeks.length === 0 && (
+                <EmptyStateError title="Nenhuma semana cadastrada" description="Este curso ainda não tem semanas cadastradas." />
+              )}
+            </div>
           )}
+
+          {tab === 'caderninho' && <NotebookTab courseId={courseId} />}
         </div>
       </div>
 

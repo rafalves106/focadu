@@ -14,9 +14,11 @@ import {
   type EnrollmentDto,
   type GamificationSummaryDto,
   type GitHubRepoDto,
+  type ListNotesFilter,
   type LoginRequest,
   type MarketplaceCatalogDto,
   type ModulePublicationDto,
+  type NoteDto,
   type PublicationPlatform,
   type RankingResultDto,
   type RankingScope,
@@ -225,4 +227,20 @@ export const api = {
     }),
   // Status de IA (Fase 28) - badge do GlobalNav, ver AiStatusBadge.tsx.
   getAiProviderStatus: () => request<AiProviderStatusDto[]>('/api/system/ai-status'),
+  // Caderninho de Anotacoes (Fase 29) - painel de captura rapida na Daily + aba "Caderninho" no Course.
+  createNote: (dailyId: string, content: string, tags: string[]) =>
+    request<NoteDto>(`/api/dailies/${dailyId}/notes`, { method: 'POST', body: JSON.stringify({ content, tags }) }),
+  updateNote: (noteId: string, content: string, tags: string[]) =>
+    request<NoteDto>(`/api/notes/${noteId}`, { method: 'PUT', body: JSON.stringify({ content, tags }) }),
+  deleteNote: (noteId: string) => request<void>(`/api/notes/${noteId}`, { method: 'DELETE' }),
+  listNotes: (courseId: string, filter: ListNotesFilter = {}) => {
+    const params = new URLSearchParams();
+    if (filter.from) params.set('from', filter.from);
+    if (filter.to) params.set('to', filter.to);
+    if (filter.q) params.set('q', filter.q);
+    if (filter.tag) params.set('tag', filter.tag);
+    const query = params.toString();
+    return request<NoteDto[]>(`/api/courses/${courseId}/notes${query ? `?${query}` : ''}`);
+  },
+  listNoteTags: (courseId: string) => request<string[]>(`/api/courses/${courseId}/notes/tags`),
 };

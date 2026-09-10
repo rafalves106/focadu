@@ -4,6 +4,7 @@ import { useApiResource } from '../api/useApiResource';
 import { ActivityStatus, type DailyStateDto } from '../api/types';
 import { ContentPreviewModal } from './ContentPreviewModal';
 import { MaterialSidebar } from './MaterialSidebar';
+import { QuickNotePanel } from './notebook/QuickNotePanel';
 
 /**
  * "Material de hoje" pronto pra usar (Fase 19) - busca a Weekly (pra pegar `curatedContents`) e
@@ -12,6 +13,10 @@ import { MaterialSidebar } from './MaterialSidebar';
  * por Quiz/Ligar Palavras/Cloze/Roleplay/Resumo Falado. `activeContentId` so existe pra
  * Reading/Video (unicos tipos com ContentId proprio de leitura/video, ver DailyActivity.ctor) -
  * as outras atividades passam `null` (nenhum item em destaque, so os concluidos aparecem).
+ *
+ * Fase 29: ganhou o `<QuickNotePanel>` do Caderninho de Anotacoes empilhado embaixo do
+ * `<MaterialSidebar>` - decisao do rascunho (secret/rascunhos/caderninho-de-anotacoes.md):
+ * nenhuma funcionalidade atual (reler/reassistir material) e perdida, so acrescenta.
  *
  * Arquivo proprio (separado de SessionShell.tsx) pelo mesmo motivo de lib/statusBadge.ts -
  * co-exportar hook e componente do mesmo arquivo quebra o fast refresh.
@@ -29,15 +34,16 @@ export function useMaterialSidebar(daily: DailyStateDto, activeContentId: string
   const todaysContentIds = new Set(daily.activities.filter((a) => a.contentId).map((a) => a.contentId!));
 
   const sidebar = weekly ? (
-    <>
+    <div className="flex flex-col gap-4">
       <MaterialSidebar
         contents={weekly.curatedContents.filter((c) => todaysContentIds.has(c.id))}
         activeContentId={activeContentId}
         completedContentIds={completedContentIds}
         onSelect={setPreviewContentId}
       />
+      <QuickNotePanel dailyId={daily.id} courseId={weekly.courseId} />
       {previewContentId && <ContentPreviewModal contentId={previewContentId} onClose={() => setPreviewContentId(null)} />}
-    </>
+    </div>
   ) : undefined;
 
   return { weekly, sidebar };
