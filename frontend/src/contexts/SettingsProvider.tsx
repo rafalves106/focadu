@@ -13,10 +13,8 @@ import { SettingsContext } from './settingsContextObject';
  * ESC/voltar do navegador durante uma sessao ativa - unica coisa que faz "ESC" fechar o menu de
  * verdade (SettingsMenu nao tem listener de teclado proprio).
  *
- * `onExit` continua `window.location.href` (recarga completa), nao `navigate()` - de proposito,
- * igual ja era antes desta fase: `useSessionExitGuard` empurra uma entrada de historico
- * "sentinela" pra interceptar o botao voltar durante a sessao; uma navegacao client-side deixaria
- * essa entrada extra emperrada no historico, uma recarga completa descarta tudo de uma vez.
+ * 2026-09-10: removido "Sair e salvar progresso" (onExit) do SettingsMenu - so navegava pra
+ * /start sem salvar nada extra, acao redundante.
  */
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -36,9 +34,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       <SettingsMenu
         open={isOpen}
         onClose={() => setIsOpen(false)}
-        onExit={() => {
-          window.location.href = '/start';
-        }}
         onLogout={() => {
           void logout().then(() => navigate('/login'));
         }}

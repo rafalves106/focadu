@@ -21,7 +21,7 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AuthProvider>
         {/* Precisa estar DENTRO do AuthProvider (SettingsMenu.onLogout usa useAuth()) e DENTRO do
-            BrowserRouter (onExit/onLogout navegam) - ver contexts/SettingsProvider.tsx. Envolve o
+            BrowserRouter (onLogout navega) - ver contexts/SettingsProvider.tsx. Envolve o
             app inteiro pra o GlobalNav conseguir abrir o mesmo <SettingsMenu> de qualquer tela
             (Fase 25) - nas telas sem sessao (Login/Splash/onboarding) so fica montado sem uso. */}
         <SettingsProvider>
