@@ -244,12 +244,19 @@ public class Weekly : Entity
     /// <summary>
     /// Avalia o que pode ser feito com uma Daily desta Weekly, dado "hoje":
     /// - Daily futura: nunca acessivel.
+    /// - Daily InProgress (de hoje OU abandonada em um dia anterior): Resume - retomar de onde
+    ///   parou sempre vale, independente da data, ja que so pode existir uma InProgress por vez
+    ///   (ver guard abaixo). Concluir essa "Daily atrasada" hoje conta como a Daily de hoje: ver
+    ///   proxima regra.
     /// - Daily de hoje concluida: Replay (repeticao livre, sem limite).
-    /// - Daily de hoje InProgress: Resume.
-    /// - Daily de hoje ainda nao iniciada: Start, mas so se nao houver outra InProgress hoje.
-    /// - Daily de dia anterior: ReadOnly, exceto Replay quando nao ha nenhuma Daily InProgress
-    ///   no momento e o usuario esta deliberadamente refazendo essa Daily (sempre dentro da
-    ///   mesma Weekly, ja que esta avaliacao nunca enxerga Dailies de outra semana).
+    /// - Daily concluida em um dia anterior: Replay quando nao ha nenhuma Daily InProgress no
+    ///   momento (repeticao deliberada, sempre dentro da mesma Weekly).
+    /// - Daily ainda nao iniciada e de hoje: Start, mas so se (a) nao houver nenhuma outra Daily
+    ///   InProgress nesta Weekly (de qualquer data - inclui uma atrasada ainda nao retomada) e
+    ///   (b) o usuario ainda nao concluiu nenhuma Daily hoje (limite de uma conclusao por dia
+    ///   corrido, mesmo quando essa conclusao veio de retomar um atraso).
+    /// - Daily anterior nunca iniciada (Locked/Available): ReadOnly - dia perdido, sem Resume
+    ///   possivel (nao ha "de onde retomar").
     ///
     /// Nota: "Locked" e conceitual para Dailies futuras - nao ha transicao de status disparada
     /// por scheduler/cron nenhum; a barreira e sempre resolvida comparando Daily.Date com "hoje"
@@ -263,32 +270,47 @@ public class Weekly : Entity
         if (target.Date > today)
             throw new DomainException("Nao e possivel acessar uma Daily futura.", "daily_futura");
 
-        if (target.Date == today)
+        // InProgress retoma de onde parou independente da data - e o que permite "recuperar" uma
+        // Daily abandonada num dia anterior, em vez dela ficar presa nesse status pra sempre.
+        if (target.Status == DailyStatus.InProgress)
+            return DailyAccessMode.Resume;
+
+        if (target.Status == DailyStatus.Completed)
         {
-            if (target.Status == DailyStatus.Completed)
+            if (target.Date == today)
                 return DailyAccessMode.Replay;
 
-            if (target.Status == DailyStatus.InProgress)
-                return DailyAccessMode.Resume;
-
-            var otherInProgressToday = _dailies.Any(d =>
-                d.Id != target.Id && d.Date == today && d.Status == DailyStatus.InProgress);
-            if (otherInProgressToday)
-            {
-                throw new DomainException(
-                    "Ja existe uma Daily em andamento hoje. Conclua-a antes de iniciar outra.",
-                    "daily_em_andamento");
-            }
-
-            return DailyAccessMode.Start;
+            var hasAnyInProgress = _dailies.Any(d => d.Status == DailyStatus.InProgress);
+            return hasAnyInProgress ? DailyAccessMode.ReadOnly : DailyAccessMode.Replay;
         }
 
-        // target.Date < today: dia anterior.
-        var hasAnyInProgress = _dailies.Any(d => d.Status == DailyStatus.InProgress);
-        if (!hasAnyInProgress && target.Status == DailyStatus.Completed)
-            return DailyAccessMode.Replay;
+        // Ainda nao iniciada (Locked/Available). Dia anterior nunca iniciado e dia perdido -
+        // nao ha progresso pra retomar, entao fica somente leitura (nao existe "Start atrasado").
+        if (target.Date < today)
+            return DailyAccessMode.ReadOnly;
 
-        return DailyAccessMode.ReadOnly;
+        var otherInProgress = _dailies.Any(d => d.Id != target.Id && d.Status == DailyStatus.InProgress);
+        if (otherInProgress)
+        {
+            throw new DomainException(
+                "Ja existe uma Daily em andamento. Conclua-a (ou retome-a) antes de iniciar outra.",
+                "daily_em_andamento");
+        }
+
+        // CompletedAt e gravado em UTC (Daily.Complete), mas "today" chega em hora local (mesma
+        // convencao de IClock.Today - ver SystemClock) - sem ToLocalTime aqui, a comparacao falha
+        // sempre que UTC e hora local caem em datas diferentes (qualquer horario da noite no
+        // fuso do Brasil, por exemplo).
+        var completedToday = _dailies.Any(d =>
+            d.CompletedAt.HasValue && DateOnly.FromDateTime(d.CompletedAt.Value.ToLocalTime()) == today);
+        if (completedToday)
+        {
+            throw new DomainException(
+                "Voce ja concluiu uma Daily hoje (inclusive se foi recuperando um dia atrasado). Volte amanha para continuar.",
+                "daily_limite_diario_atingido");
+        }
+
+        return DailyAccessMode.Start;
     }
 
     /// <summary>Inicia, retoma ou reabre (replay) uma Daily desta Weekly, respeitando EvaluateDailyAccess.</summary>

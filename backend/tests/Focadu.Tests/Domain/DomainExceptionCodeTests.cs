@@ -39,6 +39,22 @@ public class DomainExceptionCodeTests
     }
 
     [Fact]
+    public void EvaluateDailyAccess_AlreadyCompletedADailyToday_UsesCode_daily_limite_diario_atingido()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var today = DailyFixtures.Today;
+        var (daily1, activity) = DailyFixtures.NewDailyWithOneActivity(weekly, 1, today);
+        daily1.Start();
+        daily1.SubmitActivityResponse(activity.Id, 100);
+        daily1.Complete();
+        var daily2 = DailyFixtures.NewDaily(weekly, 2, today);
+
+        var ex = Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(daily2.Id, today));
+
+        Assert.Equal("daily_limite_diario_atingido", ex.Code);
+    }
+
+    [Fact]
     public void SubmitActivityResponse_BeforeStart_UsesCode_daily_nao_iniciada()
     {
         var weekly = DailyFixtures.NewWeekly();
