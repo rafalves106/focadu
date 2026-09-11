@@ -548,3 +548,8 @@ export interface ListNotesFilter {
   q?: string;
   tag?: string;
 }
+
+/** Suporte Rápido de IA (Fase 32) - POST /api/study-assistant/ask. So o texto de resposta, sem Score/estrutura (nao e avaliacao). */
+export interface StudyAssistantAnswerDto {
+  answer: string;
+}

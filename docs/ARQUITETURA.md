@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 31 - Mais Tipos de Diagrama na Curadoria**.
+> Ultima fase que atualizou este documento: **Fase 32 - Suporte Rapido de IA (botao flutuante)**.
 
 ## Visao geral do projeto
 
@@ -1035,6 +1035,7 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | 🔒 DELETE | `/api/notes/{noteId}` | `DeleteNoteUseCase` (Fase 29) | 204, 404 `nota_nao_encontrada` |
 | 🔒 GET | `/api/courses/{courseId}/notes?from=&to=&q=&tag=` | `ListNotesUseCase` (Fase 29) | 200 (`NoteDto[]`, mais recente primeiro), 404 `matricula_nao_encontrada` - todos os filtros opcionais |
 | 🔒 GET | `/api/courses/{courseId}/notes/tags` | `ListNoteTagsUseCase` (Fase 29) | 200 (`string[]`, tags distintas ja usadas pelo usuario neste curso) - autocomplete do campo de tags |
+| 🔒 POST | `/api/study-assistant/ask` | `AskStudyAssistantUseCase` (Fase 32) | 200 (`{answer}`), 400 `pergunta_obrigatoria`/`pergunta_muito_longa`, 502/503 (Groq) - sem `dailyId`/`weeklyId` na rota nem filtro por posse: `Context` vem pronto do frontend (o que ja esta na tela), nao busca nada por Id (ver secao "Suporte Rapido de IA" abaixo) |
 
 As rotas da Api sao caminhos REST simples (`/api/weeklies/{weeklyId}`), **nao** um espelho das
 rotas do frontend (`/start?course=&weekly=`) - o frontend usa query string no seu proprio router
@@ -1466,6 +1467,45 @@ de projeto, rascunho de LinkedIn, analogia de leitura - todas usam a mesma `Groq
 - **Frontend:** `AiStatusBadge.tsx` (badge no `GlobalNav`, ver secao Frontend abaixo) faz polling a
   cada 45s (mesma janela do cache do backend) e mostra um ponto verde/ambar/vermelho/cinza -
   clicar expande o detalhe por provedor (nome, status, `errorMessage`).
+
+### Suporte Rapido de IA (botao flutuante durante a sessao, Fase 32)
+
+Implementa a ideia ja registrada em `secret/rascunhos/visual-ui-ux.md` ("Suporte Rápido de IA: Um
+botão flutuante acessível para dúvidas pontuais... interações curtas e diretas, impedindo que o
+usuário se perca em diálogos longos") - `QuickQuestionOrb` (`SessionShell.tsx`) existia desde a
+Fase 19 como stub desativado (`return null`, os 2 call sites - `SessionLayout`/`WeeklyProjectPage`
+- ja existiam) e volta a renderizar de verdade nesta fase.
+
+- **`IStudyAssistantService`/`GroqStudyAssistantService`**: adapter Groq a mais (mesmo
+  `HttpClient`/`GroqOptions`, `GroqDefaultTimeout` = 60s, sem retry - mesma categoria de
+  Draft/ProjectEvaluation/Analogy, ver "Retry automatico" acima), texto livre (sem JSON mode,
+  mesmo estilo de `GroqDraftGenerationService` - a resposta E o texto mostrado ao aluno).
+- **`AskStudyAssistantUseCase`** (`Focadu.Application.Assistant`) **sem historico de conversa de
+  proposito**: cada pergunta e independente, nunca reenvia turnos anteriores pro backend - decisao
+  pra bater literalmente com "interacoes curtas e diretas" do rascunho (ver duvida em aberto no
+  resumo da fase se isso precisar virar multi-turn depois). Tambem **sem buscar Daily/Weekly/
+  CuratedContent por Id**: recebe `Context` (string livre, opcional) ja pronto do frontend - o que
+  ja esta na tela (titulo+trecho da leitura em andamento, especificacao do projeto semanal, ou so
+  "tema da semana + etapa atual" como fallback generico) - evita duplicar toda a logica de posse/
+  autorizacao que ja rodou quando o frontend buscou esses dados nos proprios endpoints
+  (`GetDailyStateUseCase`, `GetCuratedContentUseCase`, `GetWeeklyDetailUseCase`). `Question`
+  limitada a 500 chars (`pergunta_muito_longa`), `Context` truncado em 6000 chars (nunca erro, so
+  corta) - constantes `internal` na propria classe, testadas puras (`Focadu.Tests.Assistant`).
+  Personalizacao por interesses/notas (Fase 21/22/27) reaproveitada via
+  `PersonalizationPromptBuilder`, mesmo padrao dos outros prompts de IA - bonus, nunca obrigatorio.
+- **Frontend**: `StudyAssistantWidget.tsx` (botao flutuante `fixed bottom-6 right-6` + painel de
+  chat `fixed bottom-24 right-6` quando aberto) - `QuickQuestionOrb` (`SessionShell.tsx`) so
+  renderiza isso. O transcript da conversa e **so local** (state do componente, nunca enviado nem
+  persistido) - existe pra referencia visual do aluno dentro da mesma tela, cada pergunta enviada
+  pro backend continua isolada (sem historico, ver caso de uso acima). `context` vem de
+  `useStudyAssistantContext()` (`lib/studyAssistantContext.ts`) - store externo modulo-level
+  (mesmo padrao de `sessionExpiredHandler` em `api/client.ts`), nao React Context: `SessionLayout`
+  seta isso sozinho via `useEffect` (prop nova opcional `assistantContext`, cai no fallback
+  `eyebrow + stepLabel` quando omitida) e `WeeklyProjectPage` seta direto (nao usa
+  `SessionLayout`) - nenhum dos ~9 pontos que ja renderizavam `<SessionLayout>`/
+  `<QuickQuestionOrb/>` precisou de prop nova pra ganhar o botao em si, so `ReadingActivity`/
+  `VideoActivity` passam `assistantContext` mais rico (titulo + corpo/descricao do conteudo) por
+  serem o cenario mais provavel de duvida sobre o material.
 
 ## GitHub (commit de resumo do modulo, Fase 11)
 
@@ -2338,9 +2378,16 @@ CSS).
 | 29 | Caderninho de Anotacoes | `docs/fase-29/resumo-implementacao-fase-29.md` |
 | 30 | Diagramas de Fluxo Simples na Curadoria | `docs/fase-30/resumo-implementacao-fase-30.md` |
 | 31 | Mais Tipos de Diagrama na Curadoria | `docs/fase-31/resumo-implementacao-fase-31.md` |
+| 32 | Suporte Rapido de IA (botao flutuante) | `docs/fase-32/resumo-implementacao-fase-32.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
+- **Suporte Rapido de IA (Fase 32) e single-turn de proposito** (nenhum historico de conversa vai
+  pro backend, ver secao Groq acima) - se no futuro o pedido for "a IA lembrar da pergunta
+  anterior dentro do mesmo chat", isso e mudanca deliberada de escopo (contraria ao "interacoes
+  curtas" do rascunho), nao bug. Mesmo padrao do QA descartavel da Fase 25: um usuario de teste
+  (`smoketest-fase32@example.com`) ficou no banco local, criado so pra validar o endpoint novo
+  ponta a ponta com a chave real da Groq - sem endpoint de remocao de usuario pra limpar via API.
 - **Seed nao e upsert - reseedar um curso que ja existe exige apagar manualmente primeiro, na
   ordem certa** (Fase 26): `SeedWebSecurityCourseUseCase` e idempotente **por nome** (se o `Course`
   ja existe, nao insere nada de novo, nao atualiza). Pra recarregar do zero: `RoleplayOptions`

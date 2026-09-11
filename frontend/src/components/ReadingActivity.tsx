@@ -99,6 +99,10 @@ export function ReadingActivity({
       stepLabel={`ETAPA ${stepIndex + 1} DE ${total} — LEITURA`}
       progress={(stepIndex + 1) / total}
       sidebar={sidebar}
+      // Fase 32: da pro Suporte Rapido de IA o texto real da leitura (nao so titulo/etapa, o
+      // fallback generico de SessionLayout) - o cenario mais provavel de "duvida sobre o
+      // conteudo" entre as 7 atividades.
+      assistantContext={`Leitura: "${content.title}"\n\n${content.bodyText ?? ''}`}
     >
       <div className="flex max-h-[620px] w-full flex-col gap-5">
         {sourceHost && (

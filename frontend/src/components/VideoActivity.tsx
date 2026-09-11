@@ -72,6 +72,10 @@ export function VideoActivity({
       stepLabel={`ETAPA ${stepIndex + 1} DE ${total} — VÍDEO`}
       progress={(stepIndex + 1) / total}
       sidebar={sidebar}
+      // Fase 32: mesma logica de ReadingActivity - da pro Suporte Rapido de IA o titulo/descricao
+      // real do video (o transcript em si nao esta disponivel pro frontend, so o que a curadoria
+      // registrou como descricao).
+      assistantContext={`Vídeo: "${content.title}"${content.bodyText ? `\n\n${content.bodyText}` : ''}`}
     >
       <div className="flex w-full flex-col gap-5">
         <div className="flex w-fit items-center gap-2 rounded-full bg-surface-alt px-3 py-1.5">

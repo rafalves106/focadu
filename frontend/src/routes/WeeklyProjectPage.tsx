@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
@@ -6,6 +6,7 @@ import { WeeklyProjectStatus } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { SessionTopBar, QuickQuestionOrb } from '../components/SessionShell';
+import { setStudyAssistantContext } from '../lib/studyAssistantContext';
 
 const STATUS_BADGE: Record<number, { label: string; className: string }> = {
   [WeeklyProjectStatus.Pending]: { label: 'PENDENTE', className: 'bg-surface-alt text-alert' },
@@ -34,6 +35,17 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   const [submissionUrl, setSubmissionUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Fase 32: SessionLayout faz isso sozinho via `assistantContext` (ver SessionShell.tsx) - esta
+  // tela nao usa SessionLayout (so SessionTopBar + QuickQuestionOrb soltos), entao alimenta o
+  // Suporte Rapido de IA com a especificacao do projeto direto aqui.
+  useEffect(() => {
+    if (!weekly?.project) return;
+    setStudyAssistantContext(
+      `Projeto da Semana ${weekly.number}: ${weekly.title}\n\nEspecificação do projeto:\n${weekly.project.specText}`,
+    );
+    return () => setStudyAssistantContext(null);
+  }, [weekly]);
 
   if (loading) return <Centered text="Carregando projeto..." />;
   if (error) return <ApiErrorScreen error={error} onRetry={retry} />;

@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { ProgressBar } from './ProgressBar';
+import { StudyAssistantWidget } from './StudyAssistantWidget';
+import { setStudyAssistantContext } from '../lib/studyAssistantContext';
 
 /**
  * Chrome compartilhado pelas telas de sessao "estilo Figma" (Leitura, Video, Feedback IA, Projeto
@@ -35,11 +37,12 @@ export function SessionTopBar({
 }
 
 export function QuickQuestionOrb() {
-  // Desativado por enquanto (pedido do usuario) - o orbe promete um chat instantaneo com IA que
-  // ainda nao existe (so ideia registrada em secret/rascunhos/visual-ui-ux.md, "Suporte Rapido de
-  // IA"). Reativar aqui basta: e o unico ponto de renderizacao, os 2 call sites (SessionLayout e
-  // WeeklyProjectPage) nao precisam mudar.
-  return null;
+  // Fase 32: reativado - implementa o "Suporte Rápido de IA" que secret/rascunhos/visual-ui-ux.md
+  // ja previa (botao flutuante + chat curto/direto). Continua sendo o unico ponto de renderizacao
+  // (StudyAssistantWidget em arquivo proprio, componente com estado real demais pra caber aqui
+  // junto de SessionTopBar/SessionLayout) - os 2 call sites (SessionLayout abaixo e
+  // WeeklyProjectPage) continuam sem precisar mudar.
+  return <StudyAssistantWidget />;
 }
 
 /**
@@ -55,6 +58,12 @@ export function QuickQuestionOrb() {
  * fluxo normal, fora deste `pt-20`), mas o `PenaltyGauge` continua `fixed` (ignora fluxo) - o
  * `pt-20` segue garantindo folga entre ele e o `SessionTopBar`, so que com margem mais folgada
  * agora (o header em fluxo ja empurra tudo sozinho, isso aqui e so o extra pro badge fixo).
+ *
+ * `assistantContext` (Fase 32, opcional): alimenta o Suporte Rapido de IA com "o que esta na tela
+ * agora" - so Reading/VideoActivity passam algo mais rico (titulo + trecho do conteudo); as outras
+ * 5 atividades (Quiz/Ligar Palavras/Cloze/Roleplay/Resumo Falado) nao precisam - o proprio enunciado
+ * ja fica visivel em tela, o aluno consegue colar/reescrever a duvida no chat. Sem essa prop, cai no
+ * fallback `eyebrow + stepLabel` (tema da semana + qual etapa) - nunca fica sem contexto nenhum.
  */
 export function SessionLayout({
   eyebrow,
@@ -62,6 +71,7 @@ export function SessionLayout({
   progress,
   sidebar,
   card = true,
+  assistantContext,
   children,
 }: {
   eyebrow: ReactNode;
@@ -69,8 +79,15 @@ export function SessionLayout({
   progress: number;
   sidebar?: ReactNode;
   card?: boolean;
+  assistantContext?: string;
   children: ReactNode;
 }) {
+  useEffect(() => {
+    const fallback = typeof eyebrow === 'string' ? [eyebrow, stepLabel].filter(Boolean).join(' — ') : stepLabel;
+    setStudyAssistantContext(assistantContext ?? fallback);
+    return () => setStudyAssistantContext(null);
+  }, [assistantContext, eyebrow, stepLabel]);
+
   return (
     <div className="min-h-screen bg-base px-10 pt-20 pb-10">
       <div className="mx-auto flex max-w-[1360px] flex-col gap-8">

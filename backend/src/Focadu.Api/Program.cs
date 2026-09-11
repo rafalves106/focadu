@@ -5,6 +5,7 @@ using Focadu.Api.Contracts;
 using Focadu.Api.ErrorHandling;
 using Focadu.Application;
 using Focadu.Application.Achievements;
+using Focadu.Application.Assistant;
 using Focadu.Application.Content;
 using Focadu.Application.Courses;
 using Focadu.Application.Dailies;
@@ -672,6 +673,20 @@ api.MapGet("/courses/{courseId}/notes/tags", async (ClaimsPrincipal principal, s
     })
     .RequireAuthorization()
     .WithName("ListNoteTags");
+
+// --- Suporte Rapido de IA (Fase 32) -----------------------------------------------------------
+// Botao flutuante durante a sessao (ver secret/rascunhos/visual-ui-ux.md) - pergunta avulsa, sem
+// historico de conversa nem Daily/Weekly/dailyId na rota: Context vem pronto do frontend (o que ja
+// esta na tela, ver AskStudyAssistantUseCase) - autorizacao/posse ja foi checada quando o frontend
+// buscou esses dados nos proprios endpoints, este so precisa do usuario logado (personalizacao).
+
+api.MapPost("/study-assistant/ask", async (ClaimsPrincipal principal, AskStudyAssistantRequest? request, AskStudyAssistantUseCase useCase, CancellationToken ct) =>
+    {
+        var answer = await useCase.ExecuteAsync(CurrentUserId(principal), request?.Question ?? string.Empty, request?.Context, ct);
+        return Results.Ok(new AskStudyAssistantResponse(answer));
+    })
+    .RequireAuthorization()
+    .WithName("AskStudyAssistant");
 
 app.Run();
 
