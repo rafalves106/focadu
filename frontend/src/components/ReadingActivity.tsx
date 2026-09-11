@@ -7,7 +7,7 @@ import { ApiErrorScreen } from './errors/ApiErrorScreen';
 import { MarkdownBlock } from './activities/MarkdownBlock';
 import { SessionLayout } from './SessionShell';
 import { useMaterialSidebar } from './useMaterialSidebar';
-import { stripRedundantTitleHeading } from '../lib/markdown';
+import { stripFencedBlocks, stripRedundantTitleHeading } from '../lib/markdown';
 import dotSmall from '../assets/reading/dot-small.svg';
 
 const SECTION_HEADING = /^####\s+.+$/gm;
@@ -88,7 +88,8 @@ export function ReadingActivity({
   const sourceHost = content.externalUrl
     ? new URL(content.externalUrl).hostname.replace(/^www\./, '').toUpperCase()
     : null;
-  const wordCount = content.bodyText?.trim().split(/\s+/).filter(Boolean).length ?? 0;
+  // stripFencedBlocks: um bloco "```diagrama" (Fase 30) nao e prosa "lida" - excluido da contagem pra nao inflar a estimativa de tempo.
+  const wordCount = stripFencedBlocks(content.bodyText ?? '').trim().split(/\s+/).filter(Boolean).length;
   const readMinutes = wordCount > 0 ? Math.max(1, Math.round(wordCount / 200)) : null;
   const analogies = content.personalizedAnalogies ?? [];
 

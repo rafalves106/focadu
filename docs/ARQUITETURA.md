@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 29 - Caderninho de Anotacoes**.
+> Ultima fase que atualizou este documento: **Fase 30 - Diagramas de Fluxo Simples na Curadoria**.
 
 ## Visao geral do projeto
 
@@ -706,6 +706,29 @@ Sem teste dedicado pra `SubmitVoiceSummaryResponseUseCase`/`GenerateLinkedInDraf
 ja documentado - "casos de uso simples... nunca tiveram teste dedicado", verificacao ao vivo);
 `PersonalizationPromptBuilder.BuildInstruction` (a parte pura) tem teste dedicado
 (`PersonalizationPromptBuilderTests`).
+
+**Fase 30: diagramas de fluxo simples no Texto Cru - feedback do usuario de que texto corrido sem
+referencia visual fica dificil de entender.** Extensao de convencao de markdown, sem nenhuma
+mudanca de dominio/schema/migration (`BodyText` continua string livre - desde a Fase 13b nao ha UI
+de autoria, tudo entra via skill `curar-conteudo` -> JSON -> seed). Um bloco cercado
+` ```diagrama ` dentro do `BodyText` vira um diagrama de fluxo (`origem -> destino: rotulo` por
+linha, ver `secret/curadoria/CURADORIA.md` secao 2.1); qualquer outro bloco cercado ` ``` ` vira
+bloco de codigo monoespacado simples (bonus de baixo custo, mesma deteccao de fence). Frontend:
+`lib/markdown.ts` ganhou `splitFences`/`stripFencedBlocks` (pre-passo pra isolar fences ANTES do
+parser linha-a-linha de `MarkdownBlock.tsx`, que agora itera segmentos em vez do texto bruto) e
+`parseDiagramSteps`/`DiagramStep` (parser do DSL, usado por `components/activities/
+DiagramBlock.tsx` - layout unico de linhas empilhadas `[origem] -> [destino]`, cobre tanto
+ping-pong entre 2 atores (three-way handshake TCP) quanto cadeia linear de N atores (resolucao
+DNS), sem SVG). `ReadingActivity.tsx`: `wordCount` usa `stripFencedBlocks` antes de contar, pra
+sintaxe do DSL nao inflar a estimativa de tempo de leitura. Backend: `GetCuratedContentUseCase`
+ganhou `StripFencedBlocks` (internal static, mesmo padrao de `SplitIntoSections`), aplicado a cada
+secao antes de montar o `AnalogyRequest` - o DSL de diagrama e ruido pro prompt da IA de
+analogias, nao prosa explicavel; nao muda a quantidade de secoes, entao a correspondencia
+secao<->analogia por indice e o cache em `PersonalizedAnalogy` continuam intactos. Prova de
+conceito aplicada de verdade no Dia 1 (`semana-1/dia-1.json` - cadeia DNS + handshake TCP); os
+outros 59 dias ficam como backlog (`CURADORIA.md` secao 4), retrofitados sob demanda via skill
+nova `aplicar-elementos-visuais` (um dia por vez, nunca em lote - evita diagrama forcado num dia
+sem sequencia real de atores). Ver `docs/fase-30/resumo-implementacao-fase-30.md`.
 
 **`EquippedNameColor` no Ranking - token estavel, nao hex.** `GetCourseRankingUseCase` resolve, por
 Enrollment, o `Name` do `CosmeticItem` equipado no slot `NameColor` (ex: "Verde Neon") e devolve em
@@ -2298,6 +2321,7 @@ CSS).
 | 27b | Avaliacao Automatica do Projeto Semanal | `docs/fase-27b/resumo-implementacao-fase-27b.md` |
 | 28 | Status de IA (badge no GlobalNav) | `docs/fase-28/resumo-implementacao-fase-28.md` |
 | 29 | Caderninho de Anotacoes | `docs/fase-29/resumo-implementacao-fase-29.md` |
+| 30 | Diagramas de Fluxo Simples na Curadoria | `docs/fase-30/resumo-implementacao-fase-30.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 

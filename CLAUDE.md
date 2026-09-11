@@ -78,10 +78,12 @@ Ao final de **toda fase de implementação**:
   `secret/curadoria/<curso>/semana-N/dia-N.json`.
 - `registrar-rascunho` — detecta ideia solta/não decidida sobre o produto e registra em
   `secret/rascunhos/<slug>.md`.
+- `aplicar-elementos-visuais` — retrofita um dia já curado com os elementos visuais da Fase 30
+  (diagrama de fluxo, bloco de código), um dia por vez, nunca em lote.
 
 ## Estado atual
 
-Última fase concluída: **Fase 29 — Caderninho de Anotações** (10/09/2026).
+Última fase concluída: **Fase 30 — Diagramas de Fluxo Simples na Curadoria** (10/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
 - Currículo do curso piloto (Web Security) **completo** desde a Fase 26: 4 módulos / 12 semanas /
@@ -91,6 +93,9 @@ Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` corr
 - Avaliação automática do Projeto Semanal ao submeter (Fase 27b).
 - Badge de status de IA (saúde dos provedores Groq/GitHub) no `GlobalNav` (Fase 28).
 - Caderninho de anotações pessoal do aluno (Fase 29).
+- Texto Cru da curadoria ganhou suporte a diagrama de fluxo simples (` ```diagrama `) e bloco de
+  código (` ``` `) — Fase 30. Só o Dia 1 tem exemplo aplicado; retrofit dos outros 59 dias é
+  backlog, feito sob demanda via skill `aplicar-elementos-visuais`.
 - Mapa/personagem 2D (Fase 25) implementado mas **temporariamente desativado**; hub de entrada
   (`/start` sem params) voltou a ser o `StartDashboard` em cards — ver `docs/ARQUITETURA.md`.
 - Pendência conhecida em aberto: auditoria estática de segurança (SAST) de repositórios de
