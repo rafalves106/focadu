@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 30 - Diagramas de Fluxo Simples na Curadoria**.
+> Ultima fase que atualizou este documento: **Fase 31 - Mais Tipos de Diagrama na Curadoria**.
 
 ## Visao geral do projeto
 
@@ -729,6 +729,21 @@ conceito aplicada de verdade no Dia 1 (`semana-1/dia-1.json` - cadeia DNS + hand
 outros 59 dias ficam como backlog (`CURADORIA.md` secao 4), retrofitados sob demanda via skill
 nova `aplicar-elementos-visuais` (um dia por vez, nunca em lote - evita diagrama forcado num dia
 sem sequencia real de atores). Ver `docs/fase-30/resumo-implementacao-fase-30.md`.
+
+**Fase 31: mais 3 tipos de diagrama (`comparacao`/`camadas`/`partes`), alem do `sequencia` da Fase
+30 - usuario pediu "tipos diferentes" depois de ver o primeiro funcionando.** So frontend mudou
+(backend trata o bloco `diagrama` como texto opaco a stripar, independente do tipo por dentro -
+`StripFencedBlocks` nao precisou de nenhuma mudanca). `lib/markdown.ts` ganhou
+`parseDiagram(text): DiagramData` - dispatcher que le a 1a linha nao-vazia do fence (`tipo:
+<nome>`); sem essa linha (retrocompatibilidade com os blocos da Fase 30), o tipo e `sequencia`.
+`DiagramBlock.tsx` despacha pra 4 sub-componentes internos (`SequenceDiagram`/`ComparisonDiagram`/
+`LayersDiagram`/`PartsDiagram`) + `EmptyDiagram` compartilhado - `comparacao` e um grid CSS 2
+colunas (`esquerda | direita` por linha), `camadas` empilha caixas com indentacao crescente
+(`marginInline` inline, proporcional ao indice), `partes` reaproveita o visual de pilula do
+`sequencia` mas conectado por "+" em vez de "->" (composicao, nao causalidade). Prova de conceito
+com 1 exemplo real de cada tipo novo: Dia 8 (`semana-2/dia-8.json`, `comparacao` - RBAC vs. ABAC),
+Dia 56 (`semana-12/dia-56.json`, `camadas` - Defesa em Profundidade), Dia 1 ganhou tambem 1
+`partes` (Anatomia da Requisicao HTTP). Ver `docs/fase-31/resumo-implementacao-fase-31.md`.
 
 **`EquippedNameColor` no Ranking - token estavel, nao hex.** `GetCourseRankingUseCase` resolve, por
 Enrollment, o `Name` do `CosmeticItem` equipado no slot `NameColor` (ex: "Verde Neon") e devolve em
@@ -2322,6 +2337,7 @@ CSS).
 | 28 | Status de IA (badge no GlobalNav) | `docs/fase-28/resumo-implementacao-fase-28.md` |
 | 29 | Caderninho de Anotacoes | `docs/fase-29/resumo-implementacao-fase-29.md` |
 | 30 | Diagramas de Fluxo Simples na Curadoria | `docs/fase-30/resumo-implementacao-fase-30.md` |
+| 31 | Mais Tipos de Diagrama na Curadoria | `docs/fase-31/resumo-implementacao-fase-31.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 

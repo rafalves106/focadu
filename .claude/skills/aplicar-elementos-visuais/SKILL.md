@@ -1,25 +1,30 @@
 ---
 name: aplicar-elementos-visuais
-description: "Retrofita um dia (ou semana) JÁ curado do curso Web Security da Focadu com os elementos visuais da Fase 30 (diagramas de fluxo \"```diagrama\" e blocos de código \"```\") onde o texto tiver de fato uma sequência de atores/passos ou um trecho de protocolo/código narrado em prosa - nunca em lote, um dia por vez. Use quando o usuário pedir para adicionar diagrama(s), retrofitar, aplicar elementos visuais, transformar conteúdo já curado com elementos visuais novos a um dia específico, ou invocar /aplicar-elementos-visuais. NÃO use para curar um dia novo do zero (isso é /curar-conteudo) nem para decidir a sintaxe em si (já decidida, ver CURADORIA.md 2.1)."
+description: "Retrofita um dia (ou semana) JÁ curado do curso Web Security da Focadu com os elementos visuais das Fases 30/31 (diagramas \"```diagrama\" - tipos sequencia/comparacao/camadas/partes - e blocos de código \"```\") onde o texto tiver de fato uma sequência de atores, uma comparação, uma hierarquia de camadas, a anatomia de uma coisa em partes, ou um trecho de protocolo/código narrado em prosa - nunca em lote, um dia por vez. Use quando o usuário pedir para adicionar diagrama(s), retrofitar, aplicar elementos visuais, transformar conteúdo já curado com elementos visuais novos a um dia específico, ou invocar /aplicar-elementos-visuais. NÃO use para curar um dia novo do zero (isso é /curar-conteudo) nem para decidir a sintaxe em si (já decidida, ver CURADORIA.md 2.1)."
 metadata:
   version: 1.0.0
 ---
 
 # Aplicar Elementos Visuais — Web Security (Focadu)
 
-Fase 30 acrescentou 2 elementos visuais ao `bodyText` de uma Reading: blocos ` ```diagrama `
-(diagrama de fluxo simples, origem -> destino) e blocos ` ``` ` genéricos (código monoespaçado).
-Esta skill aplica esses elementos a **conteúdo que já existe** em `secret/curadoria/`, sem tocar
-em domínio/backend/frontend (isso já foi implementado — ver `docs/fase-30/`).
+Fases 30/31 acrescentaram elementos visuais ao `bodyText` de uma Reading: blocos ` ```diagrama `
+em 4 tipos (`sequencia`, `comparacao`, `camadas`, `partes` — ver CURADORIA.md 2.1 pra sintaxe de
+cada um) e blocos ` ``` ` genéricos (código monoespaçado). Esta skill aplica esses elementos a
+**conteúdo que já existe** em `secret/curadoria/`, sem tocar em domínio/backend/frontend (isso já
+foi implementado — ver `docs/fase-30/` e `docs/fase-31/`).
 
 ## Antes de qualquer coisa
 
-1. Leia **`secret/curadoria/CURADORIA.md` seção 2.1** por completo — é a sintaxe exata, as regras
-   de bom-senso e o parser real que vai renderizar isso (`frontend/src/lib/markdown.ts` +
-   `frontend/src/components/activities/DiagramBlock.tsx`). Não inventar variação de sintaxe.
-2. Leia `secret/curadoria/web-security/semana-1/dia-1.json` como referência viva — o `bodyText`
-   dele já tem os 2 exemplos canônicos (three-way handshake TCP e cadeia de resolução DNS)
-   aplicados de verdade, inseridos logo após o bullet relevante, mantendo toda a prosa técnica.
+1. Leia **`secret/curadoria/CURADORIA.md` seção 2.1** por completo — é a sintaxe exata dos 4
+   tipos, as regras de bom-senso e o parser real que vai renderizar isso
+   (`frontend/src/lib/markdown.ts` + `frontend/src/components/activities/DiagramBlock.tsx`). Não
+   inventar variação de sintaxe nem um 5º tipo sem alinhar antes.
+2. Leia os exemplos já aplicados como referência viva (qual bullet/parágrafo cada um complementa,
+   como a prosa ao redor foi preservada intacta):
+   - `secret/curadoria/web-security/semana-1/dia-1.json` — 2× `sequencia` (handshake TCP, cadeia
+     DNS) + 1× `partes` (Anatomia da Requisição HTTP).
+   - `secret/curadoria/web-security/semana-2/dia-8.json` — 1× `comparacao` (RBAC vs. ABAC).
+   - `secret/curadoria/web-security/semana-12/dia-56.json` — 1× `camadas` (Defesa em Profundidade).
 3. Confira a nota de backlog no topo da seção "4. Estado atual" do `CURADORIA.md` pra ver quais
    dias já foram retrofitados, e não repetir trabalho.
 
@@ -30,19 +35,29 @@ em domínio/backend/frontend (isso já foi implementado — ver `docs/fase-30/`)
    decisão registrada no backlog do CURADORIA.md: qualidade por cima de cobertura).
 2. **Leia o `bodyText` inteiro** do dia (`secret/curadoria/<curso>/semana-N/dia-N.json`,
    `curatedContents[].bodyText` do item `"ref": "reading"`).
-3. **Avalie candidatos com critério, não por reflexo**:
-   - **Vira `diagrama`** um trecho que descreve uma sequência real de passos entre atores
-     nomeados (handshake, resolução de nomes, fluxo de requisição/resposta, troca de mensagens
-     entre client/server/proxy/IdP, árvore de decisão de protocolo). Ping-pong entre 2 atores e
-     cadeia linear de N atores usam a MESMA sintaxe (ver seção 2.1) — não precisa decidir isso.
+3. **Avalie candidatos com critério, não por reflexo** (1 trecho de prosa vira NO MÁXIMO 1 tipo —
+   nunca forçar um trecho a virar diagrama só porque "cabe tecnicamente"):
+   - **`tipo: sequencia`** — passos reais entre atores nomeados (handshake, resolução de nomes,
+     fluxo de requisição/resposta, troca de mensagens entre client/server/proxy/IdP). Ping-pong
+     entre 2 atores e cadeia linear de N atores usam a MESMA sintaxe — não precisa decidir isso.
+   - **`tipo: comparacao`** — o texto compara explicitamente 2 abordagens/modelos/opções (RBAC vs.
+     ABAC, simétrica vs. assimétrica, SAML vs. OAuth). Só vale a pena com pelo menos 3 linhas de
+     comparação genuínas — 1 ou 2 não justificam o diagrama, deixar em prosa.
+   - **`tipo: camadas`** — o texto descreve uma hierarquia ou pilha de camadas independentes
+     (defesa em profundidade, cadeia de certificados, hierarquia de IAM). Precisa ter uma ordem
+     real (mais externo → mais interno, ou raiz → folha), não só uma lista de itens soltos.
+   - **`tipo: partes`** — o texto decompõe UMA coisa só em segmentos que juntos a formam (anatomia
+     de uma requisição, estrutura de um JWT, uma URL) — sem relação causal entre as partes (isso
+     seria `sequencia`).
    - **Vira bloco de código genérico** (` ``` ` sem `diagrama`) um trecho que já é
      literalmente uma requisição/resposta/comando/payload/config (ex: uma requisição HTTP crua
      narrada em prosa, um comando de terminal, um JSON de exemplo) — não uma explicação teórica.
-   - **Não vira nada**: definição isolada, comparação de prós/contras, explicação conceitual sem
-     sequência real. Regra de ouro do CURADORIA.md: "nunca decorativo". Um dia pode legitimamente
-     não ganhar nenhum elemento novo — reporte isso ao usuário em vez de forçar um diagrama fraco.
-   - Se houver dúvida genuína sobre se algo qualifica, pergunte ao usuário em vez de decidir
-     sozinho — o custo de um diagrama ruim (didaticamente confuso) é maior que perguntar.
+   - **Não vira nada**: definição isolada, explicação conceitual sem nenhuma das 4 estruturas
+     acima. Regra de ouro do CURADORIA.md: "nunca decorativo". Um dia pode legitimamente não
+     ganhar nenhum elemento novo — reporte isso ao usuário em vez de forçar um diagrama fraco.
+   - Se houver dúvida genuína sobre se algo qualifica (ou sobre QUAL dos 4 tipos usar), pergunte
+     ao usuário em vez de decidir sozinho — o custo de um diagrama ruim/no tipo errado
+     (didaticamente confuso) é maior que perguntar.
 4. **Insira o bloco logo após o trecho de prosa que ele complementa** (mesmo padrão do Dia 1:
    depois do bullet/parágrafo relevante, antes do próximo `####`), sem reescrever, resumir ou
    remover a prosa existente — o elemento visual complementa, nunca substitui a densidade técnica
@@ -80,7 +95,11 @@ em domínio/backend/frontend (isso já foi implementado — ver `docs/fase-30/`)
 
 ## Referências
 
-- `secret/curadoria/CURADORIA.md` seção 2.1 — sintaxe, exemplos, regra de bom-senso.
-- `secret/curadoria/web-security/semana-1/dia-1.json` — os 2 exemplos canônicos já aplicados.
-- `docs/fase-30/resumo-implementacao-fase-30.md` — como o recurso foi implementado (parser,
-  componente, efeitos colaterais tratados).
+- `secret/curadoria/CURADORIA.md` seção 2.1 — sintaxe dos 4 tipos, exemplos, regra de bom-senso.
+- `secret/curadoria/web-security/semana-1/dia-1.json`,
+  `secret/curadoria/web-security/semana-2/dia-8.json`,
+  `secret/curadoria/web-security/semana-12/dia-56.json` — os exemplos canônicos já aplicados (um
+  de cada tipo, ver item 2 de "Antes de qualquer coisa" acima).
+- `docs/fase-30/resumo-implementacao-fase-30.md` (tipo `sequencia` + infra de fence) e
+  `docs/fase-31/resumo-implementacao-fase-31.md` (tipos `comparacao`/`camadas`/`partes`) — como o
+  recurso foi implementado (parser, componentes, efeitos colaterais tratados).

@@ -83,12 +83,10 @@ export interface DiagramStep {
 const DIAGRAM_STEP_LINE = /^(.+?)\s*->\s*([^:]+?)(?:\s*:\s*(.+))?$/;
 
 /**
- * Parser do DSL de diagrama de fluxo (bloco "```diagrama", Fase 30 - ver secret/curadoria/
- * CURADORIA.md secao 2.1). Usado por DiagramBlock.tsx - fica aqui (nao dentro do componente) pra
- * manter esse arquivo so-componentes (regra de lint react/only-export-components), mesma
- * separacao ja usada pelo resto de lib/markdown.ts. Linha em branco ou que nao bate no padrao e
- * silenciosamente ignorada - mesma filosofia do resto do MarkdownBlock (sintaxe invalida nunca
- * quebra o render, so nao vira nada).
+ * Parser do DSL de diagrama de fluxo/sequencia - "sequencia" e o tipo default de diagrama (Fase
+ * 30, ver parseDiagram abaixo pra como os outros tipos foram somados na Fase 31). Linha em branco
+ * ou que nao bate no padrao e silenciosamente ignorada - mesma filosofia do resto do
+ * MarkdownBlock (sintaxe invalida nunca quebra o render, so nao vira nada).
  */
 export function parseDiagramSteps(text: string): DiagramStep[] {
   const steps: DiagramStep[] = [];
@@ -101,4 +99,67 @@ export function parseDiagramSteps(text: string): DiagramStep[] {
     steps.push({ from: from.trim(), to: to.trim(), label: label?.trim() });
   }
   return steps;
+}
+
+export type ComparisonPair = [left: string, right: string];
+
+export type DiagramData =
+  | { kind: 'sequencia'; steps: DiagramStep[] }
+  | { kind: 'comparacao'; headers: ComparisonPair; rows: ComparisonPair[] }
+  | { kind: 'camadas'; layers: string[] }
+  | { kind: 'partes'; parts: string[] };
+
+const DIAGRAM_TYPE_LINE = /^tipo:\s*(sequencia|comparacao|camadas|partes)\s*$/i;
+
+function nonEmptyLines(text: string): string[] {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+/** "esquerda | direita" - descarta a linha se nao tiver exatamente 1 "|" (mesma filosofia de sintaxe invalida = ignorada, nao quebra o render). */
+function splitComparisonPair(line: string): ComparisonPair | null {
+  const parts = line.split('|');
+  if (parts.length !== 2) return null;
+  return [parts[0].trim(), parts[1].trim()];
+}
+
+/** 1a linha = cabecalho das 2 colunas, demais = linhas de comparacao. Vazio (`rows`) quando ha menos de 2 linhas validas - o chamador decide como mostrar isso vazio. */
+function parseComparison(text: string): { headers: ComparisonPair; rows: ComparisonPair[] } {
+  const pairs = nonEmptyLines(text)
+    .map(splitComparisonPair)
+    .filter((pair): pair is ComparisonPair => pair !== null);
+  const [headers, ...rows] = pairs;
+  return { headers: headers ?? ['', ''], rows: headers ? rows : [] };
+}
+
+/**
+ * Dispatcher do DSL de diagrama (bloco "```diagrama", Fase 30 - 4 tipos desde a Fase 31, feedback
+ * do usuario pedindo "tipos diferentes"). Fica aqui, nao dentro de DiagramBlock.tsx, pra manter
+ * aquele arquivo so-componentes (regra de lint react/only-export-components).
+ *
+ * A 1a linha nao-vazia do bloco, se for "tipo: <nome>", escolhe o tipo e e consumida; sem essa
+ * linha, o tipo e "sequencia" (Fase 30, retrocompativel - os 2 diagramas ja curados no Dia 1 nao
+ * tem essa linha e continuam funcionando sem edicao). Ver secret/curadoria/CURADORIA.md secao 2.1
+ * pra sintaxe completa e exemplos de cada tipo.
+ */
+export function parseDiagram(text: string): DiagramData {
+  const lines = text.split('\n');
+  const firstNonEmptyIndex = lines.findIndex((line) => line.trim() !== '');
+  const typeMatch = firstNonEmptyIndex >= 0 ? lines[firstNonEmptyIndex].trim().match(DIAGRAM_TYPE_LINE) : null;
+
+  if (!typeMatch) return { kind: 'sequencia', steps: parseDiagramSteps(text) };
+
+  const body = lines.slice(firstNonEmptyIndex + 1).join('\n');
+  switch (typeMatch[1].toLowerCase()) {
+    case 'comparacao':
+      return { kind: 'comparacao', ...parseComparison(body) };
+    case 'camadas':
+      return { kind: 'camadas', layers: nonEmptyLines(body) };
+    case 'partes':
+      return { kind: 'partes', parts: nonEmptyLines(body) };
+    default:
+      return { kind: 'sequencia', steps: parseDiagramSteps(body) };
+  }
 }
