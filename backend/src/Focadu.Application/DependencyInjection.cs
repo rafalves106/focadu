@@ -1,4 +1,5 @@
 using Focadu.Application.Achievements;
+using Focadu.Application.Assistant;
 using Focadu.Application.Content;
 using Focadu.Application.Courses;
 using Focadu.Application.Dailies;
@@ -74,6 +75,8 @@ public static class DependencyInjection
         services.AddScoped<DeleteNoteUseCase>();
         services.AddScoped<ListNotesUseCase>();
         services.AddScoped<ListNoteTagsUseCase>();
+        // Suporte Rapido de IA (Fase 32) - botao flutuante durante a sessao.
+        services.AddScoped<AskStudyAssistantUseCase>();
         return services;
     }
 }

@@ -26,6 +26,7 @@ import {
   type RegisterRequest,
   type SquadDto,
   type SquadRankingResultDto,
+  type StudyAssistantAnswerDto,
   type SubmitActivityResponseResult,
   type UserBadgesDto,
   type UserDto,
@@ -50,6 +51,10 @@ const VOICE_SUMMARY_TIMEOUT_MS = 70_000;
 // avaliacao (incluindo timeout do lado do servidor) nunca falha a submissao em si - o pior caso
 // aqui e a TimeoutError aparecer sem a nota, nao a URL deixar de ser salva.
 const WEEKLY_PROJECT_SUBMIT_TIMEOUT_MS = 45_000;
+// Suporte Rapido de IA (Fase 32): 1 chamada Groq sem retry no backend (mesmo timeout padrao de
+// 60s do GroqDefaultTimeout, ver DependencyInjection.cs) - mesma logica de WEEKLY_PROJECT_SUBMIT
+// acima (um pouco mais curto que o server, Groq normalmente responde bem antes disso).
+const STUDY_ASSISTANT_TIMEOUT_MS = 45_000;
 
 /** Erro de Api com o mesmo { error, message } que Focadu.Api.ErrorHandling.ApiExceptionHandler sempre devolve. */
 export class ApiError extends Error {
@@ -243,4 +248,13 @@ export const api = {
     return request<NoteDto[]>(`/api/courses/${courseId}/notes${query ? `?${query}` : ''}`);
   },
   listNoteTags: (courseId: string) => request<string[]>(`/api/courses/${courseId}/notes/tags`),
+  // Suporte Rapido de IA (Fase 32) - botao flutuante durante a sessao (QuickQuestionOrb). Sem
+  // historico: cada pergunta e independente (ver AskStudyAssistantUseCase); context e o que ja
+  // esta na tela (ver lib/studyAssistantContext.ts), null quando nao ha nenhum disponivel.
+  askStudyAssistant: (question: string, context: string | null) =>
+    request<StudyAssistantAnswerDto>('/api/study-assistant/ask', {
+      method: 'POST',
+      body: JSON.stringify({ question, context }),
+      timeoutMs: STUDY_ASSISTANT_TIMEOUT_MS,
+    }),
 };

@@ -80,6 +80,11 @@ public static class DependencyInjection
         // proprio (prompt de analogia por interesse, nao de resumo falado nem de codigo).
         services.AddHttpClient<IAnalogyGenerationService, GroqAnalogyGenerationService>(
             client => ConfigureGroqClient(client, GroqDefaultTimeout));
+        // Suporte Rapido de IA (Fase 32) - botao flutuante durante a sessao, pergunta avulsa sem
+        // historico (ver AskStudyAssistantUseCase) - mesmo cliente/chave do Groq, timeout padrao
+        // (chamada unica, sem retry, mesma categoria de Draft/ProjectEvaluation/Analogy acima).
+        services.AddHttpClient<IStudyAssistantService, GroqStudyAssistantService>(
+            client => ConfigureGroqClient(client, GroqDefaultTimeout));
         // Status da IA (Fase 28): badge do GlobalNav no frontend - GroqHealthCheckService e
         // Singleton (guarda cache em memoria, ver comentario na classe), entao usa
         // IHttpClientFactory.CreateClient(nome) em vez de AddHttpClient<TService> (que registraria
