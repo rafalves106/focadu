@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 33 - Historico Curto no Suporte Rapido de IA**.
+> Ultima fase que atualizou este documento: **Fase 34 - Cursor Pointer Global em Botoes**.
 
 ## Visao geral do projeto
 
@@ -2305,6 +2305,14 @@ elementos explicitos do Login/Registro (Fase 18), nao o default. Todas carregada
 (`@import url(...)` no topo de `index.css`, antes de `@import "tailwindcss"` - ordem exigida por
 CSS).
 
+**`cursor: pointer` em `<button>` (Fase 34):** o Preflight do Tailwind v4 nao da isso a `<button>`
+de graca (so `<a href>` ja vem assim do proprio navegador) - como boa parte do app usa `<button>`
+estilizado como link/acao (`text-accent hover:underline`, abas, "Fechar (ESC)", etc.), ficavam com
+o cursor de seta padrao apesar de clicaveis. Regra global em `index.css`
+(`button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer }`, dentro de `@layer
+base`) resolve pro app inteiro de uma vez - nenhum componente precisou de `cursor-pointer`
+manual. `:not(:disabled)` preserva o cursor default nos botoes desabilitados (`disabled:opacity-40`).
+
 ## Fora de escopo ate agora
 
 - Servico de WhatsApp (`whatsapp-service/` e so placeholder).
@@ -2401,6 +2409,7 @@ CSS).
 | 31 | Mais Tipos de Diagrama na Curadoria | `docs/fase-31/resumo-implementacao-fase-31.md` |
 | 32 | Suporte Rapido de IA (botao flutuante) | `docs/fase-32/resumo-implementacao-fase-32.md` |
 | 33 | Historico Curto no Suporte Rapido de IA | `docs/fase-33/resumo-implementacao-fase-33.md` |
+| 34 | Cursor Pointer Global em Botoes | `docs/fase-34/resumo-implementacao-fase-34.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 

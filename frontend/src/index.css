@@ -45,3 +45,17 @@ body {
   background-color: var(--color-base);
   color: var(--color-primary);
 }
+
+/*
+ * O Preflight do Tailwind v4 NAO da cursor:pointer a <button> (so <a href> ja vem assim do
+ * proprio navegador, sem precisar de nada aqui) - boa parte do app usa <button> estilizado como
+ * link/acao (ex: "Fechar (ESC)", "Editar", "Ver", "Limpar", abas), entao ficavam com o cursor de
+ * seta padrao mesmo sendo clicaveis. `:not(:disabled)` mantem o cursor default nos desabilitados
+ * (ex: botoes com `disabled:opacity-40`) - nao finge que da pra clicar neles.
+ */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
