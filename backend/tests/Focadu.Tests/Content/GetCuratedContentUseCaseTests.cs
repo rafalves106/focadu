@@ -29,4 +29,24 @@ public class GetCuratedContentUseCaseTests
 
         Assert.Equal([text], sections);
     }
+
+    [Fact]
+    public void StripFencedBlocks_RemovesFenceContentButKeepsSurroundingText()
+    {
+        const string text = "Texto antes.\n\n```diagrama\nCliente -> Servidor: SYN\nServidor -> Cliente: SYN-ACK\n```\n\nTexto depois.";
+
+        var stripped = GetCuratedContentUseCase.StripFencedBlocks(text);
+
+        Assert.Contains("Texto antes.", stripped);
+        Assert.Contains("Texto depois.", stripped);
+        Assert.DoesNotContain("SYN-ACK", stripped);
+    }
+
+    [Fact]
+    public void StripFencedBlocks_WithoutAnyFence_ReturnsTextUnchanged()
+    {
+        const string text = "Paragrafo simples sem fence nenhum.";
+
+        Assert.Equal(text, GetCuratedContentUseCase.StripFencedBlocks(text));
+    }
 }

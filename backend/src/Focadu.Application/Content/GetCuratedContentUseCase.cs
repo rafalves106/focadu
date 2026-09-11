@@ -30,6 +30,11 @@ public class GetCuratedContentUseCase
     // indice - se um dia essa convencao mudar, os dois lados precisam mudar juntos.
     private static readonly Regex SectionHeading = new(@"^####\s+.+$", RegexOptions.Multiline | RegexOptions.Compiled);
 
+    // Fase 30: linha de abre/fecha de bloco cercado ("```" ou "```diagrama") dentro do Texto Cru -
+    // mesma convencao do frontend (lib/markdown.ts, FENCE_LINE), so pra limpar o texto que vai pro
+    // prompt de analogias (ver StripFencedBlocks abaixo).
+    private static readonly Regex FenceLine = new(@"^```\s*[\w-]*\s*$", RegexOptions.Compiled);
+
     private readonly IWeeklyTemplateRepository _weeklyTemplateRepository;
     private readonly IUserRepository _userRepository;
     private readonly IPersonalizedAnalogyRepository _analogyRepository;
@@ -77,6 +82,23 @@ public class GetCuratedContentUseCase
         return sections;
     }
 
+    /// <summary>Remove o conteudo de dentro de blocos cercados (ex: "```diagrama", Fase 30) de uma secao ja dividida por SplitIntoSections, antes de mandar pro prompt da IA de analogias - o DSL de diagrama (ex: "Cliente -> Servidor: SYN") e ruido tecnico pro LLM, nao prosa explicavel. Nao muda quantas secoes existem (so filtra linhas DENTRO de cada uma ja resolvida), entao a correspondencia secao<->analogia por indice e o cache em PersonalizedAnalogy continuam intactos.</summary>
+    internal static string StripFencedBlocks(string sectionText)
+    {
+        var kept = new List<string>();
+        var inFence = false;
+        foreach (var line in sectionText.Split('\n'))
+        {
+            if (FenceLine.IsMatch(line.TrimEnd('\r')))
+            {
+                inFence = !inFence;
+                continue;
+            }
+            if (!inFence) kept.Add(line);
+        }
+        return string.Join('\n', kept);
+    }
+
     private async Task<IReadOnlyList<string>> GetOrGeneratePersonalizedAnalogiesAsync(
         Guid userId, CuratedContent content, CancellationToken cancellationToken)
     {
@@ -90,7 +112,7 @@ public class GetCuratedContentUseCase
 
         try
         {
-            var sections = SplitIntoSections(content.BodyText);
+            var sections = SplitIntoSections(content.BodyText).Select(StripFencedBlocks).ToList();
             var sectionAnalogies = await _analogyGenerationService.GenerateAsync(
                 new AnalogyRequest(sections, user.Interests, user.AdditionalProfileNotes), cancellationToken);
 

@@ -46,6 +46,10 @@ metadata:
   fundamentos de engenharia — nunca um texto genérico "de IA". Sem "bem-vindos ao módulo".
   5 a 9 minutos de leitura. Deixe âncoras para analogias (motos, JDM, Valorant, CS), mas
   não escreva a analogia — isso é o motor da plataforma que injeta depois.
+- **Diagramas de fluxo (opcional)**: quando o texto tiver uma sequência real de passos entre
+  atores (handshake, resolução de nomes, fluxo de auth), use um bloco ` ```diagrama ` (sintaxe e
+  exemplos em CURADORIA.md seção 2.1) em vez de só narrar em prosa. Nunca decorativo — só quando
+  a sequência importa de verdade.
 - **Resumos Falados**: 2 perguntas abertas que exigem explicação em voz alta, impossíveis
   de responder colando de um chat de IA.
 - **Vídeo**: 10 a 15 minutos no máximo, PT-BR de preferência, com título + canal +
