@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 28 - Status de IA (badge no GlobalNav)**.
+> Ultima fase que atualizou este documento: **Fase 29 - Caderninho de Anotacoes**.
 
 ## Visao geral do projeto
 
@@ -775,6 +775,43 @@ deletado junto (`ISquadRepository.RemoveAsync`) - nunca mais fica orfao no banco
 papeis alem de owner/co-leader/member, aprovacao de convite, um usuario em N squads ao mesmo
 tempo, qualquer entidade de "partida"/Challenge/PvP, Elo/Patente - continuam nao existindo.
 
+### Caderninho de Anotacoes (Fase 29)
+
+Anotacao livre do aluno (`Note`, `Focadu.Domain.Notes`), criada no contexto de uma Daily
+especifica - ideia trazida por um colega, validada e mapeada em detalhe (incluindo mockups Figma)
+em `secret/rascunhos/caderninho-de-anotacoes.md` antes desta fase. `Note` e aggregate root proprio
+(nao filho de `Daily`): guarda so `UserId`/`DailyId` - nunca duplica `WeeklyId`/`CourseId`, esse
+caminho ja existe via `Daily -> Weekly -> Enrollment -> Course` (mesmo principio de `Referral`/
+`Enrollment`, sem navegacao de volta). `Content` e markdown livre (negrito/lista/link - ver
+`MarkdownBlock.tsx` no frontend, estendido nesta fase pra suportar `**negrito**`/`[texto](url)`
+inline, antes so tinha `###`/`####`/`- item`); `Tags` e `List<string>` mapeado como `text[]` nativo
+do Postgres, mesmo padrao de `User.Interests` (sem tabela associativa - tags sao livres, sem
+taxonomia pre-definida). Limites (`Focadu.Domain.Policies.NotePolicy`): `MaxContentLength` =
+20.000 chars, `MaxTagCount` = 10, `MaxTagLength` = 40; tags sao trim + dedupe case-insensitive
+(`NormalizeTags`) na criacao/edicao.
+
+CRUD completo, sem restricao de janela de tempo. `CreateNoteUseCase`/`EditNoteUseCase` resolvem
+`Weekly.Number`/`Daily.DayNumber` via `IWeeklyRepository.GetByDailyIdAsync` (mesmo idiom de
+`GetDailyStateUseCase`) pra montar `NoteDto.WeekNumber`/`DayNumber` - o vinculo "Semana X, Dia Y"
+que a UI mostra explicito, sem `Note` guardar isso. `ListNotesUseCase` (histico por Course, aba
+"Caderninho") resolve os `DailyId` de toda a Enrollment via `IWeeklyRepository.
+GetByEnrollmentIdAsync` (mesmo grafo de `GetCourseDetailUseCase`) e filtra `Note` por esse
+conjunto - filtro por periodo/busca textual/tag acontece em memoria (volume por curso e pequeno,
+dezenas de Dailies), nao via query composta no banco. `ListNoteTagsUseCase` reaproveita
+`ListNotesUseCase` sem filtro, so extrai tags distintas (autocomplete).
+
+**Frontend**: painel de captura rapida (`components/notebook/QuickNotePanel.tsx`) empilhado
+embaixo do `MaterialSidebar` existente (`useMaterialSidebar.tsx`) - so escreve e salva, nunca
+lista nada, mantem o foco da sessao. Aba "Caderninho" (`components/notebook/NotebookTab.tsx`)
+dentro de `CourseDetailPage` (que ganhou abas pela 1a vez nesta fase -
+`components/notebook/CourseDetailTabs.tsx`, mesmo padrao de `ProfileTabs.tsx`, lido via
+`?tab=` na query string de `/start?course=` - precisa mesclar com os outros params da URL, nao so
+substituir como `ProfilePage` faz, porque `/start` e uma rota so orientada por query string) -
+lista agrupada por Semana/Dia, filtro por periodo/busca/tag, edicao/exclusao via
+`NoteEditorModal.tsx`. `WeeklyDetailDto` ganhou `CourseId` nesta fase (ver tabela de endpoints
+acima) - unico jeito do frontend montar o link "CADERNINHO" e o autocomplete de tags a partir do
+contexto de uma Daily em andamento, sem endpoint novo.
+
 ## Regras de negocio centralizadas
 
 Todas as constantes de negocio ficam em `Focadu.Domain.Policies.EvaluationPolicy` - unico lugar
@@ -925,7 +962,7 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | 🔒 GET | `/api/courses` | `ListCoursesUseCase` | 200 |
 | 🔒 GET | `/api/courses/{courseId}` | `GetCourseDetailUseCase` | 200, 404 se nao existe/usuario nao matriculado (Fase 8: `WeeklyOverviewDto.Days` traz status por dia, pro mini-grid de `CourseDetailPage`) |
 | 🔒 GET | `/api/courses/{courseId}/curriculum` | `GetCourseCurriculumUseCase` (Fase 13b) | 200, 404 - curriculo (Course -> Monthly -> WeeklyTemplate), sem exigir matricula; so `/admin/conteudo` usa isso |
-| 🔒 GET | `/api/weeklies/{weeklyId}` | `GetWeeklyDetailUseCase` | 200, 404 se nao existe/nao e do usuario - Fase 15: `WeeklyDetailDto` ganhou `HasPendingWeeklyReinforcement` |
+| 🔒 GET | `/api/weeklies/{weeklyId}` | `GetWeeklyDetailUseCase` | 200, 404 se nao existe/nao e do usuario - Fase 15: `WeeklyDetailDto` ganhou `HasPendingWeeklyReinforcement`. Fase 29: ganhou `CourseId` (resolvido via `IMonthlyRepository.GetByIdAsync(weekly.MonthlyId)` - Weekly/instancia nao guarda CourseId direto, so Monthly/template) |
 | 🔒 GET | `/api/weekly-templates/{id}` | `GetWeeklyTemplateDetailUseCase` (Fase 13b) | 200, 404 - WeeklyTemplate (curriculo), sem exigir matricula; so `/admin/conteudo` usa isso |
 | 🔒 GET | `/api/dailies/{dailyId}` | `GetDailyStateUseCase` | 200, 404/400/409 (ver abaixo) |
 | 🔒 GET | `/api/today` | `GetTodayUseCase` | 200, 404/409 (ver "GET /api/today" abaixo) |
@@ -955,6 +992,11 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | 🔒 DELETE | `/api/squads/members/{userId}` | `LeaveSquadUseCase` (se `{userId}` = usuario logado) ou `RemoveMemberUseCase` (Fase 24) | 204, 404 `squad_nao_encontrado`/`membro_nao_encontrado`, 409 `dono_nao_pode_sair`/`dono_nao_pode_se_remover` |
 | 🔒 GET | `/api/squads/me/ranking?scope=&page=` | `GetSquadRankingUseCase` (Fase 24) | 200 (`SquadRankingResultDto`) - gera `JoinCode` na 1a consulta (lazy), `Members` paginado (Fase 24c), 404 `squad_nao_encontrado` |
 | 🔒 GET | `/api/system/ai-status` | `GetAiProviderStatusUseCase` (Fase 28) | 200 (array de `AiProviderStatusDto` - hoje so Groq), nunca 404/erro (a checagem em si nunca lanca, ver secao Groq abaixo) |
+| 🔒 POST | `/api/dailies/{dailyId}/notes` | `CreateNoteUseCase` (Fase 29) | 201 (`NoteDto`), 404 `daily_nao_encontrada`, 400 `nota_vazia`/`nota_muito_longa`/`tag_muito_longa`/`notas_tags_demais` |
+| 🔒 PUT | `/api/notes/{noteId}` | `EditNoteUseCase` (Fase 29) | 200 (`NoteDto`), 404 `nota_nao_encontrada`, 400 (mesmos codigos de validacao acima) |
+| 🔒 DELETE | `/api/notes/{noteId}` | `DeleteNoteUseCase` (Fase 29) | 204, 404 `nota_nao_encontrada` |
+| 🔒 GET | `/api/courses/{courseId}/notes?from=&to=&q=&tag=` | `ListNotesUseCase` (Fase 29) | 200 (`NoteDto[]`, mais recente primeiro), 404 `matricula_nao_encontrada` - todos os filtros opcionais |
+| 🔒 GET | `/api/courses/{courseId}/notes/tags` | `ListNoteTagsUseCase` (Fase 29) | 200 (`string[]`, tags distintas ja usadas pelo usuario neste curso) - autocomplete do campo de tags |
 
 As rotas da Api sao caminhos REST simples (`/api/weeklies/{weeklyId}`), **nao** um espelho das
 rotas do frontend (`/start?course=&weekly=`) - o frontend usa query string no seu proprio router
@@ -2255,6 +2297,7 @@ CSS).
 | 27 | Personalizacao por Analogia Estendida (Voz + LinkedIn) | `docs/fase-27/resumo-implementacao-fase-27.md` |
 | 27b | Avaliacao Automatica do Projeto Semanal | `docs/fase-27b/resumo-implementacao-fase-27b.md` |
 | 28 | Status de IA (badge no GlobalNav) | `docs/fase-28/resumo-implementacao-fase-28.md` |
+| 29 | Caderninho de Anotacoes | `docs/fase-29/resumo-implementacao-fase-29.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 

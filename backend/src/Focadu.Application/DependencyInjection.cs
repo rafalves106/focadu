@@ -5,6 +5,7 @@ using Focadu.Application.Dailies;
 using Focadu.Application.Enrollments;
 using Focadu.Application.Gamification;
 using Focadu.Application.Marketplace;
+using Focadu.Application.Notes;
 using Focadu.Application.Ranking;
 using Focadu.Application.Referrals;
 using Focadu.Application.Seed;
@@ -67,6 +68,12 @@ public static class DependencyInjection
         services.AddScoped<GetSquadRankingUseCase>();
         // Status de IA (Fase 28) - badge do GlobalNav, agrega todo IAiProviderHealthCheck registrado.
         services.AddScoped<GetAiProviderStatusUseCase>();
+        // Caderninho de Anotacoes (Fase 29).
+        services.AddScoped<CreateNoteUseCase>();
+        services.AddScoped<EditNoteUseCase>();
+        services.AddScoped<DeleteNoteUseCase>();
+        services.AddScoped<ListNotesUseCase>();
+        services.AddScoped<ListNoteTagsUseCase>();
         return services;
     }
 }

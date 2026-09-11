@@ -6,6 +6,7 @@ using Focadu.Domain.Dailies;
 using Focadu.Domain.Enrollments;
 using Focadu.Domain.Gamification;
 using Focadu.Domain.Monthlies;
+using Focadu.Domain.Notes;
 using Focadu.Domain.Referrals;
 using Focadu.Domain.Squads;
 using Focadu.Domain.Users;
@@ -63,6 +64,9 @@ public class FocaduDbContext : DbContext
     // Squad (Fase 24) - 1 squad ativo por usuario (SquadMemberships.UserId unico).
     public DbSet<Squad> Squads => Set<Squad>();
     public DbSet<SquadMembership> SquadMemberships => Set<SquadMembership>();
+
+    // Caderninho de Anotacoes (Fase 29) - anotacao livre do aluno, vinculada a uma Daily especifica.
+    public DbSet<Note> Notes => Set<Note>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

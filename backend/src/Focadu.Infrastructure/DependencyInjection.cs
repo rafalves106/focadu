@@ -42,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<IReferralRepository, ReferralRepository>();
         services.AddScoped<ISquadRepository, SquadRepository>();
         services.AddScoped<IPersonalizedAnalogyRepository, PersonalizedAnalogyRepository>();
+        services.AddScoped<INoteRepository, NoteRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<IClock, SystemClock>();
 

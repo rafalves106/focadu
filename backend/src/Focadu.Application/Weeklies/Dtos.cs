@@ -6,6 +6,8 @@ namespace Focadu.Application.Weeklies;
 public record WeeklyDetailDto(
     Guid Id,
     Guid MonthlyId,
+    /// <summary>Fase 29: resolvido via Monthly.CourseId (MonthlyId -> Monthly, template-level) - o frontend precisa disso pra montar o link "CADERNINHO" (/start?course=&amp;tab=caderninho) e o autocomplete de tags a partir do contexto de uma Daily em andamento, sem endpoint novo.</summary>
+    Guid CourseId,
     int Number,
     string Title,
     string? Theme,

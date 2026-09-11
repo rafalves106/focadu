@@ -24,6 +24,11 @@ docs/
     └── resumo-implementacao-fase-N.md
 ```
 
+Além disso, `CLAUDE.md` (raiz do repositorio, fora de `docs/`) e o mapa de orientacao carregado
+automaticamente pelo Claude Code no inicio de toda sessao - complementa este arquivo e o
+`ARQUITETURA.md`, nao os substitui. Ele traz so a secao "Estado atual" (fase mais recente + 1-2
+marcos de produto) como conteudo que muda com o tempo; o resto e estrutural e estavel.
+
 - Cada fase de implementacao ganha sua propria pasta `docs/fase-N/`, numerada em ordem
   sequencial (N = 1, 2, 3, ...), correspondendo a ordem em que os prompts tecnicos forem colados
   neste chat.
@@ -40,9 +45,14 @@ concluido), o Claude Code deve, sem que o Falves precise pedir de novo:
 1. Criar `docs/fase-N/resumo-implementacao-fase-N.md` com o resumo daquela fase especifica,
    seguindo o modelo fixo abaixo.
 2. Atualizar `docs/ARQUITETURA.md` para refletir o estado atual e consolidado do projeto apos
-   aquela fase (nao recriar do zero - editar em cima do que ja existe).
-3. Commitar todas as mudancas da fase (`git add` + `git commit`), com uma mensagem descritiva
-   que identifique a fase e resuma o que foi feito - inclusive os dois passos acima, que fazem
+   aquela fase (nao recriar do zero - editar em cima do que ja existe), incluindo a linha do
+   cabecalho "Ultima fase que atualizou este documento".
+3. Se a fase mudou o resumo de alto nivel do produto (nao so detalhe tecnico interno), atualizar
+   a secao "Estado atual" de `CLAUDE.md` (raiz do repositorio) com a fase/data mais recente e,
+   se fizer sentido, os marcos de destaque - mesma logica do `ARQUITETURA.md`: editar em cima do
+   que existe, nao reescrever a secao inteira.
+4. Commitar todas as mudancas da fase (`git add` + `git commit`), com uma mensagem descritiva
+   que identifique a fase e resuma o que foi feito - inclusive os passos acima, que fazem
    parte do mesmo commit de fechamento. Sem esse passo, uma fase pode ficar "concluida" no chat
    mas ausente do historico do Git, que e o unico registro persistente entre sessoes.
 
