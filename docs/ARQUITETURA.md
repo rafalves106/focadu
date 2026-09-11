@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 34 - Cursor Pointer Global em Botoes**.
+> Ultima fase que atualizou este documento: **Fase 35 - Caderninho no Resumo Falado**.
 
 ## Visao geral do projeto
 
@@ -849,6 +849,24 @@ lista agrupada por Semana/Dia, filtro por periodo/busca/tag, edicao/exclusao via
 `NoteEditorModal.tsx`. `WeeklyDetailDto` ganhou `CourseId` nesta fase (ver tabela de endpoints
 acima) - unico jeito do frontend montar o link "CADERNINHO" e o autocomplete de tags a partir do
 contexto de uma Daily em andamento, sem endpoint novo.
+
+**Consulta no Resumo Falado (Fase 35, ver `secret/rascunhos/caderninho-no-resumo-falado.md`):**
+`VoiceSummaryActivity` ganhou o botao "📓 Ver minhas anotações de hoje", que abre
+`DailyNotesModal.tsx` (novo, so-leitura, mesmo chrome de `ContentPreviewModal`) listando as notas
+da Daily atual (`api.listNotes(courseId, {from: Daily.Date, to: Daily.Date})` - mesmo filtro de
+periodo que `NotebookTab` ja usa, sem endpoint novo). **So disponivel ANTES de comecar a gravar**
+(`state === 'idle' | 'permission_denied'` no componente) - decisao deliberada: reler a propria nota
+pra relembrar antes de falar e legitimo, mas poder ler ela em voz alta DURANTE a gravacao
+esvaziaria o proposito da atividade (Score/Feedback avaliam recall real, ver "Resumo falado por
+voz" abaixo). O botao some (e o modal fecha sozinho, defensivo) assim que `state` vira
+`'recording'`.
+
+**Inconsistencia conhecida, nao resolvida:** `MaterialSidebar`/`ContentPreviewModal` (Fase 23) ja
+permitiam reler o material-fonte ORIGINAL (nao so a propria nota) a qualquer momento durante o
+Resumo Falado, inclusive durante a gravacao - motivado por Dailies de reforco onde o Resumo Falado
+e a UNICA atividade. Ou seja, o app ja era mais permissivo com o material-fonte do que a Fase 35 e
+com as proprias notas do aluno - nao foi pedido resolver essa inconsistencia, so registrada (ver
+rascunho) pra quem for mexer nisso de novo.
 
 ## Regras de negocio centralizadas
 
@@ -2410,9 +2428,17 @@ manual. `:not(:disabled)` preserva o cursor default nos botoes desabilitados (`d
 | 32 | Suporte Rapido de IA (botao flutuante) | `docs/fase-32/resumo-implementacao-fase-32.md` |
 | 33 | Historico Curto no Suporte Rapido de IA | `docs/fase-33/resumo-implementacao-fase-33.md` |
 | 34 | Cursor Pointer Global em Botoes | `docs/fase-34/resumo-implementacao-fase-34.md` |
+| 35 | Caderninho no Resumo Falado | `docs/fase-35/resumo-implementacao-fase-35.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
+- **Inconsistencia conhecida entre Fase 23 e Fase 35, nao resolvida de proposito:** o
+  Resumo Falado deixa reler o material-fonte ORIGINAL a qualquer momento (inclusive durante a
+  gravacao, via `MaterialSidebar`/`ContentPreviewModal`, Fase 23) mas so deixa reler as PROPRIAS
+  notas do Caderninho antes de comecar a gravar (Fase 35, trava durante `state === 'recording'`) -
+  ver `secret/rascunhos/caderninho-no-resumo-falado.md` pro raciocinio completo. Se decidir
+  uniformizar (apertar o material-fonte pra bater com as notas, ou afrouxar as notas pra bater com
+  o material-fonte), e decisao de produto nova, nao um bug.
 - **Suporte Rapido de IA (Fase 32) ganhou historico curto na Fase 33** (`History`, ~4 trocas, ver
   secao Groq acima) - a decisao original de "zero historico" nao sobreviveu ao 1o teste real (uma
   pergunta de seguimento perdeu o fio sem ele). Se precisar aumentar `MaxHistoryMessages`/

@@ -84,9 +84,11 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 33 — Histórico Curto no Suporte Rápido de IA** (10/09/2026).
+Última fase concluída: **Fase 35 — Caderninho no Resumo Falado** (11/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- Resumo Falado ganhou um botão pra reler as próprias anotações do dia antes de gravar (Fase 35) -
+  só antes, trava durante a gravação em si (avaliação continua sendo de recall real).
 - Suporte Rápido de IA (Fase 32, histórico curto na Fase 33): botão flutuante em toda tela de
   sessão + Projeto Semanal, chat curto/direto via Groq pra tirar dúvida sobre o que está na tela
   (leitura/vídeo/projeto) ou o curso em geral. Guarda as últimas ~4 trocas da conversa (pra um

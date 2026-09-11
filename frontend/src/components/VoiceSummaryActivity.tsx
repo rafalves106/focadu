@@ -5,6 +5,7 @@ import { getRecordingLimitMinutes } from '../lib/settings';
 import { FeedbackPanel } from './FeedbackPanel';
 import { SessionLayout } from './SessionShell';
 import { useMaterialSidebar } from './useMaterialSidebar';
+import { DailyNotesModal } from './notebook/DailyNotesModal';
 
 type RecorderState = 'idle' | 'recording' | 'submitting' | 'answered' | 'permission_denied';
 
@@ -107,6 +108,14 @@ function VoicedPrompt({ text, spokenChars, highlight }: { text: string; spokenCh
  * sem cartao ao redor (`SessionLayout card={false}`) - o Figma mostra a gravação flutuando direto
  * sobre o fundo. Legenda "Baseado em: ..." do mockup omitida - exigiria buscar o CuratedContent
  * só pra essa legenda (chamada de API nova), fora do escopo de uma fase que é só estilo.
+ *
+ * Fase 35 (ver secret/rascunhos/caderninho-no-resumo-falado.md): "Ver minhas anotações" - so
+ * disponivel ANTES de comecar a gravar (`state === 'idle' | 'permission_denied'`), nunca durante
+ * (`recording`) nem depois (`submitting`/`answered`) - decisao deliberada: consultar o proprio
+ * caderninho pra relembrar antes de falar e legitimo, mas ler ele em voz alta enquanto grava
+ * esvaziaria o proposito da atividade (avaliar recall real, nao leitura). `DailyNotesModal` e um
+ * overlay full-screen - o botao de gravar so fica alcancavel de novo depois de fechar o modal, mas
+ * o gate por `state` abaixo e defensivo mesmo assim (fecha sozinho se `state` virar 'recording').
  */
 export function VoiceSummaryActivity({
   dailyId,
@@ -125,8 +134,14 @@ export function VoiceSummaryActivity({
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [lastResponse, setLastResponse] = useState(activity.responses.at(-1) ?? null);
+  const [showNotes, setShowNotes] = useState(false);
   const { weekly, sidebar } = useMaterialSidebar(daily);
   const { spokenChars, supported: voiceSupported, replay: replayPrompt } = usePromptVoice(activity.prompt ?? '');
+
+  // Defensivo (ver doc da classe acima) - fecha sozinho se a gravacao comecar com o modal aberto.
+  useEffect(() => {
+    if (state === 'recording') setShowNotes(false);
+  }, [state]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -234,6 +249,11 @@ export function VoiceSummaryActivity({
               🔊 Ouvir a pergunta de novo
             </button>
           )}
+          {(state === 'idle' || state === 'permission_denied') && weekly && (
+            <button type="button" onClick={() => setShowNotes(true)} className="text-xs text-muted hover:text-primary">
+              📓 Ver minhas anotações de hoje
+            </button>
+          )}
         </div>
       )}
 
@@ -296,6 +316,8 @@ export function VoiceSummaryActivity({
           onContinue={onContinue}
         />
       )}
+
+      {showNotes && weekly && <DailyNotesModal courseId={weekly.courseId} date={daily.date} onClose={() => setShowNotes(false)} />}
     </SessionLayout>
   );
 }
