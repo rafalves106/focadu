@@ -11,6 +11,12 @@ namespace Focadu.Infrastructure.Services;
 /// GroqOptions dos outros adapters Groq (Fase 5+), sem JSON mode (texto livre, mesmo estilo de
 /// GroqDraftGenerationService): aqui a resposta E o texto mostrado pro aluno, nao ha campo
 /// estruturado (Score/lista) pra validar.
+///
+/// Fase 33: monta uma lista de `messages` de verdade (system + contexto/personalizacao como
+/// mensagem de sistema propria, ja que valem a conversa inteira, nao so o ultimo turno + historico
+/// curto de StudyAssistantRequest.History + a pergunta atual) em vez do "1 system + 1 user com tudo
+/// junto" da Fase 32 - precisa disso pra o modelo enxergar os turnos anteriores como turnos de
+/// verdade (nao texto narrado dentro de uma unica mensagem).
 /// </summary>
 public class GroqStudyAssistantService : IStudyAssistantService
 {
@@ -23,14 +29,17 @@ public class GroqStudyAssistantService : IStudyAssistantService
         "manter uma conversa longa. Responda SEMPRE em português, de forma curta e direta " +
         "(normalmente 2 a 4 frases; use uma lista curta só se a pergunta pedir passos/itens " +
         "concretos). Quando receber 'Contexto da sessão atual', priorize responder com base nele " +
-        "(é o que o aluno está vendo na tela agora) em vez de generalidades. Se a pergunta for " +
-        "sobre segurança web/o curso mas fora do contexto dado, responda mesmo assim com seu " +
-        "conhecimento geral do assunto. Se for claramente sobre outra coisa (não é sobre o curso " +
-        "nem sobre estudar), responda rapidamente se for trivial ou, se não souber, diga que não " +
-        "sabe - e sempre encerre reconduzindo com gentileza pro foco da sessão. Nunca invente fatos " +
-        "técnicos com confiança quando não tiver certeza: prefira dizer que não tem certeza a " +
-        "arriscar uma explicação errada de segurança. Nunca use markdown pesado (sem títulos, sem " +
-        "blocos de código longos) - texto corrido simples, é uma bolha de chat pequena.";
+        "(é o que o aluno está vendo na tela agora) em vez de generalidades - mas se as mensagens " +
+        "anteriores da conversa já tiverem estreitado o assunto pra algo mais específico dentro " +
+        "desse contexto, mantenha o foco nesse assunto específico em vez de voltar a falar do " +
+        "contexto inteiro. Se a pergunta for sobre segurança web/o curso mas fora do contexto " +
+        "dado, responda mesmo assim com seu conhecimento geral do assunto. Se for claramente " +
+        "sobre outra coisa (não é sobre o curso nem sobre estudar), responda rapidamente se for " +
+        "trivial ou, se não souber, diga que não sabe - e sempre encerre reconduzindo com " +
+        "gentileza pro foco da sessão. Nunca invente fatos técnicos com confiança quando não " +
+        "tiver certeza: prefira dizer que não tem certeza a arriscar uma explicação errada de " +
+        "segurança. Nunca use markdown pesado (sem títulos, sem blocos de código longos) - texto " +
+        "corrido simples, é uma bolha de chat pequena.";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -56,11 +65,7 @@ public class GroqStudyAssistantService : IStudyAssistantService
         {
             model = Model,
             temperature = 0.4,
-            messages = new object[]
-            {
-                new { role = "system", content = SystemPrompt },
-                new { role = "user", content = BuildUserPrompt(request) },
-            },
+            messages = BuildMessages(request),
         };
 
         HttpResponseMessage response;
@@ -98,16 +103,38 @@ public class GroqStudyAssistantService : IStudyAssistantService
         return text.Trim();
     }
 
-    private static string BuildUserPrompt(StudyAssistantRequest request)
+    /// <summary>
+    /// system (persona) + system (contexto da sessao/personalizacao, quando houver - valem a
+    /// conversa inteira, entao ficam fora do turno atual) + 1 mensagem user/assistant por item de
+    /// `History` (ja clampado por AskStudyAssistantUseCase, ordem cronologica) + a pergunta atual
+    /// como ultimo turno "user". `List&lt;object&gt;` (nao array) porque o tamanho varia com
+    /// `History`.
+    /// </summary>
+    private static List<object> BuildMessages(StudyAssistantRequest request)
+    {
+        var messages = new List<object> { new { role = "system", content = SystemPrompt } };
+
+        var contextAndPersonalization = BuildContextSystemMessage(request);
+        if (contextAndPersonalization is not null)
+            messages.Add(new { role = "system", content = contextAndPersonalization });
+
+        foreach (var turn in request.History ?? [])
+            messages.Add(new { role = turn.FromUser ? "user" : "assistant", content = turn.Content });
+
+        messages.Add(new { role = "user", content = request.Question });
+        return messages;
+    }
+
+    private static string? BuildContextSystemMessage(StudyAssistantRequest request)
     {
         var contextBlock = string.IsNullOrWhiteSpace(request.SessionContext)
-            ? string.Empty
-            : $"Contexto da sessão atual (o que o aluno está vendo na tela agora):\n\"\"\"\n{request.SessionContext}\n\"\"\"\n\n";
+            ? null
+            : $"Contexto da sessão atual (o que o aluno está vendo na tela agora):\n\"\"\"\n{request.SessionContext}\n\"\"\"";
 
         var personalization = PersonalizationPromptBuilder.BuildInstruction(request.UserInterests, request.UserNotes);
-        var personalizationBlock = personalization is null ? string.Empty : $"{personalization}\n\n";
 
-        return $"{contextBlock}{personalizationBlock}Pergunta do aluno: {request.Question}";
+        if (contextBlock is null && personalization is null) return null;
+        return string.Join("\n\n", new[] { contextBlock, personalization }.Where(block => block is not null));
     }
 
     private record GroqChatCompletionResponse(List<GroqChatChoice>? Choices);

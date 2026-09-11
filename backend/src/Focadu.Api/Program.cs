@@ -14,6 +14,7 @@ using Focadu.Application.Exceptions;
 using Focadu.Application.Gamification;
 using Focadu.Application.Marketplace;
 using Focadu.Application.Notes;
+using Focadu.Application.Ports;
 using Focadu.Application.Ranking;
 using Focadu.Application.Referrals;
 using Focadu.Application.Seed;
@@ -682,7 +683,8 @@ api.MapGet("/courses/{courseId}/notes/tags", async (ClaimsPrincipal principal, s
 
 api.MapPost("/study-assistant/ask", async (ClaimsPrincipal principal, AskStudyAssistantRequest? request, AskStudyAssistantUseCase useCase, CancellationToken ct) =>
     {
-        var answer = await useCase.ExecuteAsync(CurrentUserId(principal), request?.Question ?? string.Empty, request?.Context, ct);
+        var history = request?.History?.Select(h => new StudyAssistantChatTurn(h.FromUser, h.Content)).ToList();
+        var answer = await useCase.ExecuteAsync(CurrentUserId(principal), request?.Question ?? string.Empty, request?.Context, history, ct);
         return Results.Ok(new AskStudyAssistantResponse(answer));
     })
     .RequireAuthorization()
