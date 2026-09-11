@@ -84,12 +84,14 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 32 — Suporte Rápido de IA (botão flutuante)** (10/09/2026).
+Última fase concluída: **Fase 33 — Histórico Curto no Suporte Rápido de IA** (10/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
-- Suporte Rápido de IA (Fase 32): botão flutuante em toda tela de sessão + Projeto Semanal, chat
-  curto/direto via Groq pra tirar dúvida sobre o que está na tela (leitura/vídeo/projeto) ou o
-  curso em geral, sem histórico de conversa (cada pergunta é independente, de propósito).
+- Suporte Rápido de IA (Fase 32, histórico curto na Fase 33): botão flutuante em toda tela de
+  sessão + Projeto Semanal, chat curto/direto via Groq pra tirar dúvida sobre o que está na tela
+  (leitura/vídeo/projeto) ou o curso em geral. Guarda as últimas ~4 trocas da conversa (pra um
+  "explica melhor" continuar fazendo sentido), fechar (✕/clique fora) só oculta o painel — só
+  "Limpar" (ou digitar `/clear`) apaga o histórico de verdade.
 - Currículo do curso piloto (Web Security) **completo** desde a Fase 26: 4 módulos / 12 semanas /
   60 dias / 12 projetos.
 - Personalização por analogia (interesses do usuário) estendida a leitura, avaliação de voz e

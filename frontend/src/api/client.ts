@@ -55,6 +55,9 @@ const WEEKLY_PROJECT_SUBMIT_TIMEOUT_MS = 45_000;
 // 60s do GroqDefaultTimeout, ver DependencyInjection.cs) - mesma logica de WEEKLY_PROJECT_SUBMIT
 // acima (um pouco mais curto que o server, Groq normalmente responde bem antes disso).
 const STUDY_ASSISTANT_TIMEOUT_MS = 45_000;
+// Espelha AskStudyAssistantUseCase.MaxHistoryMessages (backend) - o backend clampa de qualquer
+// jeito, isso aqui so evita crescer o payload indefinidamente numa conversa longa na mesma tela.
+const STUDY_ASSISTANT_MAX_HISTORY = 8;
 
 /** Erro de Api com o mesmo { error, message } que Focadu.Api.ErrorHandling.ApiExceptionHandler sempre devolve. */
 export class ApiError extends Error {
@@ -128,6 +131,12 @@ export interface SubmitActivityResponseBody {
   aiFeedback?: string;
   /** WordMatch (Fase 23): TODOS os pares da atividade de uma vez - chave = termId, valor = definitionId escolhido. */
   wordMatchMatches?: Record<string, string>;
+}
+
+/** Suporte Rapido de IA (Fase 33) - um turno anterior do chat local (ver StudyAssistantWidget.tsx). */
+export interface StudyAssistantHistoryItem {
+  fromUser: boolean;
+  content: string;
 }
 
 export const api = {
@@ -248,13 +257,15 @@ export const api = {
     return request<NoteDto[]>(`/api/courses/${courseId}/notes${query ? `?${query}` : ''}`);
   },
   listNoteTags: (courseId: string) => request<string[]>(`/api/courses/${courseId}/notes/tags`),
-  // Suporte Rapido de IA (Fase 32) - botao flutuante durante a sessao (QuickQuestionOrb). Sem
-  // historico: cada pergunta e independente (ver AskStudyAssistantUseCase); context e o que ja
-  // esta na tela (ver lib/studyAssistantContext.ts), null quando nao ha nenhum disponivel.
-  askStudyAssistant: (question: string, context: string | null) =>
+  // Suporte Rapido de IA (Fase 32, historico curto na Fase 33 - ver AskStudyAssistantUseCase.
+  // MaxHistoryMessages) - botao flutuante durante a sessao (QuickQuestionOrb). `context` e o que ja
+  // esta na tela (ver lib/studyAssistantContext.ts), null quando nao ha nenhum disponivel. `history`
+  // e o transcript local do painel ANTES da pergunta atual (ver StudyAssistantWidget.tsx) - o
+  // backend clampa pras ultimas trocas, aqui so evita mandar um payload crescente sem necessidade.
+  askStudyAssistant: (question: string, context: string | null, history: StudyAssistantHistoryItem[]) =>
     request<StudyAssistantAnswerDto>('/api/study-assistant/ask', {
       method: 'POST',
-      body: JSON.stringify({ question, context }),
+      body: JSON.stringify({ question, context, history: history.slice(-STUDY_ASSISTANT_MAX_HISTORY) }),
       timeoutMs: STUDY_ASSISTANT_TIMEOUT_MS,
     }),
 };
