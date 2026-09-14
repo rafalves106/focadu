@@ -1,5 +1,6 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
+using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
 
 namespace Focadu.Application.Dailies;
@@ -39,12 +40,44 @@ public class GetTodayUseCase
                 "Mais de uma matricula ativa encontrada; use /api/weeklies/{weeklyId} para escolher qual.");
         }
 
+        var enrollmentId = enrollments.First().Id;
         var today = _clock.Today();
-        var weekly = await _weeklyRepository.GetByEnrollmentAndDateAsync(enrollments.First().Id, today, cancellationToken)
-            ?? throw new NotFoundException("daily_hoje_nao_encontrada", "Nenhuma Daily cadastrada para hoje.");
 
-        var daily = weekly.GetDailyByDate(today)
-            ?? throw new NotFoundException("daily_hoje_nao_encontrada", "Nenhuma Daily cadastrada para hoje.");
+        // Uma Daily InProgress tem SEMPRE prioridade sobre a Daily agendada pra hoje - nao so
+        // quando nao ha nada agendado pra hoje (fim de semana/feriado), mas tambem quando HA algo
+        // agendado: Weekly.EvaluateDailyAccess recusa iniciar uma Daily nova enquanto outra
+        // continuar InProgress em QUALQUER lugar da matricula ("daily_em_andamento"), entao
+        // resolver pra "hoje" primeiro e so descobrir esse bloqueio depois deixava o atalho preso
+        // (o usuario so conseguia retomar indo direto na trilha/weekly, nunca por "/hoje" - bug
+        // real, corrigido em 2026-09-14). Comeca pela Weekly de hoje (mesma consulta que ja ia
+        // rodar de qualquer forma - cobre o caso comum, Daily abandonada na mesma semana da atual)
+        // e so cai pra busca cross-Weekly se essa Weekly nao existir ou nao tiver nada InProgress.
+        var todaysWeekly = await _weeklyRepository.GetByEnrollmentAndDateAsync(enrollmentId, today, cancellationToken);
+
+        var weekly = todaysWeekly;
+        var daily = todaysWeekly?.Dailies.FirstOrDefault(d => d.Status == DailyStatus.InProgress);
+
+        if (daily is null)
+        {
+            var allWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(enrollmentId, cancellationToken);
+            foreach (var candidate in allWeeklies)
+            {
+                var inProgress = candidate.Dailies.FirstOrDefault(d => d.Status == DailyStatus.InProgress);
+                if (inProgress is null) continue;
+
+                weekly = candidate;
+                daily = inProgress;
+                break;
+            }
+        }
+
+        // Nenhuma Daily InProgress em lugar nenhum - cai pro comportamento original, a Daily
+        // agendada exatamente pra hoje (se houver).
+        daily ??= weekly?.GetDailyByDate(today);
+
+        if (weekly is null || daily is null)
+            throw new NotFoundException("daily_hoje_nao_encontrada", "Nenhuma Daily cadastrada para hoje.");
+
         var accessMode = weekly.EvaluateDailyAccess(daily.Id, today);
 
         return DailyStateMapper.ToDto(daily, accessMode);

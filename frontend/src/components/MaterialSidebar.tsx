@@ -1,4 +1,5 @@
 import type { CuratedContentDto } from '../api/types';
+import { extractYouTubeId } from '../lib/youtube';
 import dotMedium from '../assets/reading/dot-medium.svg';
 import playThumbnail from '../assets/reading/play-thumbnail.svg';
 import playThumbnailActive from '../assets/reading/play-thumbnail-active.svg';
@@ -14,6 +15,14 @@ const GROUP_LABEL: Record<number, string> = { 0: 'LEITURA', 1: 'VÍDEO' };
  * Fase 23: itens viram botao (`onSelect`) que abre `ContentPreviewModal` - antes eram so status
  * visual, sem jeito de reler o texto/reassistir o video depois de passar da etapa (pesava mais
  * numa Daily de reforco, onde nao ha etapa de Leitura/Video pra voltar - so o Resumo Falado).
+ *
+ * Miniatura de video (corrigido em 2026-09-13): ate aqui o item de VIDEO so mostrava o icone de
+ * play generico (`playThumbnail`) sobre um fundo liso, nunca um frame real do video - reportado
+ * como "miniatura nao renderiza". Agora usa a miniatura publica do proprio YouTube
+ * (`img.youtube.com/vi/{id}/hqdefault.jpg`, sem chave/API paga) por baixo do mesmo icone de play,
+ * a partir do `ExternalUrl` do CuratedContent (mesmo `extractYouTubeId` que `VideoActivity` ja usa
+ * pro embed). Sem `videoId` reconhecido (link ainda nao cadastrado/formato inesperado), cai de
+ * volta pro fundo liso de antes - nunca quebra a lista por causa de 1 item sem link.
  */
 export function MaterialSidebar({
   contents,
@@ -67,6 +76,7 @@ export function MaterialSidebar({
                 })
               : items.map((item) => {
                   const isActive = item.id === activeContentId;
+                  const videoId = extractYouTubeId(item.externalUrl);
                   return (
                     <button
                       key={item.id}
@@ -78,8 +88,16 @@ export function MaterialSidebar({
                           : 'flex w-full flex-col gap-2 rounded-[10px] bg-surface-alt text-left hover:brightness-110'
                       }
                     >
-                      <div className="relative flex h-[110px] w-full items-center justify-center rounded-[10px] bg-base">
-                        <img src={isActive ? playThumbnailActive : playThumbnail} alt="" className="size-8" />
+                      <div className="relative flex h-[110px] w-full items-center justify-center overflow-hidden rounded-[10px] bg-base">
+                        {videoId && (
+                          <img
+                            src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
+                            alt=""
+                            className="absolute inset-0 size-full object-cover"
+                          />
+                        )}
+                        {videoId && <div className="absolute inset-0 bg-base/35" />}
+                        <img src={isActive ? playThumbnailActive : playThumbnail} alt="" className="relative size-8" />
                       </div>
                       <p className="truncate px-3 pb-3 text-xs font-medium text-primary">{item.title}</p>
                     </button>

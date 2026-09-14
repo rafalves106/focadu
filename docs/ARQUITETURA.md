@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 34 - Cursor Pointer Global em Botoes**.
+> Ultima fase que atualizou este documento: **Fase 35 - Caderninho no Resumo Falado**.
 
 ## Visao geral do projeto
 
@@ -850,6 +850,24 @@ lista agrupada por Semana/Dia, filtro por periodo/busca/tag, edicao/exclusao via
 acima) - unico jeito do frontend montar o link "CADERNINHO" e o autocomplete de tags a partir do
 contexto de uma Daily em andamento, sem endpoint novo.
 
+**Consulta no Resumo Falado (Fase 35, ver `secret/rascunhos/caderninho-no-resumo-falado.md`):**
+`VoiceSummaryActivity` ganhou o botao "📓 Ver minhas anotações de hoje", que abre
+`DailyNotesModal.tsx` (novo, so-leitura, mesmo chrome de `ContentPreviewModal`) listando as notas
+da Daily atual (`api.listNotes(courseId, {from: Daily.Date, to: Daily.Date})` - mesmo filtro de
+periodo que `NotebookTab` ja usa, sem endpoint novo). **So disponivel ANTES de comecar a gravar**
+(`state === 'idle' | 'permission_denied'` no componente) - decisao deliberada: reler a propria nota
+pra relembrar antes de falar e legitimo, mas poder ler ela em voz alta DURANTE a gravacao
+esvaziaria o proposito da atividade (Score/Feedback avaliam recall real, ver "Resumo falado por
+voz" abaixo). O botao some (e o modal fecha sozinho, defensivo) assim que `state` vira
+`'recording'`.
+
+**Inconsistencia conhecida, nao resolvida:** `MaterialSidebar`/`ContentPreviewModal` (Fase 23) ja
+permitiam reler o material-fonte ORIGINAL (nao so a propria nota) a qualquer momento durante o
+Resumo Falado, inclusive durante a gravacao - motivado por Dailies de reforco onde o Resumo Falado
+e a UNICA atividade. Ou seja, o app ja era mais permissivo com o material-fonte do que a Fase 35 e
+com as proprias notas do aluno - nao foi pedido resolver essa inconsistencia, so registrada (ver
+rascunho) pra quem for mexer nisso de novo.
+
 ## Regras de negocio centralizadas
 
 Todas as constantes de negocio ficam em `Focadu.Domain.Policies.EvaluationPolicy` - unico lugar
@@ -888,17 +906,28 @@ de partida indiferenciado de `Available` (ambos aceitam `Daily.Start()` igualmen
 
 ### Acesso a uma Daily (`Weekly.EvaluateDailyAccess`)
 
+> Secao corrigida em 2026-09-13 - a versao anterior deste documento nao capturava a regra de
+> `InProgress` abaixo (dizia "Resume" so pra Daily de hoje), o que gerou confusao na verificacao
+> ao vivo da mesma data (ver nota em `GetTodayUseCase` logo adiante). O codigo sempre se comportou
+> como descrito agora; so a documentacao estava incompleta.
+
 Dado "hoje" (`IClock.Today()`), retorna um `DailyAccessMode`:
 
 - **Daily futura** (`Date > hoje`): sempre lanca `DomainException` (`Code = "daily_futura"`) -
   nunca acessivel.
-- **Daily de hoje, ja concluida**: `Replay` - repeticao livre, sem limite, sem penalidade nova.
-- **Daily de hoje, `InProgress`**: `Resume`.
-- **Daily de hoje, ainda nao iniciada**: `Start`, **exceto** se ja existir outra Daily
-  `InProgress` hoje (lanca `DomainException`, `Code = "daily_em_andamento"`).
-- **Daily de dia anterior**: `ReadOnly` por padrao (resumo/gabarito, nunca reaberta para
-  edicao), **exceto** `Replay` quando (a) nao ha nenhuma Daily `InProgress` no momento em
-  lugar nenhum, e (b) a Daily alvo ja foi concluida ao menos uma vez.
+- **Daily `InProgress`, qualquer data**: `Resume` - **independente da data**, inclusive de um dia
+  anterior. E a regra que permite recuperar uma Daily abandonada num dia passado (o aluno comecou
+  e nao terminou) em vez dela ficar presa nesse status pra sempre.
+- **Daily `Completed`**: `Replay` se `Date == hoje`; se for de um dia anterior, `Replay` tambem,
+  **exceto** `ReadOnly` quando ha alguma outra Daily `InProgress` em qualquer lugar da Weekly
+  no momento (prioriza terminar o que esta pendente antes de repetir algo ja feito).
+- **Daily ainda nao iniciada (`Locked`/`Available`) de dia anterior**: sempre `ReadOnly` - dia
+  perdido, nao existe "Start atrasado" pra uma Daily que nunca chegou a comecar.
+- **Daily ainda nao iniciada de hoje**: `Start`, **exceto** `DomainException` quando ja existe
+  outra Daily `InProgress` em qualquer data (`Code = "daily_em_andamento"`, conclua/retome-a
+  primeiro) ou quando outra Daily ja foi concluida hoje (`Code =
+  "daily_limite_diario_atingido"`, comparando `CompletedAt` em hora local - ver comentario no
+  metodo sobre UTC vs. hora local).
 
 ### Reforco diario e semanal
 
@@ -1079,6 +1108,31 @@ Isso e seguro pro cenario atual (so 1 Enrollment por usuario, ja que so existe 1
 para de funcionar sozinho se um usuario puder se matricular em varios cursos ativos ao mesmo
 tempo sem um jeito de escolher "qual curso agora" - mesma limitacao que a versao antiga tinha,
 so que agora por usuario em vez de global.
+
+**Bug real, corrigido em 2 rodadas (2026-09-13 e 2026-09-14) - "/hoje" nao dava prioridade a
+uma Daily `InProgress`.** `GetTodayUseCase` so procurava `Weekly.GetDailyByDate(hoje)`, mesmo
+`Weekly.EvaluateDailyAccess` ja suportando "Resume" pra uma Daily `InProgress` independente da
+data (ver secao acima) - o atalho nunca dava chance dessa regra se aplicar.
+
+- **Rodada 1 (13/09):** quando NENHUMA Daily batia com "hoje" (ex: comecada numa sexta, nao
+  terminada, proximo acesso caiu no fim de semana - sem Daily agendada pra esses dias, ja que
+  `EnrollUserInCourseUseCase` so distribui por dia util), o atalho devolvia
+  `daily_hoje_nao_encontrada` (404) direto, sem procurar a Daily abandonada em lugar nenhum.
+- **Rodada 2 (14/09) - a rodada 1 nao cobria o caso mais comum.** Quando a Daily de hoje EXISTE
+  mas ha uma Daily `InProgress` diferente de um dia anterior (cenario tipico: comecou a Daily
+  numa quinta, nao terminou, e na segunda seguinte a Daily daquele dia ja esta agendada) -
+  `GetTodayUseCase` resolvia certinho pra Daily de hoje, so que `EvaluateDailyAccess` recusa
+  `Start` numa Daily nova enquanto outra continuar `InProgress` (`Code = "daily_em_andamento"`) -
+  o atalho literalmente batia nesse exception. Unico jeito de continuar era abrir a trilha/weekly
+  manualmente e clicar na Daily certa - "/hoje" ficava inutilizavel até o usuário descobrir isso
+  sozinho.
+
+**Correcao final:** `GetTodayUseCase` agora procura uma Daily `InProgress` **antes** de tentar
+resolver pra "hoje" - primeiro dentro da Weekly de hoje (`GetByEnrollmentAndDateAsync`, mesma
+consulta que já ia rodar mesmo, cobre o caso comum de Daily abandonada na mesma semana), e só
+cai pra `GetByEnrollmentIdAsync` (grafo completo de todas as Weeklies) se essa Weekly não
+existir ou não tiver nada `InProgress`. Só na ausência total de qualquer Daily `InProgress` em
+qualquer lugar da matrícula é que volta a tentar a Daily agendada exatamente pra hoje.
 
 ### Score no servidor para todo tipo de atividade (Fase 3 + Fase 4 + Fase 5)
 
@@ -1389,10 +1443,10 @@ Os dois ports que existiam so como stub desde a Fase 1 (`IAudioTranscriptionServ
 `IContentEvaluationService`) agora tem adapter concreto via Groq
 (`Focadu.Infrastructure.Services`) - ver "Resumo falado por voz" acima pro fluxo completo. Os
 dois usam `HttpClient` tipado (`services.AddHttpClient<TPort, TAdapter>`), base address
-`https://api.groq.com/openai/v1/`. Timeout por tentativa de 2s (ver "Retry automatico" abaixo) -
-diferente dos outros 3 adapters Groq (rascunho de post, avaliacao de projeto, analogia de leitura),
-que continuam com 60s de chamada unica, sem retry (prompts maiores, sem o orcamento apertado do
-fluxo de resumo falado).
+`https://api.groq.com/openai/v1/`. Timeout por tentativa diferenciado por adapter (ver "Retry
+automatico" abaixo) - diferente dos outros 3 adapters Groq (rascunho de post, avaliacao de
+projeto, analogia de leitura), que continuam com 60s de chamada unica, sem retry (prompts
+maiores, sem o orcamento apertado do fluxo de resumo falado).
 
 ### Retry automatico
 
@@ -1410,9 +1464,20 @@ detalhe de HTTP), tambem usado por `GitHubService` (ver secao GitHub abaixo).
   HTTP).
 - **Backoff:** exponencial + jitter (~500ms na 1a espera, ~1s na 2a), com teto de 2s de espera por
   tentativa - mesmo se a Groq mandar um `Retry-After` maior num 429.
-- **Orcamento do fluxo:** com o timeout de 2s por tentativa, pior caso de transcricao+avaliacao
-  juntas (6 tentativas + backoff) fica em ~15-20s, bem abaixo dos 60s que o frontend usa como
-  referencia pro timeout dessa chamada (`VOICE_SUMMARY_TIMEOUT_MS`, `frontend/src/api/client.ts`).
+- **Timeout por tentativa - corrigido em 2026-09-13, verificacao ao vivo:** `EvaluateAsync`
+  (avaliacao, texto puro) usa 2s (`GroqRetryAttemptTimeout`) - cobre folgado o tempo real de
+  resposta da Groq em chat completion (LPU, geralmente sub-segundo). `TranscribeAsync`
+  (transcricao) usa 15s (`GroqAudioTranscriptionAttemptTimeout`) - **valor original tambem era
+  2s, mas se mostrou curto demais na pratica**: diferente de `EvaluateAsync`, essa chamada faz
+  upload do audio gravado (multipart) antes da Groq comecar a processar, e o tempo de upload
+  depende da conexao real do usuario, nao so da velocidade da LPU. Confirmado ao vivo com uma
+  gravacao real: as 3 tentativas bateram no timeout de 2s sem nenhuma completar, gerando
+  `groq_timeout` (`"A transcricao demorou demais para responder"`) num audio legitimo, nao numa
+  falha de rede de verdade.
+- **Orcamento do fluxo:** pior caso de transcricao+avaliacao juntas (transcricao ate 3 tentativas
+  de 15s + avaliacao ate 3 tentativas de 2s, mais backoff) fica em ~55s, dentro dos 70s que o
+  frontend usa como referencia pro timeout dessa chamada (`VOICE_SUMMARY_TIMEOUT_MS = 70_000`,
+  `frontend/src/api/client.ts`).
 - Falha definitiva (depois de esgotar as tentativas) cai no mesmo erro/`Code` de antes
   (`groq_transcricao_falhou`, `groq_avaliacao_falhou`, `groq_timeout`, `groq_indisponivel`,
   `transcricao_vazia`, `avaliacao_ia_formato_invalido`) - sem mudanca de contrato pro frontend,
@@ -2410,9 +2475,17 @@ manual. `:not(:disabled)` preserva o cursor default nos botoes desabilitados (`d
 | 32 | Suporte Rapido de IA (botao flutuante) | `docs/fase-32/resumo-implementacao-fase-32.md` |
 | 33 | Historico Curto no Suporte Rapido de IA | `docs/fase-33/resumo-implementacao-fase-33.md` |
 | 34 | Cursor Pointer Global em Botoes | `docs/fase-34/resumo-implementacao-fase-34.md` |
+| 35 | Caderninho no Resumo Falado | `docs/fase-35/resumo-implementacao-fase-35.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
+- **Inconsistencia conhecida entre Fase 23 e Fase 35, nao resolvida de proposito:** o
+  Resumo Falado deixa reler o material-fonte ORIGINAL a qualquer momento (inclusive durante a
+  gravacao, via `MaterialSidebar`/`ContentPreviewModal`, Fase 23) mas so deixa reler as PROPRIAS
+  notas do Caderninho antes de comecar a gravar (Fase 35, trava durante `state === 'recording'`) -
+  ver `secret/rascunhos/caderninho-no-resumo-falado.md` pro raciocinio completo. Se decidir
+  uniformizar (apertar o material-fonte pra bater com as notas, ou afrouxar as notas pra bater com
+  o material-fonte), e decisao de produto nova, nao um bug.
 - **Suporte Rapido de IA (Fase 32) ganhou historico curto na Fase 33** (`History`, ~4 trocas, ver
   secao Groq acima) - a decisao original de "zero historico" nao sobreviveu ao 1o teste real (uma
   pergunta de seguimento perdeu o fio sem ele). Se precisar aumentar `MaxHistoryMessages`/
