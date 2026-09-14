@@ -1,6 +1,9 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
+using Focadu.Domain.Dailies;
+using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
+using Focadu.Domain.Weeklies;
 
 namespace Focadu.Application.Dailies;
 
@@ -39,14 +42,41 @@ public class GetTodayUseCase
                 "Mais de uma matricula ativa encontrada; use /api/weeklies/{weeklyId} para escolher qual.");
         }
 
+        var enrollmentId = enrollments.First().Id;
         var today = _clock.Today();
-        var weekly = await _weeklyRepository.GetByEnrollmentAndDateAsync(enrollments.First().Id, today, cancellationToken)
-            ?? throw new NotFoundException("daily_hoje_nao_encontrada", "Nenhuma Daily cadastrada para hoje.");
 
-        var daily = weekly.GetDailyByDate(today)
-            ?? throw new NotFoundException("daily_hoje_nao_encontrada", "Nenhuma Daily cadastrada para hoje.");
+        var weekly = await _weeklyRepository.GetByEnrollmentAndDateAsync(enrollmentId, today, cancellationToken);
+        var daily = weekly?.GetDailyByDate(today);
+
+        if (daily is null)
+        {
+            // Nenhuma Daily agendada exatamente para hoje (fim de semana/feriado, por exemplo) -
+            // mas Weekly.EvaluateDailyAccess ja trata uma Daily InProgress como resumivel
+            // "independente da data" (recuperar um dia abandonado). O atalho "/hoje" so olhava
+            // por data exata e nunca dava a chance dessa regra se aplicar - cai aqui pra achar
+            // essa Daily antes de desistir.
+            (weekly, daily) = await FindInProgressDailyAsync(enrollmentId, cancellationToken);
+        }
+
+        if (weekly is null || daily is null)
+            throw new NotFoundException("daily_hoje_nao_encontrada", "Nenhuma Daily cadastrada para hoje.");
+
         var accessMode = weekly.EvaluateDailyAccess(daily.Id, today);
 
         return DailyStateMapper.ToDto(daily, accessMode);
+    }
+
+    private async Task<(Weekly? Weekly, Daily? Daily)> FindInProgressDailyAsync(Guid enrollmentId, CancellationToken cancellationToken)
+    {
+        var weeklies = await _weeklyRepository.GetByEnrollmentIdAsync(enrollmentId, cancellationToken);
+
+        foreach (var candidate in weeklies)
+        {
+            var inProgress = candidate.Dailies.FirstOrDefault(d => d.Status == DailyStatus.InProgress);
+            if (inProgress is not null)
+                return (candidate, inProgress);
+        }
+
+        return (null, null);
     }
 }

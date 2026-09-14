@@ -23,6 +23,17 @@ public static class DependencyInjection
     // Timeout por tentativa pros adapters que passam por HttpRetry (ver nota no registro deles).
     private static readonly TimeSpan GroqRetryAttemptTimeout = TimeSpan.FromSeconds(2);
 
+    // Transcricao de audio tem uma tentativa mais generosa que os outros adapters via HttpRetry:
+    // ao contrario de chat completion (texto puro, chega em 1 payload pequeno), essa chamada
+    // primeiro faz UPLOAD do audio gravado (multipart) antes da Groq sequer comecar a processar -
+    // tempo de upload depende da conexao real do usuario, nao so da velocidade da LPU. 2s (o
+    // timeout padrao de HttpRetry) se mostrou curto demais na pratica: confirmado ao vivo em
+    // 2026-09-13, as 3 tentativas de retry bateram no timeout sem nenhuma chegar a completar (ver
+    // docs/ARQUITETURA.md). 15s por tentativa ainda deixa margem confortavel dentro do orcamento
+    // de VOICE_SUMMARY_TIMEOUT_MS (70s no frontend, ver api/client.ts) somado ao passo seguinte
+    // (avaliacao do transcript, GroqRetryAttemptTimeout acima).
+    private static readonly TimeSpan GroqAudioTranscriptionAttemptTimeout = TimeSpan.FromSeconds(15);
+
     public static IServiceCollection AddFocaduInfrastructure(
         this IServiceCollection services, string connectionString, string groqApiKey, GitHubOptions gitHubOptions, JwtOptions jwtOptions)
     {
@@ -56,16 +67,18 @@ public static class DependencyInjection
         // ApiKey vazia nao impede o app de subir - so os dois adapters abaixo falham (com erro
         // claro, ver GroqOptions) quando efetivamente chamados sem a chave configurada.
         services.AddSingleton(new GroqOptions(groqApiKey));
-        // Timeout por tentativa menor que o padrao (2s vs 60s): estes dois adapters agora fazem
-        // ate 3 tentativas (HttpRetry) em sequencia dentro de 1 unico fluxo (SubmitVoiceSummary-
+        // Timeout por tentativa menor que o padrao (60s): estes dois adapters agora fazem ate 3
+        // tentativas (HttpRetry) em sequencia dentro de 1 unico fluxo (SubmitVoiceSummary-
         // ResponseUseCase: transcreve -> avalia) - com o timeout padrao, 3 tentativas x 2 chamadas
-        // encostariam em 6min. 2s cobre folgado o tempo real de resposta da Groq (LPU, geralmente
-        // sub-segundo); pior caso do fluxo inteiro (6 tentativas + backoff) fica em ~15-20s, bem
-        // abaixo dos 60s do client.Timeout que o frontend usa como referencia (ver
-        // VOICE_SUMMARY_TIMEOUT_MS em api/client.ts) - reavaliar se audios legitimos maiores
-        // comecarem a estourar isso.
+        // encostariam em 6min. Transcricao usa GroqAudioTranscriptionAttemptTimeout (15s, ver
+        // constante acima - upload de audio real precisa de mais margem que chat completion);
+        // avaliacao usa GroqRetryAttemptTimeout (2s, cobre folgado o tempo real de resposta da
+        // Groq em texto puro, LPU geralmente sub-segundo). Pior caso do fluxo inteiro (transcricao
+        // + avaliacao, cada uma ate 3 tentativas + backoff) fica em ~55s, dentro dos 70s do
+        // client.Timeout que o frontend usa como referencia (VOICE_SUMMARY_TIMEOUT_MS em
+        // api/client.ts).
         services.AddHttpClient<IAudioTranscriptionService, GroqAudioTranscriptionService>(
-            client => ConfigureGroqClient(client, GroqRetryAttemptTimeout));
+            client => ConfigureGroqClient(client, GroqAudioTranscriptionAttemptTimeout));
         services.AddHttpClient<IContentEvaluationService, GroqContentEvaluationService>(
             client => ConfigureGroqClient(client, GroqRetryAttemptTimeout));
         // Rascunho de post do LinkedIn (Fase 11) - mesmo cliente/chave do Groq, so um adapter
