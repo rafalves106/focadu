@@ -1109,17 +1109,30 @@ para de funcionar sozinho se um usuario puder se matricular em varios cursos ati
 tempo sem um jeito de escolher "qual curso agora" - mesma limitacao que a versao antiga tinha,
 so que agora por usuario em vez de global.
 
-**Bug real, corrigido em 2026-09-13 - "/hoje" nunca enxergava uma Daily `InProgress` de dia
-anterior.** `GetTodayUseCase` so procurava `Weekly.GetDailyByDate(hoje)` - uma Daily abandonada
-`InProgress` num dia passado (ex: comecada numa sexta, nao terminada, proximo acesso caiu no fim
-de semana - sem Daily agendada pra esses dias, ja que `EnrollUserInCourseUseCase` so distribui
-por dia util) nunca era encontrada, mesmo `Weekly.EvaluateDailyAccess` ja suportando "Resume"
-pra ela independente da data (ver secao acima). O atalho devolvia `daily_hoje_nao_encontrada`
-(404) sem chance nenhuma dessa regra se aplicar - descoberto numa verificacao ao vivo, sem
-matar completar nenhuma Daily desde a matricula. **Correcao:** se `GetByEnrollmentAndDateAsync`
-nao acha nada pra "hoje", `GetTodayUseCase` agora cai pra `GetByEnrollmentIdAsync` (grafo
-completo de todas as Weeklies da matricula, ja usado por outras checagens cross-Weekly) e
-procura qualquer Daily `InProgress` antes de devolver 404 de verdade.
+**Bug real, corrigido em 2 rodadas (2026-09-13 e 2026-09-14) - "/hoje" nao dava prioridade a
+uma Daily `InProgress`.** `GetTodayUseCase` so procurava `Weekly.GetDailyByDate(hoje)`, mesmo
+`Weekly.EvaluateDailyAccess` ja suportando "Resume" pra uma Daily `InProgress` independente da
+data (ver secao acima) - o atalho nunca dava chance dessa regra se aplicar.
+
+- **Rodada 1 (13/09):** quando NENHUMA Daily batia com "hoje" (ex: comecada numa sexta, nao
+  terminada, proximo acesso caiu no fim de semana - sem Daily agendada pra esses dias, ja que
+  `EnrollUserInCourseUseCase` so distribui por dia util), o atalho devolvia
+  `daily_hoje_nao_encontrada` (404) direto, sem procurar a Daily abandonada em lugar nenhum.
+- **Rodada 2 (14/09) - a rodada 1 nao cobria o caso mais comum.** Quando a Daily de hoje EXISTE
+  mas ha uma Daily `InProgress` diferente de um dia anterior (cenario tipico: comecou a Daily
+  numa quinta, nao terminou, e na segunda seguinte a Daily daquele dia ja esta agendada) -
+  `GetTodayUseCase` resolvia certinho pra Daily de hoje, so que `EvaluateDailyAccess` recusa
+  `Start` numa Daily nova enquanto outra continuar `InProgress` (`Code = "daily_em_andamento"`) -
+  o atalho literalmente batia nesse exception. Unico jeito de continuar era abrir a trilha/weekly
+  manualmente e clicar na Daily certa - "/hoje" ficava inutilizavel até o usuário descobrir isso
+  sozinho.
+
+**Correcao final:** `GetTodayUseCase` agora procura uma Daily `InProgress` **antes** de tentar
+resolver pra "hoje" - primeiro dentro da Weekly de hoje (`GetByEnrollmentAndDateAsync`, mesma
+consulta que já ia rodar mesmo, cobre o caso comum de Daily abandonada na mesma semana), e só
+cai pra `GetByEnrollmentIdAsync` (grafo completo de todas as Weeklies) se essa Weekly não
+existir ou não tiver nada `InProgress`. Só na ausência total de qualquer Daily `InProgress` em
+qualquer lugar da matrícula é que volta a tentar a Daily agendada exatamente pra hoje.
 
 ### Score no servidor para todo tipo de atividade (Fase 3 + Fase 4 + Fase 5)
 
