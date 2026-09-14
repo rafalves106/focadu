@@ -7,8 +7,8 @@
  * Fase 20: ganhou o wrapper `min-h-screen`/centralizado que sempre devia ter tido - antes o card
  * era retornado sozinho (sem `max-w`/centralizacao), preenchendo 100% da largura/flush no topo;
  * mascarado ate agora porque o nav global de `<App/>` (~60px) coincidentemente empurrava o
- * conteudo pra baixo o suficiente. `pt-20`: mesma folga de `SessionLayout` pro PenaltyGauge/botao
- * de configuracoes `fixed` (TodayPage) nao colidir com o card.
+ * conteudo pra baixo o suficiente. `pt-8` (era `pt-20`, Fase 36): mesma folga historica de
+ * `SessionLayout` (ver SessionShell.tsx pro raciocinio completo) - reduzida junto.
  */
 export function IntroCard({
   badge,
@@ -17,6 +17,7 @@ export function IntroCard({
   rules,
   ctaLabel,
   onStart,
+  onBack,
 }: {
   badge: string;
   title: string;
@@ -24,9 +25,17 @@ export function IntroCard({
   rules?: string[];
   ctaLabel: string;
   onStart: () => void;
+  /** Fase 36: mesmo "Etapa anterior" do SessionLayout - aqui em cima do card em vez de dentro,
+   * ja que a intro nao tem SessionTopBar (nem stepLabel/progresso, so o gate local `started`). */
+  onBack?: () => void;
 }) {
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[560px] flex-col justify-center px-6 pt-20 pb-10">
+    <div className="mx-auto flex min-h-screen w-full max-w-[560px] flex-col justify-center gap-3 px-6 pt-8 pb-10">
+      {onBack && (
+        <button type="button" onClick={onBack} className="w-fit text-xs font-medium text-muted hover:text-primary">
+          &larr; Etapa anterior
+        </button>
+      )}
       <div className="flex flex-col gap-6 rounded-2xl border border-stroke bg-surface p-10">
         <span className="w-fit rounded-full bg-surface-alt px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-accent">
           {badge}

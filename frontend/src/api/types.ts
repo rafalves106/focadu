@@ -135,7 +135,7 @@ export interface DailyStateDto {
   status: DailyStatus;
   isReinforcement: boolean;
   penaltyPoints: number;
-  /** Fase 15: sempre EvaluationPolicy.DailyPenaltyThreshold (backend) - pro PenaltyGauge nunca hardcodar o valor. */
+  /** Fase 15: sempre EvaluationPolicy.DailyPenaltyThreshold (backend) - pro PenaltyHeaderBadge nunca hardcodar o valor. */
   penaltyThreshold: number;
   accessMode: DailyAccessMode;
   activities: DailyActivityDto[];

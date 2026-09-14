@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 35 - Caderninho no Resumo Falado**.
+> Ultima fase que atualizou este documento: **Fase 37 - Sessao em 2 Colunas + Suporte Rapido de IA em Painel Fixo**.
 
 ## Visao geral do projeto
 
@@ -501,10 +501,11 @@ de quem chama como parametro. Usado so pro indicador visual "Revisao semanal dis
 **Conta-giros de penalidade (Fase 15) - sem node Figma.** O "conta-giros" nunca apareceu desenhado
 no inventario original de telas - reaproveitada a linguagem visual ja estabelecida (`ProgressBar`,
 Fase 8: trilho + preenchimento arredondado), so com a cor subindo por faixa de risco em vez de uma
-tonalidade fixa por chamador (`PenaltyGauge`, `components/gamification/`): neutro (0) -> amarelo
-(1) -> laranja (2, `--color-project`) -> vermelho (limite atingido, `--color-alert`). Alimentado
-pelo `PenaltyPoints`/`PenaltyThreshold` que ja vem no `DailyStateDto` - nenhum dado novo do
-backend so pra isso, so exibicao.
+tonalidade fixa por chamador (`PenaltyHeaderBadge`, `components/gamification/` - ate a Fase 35 era
+`PenaltyGauge`, ver "Fase 36" na secao Frontend): neutro (0) -> amarelo (1) -> laranja (2,
+`--color-project`) -> vermelho (limite atingido, `--color-alert`). Alimentado pelo
+`PenaltyPoints`/`PenaltyThreshold` que ja vem no `DailyStateDto` - nenhum dado novo do backend so
+pra isso, so exibicao.
 
 ### Score de Estudo e Ranking (Fase 16)
 
@@ -838,9 +839,11 @@ conjunto - filtro por periodo/busca textual/tag acontece em memoria (volume por 
 dezenas de Dailies), nao via query composta no banco. `ListNoteTagsUseCase` reaproveita
 `ListNotesUseCase` sem filtro, so extrai tags distintas (autocomplete).
 
-**Frontend**: painel de captura rapida (`components/notebook/QuickNotePanel.tsx`) empilhado
-embaixo do `MaterialSidebar` existente (`useMaterialSidebar.tsx`) - so escreve e salva, nunca
-lista nada, mantem o foco da sessao. Aba "Caderninho" (`components/notebook/NotebookTab.tsx`)
+**Frontend**: painel de captura rapida (`components/notebook/QuickNotePanel.tsx`), no sidebar de
+material (`useMaterialSidebar.tsx`) - so escreve e salva, nunca lista nada, mantem o foco da
+sessao. Ate a Fase 36 ficava empilhado embaixo do `MaterialSidebar`, na mesma coluna; a Fase 37
+reagrupou o sidebar em 2 colunas (ver "Frontend" abaixo) e moveu o Caderninho pra coluna direita,
+ao lado do novo `StudyAssistantPanel`. Aba "Caderninho" (`components/notebook/NotebookTab.tsx`)
 dentro de `CourseDetailPage` (que ganhou abas pela 1a vez nesta fase -
 `components/notebook/CourseDetailTabs.tsx`, mesmo padrao de `ProfileTabs.tsx`, lido via
 `?tab=` na query string de `/start?course=` - precisa mesclar com os outros params da URL, nao so
@@ -867,6 +870,14 @@ Resumo Falado, inclusive durante a gravacao - motivado por Dailies de reforco on
 e a UNICA atividade. Ou seja, o app ja era mais permissivo com o material-fonte do que a Fase 35 e
 com as proprias notas do aluno - nao foi pedido resolver essa inconsistencia, so registrada (ver
 rascunho) pra quem for mexer nisso de novo.
+
+**`ContentPreviewModal` ganha 2a coluna com o Caderninho (Fase 36, correcao de bug real):**
+`dailyId`/`courseId` novos e opcionais - quando os dois vem (todo call site real hoje, via
+`useMaterialSidebar`), o modal (`fixed inset-0`, cobre a tela inteira) mostra `QuickNotePanel` numa
+coluna ao lado do video/texto (`w-[940px]` em vez de `w-[640px]`). Antes disso o modal tampava o
+proprio Caderninho que fica no sidebar - dava pra assistir o video OU anotar o que entendeu, nunca
+os dois ao mesmo tempo, reportado numa verificacao ao vivo. Sem os 2 props cai pro layout de 1
+coluna de antes (defensivo - nenhum call site atual deixa de passar os dois).
 
 ## Regras de negocio centralizadas
 
@@ -1592,6 +1603,13 @@ Fase 19 como stub desativado (`return null`, os 2 call sites - `SessionLayout`/`
   - Clique fora fecha via `mousedown` em `document` checando `containerRef.current.contains(e.
     target)` (nao um backdrop `fixed inset-0` como `SettingsMenu` - o assistente nao e modal, o
     resto da tela continua interativo com o painel aberto).
+  - **Fase 37 (pedido explicito: "ao inves do botao, algo mais parecido com um chat"):** nas telas
+    com "material de hoje" (`SessionLayout`/`useMaterialSidebar`), o botao flutuante deu lugar ao
+    card fixo `StudyAssistantPanel` (`components/assistant/`) no sidebar direito, ao lado do
+    `QuickNotePanel`. Estado/logica (enviar pergunta, historico, `/clear`, erro) extraida pro hook
+    `useStudyAssistantChat` (`lib/`) - compartilhado pelos 2 componentes, so a apresentacao muda
+    (card sempre visivel vs. painel que abre por cima de tudo). `StudyAssistantWidget`/
+    `QuickQuestionOrb` continuam existindo (WeeklyProjectPage nao tem esse sidebar).
 
 ## GitHub (commit de resumo do modulo, Fase 11)
 
@@ -1779,6 +1797,36 @@ Desempenho" com delta/percentil/sparkline no Ranking; grid "Seus Cursos" com 2 c
 documentada desde a Fase 13a, corrigida nesta fase por decisao explicita (nao obrigatoria, mas
 natural durante o refinamento da mesma tela).
 
+**Etapa Anterior + Contador de Erros no Header + Timer Pomodoro (Fase 36):** 3 mudancas
+independentes na tela de sessao, todas a partir de verificacao ao vivo/pedido direto do Falves.
+(1) `SessionTopBar`/`IntroCard` ganharam `onBack` opcional ("← Etapa anterior") - revisita a
+atividade anterior da MESMA Daily sem refazer nada (cada atividade decide seu proprio "ja
+respondida" via `activity.responses`); `TodayPage.handleContinue` parou de recalcular "1a atividade
+pendente" (`resolveStep`) a cada Continuar (so no carregamento inicial agora) e passou a avancar 1
+posicao a partir do `step` atual, senao voltar e seguir em frente pulava direto pro fim da revisao.
+Reading/Video (unicos sem nenhum indicador de "ja respondida") ganharam "✓ Já concluída" +
+"PRÓXIMA ETAPA" pra nao parecer etapa nova ao revisitar. (2) O contador de erros (`PenaltyGauge`,
+`fixed left-6 top-[72px]` desde a Fase 15) saiu do HUD fixo - confundido com contador de etapa por
+ficar perto do `SessionTopBar` - e virou `PenaltyHeaderBadge` no `GlobalNav`, publicado via novo
+`lib/dailyPenaltyContext.ts` (store `useSyncExternalStore`, mesmo padrao de
+`studyAssistantContext.ts`). `SessionLayout`/`IntroCard` tiveram o `pt-20` (folga historica pro HUD
+fixo) reduzido pra `pt-8` - virou espaco vazio sem funcao, sobrava scroll demais. (3) Timer
+Pomodoro novo (`lib/pomodoroTimer.ts` + `components/pomodoro/`) - ver "Fora de escopo" pra por que
+e 100% client-side, e as entradas de `PomodoroWidget`/`PomodoroHeaderBadge` acima pro
+funcionamento.
+
+**Sessao em 2 Colunas + Suporte Rapido de IA em Painel Fixo (Fase 37):** pedidos explicitos de
+refinamento visual da sessao. `SessionLayout` ganhou `leftSidebar` (2a coluna, `items-stretch` pra
+igualar a altura do cartao central) - `useMaterialSidebar.tsx` passou a devolver
+`{ weekly, materialSidebar, sidebar }` em vez de so `sidebar`: `materialSidebar` (esquerda) tem
+"Material de hoje" + `PomodoroWidget` (que ganhou `flex-1` pra preencher o espaco sobrando -
+"esse card podia ocupar esse espaco"); `sidebar` (direita) tem `QuickNotePanel` + o novo
+`StudyAssistantPanel` (Suporte Rapido de IA em card fixo - "algo mais parecido com um chat" em vez
+do botao flutuante `QuickQuestionOrb`, que continua so em WeeklyProjectPage). Estado do chat
+extraido pro hook `useStudyAssistantChat` (compartilhado pelos 2 componentes). Layout da pagina
+ganhou mais orcamento de largura (`max-w-[1360px]`->`max-w-[1600px]`, `px-10`->`px-6`) pra caber os
+2 sidebars de 280px sem espremer o cartao central.
+
 ```
 frontend/
   index.html, vite.config.ts, package.json, tsconfig*.json
@@ -1826,6 +1874,29 @@ frontend/
                                    localStorage por userId, ultima posicao do personagem no mapa
                                    (continuidade cosmetica, mesmo principio de nao-sincronizar-entre-
                                    dispositivos ja usado pro limite de gravacao)
+      dailyPenaltyContext.ts            <- setDailyPenalty/useDailyPenalty (Fase 36) - store externo
+                                   modulo-level via useSyncExternalStore (nao React Context, mesmo
+                                   padrao de studyAssistantContext.ts abaixo). TodayPage seta via
+                                   useEffect com o penaltyPoints/penaltyThreshold da Daily atual;
+                                   null fora de sessao ativa. Existe pra PenaltyHeaderBadge
+                                   (GlobalNav, sempre montado) ler o contador sem precisar de Provider
+                                   novo envolvendo o app inteiro so pra isso
+      pomodoroTimer.ts                  <- store modulo-level do Timer Pomodoro (Fase 36, ver
+                                   secret/rascunhos/timer-pomodoro-sessao.md) - mesmo padrao
+                                   useSyncExternalStore de dailyPenaltyContext.ts, com setInterval
+                                   proprio (independente de qualquer componente montado, por isso o
+                                   badge do header continua contando ao navegar pra fora da sessao).
+                                   Manual (aluno liga/desliga, sem relacao com Daily.Start/Resume/
+                                   Complete); predefinicoes fixas (25/5, 50/10, 15/3) em vez de
+                                   duracao livre; fim de ciclo troca de fase automaticamente + bipe
+                                   (Web Audio API, sem asset de audio novo) + destaque visual por
+                                   ~5s. 100% client-side/cosmetico - sem endpoint novo, sem Gems,
+                                   reseta se a aba fechar (ver "Fora de escopo")
+      useStudyAssistantChat.ts           <- hook (Fase 37) com a logica do Suporte Rapido de IA
+                                   (enviar pergunta, historico, /clear, erro), extraida de dentro de
+                                   StudyAssistantWidget quando o "material de hoje" ganhou uma 2a
+                                   apresentacao (StudyAssistantPanel, card fixo) - os 2 componentes
+                                   compartilham o mesmo estado/comportamento, so a apresentacao muda
     contexts/
       authContextObject.ts         <- createContext + AuthContextValue (Fase 12) - so o objeto/tipo,
                                    separado do Provider e do hook pelo mesmo motivo de statusBadge.ts;
@@ -1881,14 +1952,22 @@ frontend/
                                    `nenhuma_matricula_ativa`; StreakIndicator fixo em 0 (Fase 14,
                                    sem chamada a API - quem nao se matriculou nunca tem streak)
       TodayPage.tsx            <- /hoje (orquestra os 7 tipos de atividade e o fluxo de conclusao -
-                                   Fase 7); PenaltyGauge fixo no HUD + ReinforcementIntroScreen
-                                   como gate quando `daily.isReinforcement` e nenhuma atividade
-                                   ainda respondida (Fase 15). Fase 25: `TodayRoute` removido (o
-                                   `<App/>` cobre o `<ErrorBoundary key={pathname+search}>` agora,
-                                   `/hoje` esta dentro do shell de novo) - `TodayPage` e o elemento
-                                   de rota direto; botao/estado proprio de Configuracoes saiu (usa
-                                   `useSettings()`, ver contexts/SettingsProvider.tsx), PenaltyGauge
-                                   `top-6` -> `top-[72px]` (limpa a altura do `GlobalNav`)
+                                   Fase 7); ReinforcementIntroScreen como gate quando
+                                   `daily.isReinforcement` e nenhuma atividade ainda respondida
+                                   (Fase 15). Fase 25: `TodayRoute` removido (o `<App/>` cobre o
+                                   `<ErrorBoundary key={pathname+search}>` agora, `/hoje` esta dentro
+                                   do shell de novo) - `TodayPage` e o elemento de rota direto; botao/
+                                   estado proprio de Configuracoes saiu (usa `useSettings()`, ver
+                                   contexts/SettingsProvider.tsx). Fase 36: o contador de erros (antigo
+                                   `PenaltyGauge` `fixed left-6 top-[72px]`) saiu daqui - publicado
+                                   via `setDailyPenalty` (`lib/dailyPenaltyContext.ts`) num useEffect
+                                   proprio, pro `GlobalNav` mostrar (`PenaltyHeaderBadge`); limpo
+                                   (`null`) ao completar a Daily, trocar de Daily ou desmontar. Fase
+                                   36 tambem trouxe "Etapa anterior" (`goToActivity`, pino manual num
+                                   `activityId` especifico - `handleContinue` passou a so avancar 1
+                                   posicao a partir do `step` atual, nunca mais recalcular "1a
+                                   pendente" do zero via `resolveStep` a cada Continuar, que divergia
+                                   ao voltar e depois seguir em frente)
       StartPage.tsx             <- /start (so o roteador por query string - Fase 8: as 3 telas
                                    viraram arquivos proprios abaixo, StartPage so decide qual mostrar);
                                    `<WeeklyDetailPage key={weeklyId} .../>` desde a Fase 11 (ver
@@ -1950,8 +2029,22 @@ frontend/
                                    Configuracoes (chama useSettings().open - ver
                                    contexts/SettingsProvider.tsx) + HeaderUserBadge (Fase 18, ja
                                    existia) + AiStatusBadge (Fase 28 - status de IA, ver secao
-                                   Groq/frontend). Botao central "volta pro mapa" - placeholder (emoji),
+                                   Groq/frontend) + PenaltyHeaderBadge (Fase 36) + PomodoroHeaderBadge
+                                   (Fase 36). Botao central "volta pro mapa" - placeholder (emoji),
                                    sem PNG pixel art de verdade ainda (ver "Fora de escopo").
+                                   **PenaltyHeaderBadge** (`gamification/`, Fase 36): contador de
+                                   erros da Daily em andamento - substitui o antigo `PenaltyGauge`
+                                   `fixed left-6 top-[72px]` sobre o canto de QUALQUER tela de sessao
+                                   (reportado numa verificacao ao vivo como confuso ali, parecendo
+                                   contador de etapa por ficar perto do SessionTopBar); le
+                                   `lib/dailyPenaltyContext.ts` (TodayPage seta via useEffect), null
+                                   fora de Daily ativa - o proprio componente decide nao renderizar
+                                   nada. Ganhou legenda + tooltip explicando o numero (antes so o
+                                   `title` nativo do navegador). **PomodoroHeaderBadge**
+                                   (`pomodoro/`, Fase 36): versao compacta do Timer Pomodoro da
+                                   sessao (ver `PomodoroWidget` abaixo e `lib/pomodoroTimer.ts`), so
+                                   aparece depois que o aluno da play pela 1a vez; clicavel (play/
+                                   pausa direto do header).
                                    `courseId` resolvido com busca propria (GET /api/courses, mesmo
                                    fallback Active->primeiro que WorldMapPage/StartDashboard sempre
                                    usaram) - self-contained, mesmo padrao de HeaderUserBadge. Sem
@@ -2026,10 +2119,31 @@ frontend/
       gamification/                 <- Fase 14
         GemBadge.tsx                     <- icone + contador de Gems, mesmo padrao pill de StatusBadge
         StreakIndicator.tsx               <- "🔥 N dias" - StartDashboard (real) e EmptyStateStartPage (fixo em 0)
-        PenaltyGauge.tsx                   <- Fase 15, "conta-giros" - PenaltyPoints/PenaltyThreshold,
+        PenaltyHeaderBadge.tsx             <- Fase 15 (`PenaltyGauge`) / Fase 36 (renomeado e movido
+                                   pro GlobalNav) - "conta-giros" de erros da Daily em andamento,
                                    cor por faixa (neutro/amarelo/laranja/vermelho); mesma linguagem
-                                   visual do ProgressBar (Fase 8), sem node Figma proprio (borda
-                                   trocada pra border-stroke na Fase 19, mesmo token do resto)
+                                   visual do ProgressBar (Fase 8). Ate a Fase 35 era `PenaltyGauge`,
+                                   `fixed left-6 top-[72px]` sobre QUALQUER tela de sessao (ver
+                                   GlobalNav.tsx acima pro raciocinio da mudanca) - le
+                                   `lib/dailyPenaltyContext.ts` em vez de receber props diretas
+      pomodoro/                     <- Fase 36 (ver secret/rascunhos/timer-pomodoro-sessao.md)
+        PomodoroWidget.tsx                 <- versao "design exclusivo" do Timer Pomodoro, empilhada
+                                   no sidebar esquerdo da sessao (ver useMaterialSidebar.tsx) -
+                                   digitos grandes, ProgressBar (tone accent=foco/project=pausa),
+                                   pills de preset (25/5, 50/10, 15/3), play/pausar/zerar. Fase 37:
+                                   ganhou `flex-1` (cresce pra preencher a coluna esquerda inteira,
+                                   pedido explicito - antes sobrava vao vazio empilhado acima dele)
+        PomodoroHeaderBadge.tsx              <- versao compacta pro GlobalNav, ver entrada acima
+      assistant/                    <- Fase 37
+        StudyAssistantPanel.tsx              <- Suporte Rapido de IA em card fixo (pedido explicito:
+                                   "algo mais parecido com um chat" em vez do botao flutuante) -
+                                   empilhado no sidebar direito da sessao (ver useMaterialSidebar.tsx),
+                                   ao lado do QuickNotePanel. Mesmo estado/logica que
+                                   StudyAssistantWidget via useStudyAssistantChat (lib/), so a
+                                   apresentacao muda (card sempre visivel em vez de painel que abre
+                                   por cima de tudo). Lista de mensagens com altura fixa (h-[200px],
+                                   scroll proprio) - pedido explicito de "tamanho similar ao
+                                   Pomodoro" pros 2 lados do sidebar ficarem equilibrados
       ReinforcementIntroScreen.tsx  <- Fase 15 - transicao pra Daily de reforco, reaproveita IntroCard
       WeeklyReinforcementBadge.tsx   <- Fase 15 - so apresentacao ("📋 Revisao semanal disponivel"),
                                    sem link embutido, sem bloquear nada
@@ -2098,8 +2212,30 @@ frontend/
       SessionShell.tsx            <- SessionTopBar + QuickQuestionOrb + SessionLayout, compartilhados por Reading/Video/Projeto (Fase 7) e, desde a Fase 19, tambem por Quiz/Ligar Palavras/Cloze/Roleplay/Resumo Falado.
                                    SessionTopBar usa ProgressBar por baixo desde a Fase 8. SessionLayout
                                    (Fase 19) generaliza o chrome inteiro (topbar + cartao/sem cartao +
-                                   sidebar + orbe) que Reading/Video ja tinham como JSX proprio duplicado
-      useMaterialSidebar.tsx      <- hook (Fase 19, arquivo proprio - co-exportar com SessionShell.tsx quebraria o fast refresh) - busca a Weekly e monta o MaterialSidebar com os itens/concluidos da Daily atual; reaproveitado pelas 7 telas de sessao
+                                   sidebar + orbe) que Reading/Video ja tinham como JSX proprio duplicado.
+                                   Fase 36: SessionTopBar ganhou `onBack` opcional - mostra "← Etapa
+                                   anterior" acima do stepLabel, volta pra atividade anterior da MESMA
+                                   Daily pra revisar (nunca refaz - cada atividade decide seu proprio
+                                   "ja respondida" via `activity.responses`, ver TodayPage.goToActivity);
+                                   omitido na 1a atividade ou quando o chamador julgar inseguro (ex:
+                                   VoiceSummaryActivity gravando). Fase 37: SessionLayout ganhou
+                                   `leftSidebar` (2 colunas em vez de 1 - ver useMaterialSidebar.tsx),
+                                   `items-stretch` (as 2 colunas ganham a altura do cartao central),
+                                   `max-w-[1360px]`->`max-w-[1600px]`/`px-10`->`px-6` (orcamento de
+                                   largura extra pros 2 sidebars de 280px sem espremer o cartao
+                                   central); parou de renderizar `QuickQuestionOrb` sozinho (nas telas
+                                   com esse sidebar o botao flutuante deu lugar ao
+                                   `StudyAssistantPanel` fixo - unico call site restante de
+                                   `QuickQuestionOrb` e WeeklyProjectPage, que nao tem esse sidebar)
+      useMaterialSidebar.tsx      <- hook (Fase 19, arquivo proprio - co-exportar com SessionShell.tsx quebraria o fast refresh) - busca a Weekly e monta o MaterialSidebar com os itens/concluidos da Daily atual; reaproveitado pelas 7 telas de sessao.
+                                   Fase 29: ganhou QuickNotePanel do Caderninho. Fase 36: ganhou
+                                   PomodoroWidget. Fase 37 (reagrupado em 2 colunas, pedido
+                                   explicito): retorna `{ weekly, materialSidebar, sidebar }` (era so
+                                   `sidebar`) - `materialSidebar` (coluna esquerda, vira `leftSidebar`
+                                   no SessionLayout) tem MaterialSidebar + PomodoroWidget (que ganha
+                                   `flex-1` pra preencher o espaco sobrando); `sidebar` (coluna
+                                   direita) tem QuickNotePanel + StudyAssistantPanel (`justify-between`
+                                   no container, Caderninho de tamanho fixo + vao antes do chat)
       MaterialSidebar.tsx         <- "Material de hoje", compartilhado por Reading/Video (Fase 7), demais telas de sessao desde a Fase 19 (via useMaterialSidebar). `activeContentId` virou nullable (so Reading/Video tem conteudo proprio pra destacar)
       SettingsMenu.tsx            <- menu de configuracoes (overlay), Fase 7 - so o componente
                                    visual (props open/onClose/onExit/onLogout, sem estado proprio);
@@ -2137,7 +2273,7 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/onboarding` | `PUT /api/users/me/profile` (so no "Pular tour") | `OnboardingWelcomePage` (Fase 13b) - passo 1/3 |
 | `/onboarding/perfil` | `PUT /api/users/me/profile` | `ProfileInterviewPage` (Fase 13b) - passo 2/3, Entrevista de Perfil. `?edit=1` (Fase 18) - mesma tela em modo edicao, pre-populada, volta pro `/perfil` |
 | `/selecionar-curso` | `GET /api/courses/available` + `POST /api/enrollments` | `CourseSelectionPage` (Fase 13b) - passo 3/3 |
-| `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7). Fora do shell `<App/>` da Fase 20 ate a 24 (full-bleed); dentro do shell de novo desde a Fase 25 (ganhou `GlobalNav`, PenaltyGauge reposicionado) |
+| `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7). Fora do shell `<App/>` da Fase 20 ate a 24 (full-bleed); dentro do shell de novo desde a Fase 25 (ganhou `GlobalNav`); contador de erros saiu do HUD fixo e virou badge no proprio `GlobalNav` desde a Fase 36 (`PenaltyHeaderBadge`) |
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco; Fase 8: tambem usada como "reprise" de um dia ja concluido, clicado a partir da Visao Semanal) |
 | `/start` (sem params) | `GET /api/today` + `GET /api/courses` + `GET /api/users/me/gamification` | `StartDashboard` (Fase 8-24, e de volta desktop+celular pos-Fase 26 - `WorldMapPage` da Fase 25 desativado pro lancamento, ver nota em "Frontend" acima) |
 | `/start?course=` | `GET /api/courses/{courseId}` | `CourseDetailPage` (Fase 8) - trilha completa do curso |
@@ -2434,6 +2570,11 @@ manual. `:not(:disabled)` preserva o cursor default nos botoes desabilitados (`d
 - **Resolvido na Fase 22, nao e mais pendencia:** sistema de sessao/expiracao - o design "Erro -
   Sessao Expirada" da Fase 10 ganhou tela, como modal global - ver "Sessao expirada: interceptor
   global de 401 (Fase 22)" acima.
+- **Timer Pomodoro (Fase 36) e 100% client-side/cosmetico** - decisao explicita do Falves ao
+  fechar as perguntas em aberto de `secret/rascunhos/timer-pomodoro-sessao.md`: sem endpoint novo,
+  sem Gems, sem relatorio de tempo estudado (so engajamento visual, `lib/pomodoroTimer.ts`, reseta
+  se a aba fechar). Persistir tempo estudado por Daily/dia (metrica nova de dominio) continua em
+  aberto se um dia virar prioridade real de produto.
 
 ## Fases concluidas
 
@@ -2476,6 +2617,8 @@ manual. `:not(:disabled)` preserva o cursor default nos botoes desabilitados (`d
 | 33 | Historico Curto no Suporte Rapido de IA | `docs/fase-33/resumo-implementacao-fase-33.md` |
 | 34 | Cursor Pointer Global em Botoes | `docs/fase-34/resumo-implementacao-fase-34.md` |
 | 35 | Caderninho no Resumo Falado | `docs/fase-35/resumo-implementacao-fase-35.md` |
+| 36 | Etapa Anterior na Sessao + Contador de Erros no Header + Timer Pomodoro | `docs/fase-36/resumo-implementacao-fase-36.md` |
+| 37 | Sessao em 2 Colunas + Suporte Rapido de IA em Painel Fixo | `docs/fase-37/resumo-implementacao-fase-37.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 

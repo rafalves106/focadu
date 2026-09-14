@@ -43,12 +43,14 @@ export function ReadingActivity({
   activity,
   onDailyRefetched,
   onContinue,
+  onBack,
 }: {
   dailyId: string;
   daily: DailyStateDto;
   activity: DailyActivityDto;
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
+  onBack?: () => void;
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +61,7 @@ export function ReadingActivity({
     loading,
     retry,
   } = useApiResource(() => api.getCuratedContent(activity.contentId!), [activity.contentId]);
-  const { weekly, sidebar } = useMaterialSidebar(daily, activity.contentId);
+  const { weekly, materialSidebar, sidebar } = useMaterialSidebar(daily, activity.contentId);
   // Antes dos early return abaixo (Regras dos Hooks: useMemo nao pode vir depois de um return condicional).
   const { preamble, sections } = useMemo(() => splitReadingSections(content?.bodyText ?? ''), [content?.bodyText]);
 
@@ -67,7 +69,16 @@ export function ReadingActivity({
   if (contentError) return <ApiErrorScreen error={contentError} onRetry={retry} />;
   if (!content) return null;
 
+  // Fase 36: Reading/Video eram os unicos 2 tipos sem NENHUM indicador de "ja respondida" (os
+  // outros 5 mostram FeedbackPanel/gabarito) - revisitando via "Etapa anterior", o botao "CONCLUÍ
+  // A LEITURA" parecia uma etapa nova, gerando confusao real (reportado numa verificacao ao vivo).
+  const alreadyCompleted = activity.responses.length > 0;
+
   async function handleComplete() {
+    if (alreadyCompleted) {
+      onContinue();
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -98,7 +109,9 @@ export function ReadingActivity({
       eyebrow={(weekly?.theme ?? weekly?.title ?? '').toUpperCase()}
       stepLabel={`ETAPA ${stepIndex + 1} DE ${total} — LEITURA`}
       progress={(stepIndex + 1) / total}
+      leftSidebar={materialSidebar}
       sidebar={sidebar}
+      onBack={onBack}
       // Fase 32: da pro Suporte Rapido de IA o texto real da leitura (nao so titulo/etapa, o
       // fallback generico de SessionLayout) - o cenario mais provavel de "duvida sobre o
       // conteudo" entre as 7 atividades.
@@ -111,7 +124,12 @@ export function ReadingActivity({
             <p className="text-[11px] font-medium tracking-[0.5px] text-secondary">FONTE: {sourceHost}</p>
           </div>
         )}
-        <h1 className="text-2xl font-semibold leading-[1.3] text-primary">{content.title}</h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-2xl font-semibold leading-[1.3] text-primary">{content.title}</h1>
+          {alreadyCompleted && (
+            <span className="mt-1 shrink-0 text-xs font-medium whitespace-nowrap text-accent">✓ Já concluída</span>
+          )}
+        </div>
 
         <div className="relative min-h-0 flex-1 overflow-y-auto pr-3">
           {!content.bodyText && (
@@ -135,7 +153,7 @@ export function ReadingActivity({
 
         <div className="flex flex-col gap-3">
           {error && <p className="text-sm text-alert">{error}</p>}
-          {readMinutes && (
+          {!alreadyCompleted && readMinutes && (
             <p className="text-center text-xs font-medium text-muted">⏱ ~{readMinutes} min de leitura estimada</p>
           )}
           <button
@@ -144,7 +162,7 @@ export function ReadingActivity({
             disabled={submitting}
             className="rounded-xl bg-accent py-4 text-center text-sm font-semibold tracking-[1px] text-base disabled:opacity-40"
           >
-            {submitting ? 'ENVIANDO...' : 'CONCLUÍ A LEITURA'}
+            {alreadyCompleted ? 'PRÓXIMA ETAPA' : submitting ? 'ENVIANDO...' : 'CONCLUÍ A LEITURA'}
           </button>
         </div>
       </div>

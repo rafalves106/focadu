@@ -6,6 +6,8 @@ import { CourseStatus } from '../api/types';
 import { useSettings } from '../contexts/useSettings';
 import { AiStatusBadge } from './AiStatusBadge';
 import { HeaderUserBadge } from './HeaderUserBadge';
+import { PenaltyHeaderBadge } from './gamification/PenaltyHeaderBadge';
+import { PomodoroHeaderBadge } from './pomodoro/PomodoroHeaderBadge';
 
 /**
  * Menu global unico (Fase 25) - substitui o antigo `<nav>` de 2 links (Hoje/Início) do App.tsx.
@@ -31,6 +33,11 @@ import { HeaderUserBadge } from './HeaderUserBadge';
  *
  * `AiStatusBadge` (Fase 28) - badge persistente de status de IA (hoje so Groq), mesmo padrao
  * "self-contained" de `HeaderUserBadge` descrito acima.
+ *
+ * `PomodoroHeaderBadge` (Fase 36, ver secret/rascunhos/timer-pomodoro-sessao.md) - versao compacta
+ * do timer Pomodoro da sessao (`PomodoroWidget`, ver useMaterialSidebar.tsx), sincronizada via
+ * `lib/pomodoroTimer` (store modulo-level). So aparece depois que o aluno da play pela 1a vez -
+ * nao renderiza nada fora disso, entao encaixa aqui sem `if` proprio, igual `PenaltyHeaderBadge`.
  */
 export function GlobalNav() {
   const settings = useSettings();
@@ -78,13 +85,17 @@ export function GlobalNav() {
             Configurações
           </button>
           <div className="ml-2 flex shrink-0 items-center gap-2">
+            <PenaltyHeaderBadge />
+            <PomodoroHeaderBadge />
             <AiStatusBadge />
             <HeaderUserBadge />
           </div>
         </div>
 
-        {/* Mobile: os 2 badges sempre visiveis, sem o resto do grupo direito (ver menu suspenso abaixo). */}
+        {/* Mobile: os badges sempre visiveis, sem o resto do grupo direito (ver menu suspenso abaixo). */}
         <div className="flex shrink-0 items-center gap-2 md:hidden">
+          <PenaltyHeaderBadge />
+          <PomodoroHeaderBadge />
           <AiStatusBadge />
           <HeaderUserBadge />
         </div>

@@ -84,16 +84,28 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 35 — Caderninho no Resumo Falado** (11/09/2026).
+Última fase concluída: **Fase 37 — Sessão em 2 Colunas + Suporte Rápido de IA em Painel Fixo**
+(14/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- Sessão diária ganhou um 2º sidebar (Fase 37): coluna esquerda com "Material de hoje" + Timer
+  Pomodoro, coluna direita com Caderninho de Anotações + Suporte Rápido de IA (agora card fixo,
+  antes botão flutuante — o botão flutuante continua só no Projeto Semanal, que não tem esse
+  layout de 2 colunas).
+- Timer Pomodoro (Fase 36, `secret/rascunhos/timer-pomodoro-sessao.md`): manual (aluno liga/
+  desliga), predefinições fixas (25/5, 50/10, 15/3) escolhidas no próprio widget, fim de ciclo com
+  bipe + destaque visual. 100% client-side/cosmético por decisão explícita — sem Gems, sem
+  relatório de tempo estudado. Versão compacta no `GlobalNav`, sincronizada mesmo saindo da sessão.
+- "Etapa anterior" na sessão diária (Fase 36): dá pra voltar e revisar uma atividade já respondida
+  da mesma Daily sem refazê-la. Contador de erros saiu do HUD fixo sobre a tela de sessão e virou
+  badge no `GlobalNav` (Fase 36) — reportado como confuso perto da barra de progresso.
 - Resumo Falado ganhou um botão pra reler as próprias anotações do dia antes de gravar (Fase 35) -
   só antes, trava durante a gravação em si (avaliação continua sendo de recall real).
-- Suporte Rápido de IA (Fase 32, histórico curto na Fase 33): botão flutuante em toda tela de
-  sessão + Projeto Semanal, chat curto/direto via Groq pra tirar dúvida sobre o que está na tela
-  (leitura/vídeo/projeto) ou o curso em geral. Guarda as últimas ~4 trocas da conversa (pra um
-  "explica melhor" continuar fazendo sentido), fechar (✕/clique fora) só oculta o painel — só
-  "Limpar" (ou digitar `/clear`) apaga o histórico de verdade.
+- Suporte Rápido de IA (Fase 32, histórico curto na Fase 33, painel fixo na sessão desde a Fase
+  37): chat curto/direto via Groq pra tirar dúvida sobre o que está na tela (leitura/vídeo/projeto)
+  ou o curso em geral. Guarda as últimas ~4 trocas da conversa (pra um "explica melhor" continuar
+  fazendo sentido); no botão flutuante (Projeto Semanal), fechar (✕/clique fora) só oculta o painel
+  — só "Limpar" (ou digitar `/clear`) apaga o histórico de verdade.
 - Currículo do curso piloto (Web Security) **completo** desde a Fase 26: 4 módulos / 12 semanas /
   60 dias / 12 projetos.
 - Personalização por analogia (interesses do usuário) estendida a leitura, avaliação de voz e
