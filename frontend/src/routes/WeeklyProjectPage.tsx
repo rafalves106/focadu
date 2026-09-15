@@ -14,6 +14,9 @@ const STATUS_BADGE: Record<number, { label: string; className: string }> = {
   [WeeklyProjectStatus.Evaluated]: { label: 'AVALIADO', className: 'bg-surface-alt text-accent' },
 };
 
+// Fase 38: mesma prioridade de WeeklyProjectCard - IsLocked vence Status (so coexiste com Pending).
+const LOCKED_BADGE = { label: 'BLOQUEADO', className: 'bg-surface-alt text-muted' };
+
 // Progresso do topo e derivado do Status (sem campo de deadline no dominio - WeeklyProject so tem
 // SpecText/Status/SubmissionUrl, ver Focadu.Domain.Weeklies.WeeklyProject) - nao ha "% concluido"
 // real alem disso.
@@ -57,8 +60,8 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   }
 
   const project = weekly.project;
-  const badge = STATUS_BADGE[project.status];
-  const canSubmit = project.status !== WeeklyProjectStatus.Evaluated;
+  const badge = project.isLocked ? LOCKED_BADGE : STATUS_BADGE[project.status];
+  const canSubmit = project.status !== WeeklyProjectStatus.Evaluated && !project.isLocked;
 
   async function handleSubmit() {
     if (!submissionUrl.trim()) return;
@@ -127,6 +130,15 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
                 {project.submissionUrl}
               </a>
             </div>
+          )}
+
+          {/* Fase 38: so aparece enquanto IsLocked - a Weekly ainda tem Daily original nao
+              concluida (Weekly.AreDailiesComplete), o backend recusaria o envio de qualquer
+              forma (SubmitWeeklyProjectUseCase -> Weekly.SubmitProject -> "projeto_semana_bloqueado"). */}
+          {project.isLocked && (
+            <p className="rounded-xl border border-stroke bg-surface-alt px-4 py-3 text-sm text-secondary">
+              🔒 Termine todas as dailies desta semana para desbloquear o envio do projeto.
+            </p>
           )}
 
           {canSubmit && (

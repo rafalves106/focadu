@@ -281,6 +281,8 @@ export interface WeeklyProjectDto {
   id: string;
   specText: string;
   status: WeeklyProjectStatus;
+  /** Fase 38: true enquanto as Dailies originais da semana nao estiverem todas concluidas - Weekly.SubmitProject recusa o envio nesse estado. So faz sentido junto de Status Pending; uma vez Submitted/Evaluated, sempre false. */
+  isLocked: boolean;
   submissionUrl: string | null;
   /** Fase 16: nota (0-100) da avaliação, preenchida junto com Status Evaluated. Nulo até então. */
   score: number | null;
