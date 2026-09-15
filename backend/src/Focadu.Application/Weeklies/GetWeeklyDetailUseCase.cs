@@ -1,3 +1,4 @@
+using Focadu.Application.Dailies;
 using Focadu.Application.Exceptions;
 using Focadu.Application.Shared;
 using Focadu.Domain.Repositories;
@@ -27,10 +28,16 @@ public class GetWeeklyDetailUseCase
         var monthly = await _monthlyRepository.GetByIdAsync(weekly.MonthlyId, cancellationToken)
             ?? throw new NotFoundException("mes_nao_encontrado", "Mes nao encontrado.");
 
+        // Precisa de TODAS as Weeklies da matricula (nao so esta) pra saber qual Daily e a
+        // "isNextInSequence" - ver DailySequencing (Focadu.Application.Dailies).
+        var allWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(weekly.EnrollmentId, cancellationToken);
+        var nextDailyId = DailySequencing.FindNext(allWeeklies)?.Id;
+
         var dailyDtos = weekly.Dailies
             .OrderBy(d => d.DayNumber)
             .Select(d => new DailyOverviewDto(
                 d.Id, d.DayNumber, d.Date, d.Status, d.IsReinforcement, d.PenaltyPoints, d.IsWeakDay,
+                d.Id == nextDailyId,
                 d.Activities.Count,
                 d.Activities.Count(a => d.Responses.Any(r => r.ActivityId == a.Id)),
                 d.Activities.Count(a => d.Responses.Any(r => r.ActivityId == a.Id && r.Passed))))

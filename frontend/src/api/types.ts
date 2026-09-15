@@ -258,6 +258,8 @@ export interface DailyOverviewDto {
   isReinforcement: boolean;
   penaltyPoints: number;
   isWeakDay: boolean;
+  /** Fase 38b: true quando esta e a Daily nao-reforco de menor DayNumber ainda nao concluida em TODA a matricula - a unica Locked/Available que pode ser iniciada agora. Date nao serve mais pra decidir isso (ver WeeklyDetailPage). */
+  isNext: boolean;
   totalActivities: number;
   completedActivities: number;
   passedActivities: number;

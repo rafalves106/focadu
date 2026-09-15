@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 37 - Sessao em 2 Colunas + Suporte Rapido de IA em Painel Fixo**.
+> Ultima fase que atualizou este documento: **Fase 38b - Sequenciamento de Daily por Progresso (nao mais Calendario) + Analogias Sempre em Portugues**.
 
 ## Visao geral do projeto
 
@@ -243,9 +243,12 @@ tests/
     Dailies/DailyTests.cs           <- + exigencia de ContentId pra VoiceSummary (Fase 5) -
                                        Fase 13: constroi via WeeklyTemplate.AddDailyTemplate +
                                        DailyTemplate.AddActivity antes de Weekly.AddDaily
-    Weeklies/WeeklyTests.cs         <- + Weekly.GetDailyByDate (Fase 5), + IsModuleComplete/
-                                       RequiresPublicationToUnlock (Fase 11), +
-                                       InitializeProject idempotencia (Fase 13)
+    Dailies/DailySequencingTests.cs <- FindNext/FindInProgress/IsNext cruzando Weeklies (Fase 38b) -
+                                       Weekly.GetDailyByDate (Fase 5) removido, sequencia
+                                       substitui data
+    Weeklies/WeeklyTests.cs         <- + IsModuleComplete/RequiresPublicationToUnlock (Fase 11), +
+                                       InitializeProject idempotencia (Fase 13), + acesso por
+                                       isNextInSequence no lugar de Date (Fase 38b)
     Weeklies/WeeklyProjectTests.cs      <- Submit/Evaluate (Fase 13: usa Weekly.InitializeProject()
                                        no lugar do antigo DefineProject(specText))
     Weeklies/WeeklyTemplateTests.cs      <- SetProjectSpec/AddDailyTemplate (novo, Fase 13)
@@ -348,13 +351,14 @@ unico (checado na Application antes de criar + indice unico no banco, mesmo padr
 (`Weekly`/`Daily`/`WeeklyProject`) - sem matricula, nao ha progresso pra ver. Ver "Matricula"
 abaixo pro fluxo completo.
 
-**`Weekly.GetDailyByDate(date)` (Fase 5):** resolve qual `Daily` desta Weekly esta datada em
-`date`, preferindo sempre a Daily **nao-reforco** quando houver mais de uma na mesma data (ex:
-uma Daily normal e a Daily de reforco gerada a partir dela no mesmo dia -
-`CreateDailyReinforcement` usa "hoje" como data). `GetTodayUseCase` usa este metodo - o atalho
-"/hoje" nunca deve resolver acidentalmente pra uma Daily de reforco; acesso a ela e sempre via
-link explicito (`Daily.ReinforcementDailyId`). Fecha a ambiguidade documentada como pendente
-desde a Fase 4.
+**`DailySequencing` (Application/Dailies, Fase 38b) substitui `Weekly.GetDailyByDate(date)` (Fase
+5, removido):** resolve "qual Daily vem a seguir" cruzando TODAS as Weeklies da matricula
+(`FindNext` = a Daily nao-reforco de menor `DayNumber` ainda nao concluida; `FindInProgress` =
+qualquer Daily `InProgress` em qualquer Weekly, sempre prioridade). Reforco continua de fora da
+sequencia principal por construcao (`FindNext` filtra `!IsReinforcement`) - acesso a ela e sempre
+via link explicito (`Daily.ReinforcementDailyId`), nunca pelo atalho "/hoje". Ver "Acesso a uma
+Daily" e "GET /api/today" abaixo pro motivo da troca (`Daily.Date` fixado na matricula nunca
+acompanhava o ritmo real do aluno).
 
 **`DailyActivity.Prompt` (Fase 3):** enunciado/pergunta da propria atividade (pergunta do Quiz,
 contexto do Cloze/Roleplay) - sempre visivel ao cliente (nunca redigido, e o que o usuario precisa
@@ -435,8 +439,13 @@ categoria** (20/20/30 = 70 no total), resetado quando o mes calendario (`Year`/`
 foi creditado de verdade (0 se o cap da categoria ja foi atingido nesse mes). Nunca expira,
 acumula indefinidamente.
 
-**Streak**: dias consecutivos com Daily completada no dia certo (`Daily.Date == hoje`) -
-replay nunca conta (nem soma nem quebra). "Quebrar por inatividade" e deteccao de AUSENCIA de
+**Streak**: dias consecutivos com pelo menos 1a conclusao de Daily no dia (`CompleteDailyUseCase`
+so chama `RegisterCompletion` na 1a conclusao - replay nunca conta, nem soma nem quebra). Ate a
+Fase 38b isso era condicionado a `Daily.Date == hoje` (comparando com o calendario hipotetico
+fixado na matricula) - removido: uma 1a conclusao so pode mesmo acontecer "agora" (a acao e
+sincrona), entao a checagem so servia pra parar de contar o streak de quem estivesse fora do
+ritmo assumido na matricula, o mesmo bug de fundo do atalho "/hoje" (ver "GET /api/today" abaixo).
+"Quebrar por inatividade" e deteccao de AUSENCIA de
 evento, nao presenca - sem job/cron no projeto (mesmo principio ja usado pra `DailyStatus.Locked`,
 resolvido sob demanda comparando datas no momento do acesso). Resolvido em 2 pontos:
 `RegisterCompletion` reinicia a contagem (em vez de incrementar) se detectar que ja tinha
@@ -689,6 +698,15 @@ interesse nenhum cadastrado (perfil ainda nao completado, ou completado so com t
 `CompleteProfile` aceita isso), ou fora do tipo `Reading`, simplesmente nao gera nada - nunca
 bloqueia a leitura em si; falha do Groq na geracao tambem so degrada pra "sem analogias dessa vez".
 
+**Bug real, corrigido na Fase 38b:** o `SystemPrompt` de `GroqAnalogyGenerationService` nunca
+pedia explicitamente "em portugues" (unico entre os adapters Groq do projeto - todos os outros
+ja tinham essa instrucao) - `openai/gpt-oss-120b` ocasionalmente respondia em ingles, sobretudo
+quando o interesse/hobby citado era um termo em ingles. Corrigido acrescentando a instrucao
+explicita. Como `PersonalizedAnalogy` e gerado uma vez e nunca reavaliado (ver acima), uma
+analogia ja cacheada em ingles antes deste fix continua em ingles ate o cache ser invalidado
+manualmente (sem endpoint pra isso ainda - nao e o caso comum, avaliado como nao valer a pena
+por ora).
+
 **Fase 27: personalizacao estendida pra avaliacao de voz + rascunho de LinkedIn.** A Fase 21 so
 cobria Leitura - `secret/MESTRE.md` secao 12 ainda listava "nenhum outro prompt de IA consome o
 perfil" como pendencia (documento estava desatualizado nesse ponto, corrigido). Agora
@@ -909,36 +927,48 @@ a mudar se esses numeros precisarem ajustar no futuro:
 
 **Decisao de produto confirmada na Fase 2**: `Locked` e um status **conceitual** para Dailies
 futuras - nao existe nenhum job/scheduler/cron que transiciona o status por horario. O
-desbloqueio e inteiramente baseado em data: `Weekly.EvaluateDailyAccess` (abaixo) compara
-`Daily.Date` com "hoje" (`IClock.Today()`) toda vez que o acesso e avaliado, e essa comparacao
-por si so ja decide o que e permitido. Nenhum processo em background precisa "virar" o Status de
-`Locked` para `Available` em nenhum horario - o valor `DailyStatus.Locked` so importa como ponto
-de partida indiferenciado de `Available` (ambos aceitam `Daily.Start()` igualmente).
+desbloqueio e inteiramente baseado em **sequencia** (desde a Fase 38b - ate entao era baseado em
+data, ver "Acesso a uma Daily" abaixo pro porque da troca): `Weekly.EvaluateDailyAccess` recebe
+`isNextInSequence` (calculado por `DailySequencing`, Application) toda vez que o acesso e
+avaliado, e esse booleano por si so ja decide o que e permitido. Nenhum processo em background
+precisa "virar" o Status de `Locked` para `Available` em nenhum horario - o valor
+`DailyStatus.Locked` so importa como ponto de partida indiferenciado de `Available` (ambos aceitam
+`Daily.Start()` igualmente).
 
 ### Acesso a uma Daily (`Weekly.EvaluateDailyAccess`)
 
-> Secao corrigida em 2026-09-13 - a versao anterior deste documento nao capturava a regra de
-> `InProgress` abaixo (dizia "Resume" so pra Daily de hoje), o que gerou confusao na verificacao
-> ao vivo da mesma data (ver nota em `GetTodayUseCase` logo adiante). O codigo sempre se comportou
-> como descrito agora; so a documentacao estava incompleta.
+> **Fase 38b (14->15/09/2026) - reescrita pra sequencia, nao mais calendario.** Ate aqui, a
+> barreira pra Dailies ainda nao iniciadas comparava `Daily.Date` (fixado de uma vez so na
+> matricula, 1 dia util por Daily - ver `EnrollUserInCourseUseCase`) com "hoje". Bug real relatado
+> ao vivo: o aluno concluiu a Daily 1 num dia so, e no acesso seguinte "/hoje" pulou direto pra
+> Daily 4 (calendarmente "a data de hoje"), deixando as Dailies 2 e 3 presas em `Locked` pra
+> sempre - qualquer folga entre o ritmo hipotetico de 1-dia-util-por-Daily e o ritmo real do aluno
+> tinha esse efeito. A barreira agora e sempre `isNextInSequence` (Daily nao-reforco de menor
+> `DayNumber` ainda nao concluida, cruzando TODAS as Weeklies da matricula - ver
+> `DailySequencing`), nunca mais uma comparacao de data. `Daily.Date` continua existindo (ainda
+> populado por `EnrollUserInCourseUseCase`, ainda usado pro caso `Completed`/`Replay` abaixo e por
+> exibicao no frontend), so parou de gatilhar acesso.
 
-Dado "hoje" (`IClock.Today()`), retorna um `DailyAccessMode`:
+Dado "hoje" (`IClock.Today()`) e `isNextInSequence` (`DailySequencing.IsNext`, calculado fora da
+Weekly - uma Weekly sozinha nunca enxerga as irmas), retorna um `DailyAccessMode`:
 
-- **Daily futura** (`Date > hoje`): sempre lanca `DomainException` (`Code = "daily_futura"`) -
-  nunca acessivel.
-- **Daily `InProgress`, qualquer data**: `Resume` - **independente da data**, inclusive de um dia
-  anterior. E a regra que permite recuperar uma Daily abandonada num dia passado (o aluno comecou
-  e nao terminou) em vez dela ficar presa nesse status pra sempre.
-- **Daily `Completed`**: `Replay` se `Date == hoje`; se for de um dia anterior, `Replay` tambem,
-  **exceto** `ReadOnly` quando ha alguma outra Daily `InProgress` em qualquer lugar da Weekly
-  no momento (prioriza terminar o que esta pendente antes de repetir algo ja feito).
-- **Daily ainda nao iniciada (`Locked`/`Available`) de dia anterior**: sempre `ReadOnly` - dia
-  perdido, nao existe "Start atrasado" pra uma Daily que nunca chegou a comecar.
-- **Daily ainda nao iniciada de hoje**: `Start`, **exceto** `DomainException` quando ja existe
-  outra Daily `InProgress` em qualquer data (`Code = "daily_em_andamento"`, conclua/retome-a
-  primeiro) ou quando outra Daily ja foi concluida hoje (`Code =
-  "daily_limite_diario_atingido"`, comparando `CompletedAt` em hora local - ver comentario no
-  metodo sobre UTC vs. hora local).
+- **Daily `InProgress`, qualquer posicao na sequencia**: `Resume` - **independente de ser ou nao a
+  `isNextInSequence`**, inclusive uma abandonada ha mais tempo. E a regra que permite recuperar uma
+  Daily abandonada (o aluno comecou e nao terminou) em vez dela ficar presa nesse status pra sempre.
+- **Daily `Completed`**: `Replay` se `Date == hoje`; senao `Replay` tambem, **exceto** `ReadOnly`
+  quando ha alguma outra Daily `InProgress` em qualquer lugar da Weekly no momento (prioriza
+  terminar o que esta pendente antes de repetir algo ja feito) - unico lugar do metodo que ainda
+  compara `Date`, deliberado (ver nota acima: decide so o comportamento de replay de algo ja
+  concluido, nunca bloqueia conteudo novo).
+- **Daily ainda nao iniciada (`Locked`/`Available`) e NAO e a `isNextInSequence`** (e nao e
+  reforco): sempre lanca `DomainException` (`Code = "daily_bloqueada"`) - ainda nao chegou a vez
+  dela. Reforco (`IsReinforcement`) nunca disputa a sequencia principal - acesso e sempre por link
+  explicito (`Daily.ReinforcementDailyId`), permitido mesmo sem ser a `isNextInSequence`.
+- **Daily ainda nao iniciada e (`isNextInSequence` OU reforco)**: `Start`, **exceto**
+  `DomainException` quando ja existe outra Daily `InProgress` em qualquer lugar da Weekly
+  (`Code = "daily_em_andamento"`, conclua/retome-a primeiro) ou quando outra Daily ja foi
+  concluida hoje (`Code = "daily_limite_diario_atingido"`, comparando `CompletedAt` em hora local -
+  ver comentario no metodo sobre UTC vs. hora local).
 
 ### Reforco diario e semanal
 
@@ -1120,30 +1150,35 @@ para de funcionar sozinho se um usuario puder se matricular em varios cursos ati
 tempo sem um jeito de escolher "qual curso agora" - mesma limitacao que a versao antiga tinha,
 so que agora por usuario em vez de global.
 
-**Bug real, corrigido em 2 rodadas (2026-09-13 e 2026-09-14) - "/hoje" nao dava prioridade a
-uma Daily `InProgress`.** `GetTodayUseCase` so procurava `Weekly.GetDailyByDate(hoje)`, mesmo
-`Weekly.EvaluateDailyAccess` ja suportando "Resume" pra uma Daily `InProgress` independente da
-data (ver secao acima) - o atalho nunca dava chance dessa regra se aplicar.
+**Bug real, corrigido em 3 rodadas (13, 14 e 15/09/2026) - a resolucao de "a Daily de hoje" foi
+toda repensada.**
 
-- **Rodada 1 (13/09):** quando NENHUMA Daily batia com "hoje" (ex: comecada numa sexta, nao
-  terminada, proximo acesso caiu no fim de semana - sem Daily agendada pra esses dias, ja que
+- **Rodada 1 (13/09):** `GetTodayUseCase` so procurava `Weekly.GetDailyByDate(hoje)`, mesmo
+  `Weekly.EvaluateDailyAccess` ja suportando "Resume" pra uma Daily `InProgress` independente da
+  data - quando NENHUMA Daily batia com "hoje" (ex: comecada numa sexta, nao terminada, proximo
+  acesso caiu no fim de semana - sem Daily agendada pra esses dias, ja que
   `EnrollUserInCourseUseCase` so distribui por dia util), o atalho devolvia
   `daily_hoje_nao_encontrada` (404) direto, sem procurar a Daily abandonada em lugar nenhum.
 - **Rodada 2 (14/09) - a rodada 1 nao cobria o caso mais comum.** Quando a Daily de hoje EXISTE
-  mas ha uma Daily `InProgress` diferente de um dia anterior (cenario tipico: comecou a Daily
-  numa quinta, nao terminou, e na segunda seguinte a Daily daquele dia ja esta agendada) -
-  `GetTodayUseCase` resolvia certinho pra Daily de hoje, so que `EvaluateDailyAccess` recusa
-  `Start` numa Daily nova enquanto outra continuar `InProgress` (`Code = "daily_em_andamento"`) -
-  o atalho literalmente batia nesse exception. Unico jeito de continuar era abrir a trilha/weekly
-  manualmente e clicar na Daily certa - "/hoje" ficava inutilizavel até o usuário descobrir isso
-  sozinho.
+  mas ha uma Daily `InProgress` diferente de um dia anterior - `GetTodayUseCase` resolvia
+  certinho pra Daily de hoje, so que `EvaluateDailyAccess` recusa `Start` numa Daily nova
+  enquanto outra continuar `InProgress` (`Code = "daily_em_andamento"`) - o atalho literalmente
+  batia nesse exception. Corrigido buscando uma Daily `InProgress` **antes** de tentar resolver
+  pra "hoje" (cross-Weekly).
+- **Rodada 3 (15/09) - raiz do problema, nao so um sintoma.** As duas rodadas acima ainda
+  resolviam "hoje" batendo `Daily.Date` (fixado de uma vez so na matricula, 1 dia util por Daily)
+  contra o calendario real quando nada estava `InProgress`. Bug relatado ao vivo: concluir a
+  Daily 1 num dia so liberou calendarmente a Daily 4 no acesso seguinte, deixando as Dailies 2 e 3
+  presas em `Locked` pra sempre (nunca "e a vez delas" num modelo que so olha data). Qualquer
+  folga entre o ritmo hipotetico de 1-dia-util-por-Daily e o ritmo real do aluno tinha esse
+  efeito - a comparacao de data em si era a causa, nao um caso de borda dela.
 
-**Correcao final:** `GetTodayUseCase` agora procura uma Daily `InProgress` **antes** de tentar
-resolver pra "hoje" - primeiro dentro da Weekly de hoje (`GetByEnrollmentAndDateAsync`, mesma
-consulta que já ia rodar mesmo, cobre o caso comum de Daily abandonada na mesma semana), e só
-cai pra `GetByEnrollmentIdAsync` (grafo completo de todas as Weeklies) se essa Weekly não
-existir ou não tiver nada `InProgress`. Só na ausência total de qualquer Daily `InProgress` em
-qualquer lugar da matrícula é que volta a tentar a Daily agendada exatamente pra hoje.
+**Correcao final (Fase 38b):** `GetTodayUseCase` resolve "hoje" em 2 passos, nunca mais
+comparando `Daily.Date` com o calendario: (1) `DailySequencing.FindInProgress` - qualquer Daily
+`InProgress` em qualquer Weekly da matricula, sempre prioridade (permite recuperar uma
+abandonada); (2) senao, `DailySequencing.FindNext` - a Daily nao-reforco de menor `DayNumber`
+ainda nao concluida em TODA a matricula. `Weekly.GetDailyByDate` e
+`IWeeklyRepository.GetByEnrollmentAndDateAsync` foram removidos (ficaram sem nenhum outro uso).
 
 ### Score no servidor para todo tipo de atividade (Fase 3 + Fase 4 + Fase 5)
 
@@ -1301,8 +1336,8 @@ default (400):
 
 | Code | Status | Disparado por |
 |---|---|---|
-| `daily_futura` | 400 | `Weekly.EvaluateDailyAccess` numa Daily com `Date > hoje` |
-| `daily_em_andamento` | 409 | `Weekly.EvaluateDailyAccess` quando outra Daily ja esta `InProgress` hoje |
+| `daily_bloqueada` | 400 | `Weekly.EvaluateDailyAccess` numa Daily que nao e a `isNextInSequence` (nem reforco) - ate a Fase 38b era `daily_futura`, disparado por `Date > hoje` |
+| `daily_em_andamento` | 409 | `Weekly.EvaluateDailyAccess` quando outra Daily ja esta `InProgress` |
 | `daily_somente_leitura` | 409 | `Weekly.StartOrResumeDaily` numa Daily `ReadOnly` |
 | `daily_ja_concluida` | 409 | `Daily.Start()` numa Daily ja `Completed` |
 | `daily_nao_iniciada` | 409 | `Daily.SubmitActivityResponse` antes de `Start()` |
@@ -2750,9 +2785,11 @@ manual. `:not(:disabled)` preserva o cursor default nos botoes desabilitados (`d
   avaliacao expos que `llama-3.3-70b-versatile` (escolha original) tinha saido do catalogo da
   Groq (`model_not_found`), corrigido pra `openai/gpt-oss-120b`. Resposta real obtida: score,
   feedback em portugues e transcricao corretos. Ver `ponytail:` em `GroqContentEvaluationService`.
-- **Resolvido na Fase 5, nao e mais pendencia:** a ambiguidade de `/api/today` quando 2+ Dailies
-  compartilham a mesma `Date` (Daily normal + Daily de reforco geradas no mesmo dia) - ver
-  `Weekly.GetDailyByDate` acima.
+- **Resolvido na Fase 5, superado na Fase 38b:** a ambiguidade de `/api/today` quando 2+ Dailies
+  compartilhavam a mesma `Date` (Daily normal + Daily de reforco geradas no mesmo dia) era
+  resolvida priorizando a nao-reforco em `Weekly.GetDailyByDate`. Esse metodo foi removido na
+  Fase 38b (resolucao de "hoje" deixou de comparar `Date` inteiramente - ver `DailySequencing`) -
+  a ambiguidade nem chega a existir mais, ja que `FindNext` sempre filtra `!IsReinforcement`.
 - **GitHub nunca foi testado contra a API real** (Fase 11, decisao explicita do usuario) - o
   codigo (`GitHubService`, `CommitModuleSummaryUseCase`, `SubmitPublicationUseCase`,
   `EvaluateWeeklyProjectUseCase`) espelha o padrao ja comprovado do Groq, mas so foi verificado
@@ -2861,3 +2898,11 @@ manual. `:not(:disabled)` preserva o cursor default nos botoes desabilitados (`d
   pra exercitar o caminho); se/quando um 2° Course for seedado, adicionar o guard em
   `CourseSelectionPage` (ou resolver `/hoje` pra aceitar N enrollments, escolhendo 1) antes disso
   virar alcancavel de verdade.*
+- **`GetCourseRankingUseCase.ResolveCurrentWeekly` ainda resolve a "Weekly atual" comparando
+  `Daily.Date` com "hoje"** (ver "Ranking" acima) - a mesma fragilidade de fundo corrigida no
+  atalho "/hoje" na Fase 38b (`Daily.Date` e fixado de uma vez na matricula e pode divergir do
+  ritmo real do aluno). Nao corrigido nesta fase por estar num caso de uso separado, so
+  descoberto na varredura da Fase 38b - o efeito pratico e mais brando aqui (afeta so o RECORTE
+  do ranking - qual Weekly conta pro escopo `weekly`/`monthly` - nunca bloqueia acesso a
+  conteudo), mas o mesmo `DailySequencing` desta fase resolveria isso tambem se/quando for
+  revisitado.

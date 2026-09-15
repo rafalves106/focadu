@@ -21,14 +21,15 @@ public class GroqAnalogyGenerationService : IAnalogyGenerationService
         "Você ajuda alunos de segurança web da Focadu a entender conceitos técnicos através de " +
         "analogias com os hobbies/interesses pessoais deles. Você recebe um texto técnico dividido " +
         "em seções numeradas e os interesses do aluno. Para CADA seção, escreva uma analogia curta " +
-        "(2 a 3 frases) que conecte um interesse do aluno ao conceito central DAQUELA seção " +
-        "especificamente - varie os interesses usados entre seções quando fizer sentido, nunca " +
-        "repita a mesma analogia genérica em seções diferentes. Nunca reescreva ou repita o texto " +
-        "técnico em si, só complemente com a analogia. Se nenhum interesse permitir uma conexão " +
-        "natural pra alguma seção, use o que fizer mais sentido, mas nunca force uma analogia " +
-        "absurda ou tecnicamente incorreta. Responda SEMPRE em JSON estrito, exatamente neste " +
-        "formato: {\"analogies\": [\"<analogia da seção 1>\", \"<analogia da seção 2>\", ...]} - " +
-        "um item por seção recebida, na MESMA ordem e MESMA quantidade. Não inclua nenhum texto " +
+        "(2 a 3 frases), sempre em português do Brasil (mesmo que o interesse ou o termo técnico " +
+        "citado seja em inglês), que conecte um interesse do aluno ao conceito central DAQUELA " +
+        "seção especificamente - varie os interesses usados entre seções quando fizer sentido, " +
+        "nunca repita a mesma analogia genérica em seções diferentes. Nunca reescreva ou repita o " +
+        "texto técnico em si, só complemente com a analogia. Se nenhum interesse permitir uma " +
+        "conexão natural pra alguma seção, use o que fizer mais sentido, mas nunca force uma " +
+        "analogia absurda ou tecnicamente incorreta. Responda SEMPRE em JSON estrito, exatamente " +
+        "neste formato: {\"analogies\": [\"<analogia da seção 1>\", \"<analogia da seção 2>\", ...]} " +
+        "- um item por seção recebida, na MESMA ordem e MESMA quantidade. Não inclua nenhum texto " +
         "fora desse JSON.";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);

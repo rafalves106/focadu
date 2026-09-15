@@ -51,10 +51,11 @@ public class StartOrResumeDailyUseCase
         }
 
         var today = _clock.Today();
-        var daily = weekly.StartOrResumeDaily(dailyId, today);
+        var isNext = DailySequencing.IsNext(siblingWeeklies, dailyId);
+        var daily = weekly.StartOrResumeDaily(dailyId, today, isNext);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var accessMode = weekly.EvaluateDailyAccess(dailyId, today);
+        var accessMode = weekly.EvaluateDailyAccess(dailyId, today, isNext);
         return DailyStateMapper.ToDto(daily, accessMode);
     }
 }

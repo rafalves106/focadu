@@ -182,21 +182,6 @@ public class Weekly : Entity
     public IReadOnlyCollection<Daily> GetWeakDailies() =>
         _dailies.Where(d => d.IsWeakDay).ToList();
 
-    /// <summary>
-    /// Resolve qual Daily desta Weekly esta datada em "date", preferindo sempre a Daily
-    /// nao-reforco quando houver mais de uma na mesma data (ex: uma Daily normal e a Daily de
-    /// reforco gerada a partir dela no mesmo dia, ja que CreateDailyReinforcement usa "hoje" como
-    /// data). O atalho "/hoje" nunca deve resolver acidentalmente pra uma Daily de reforco -
-    /// acesso a ela e sempre via link explicito (Daily.ReinforcementDailyId). Determinístico
-    /// mesmo sem esse cenario: OrderBy/ThenBy nunca dependem da ordem natural do banco.
-    /// </summary>
-    public Daily? GetDailyByDate(DateOnly date) =>
-        _dailies
-            .Where(d => d.Date == date)
-            .OrderBy(d => d.IsReinforcement)
-            .ThenBy(d => d.DayNumber)
-            .FirstOrDefault();
-
     public bool ShouldTriggerWeeklyReinforcement()
     {
         var alreadyCovered = _reinforcements.SelectMany(r => r.WeakDailyIds).ToHashSet();
@@ -272,36 +257,38 @@ public class Weekly : Entity
     }
 
     /// <summary>
-    /// Avalia o que pode ser feito com uma Daily desta Weekly, dado "hoje":
-    /// - Daily futura: nunca acessivel.
-    /// - Daily InProgress (de hoje OU abandonada em um dia anterior): Resume - retomar de onde
-    ///   parou sempre vale, independente da data, ja que so pode existir uma InProgress por vez
-    ///   (ver guard abaixo). Concluir essa "Daily atrasada" hoje conta como a Daily de hoje: ver
-    ///   proxima regra.
+    /// Avalia o que pode ser feito com uma Daily desta Weekly, dado "hoje" e se ela e a
+    /// "isNextInSequence" (a Daily nao-reforco de menor DayNumber ainda nao concluida em TODA a
+    /// matricula - calculado fora daqui, ver DailySequencing na Application, ja que uma Weekly
+    /// sozinha nao enxerga as irmas):
+    /// - Daily InProgress (de hoje OU abandonada ha mais tempo): Resume - retomar de onde parou
+    ///   sempre vale, ja que so pode existir uma InProgress por vez (ver guard abaixo). Concluir
+    ///   essa "Daily atrasada" hoje conta como a Daily de hoje: ver proxima regra.
     /// - Daily de hoje concluida: Replay (repeticao livre, sem limite).
     /// - Daily concluida em um dia anterior: Replay quando nao ha nenhuma Daily InProgress no
     ///   momento (repeticao deliberada, sempre dentro da mesma Weekly).
-    /// - Daily ainda nao iniciada e de hoje: Start, mas so se (a) nao houver nenhuma outra Daily
-    ///   InProgress nesta Weekly (de qualquer data - inclui uma atrasada ainda nao retomada) e
-    ///   (b) o usuario ainda nao concluiu nenhuma Daily hoje (limite de uma conclusao por dia
-    ///   corrido, mesmo quando essa conclusao veio de retomar um atraso).
-    /// - Daily anterior nunca iniciada (Locked/Available): ReadOnly - dia perdido, sem Resume
-    ///   possivel (nao ha "de onde retomar").
+    /// - Daily ainda nao iniciada: Start, mas so se (a) for a isNextInSequence OU uma Daily de
+    ///   reforco (reforco nunca disputa a sequencia principal, acesso sempre por link explicito),
+    ///   (b) nao houver nenhuma outra Daily InProgress nesta Weekly e (c) o usuario ainda nao
+    ///   concluiu nenhuma Daily hoje (limite de uma conclusao por dia corrido, mesmo quando essa
+    ///   conclusao veio de retomar um atraso).
+    /// - Daily ainda nao iniciada e que NAO e a isNextInSequence: bloqueada - ainda nao chegou a
+    ///   vez dela.
     ///
-    /// Nota: "Locked" e conceitual para Dailies futuras - nao ha transicao de status disparada
-    /// por scheduler/cron nenhum; a barreira e sempre resolvida comparando Daily.Date com "hoje"
-    /// aqui dentro, no momento em que o acesso e avaliado.
+    /// Fase 38b (corrige bug real, 14->15/09/2026): antes, essa barreira comparava Daily.Date
+    /// (fixado de uma vez so na matricula, 1 dia util por Daily - ver EnrollUserInCourseUseCase)
+    /// com "hoje". Qualquer folga entre esse ritmo hipotetico e o ritmo real do aluno pulava
+    /// Dailies inteiras (relatado ao vivo: concluir a Daily 1 num dia so liberou calendarmente a
+    /// Daily 4, deixando 2 e 3 presas em Locked pra sempre, sem nunca virar "a vez delas"). Agora
+    /// a barreira e sempre sequencial (isNextInSequence), nunca mais calendario.
     /// </summary>
-    public DailyAccessMode EvaluateDailyAccess(Guid dailyId, DateOnly today)
+    public DailyAccessMode EvaluateDailyAccess(Guid dailyId, DateOnly today, bool isNextInSequence)
     {
         var target = _dailies.FirstOrDefault(d => d.Id == dailyId)
             ?? throw new DomainException("Daily nao encontrada nesta Weekly.", "daily_nao_encontrada");
 
-        if (target.Date > today)
-            throw new DomainException("Nao e possivel acessar uma Daily futura.", "daily_futura");
-
-        // InProgress retoma de onde parou independente da data - e o que permite "recuperar" uma
-        // Daily abandonada num dia anterior, em vez dela ficar presa nesse status pra sempre.
+        // InProgress retoma de onde parou independente da posicao na sequencia - e o que permite
+        // "recuperar" uma Daily abandonada, mesmo que uma mais antiga ainda esteja pendente.
         if (target.Status == DailyStatus.InProgress)
             return DailyAccessMode.Resume;
 
@@ -314,10 +301,9 @@ public class Weekly : Entity
             return hasAnyInProgress ? DailyAccessMode.ReadOnly : DailyAccessMode.Replay;
         }
 
-        // Ainda nao iniciada (Locked/Available). Dia anterior nunca iniciado e dia perdido -
-        // nao ha progresso pra retomar, entao fica somente leitura (nao existe "Start atrasado").
-        if (target.Date < today)
-            return DailyAccessMode.ReadOnly;
+        // Ainda nao iniciada (Locked/Available).
+        if (!target.IsReinforcement && !isNextInSequence)
+            throw new DomainException("Esta Daily ainda nao foi liberada - conclua as anteriores primeiro.", "daily_bloqueada");
 
         var otherInProgress = _dailies.Any(d => d.Id != target.Id && d.Status == DailyStatus.InProgress);
         if (otherInProgress)
@@ -344,9 +330,9 @@ public class Weekly : Entity
     }
 
     /// <summary>Inicia, retoma ou reabre (replay) uma Daily desta Weekly, respeitando EvaluateDailyAccess.</summary>
-    public Daily StartOrResumeDaily(Guid dailyId, DateOnly today)
+    public Daily StartOrResumeDaily(Guid dailyId, DateOnly today, bool isNextInSequence)
     {
-        var mode = EvaluateDailyAccess(dailyId, today);
+        var mode = EvaluateDailyAccess(dailyId, today, isNextInSequence);
         var daily = _dailies.First(d => d.Id == dailyId);
 
         switch (mode)

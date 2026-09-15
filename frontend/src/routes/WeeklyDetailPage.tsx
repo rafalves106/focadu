@@ -12,16 +12,6 @@ import { WeeklyProjectCard } from '../components/WeeklyProjectCard';
 import { WeeklyReinforcementBadge } from '../components/WeeklyReinforcementBadge';
 import { PublicationModal } from '../components/publication/PublicationModal';
 
-const WEEKDAY_LABEL = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-
-function weekdayLabel(dateIso: string) {
-  return WEEKDAY_LABEL[new Date(`${dateIso}T00:00:00`).getDay()];
-}
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 /**
  * Visao Semanal (Fase 8, design Figma "visao-semanal") - os dias da semana em lista + card do
  * projeto + navegacao entre semanas. Reaproveita GET /api/weeklies/{id} (WeeklyDetailDto ja tem
@@ -29,8 +19,13 @@ function todayIso() {
  *
  * O mockup mostra titulo por dia (ex: "SQL Injection") e nota (ex: "92/100") que o dominio nao
  * tem (Daily nao tem titulo proprio, so Weekly tem Theme; nao ha nota media por dia) - o rotulo do
- * dia dia mostra a sigla real do dia da semana (derivada de Daily.Date) e "{aprovadas}/{total}
- * atividades" em vez de uma nota inventada.
+ * dia mostra "Dia N" e "{aprovadas}/{total} atividades" em vez de uma nota inventada.
+ *
+ * Fase 38b: o card de cada dia usava Daily.Date (comparado ao calendario real) pra decidir se o
+ * dia estava bloqueado/e-hoje - Date e fixado de uma vez so na matricula (calendario hipotetico,
+ * 1 dia util por Daily) e podia divergir do ritmo real do aluno, pulando Dailies inteiras (ver
+ * Weekly.EvaluateDailyAccess no backend). Agora usa `day.isNext` (a Daily nao-reforco de menor
+ * DayNumber ainda nao concluida em toda a matricula, resolvida no backend).
  */
 export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; courseId: string | null }) {
   const { data: weekly, error, loading, retry } = useApiResource(() => api.getWeekly(weeklyId), [weeklyId]);
@@ -42,7 +37,6 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
   if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
   if (!weekly) return null;
 
-  const today = todayIso();
   const days = weekly.dailies.filter((d) => !d.isReinforcement).sort((a, b) => a.dayNumber - b.dayNumber);
   const daysCompleted = days.filter((d) => d.status === DailyStatus.Completed).length;
   const penaltyPoints = days.reduce((sum, d) => sum + d.penaltyPoints, 0);
@@ -122,7 +116,7 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
         <div className="flex flex-1 flex-col gap-3">
           {days.map((day) => (
-            <DayCard key={day.id} day={day} isFuture={day.date > today} isToday={day.date === today} />
+            <DayCard key={day.id} day={day} />
           ))}
           <WeeklyProjectCard project={weekly.project} weeklyId={weeklyId} courseId={courseId} />
         </div>
@@ -180,18 +174,20 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
   );
 }
 
-function DayCard({ day, isFuture, isToday }: { day: DailyOverviewDto; isFuture: boolean; isToday: boolean }) {
-  const badge = isFuture ? { icon: '🔒', label: 'Bloqueado', tone: 'muted' as const } : dailyStatusBadgeProps(day.status);
+function DayCard({ day }: { day: DailyOverviewDto }) {
+  const notStarted = day.status === DailyStatus.Locked || day.status === DailyStatus.Available;
+  const isLocked = notStarted && !day.isNext;
+  const isCurrent = day.status === DailyStatus.InProgress || (notStarted && day.isNext);
+  const badge = isLocked ? { icon: '🔒', label: 'Bloqueado', tone: 'muted' as const } : dailyStatusBadgeProps(day.status);
 
   const body = (
     <div
       className={[
         'flex items-center gap-4 rounded-2xl bg-surface p-5',
-        isToday ? 'border-[1.5px] border-accent' : 'border border-stroke',
-        isFuture ? 'opacity-50' : '',
+        isCurrent ? 'border-[1.5px] border-accent' : 'border border-stroke',
+        isLocked ? 'opacity-50' : '',
       ].join(' ')}
     >
-      <span className="w-10 shrink-0 text-sm font-bold text-secondary">{weekdayLabel(day.date)}</span>
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-primary">Dia {day.dayNumber}</p>
         {day.status === DailyStatus.InProgress && day.totalActivities > 0 && (
@@ -213,7 +209,7 @@ function DayCard({ day, isFuture, isToday }: { day: DailyOverviewDto; isFuture: 
     </div>
   );
 
-  if (isFuture) return body;
+  if (isLocked) return body;
   return (
     <Link to={`/hoje?daily=${day.id}`} className="block">
       {body}

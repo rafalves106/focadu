@@ -17,7 +17,7 @@ public class ApiExceptionHandler : IExceptionHandler
     /// </summary>
     private static readonly Dictionary<string, int> DomainCodeStatusOverrides = new()
     {
-        ["daily_futura"] = StatusCodes.Status400BadRequest,
+        ["daily_bloqueada"] = StatusCodes.Status400BadRequest,
         ["daily_em_andamento"] = StatusCodes.Status409Conflict,
         ["daily_limite_diario_atingido"] = StatusCodes.Status409Conflict,
         ["daily_somente_leitura"] = StatusCodes.Status409Conflict,

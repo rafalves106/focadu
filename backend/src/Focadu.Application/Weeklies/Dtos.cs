@@ -29,6 +29,8 @@ public record DailyOverviewDto(
     bool IsReinforcement,
     int PenaltyPoints,
     bool IsWeakDay,
+    /// <summary>Fase 38b: true quando esta e a Daily nao-reforco de menor DayNumber ainda nao concluida em TODA a matricula - a unica Locked/Available que pode ser iniciada agora (ver Weekly.EvaluateDailyAccess/DailySequencing). Nunca true pra Dailies de reforco (acesso sempre por link explicito). O frontend usa isso pra saber qual dia destacar/bloquear, ja que Daily.Date nao serve mais pra isso.</summary>
+    bool IsNext,
     int TotalActivities,
     int CompletedActivities,
     int PassedActivities);

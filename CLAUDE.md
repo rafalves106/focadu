@@ -84,10 +84,22 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 37 — Sessão em 2 Colunas + Suporte Rápido de IA em Painel Fixo**
-(14/09/2026).
+Última fase concluída: **Fase 38 (rodadas 1-3, 14/09) + 38b — Bloqueio do Projeto Semanal,
+Painel de Início, e Sequenciamento de Daily por Progresso (não mais Calendário)** (15/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Sequenciamento de Daily deixou de ser por calendário (Fase 38b, bug real relatado ao vivo)**:
+  até aqui, `Daily.Date` era fixado de uma vez só na matrícula (1 dia útil por Daily) e todo
+  acesso/agendamento comparava esse calendário hipotético com "hoje" - qualquer folga entre esse
+  ritmo assumido e o ritmo real do aluno pulava Dailies inteiras (concluir a Daily 1 num dia
+  liberou calendarmente a Daily 4, prendendo 2 e 3 em `Locked` pra sempre). Agora "a próxima
+  Daily" é sempre a de menor `DayNumber` ainda não concluída em toda a matrícula
+  (`DailySequencing`), nunca mais uma comparação de data - ver `docs/fase-38/`.
+- Bloqueio do Projeto Semanal antes das Dailies da semana estarem completas, badge de status
+  "bloqueado"/carrossel de cursos na tela de início, e aviso amigável quando a sessão de hoje já
+  foi concluída (em vez de erro genérico) - Fase 38, rodadas 1-3.
+- Analogia personalizada por IA ("Pra você") corrigida pra sempre responder em português (Fase
+  38b) - era o único adapter Groq do projeto sem essa instrução explícita no prompt.
 - Sessão diária ganhou um 2º sidebar (Fase 37): coluna esquerda com "Material de hoje" + Timer
   Pomodoro, coluna direita com Caderninho de Anotações + Suporte Rápido de IA (agora card fixo,
   antes botão flutuante — o botão flutuante continua só no Projeto Semanal, que não tem esse

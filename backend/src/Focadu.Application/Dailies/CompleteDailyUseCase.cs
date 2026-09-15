@@ -73,26 +73,28 @@ public class CompleteDailyUseCase
             gemsEarned += wasReinforcementBonus ? gemBalance.CreditReinforcementBonus(today) : gemBalance.CreditDaily(today);
             gemsEarned += await _gamificationCreditor.CreditWeeklyAndMonthlyIfPerfectAsync(gemBalance, weekly, today, cancellationToken);
 
-            // So conta pro streak se a Daily e de hoje mesmo (ver Especificacao Funcional, item 2)
-            // - replay nunca chega aqui (isFirstCompletion=false), e uma Daily "de hoje" so pode
-            // ser sua 1a conclusao no dia certo (Dailies passadas ja tinham virado ReadOnly antes
-            // de conseguir uma 1a conclusao nova, ver Weekly.EvaluateDailyAccess) - a checagem
-            // ainda assim fica explicita aqui, espelhando a regra tal como descrita.
-            if (daily.Date == today)
+            // 1a conclusao sempre conta pro streak (ver Especificacao Funcional, item 2) - replay
+            // nunca chega aqui (isFirstCompletion=false), e esta acao e sempre sincrona: nao existe
+            // "completar uma Daily" em nome de um dia diferente de hoje. Fase 38b: ate aqui isso
+            // era guardado por "daily.Date == today", mas Daily.Date e fixado de uma vez so na
+            // matricula (calendario hipotetico) e pode divergir do dia real em que a 1a conclusao
+            // efetivamente acontece - com a checagem antiga, streak simplesmente parava de contar
+            // pra quem estivesse fora do ritmo assumido na matricula (o mesmo bug de fundo do
+            // atalho "/hoje", ver GetTodayUseCase).
+            if (streak is null)
             {
-                if (streak is null)
-                {
-                    streak = new UserStreak(userId);
-                    await _streakRepository.AddAsync(streak, cancellationToken);
-                }
-
-                streak.RegisterCompletion(today);
+                streak = new UserStreak(userId);
+                await _streakRepository.AddAsync(streak, cancellationToken);
             }
+
+            streak.RegisterCompletion(today);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var accessMode = weekly.EvaluateDailyAccess(dailyId, today);
+        // isNextInSequence nao importa aqui: "daily" acabou de virar Completed, e esse branch de
+        // EvaluateDailyAccess resolve antes de chegar no parametro (ver Weekly.EvaluateDailyAccess).
+        var accessMode = weekly.EvaluateDailyAccess(dailyId, today, isNextInSequence: false);
         var dailyDto = DailyStateMapper.ToDto(daily, accessMode);
 
         var weeklyReinforcement = weekly.Reinforcements.FirstOrDefault(r => r.WeakDailyIds.Contains(daily.Id));
