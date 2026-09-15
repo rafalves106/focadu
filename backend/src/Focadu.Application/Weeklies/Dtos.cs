@@ -37,6 +37,8 @@ public record WeeklyProjectDto(
     Guid Id,
     string SpecText,
     WeeklyProjectStatus Status,
+    /// <summary>Fase 38: true quando as Dailies originais da Weekly ainda nao foram todas concluidas - Weekly.SubmitProject() recusa o envio enquanto isso for verdade (ver Weekly.AreDailiesComplete). So faz sentido junto de Status=Pending; uma vez Submitted/Evaluated, sempre false.</summary>
+    bool IsLocked,
     string? SubmissionUrl,
     /// <summary>Fase 16: nota (0-100) da avaliacao, preenchida junto com Status=Evaluated. Nulo ate entao.</summary>
     int? Score,

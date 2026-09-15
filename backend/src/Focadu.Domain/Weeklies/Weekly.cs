@@ -86,17 +86,47 @@ public class Weekly : Entity
     }
 
     /// <summary>
-    /// "Modulo completo" (Fase 11): todas as Dailies originais (nao-reforco) concluidas e o
-    /// WeeklyProject avaliado. Reforco fica de fora de proposito - nao e parte do conteudo
-    /// planejado do modulo, e uma Daily de reforco pendente nunca deveria travar a prova de
-    /// aprendizado de quem ja terminou o conteudo original.
+    /// Verdadeiro quando todas as Dailies originais (nao-reforco) desta Weekly ja foram
+    /// concluidas - reforco fica de fora de proposito, mesmo criterio de IsModuleComplete()
+    /// (nao e conteudo planejado, uma Daily de reforco pendente nunca deveria travar nada aqui).
+    /// Usado tanto por IsModuleComplete() quanto por SubmitProject() (o projeto so faz sentido
+    /// depois do conteudo da semana inteira).
     /// </summary>
-    public bool IsModuleComplete()
+    public bool AreDailiesComplete()
     {
         var originalDailies = _dailies.Where(d => !d.IsReinforcement).ToList();
-        return originalDailies.Count > 0
-            && originalDailies.All(d => d.Status == DailyStatus.Completed)
-            && _project is { Status: WeeklyProjectStatus.Evaluated };
+        return originalDailies.Count > 0 && originalDailies.All(d => d.Status == DailyStatus.Completed);
+    }
+
+    /// <summary>
+    /// "Modulo completo" (Fase 11): todas as Dailies originais concluidas e o WeeklyProject
+    /// avaliado.
+    /// </summary>
+    public bool IsModuleComplete() =>
+        AreDailiesComplete() && _project is { Status: WeeklyProjectStatus.Evaluated };
+
+    /// <summary>
+    /// Envia o projeto pratico desta Weekly (Fase 38) - so permitido depois que todas as Dailies
+    /// originais ja foram concluidas: nao faz sentido pular direto pro projeto sem ver o
+    /// conteudo da semana ("chefe de fase" so deveria aparecer no fim dela). Antes desta fase
+    /// SubmitWeeklyProjectUseCase chamava WeeklyProject.Submit direto, sem nenhuma checagem -
+    /// bug reportado ao vivo (14/09/2026): o card do projeto sempre mostrava "PENDENTE" desde o
+    /// dia 1 da semana, dando a entender que dava pra enviar a qualquer momento.
+    /// </summary>
+    public WeeklyProject SubmitProject(string submissionUrl)
+    {
+        if (_project is null)
+            throw new DomainException("Esta Weekly nao tem projeto definido.", "projeto_nao_encontrado");
+
+        if (!AreDailiesComplete())
+        {
+            throw new DomainException(
+                "Termine todas as dailies desta semana antes de enviar o projeto.",
+                "projeto_semana_bloqueado");
+        }
+
+        _project.Submit(submissionUrl);
+        return _project;
     }
 
     /// <summary>Verdadeiro quando o modulo esta completo mas ainda nao tem uma publicacao Validated - trava o proximo modulo (ver StartOrResumeDailyUseCase).</summary>

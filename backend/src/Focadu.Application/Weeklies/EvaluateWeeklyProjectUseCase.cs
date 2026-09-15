@@ -96,7 +96,7 @@ public class EvaluateWeeklyProjectUseCase
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new WeeklyProjectDto(
-            project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty, project.Status, project.SubmissionUrl,
-            project.Score, project.Feedback);
+            project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty, project.Status, !weekly.AreDailiesComplete(),
+            project.SubmissionUrl, project.Score, project.Feedback);
     }
 }

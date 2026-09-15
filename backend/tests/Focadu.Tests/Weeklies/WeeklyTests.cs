@@ -298,6 +298,46 @@ public class WeeklyTests
         Assert.True(weekly.RequiresPublicationToUnlock());
     }
 
+    // Fase 38: SubmitProject so libera depois que as Dailies originais da Weekly estiverem
+    // todas concluidas - antes desta fase o projeto podia ser enviado a qualquer momento
+    // (bug reportado ao vivo, card sempre mostrava "PENDENTE" desde o dia 1 da semana).
+
+    [Fact]
+    public void SubmitProject_Throws_WhenDailiesArentAllCompleted()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        DailyFixtures.NewDaily(weekly, 1, DailyFixtures.Today);
+        weekly.InitializeProject();
+
+        var ex = Assert.Throws<DomainException>(() => weekly.SubmitProject("https://github.com/falves/x"));
+
+        Assert.Equal("projeto_semana_bloqueado", ex.Code);
+        Assert.Equal(WeeklyProjectStatus.Pending, weekly.Project!.Status);
+    }
+
+    [Fact]
+    public void SubmitProject_Succeeds_WhenAllDailiesCompleted()
+    {
+        var weekly = CompleteWeeklyDailies(DailyFixtures.NewWeekly());
+        weekly.InitializeProject();
+
+        weekly.SubmitProject("https://github.com/falves/x");
+
+        Assert.Equal(WeeklyProjectStatus.Submitted, weekly.Project!.Status);
+        Assert.Equal("https://github.com/falves/x", weekly.Project!.SubmissionUrl);
+    }
+
+    [Fact]
+    public void SubmitProject_Throws_WhenWeeklyHasNoProject()
+    {
+        var weekly = CompleteWeeklyDailies(DailyFixtures.NewWeekly());
+        // InitializeProject() nunca chamado.
+
+        var ex = Assert.Throws<DomainException>(() => weekly.SubmitProject("https://github.com/falves/x"));
+
+        Assert.Equal("projeto_nao_encontrado", ex.Code);
+    }
+
     // Fase 14: IsPerfect (bonus de Gems).
 
     [Fact]

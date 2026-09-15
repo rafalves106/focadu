@@ -44,7 +44,8 @@ public class GetWeeklyDetailUseCase
             ? null
             : new WeeklyProjectDto(
                 weekly.Project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty,
-                weekly.Project.Status, weekly.Project.SubmissionUrl, weekly.Project.Score, weekly.Project.Feedback);
+                weekly.Project.Status, !weekly.AreDailiesComplete(), weekly.Project.SubmissionUrl,
+                weekly.Project.Score, weekly.Project.Feedback);
 
         var reinforcementDtos = weekly.Reinforcements
             .Select(r => new WeeklyReinforcementSummaryDto(r.Id, weekly.Id, r.TriggeredAt, r.WeakDailyIds))
