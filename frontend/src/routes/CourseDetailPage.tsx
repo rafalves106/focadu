@@ -9,6 +9,8 @@ import { CourseDetailTabs, type CourseDetailTab } from '../components/notebook/C
 import { NotebookTab } from '../components/notebook/NotebookTab';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
 import { ProgressBar } from '../components/ProgressBar';
+import trophyIcon from '../assets/icons/trophy.png';
+import checkIcon from '../assets/icons/check.png';
 
 const VALID_TABS: CourseDetailTab[] = ['conteudo', 'caderninho'];
 
@@ -116,9 +118,10 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
             visualizacao global do Course, pra nao distrair o aluno durante a Daily"). */}
         <Link
           to={`/start?course=${courseId}&ranking=1`}
-          className="block rounded-xl border border-surface-alt py-3 text-center text-sm font-bold tracking-wide text-secondary hover:border-accent hover:text-primary"
+          className="flex items-center justify-center gap-1.5 rounded-xl border border-surface-alt py-3 text-center text-sm font-bold tracking-wide text-secondary hover:border-accent hover:text-primary"
         >
-          🏆 VER RANKING
+          <img src={trophyIcon} alt="" className="h-4 w-auto" aria-hidden="true" />
+          VER RANKING
         </Link>
         {/* Fase 17: sem lar definitivo ainda (fica pra aba "Conquistas" do Perfil, Fase 18) - por
             ora, so mais um link daqui, mesmo padrao do Ranking acima. */}
@@ -160,7 +163,11 @@ function WeekSummaryCard({
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
-          <span aria-hidden="true">{isLocked ? '🔒' : isComplete ? '✅' : '▶️'}</span>
+          {isComplete && !isLocked ? (
+            <img src={checkIcon} alt="" className="size-4" aria-hidden="true" />
+          ) : (
+            <span aria-hidden="true">{isLocked ? '🔒' : '▶️'}</span>
+          )}
           <p className="font-bold text-primary">
             Semana {weekly.number}: {weekly.theme ?? weekly.title}
           </p>

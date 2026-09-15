@@ -16,5 +16,15 @@ public enum DailyAccessMode
     Replay = 2,
 
     /// <summary>Daily de dia anterior, somente para consulta (resumo/gabarito), sem reabertura para edição.</summary>
-    ReadOnly = 3
+    ReadOnly = 3,
+
+    /// <summary>
+    /// Daily de hoje ainda não iniciada, mas bloqueada porque o usuário já gastou a única
+    /// conclusão permitida no dia corrido (limite de 1 Daily concluída por dia, mesmo se veio de
+    /// retomar um atraso - ver Weekly.EvaluateDailyAccess/"daily_limite_diario_atingido"). Só
+    /// existe vindo do atalho "/hoje" (GetTodayUseCase) - StartOrResumeDaily/GetDailyState
+    /// continuam recusando com 409 normalmente, porque ali é uma tentativa explícita de
+    /// iniciar/mutar, não uma leitura de "o que devo mostrar agora".
+    /// </summary>
+    Blocked = 4
 }

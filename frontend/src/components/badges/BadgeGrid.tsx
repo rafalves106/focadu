@@ -1,10 +1,15 @@
+import type { ReactNode } from 'react';
 import type { BadgeDto } from '../../api/types';
+import fireIcon from '../../assets/icons/fire.png';
 
 // `code` vem estável do backend (calculado sob demanda, ver GetUserBadgesUseCase) - label/ícone/
 // descrição são só apresentação, o frontend decide (mesmo padrão de DailyStatus -> lib/statusBadge.ts).
-const BADGE_INFO: Record<string, { icon: string; label: string; describe: (progress: number) => string }> = {
-  streak_7: { icon: '🔥', label: 'Chama de 7 dias', describe: (p) => `Streak recorde: ${p} dia(s)` },
-  streak_30: { icon: '🔥', label: 'Mestre de 1 Mês', describe: (p) => `Streak recorde: ${p} dia(s)` },
+// `icon` aceita ReactNode (não só string) desde a troca de emoji por PNG pixel art (pedido do
+// Falves, mesmo arquivo fire.png de StreakIndicator/StreakLostModal) - só os 2 badges de streak
+// ganharam PNG; easy_weekly/embaixador/founder continuam emoji (sem asset próprio ainda).
+const BADGE_INFO: Record<string, { icon: ReactNode; label: string; describe: (progress: number) => string }> = {
+  streak_7: { icon: <img src={fireIcon} alt="" className="size-8" />, label: 'Chama de 7 dias', describe: (p) => `Streak recorde: ${p} dia(s)` },
+  streak_30: { icon: <img src={fireIcon} alt="" className="size-8" />, label: 'Mestre de 1 Mês', describe: (p) => `Streak recorde: ${p} dia(s)` },
   easy_weekly: { icon: '🎓', label: 'Easy Weekly', describe: (p) => `${p}x semana(s) perfeita(s)` },
   embaixador: { icon: '🤝', label: 'Embaixador', describe: (p) => `${p} indicação(ões) confirmada(s)` },
   founder: { icon: '👑', label: 'Founder', describe: () => 'Entre os 20 primeiros' },

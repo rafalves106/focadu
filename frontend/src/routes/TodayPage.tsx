@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useSettings } from '../contexts/useSettings';
 import { ActivityType, AnswerMode, ActivityStatus, DailyAccessMode, type DailyStateDto, type CompleteDailyResult } from '../api/types';
 import { classifyApiError, type ApiFailure } from '../lib/apiError';
 import { ActivityScreen, Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
+import { ErrorLayout } from '../components/errors/ErrorLayout';
+import checkIcon from '../assets/icons/check.png';
 import { QuizActivity } from '../components/QuizActivity';
 import { WordMatchActivity } from '../components/WordMatchActivity';
 import { ClozeFreeTextActivity } from '../components/ClozeFreeTextActivity';
@@ -42,6 +44,28 @@ function resolveStep(daily: DailyStateDto, replayBaseline: ReplayBaseline): Step
     replayBaseline ? a.responses.length <= (replayBaseline.get(a.id) ?? 0) : a.status !== ActivityStatus.Completed,
   );
   return pending ? { kind: 'activity', activityId: pending.id } : { kind: 'done' };
+}
+
+/**
+ * `DailyAccessMode.Blocked` (Fase 37b): a Daily de hoje existe mas nao pode ser iniciada - o
+ * usuario ja gastou a unica conclusao permitida hoje, mesmo que tenha sido retomando um atraso de
+ * outro dia (ver Weekly.EvaluateDailyAccess, "daily_limite_diario_atingido"). Antes disto, esse
+ * estado nem chegava aqui formatado - `GetTodayUseCase` deixava a excecao de dominio estourar
+ * como um 409 cru, e tanto "/hoje" quanto o hub "/start" (mesmo caso de uso) mostravam a tela de
+ * erro generica em vez de avisar que a sessao do dia ja tinha acabado (bug real, corrigido junto
+ * do backend em 2026-09-14).
+ */
+function DailySessionBlockedNotice() {
+  const navigate = useNavigate();
+
+  return (
+    <ErrorLayout
+      icon={<img src={checkIcon} alt="" className="h-12 w-auto" />}
+      title="Sessão de hoje já concluída"
+      description="Você já concluiu uma sessão hoje (inclusive se foi recuperando um dia atrasado) - o limite é 1 por dia. Volte amanhã para continuar."
+      primaryAction={{ label: 'Voltar ao início', onClick: () => navigate('/start') }}
+    />
+  );
 }
 
 /**
@@ -170,14 +194,17 @@ export function TodayPage() {
   // mostrando o numero de uma sessao que ja acabou.
   useEffect(() => {
     setDailyPenalty(
-      daily && completion === null ? { penaltyPoints: daily.penaltyPoints, penaltyThreshold: daily.penaltyThreshold } : null,
+      daily && completion === null && daily.accessMode !== DailyAccessMode.Blocked
+        ? { penaltyPoints: daily.penaltyPoints, penaltyThreshold: daily.penaltyThreshold }
+        : null,
     );
     return () => setDailyPenalty(null);
   }, [daily, completion]);
 
   // Sessao "ativa" = ja temos passo pra mostrar e ainda nao concluiu - cobre as telas de
-  // atividade e o "done", mas nunca o loading/erro nem a CompletionSummary.
-  const sessionActive = daily !== null && step !== null && completion === null;
+  // atividade e o "done", mas nunca o loading/erro, a CompletionSummary, nem o aviso de
+  // DailyAccessMode.Blocked (nao ha nada pra "sair" ali, so a mensagem).
+  const sessionActive = daily !== null && step !== null && completion === null && daily.accessMode !== DailyAccessMode.Blocked;
   useSessionExitGuard(sessionActive, settings.toggle);
 
   /**
@@ -230,7 +257,9 @@ export function TodayPage() {
 
   if (loading) return <Centered text="Carregando..." />;
   if (error) return <ApiErrorScreen error={error} onRetry={() => setAttempt((n) => n + 1)} />;
-  if (!daily || !step) return null;
+  if (!daily) return null;
+  if (daily.accessMode === DailyAccessMode.Blocked) return <DailySessionBlockedNotice />;
+  if (!step) return null;
   if (completion) return <CompletionSummary result={completion} />;
   if (daily.isReinforcement && !reinforcementIntroDismissed) {
     return <ReinforcementIntroScreen onStart={() => setReinforcementIntroDismissed(true)} />;

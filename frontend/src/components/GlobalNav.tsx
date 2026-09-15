@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { CourseStatus } from '../api/types';
 import { useSettings } from '../contexts/useSettings';
+import mapIcon from '../assets/header/map-white-version.png';
 import { AiStatusBadge } from './AiStatusBadge';
 import { HeaderUserBadge } from './HeaderUserBadge';
 import { PenaltyHeaderBadge } from './gamification/PenaltyHeaderBadge';
@@ -156,9 +157,14 @@ function MobileNavItem({ to, onNavigate, children }: { to: string; onNavigate: (
 }
 
 /**
- * Botao central - "onde o player volta pro mapa" (pedido do Falves). Placeholder ate ele trazer o
- * PNG pixel art proprio (ver docs/fase-25) - troca e so substituir o emoji por um `<img>`, o resto
- * do componente (Link pra /start, tamanho, posicao central) nao muda.
+ * Botao central - "onde o player volta pro mapa" (pedido do Falves). Emoji placeholder trocado
+ * pelo PNG pixel art proprio (ver docs/fase-25) - so a versao branca (`map-white-version.png`) e
+ * usada aqui, porque o app nao tem modo claro e o fundo do header (`bg-surface`) e sempre escuro;
+ * `map-black-version.png` fica em assets/header sem uso por enquanto, pra quando precisar dela em
+ * outro lugar. A imagem (269x64, fundo transparente) ja desenha o proprio frame/borda em pixel
+ * art - sem caixa/borda extra por cima como o placeholder de emoji tinha (ficaria uma moldura
+ * dobrada); so o hover (`hover:scale-105`, mesmo padrao do botao flutuante de
+ * StudyAssistantWidget) sinaliza que e clicavel.
  */
 function MapButton() {
   return (
@@ -166,9 +172,9 @@ function MapButton() {
       to="/start"
       aria-label="Voltar para o mapa"
       title="Voltar para o mapa"
-      className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-stroke bg-surface-alt text-lg leading-none hover:border-accent"
+      className="flex shrink-0 items-center justify-center transition-transform hover:scale-105"
     >
-      🗺️
+      <img src={mapIcon} alt="Voltar para o mapa" className="h-8 w-auto" />
     </Link>
   );
 }

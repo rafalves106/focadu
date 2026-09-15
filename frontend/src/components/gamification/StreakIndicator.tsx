@@ -1,7 +1,11 @@
+import fireIcon from '../../assets/icons/fire.png';
+
 /**
  * Indicador de streak atual (Fase 14) - "🔥 STREAK DE N DIAS", mesmo padrao pill de GemBadge/
  * StatusBadge. Usado no header do StartDashboard e, com currentStreak=0, no EmptyStateStartPage
- * (estado inicial neutro pra quem ainda nao completou nada - sem alarmismo).
+ * (estado inicial neutro pra quem ainda nao completou nada - sem alarmismo). Icone trocado de
+ * emoji (🔥) por PNG pixel art (pedido do Falves) - mesmo arquivo reaproveitado em
+ * StreakLostModal/BadgeGrid.
  *
  * Fase 20 (Figma "dashboard-start", "Streak Tag"): preenchimento verde translucido + borda (era
  * so bg-surface-alt neutro) - streak > 0 e uma conquista real, ganhou destaque visual proprio; em
@@ -12,7 +16,7 @@ export function StreakIndicator({ currentStreak }: { currentStreak: number }) {
 
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${tone}`}>
-      <span aria-hidden="true">🔥</span>
+      <img src={fireIcon} alt="" className="size-3.5" aria-hidden="true" />
       STREAK DE {currentStreak} {currentStreak === 1 ? 'DIA' : 'DIAS'}
     </span>
   );
