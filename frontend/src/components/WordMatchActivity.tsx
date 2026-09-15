@@ -122,15 +122,17 @@ export function WordMatchActivity({
   activity,
   onDailyRefetched,
   onContinue,
+  onBack,
 }: {
   dailyId: string;
   daily: DailyStateDto;
   activity: DailyActivityDto;
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
+  onBack?: () => void;
 }) {
   const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || activity.responses.length > 0);
-  const { weekly, sidebar } = useMaterialSidebar(daily);
+  const { weekly, materialSidebar, sidebar } = useMaterialSidebar(daily);
 
   const [terms, setTerms] = useState(activity.wordMatchTerms);
   const [definitions, setDefinitions] = useState(activity.wordMatchDefinitions);
@@ -263,6 +265,7 @@ export function WordMatchActivity({
         rules={['1 tentativa por grupo - confirme só depois de ligar todos os pares.']}
         ctaLabel="COMEÇAR"
         onStart={() => setStarted(true)}
+        onBack={onBack}
       />
     );
   }
@@ -280,7 +283,9 @@ export function WordMatchActivity({
       eyebrow={(weekly?.theme ?? weekly?.title ?? '').toUpperCase()}
       stepLabel={`ETAPA ${stepIndex + 1} DE ${stepTotal} — LIGAR PALAVRAS`}
       progress={(stepIndex + 1) / stepTotal}
+      leftSidebar={materialSidebar}
       sidebar={sidebar}
+      onBack={onBack}
     >
       <div className="flex flex-col gap-2">
         <p className="text-[22px] font-semibold leading-[1.3] text-primary">Conecte cada termo à sua definição</p>

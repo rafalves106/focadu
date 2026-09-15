@@ -13,7 +13,7 @@ export const ActivityType = {
 } as const;
 export type ActivityType = (typeof ActivityType)[keyof typeof ActivityType];
 
-export const DailyAccessMode = { Start: 0, Resume: 1, Replay: 2, ReadOnly: 3 } as const;
+export const DailyAccessMode = { Start: 0, Resume: 1, Replay: 2, ReadOnly: 3, Blocked: 4 } as const;
 export type DailyAccessMode = (typeof DailyAccessMode)[keyof typeof DailyAccessMode];
 
 export const ActivityStatus = { Pending: 0, Completed: 1 } as const;
@@ -135,7 +135,7 @@ export interface DailyStateDto {
   status: DailyStatus;
   isReinforcement: boolean;
   penaltyPoints: number;
-  /** Fase 15: sempre EvaluationPolicy.DailyPenaltyThreshold (backend) - pro PenaltyGauge nunca hardcodar o valor. */
+  /** Fase 15: sempre EvaluationPolicy.DailyPenaltyThreshold (backend) - pro PenaltyHeaderBadge nunca hardcodar o valor. */
   penaltyThreshold: number;
   accessMode: DailyAccessMode;
   activities: DailyActivityDto[];

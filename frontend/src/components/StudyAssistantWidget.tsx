@@ -1,37 +1,25 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { api, ApiError, type StudyAssistantHistoryItem } from '../api/client';
-import { useStudyAssistantContext } from '../lib/studyAssistantContext';
-
-type ChatMessage = { role: 'user' | 'assistant'; text: string };
-
-// Espelha AskStudyAssistantUseCase.MaxQuestionLength (backend) - so pra UX (contador/corte cedo no
-// campo), a validacao de verdade e sempre no servidor.
-const MAX_QUESTION_LENGTH = 500;
+import { STUDY_ASSISTANT_MAX_QUESTION_LENGTH, useStudyAssistantChat } from '../lib/useStudyAssistantChat';
 
 /**
  * Botao flutuante + painel de chat do Suporte Rapido de IA (Fase 32 - ver
  * secret/rascunhos/visual-ui-ux.md, "Suporte Rápido de IA": "botão flutuante acessível para dúvidas
  * pontuais... interações curtas e diretas, impedindo que o usuário se perca em diálogos longos").
  *
+ * Fase 37: nas telas com "material de hoje" (`SessionLayout`/`useMaterialSidebar`), este botao
+ * flutuante deu lugar ao card fixo `StudyAssistantPanel` no sidebar (pedido explicito: "algo mais
+ * parecido com um chat" em vez do botao) - `QuickQuestionOrb`/este componente so continuam ativos
+ * onde nao ha esse sidebar (WeeklyProjectPage). Estado/logica do chat foi extraida pro hook
+ * `useStudyAssistantChat` (compartilhado com `StudyAssistantPanel`) - aqui sobra so a apresentacao
+ * flutuante (abrir/fechar, clique fora, autoscroll).
+ *
  * `messages` e o transcript LOCAL da conversa - fechar o painel (✕ ou clique fora) so esconde
  * (`open=false`), nunca apaga `messages`; some de verdade so ao trocar de atividade/pagina (o
- * componente inteiro desmonta) ou via "Limpar"/`/clear` (Fase 33, ver handleClear abaixo). Historico
- * enviado ao backend (`StudyAssistantHistoryItem[]`, Fase 33 - revisao da Fase 32, que nao mandava
- * nada de proposito) e sempre o `messages` de ANTES da pergunta atual, clampado no servidor (ver
- * AskStudyAssistantUseCase.MaxHistoryMessages) - o suficiente pra um "explica melhor" continuar
- * fazendo sentido, sem virar memoria de conversa longa.
- *
- * `context` vem de useStudyAssistantContext() - store externo que SessionLayout/WeeklyProjectPage
- * alimentam sozinhos (ver lib/studyAssistantContext.ts), sem este componente precisar de nenhuma
- * prop: renderizado sempre como `<QuickQuestionOrb/>` (SessionShell.tsx), zero argumentos.
+ * componente inteiro desmonta) ou via "Limpar"/`/clear` (Fase 33, ver useStudyAssistantChat).
  */
 export function StudyAssistantWidget() {
   const [open, setOpen] = useState(false);
-  const [question, setQuestion] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const context = useStudyAssistantContext();
+  const { question, setQuestion, messages, sending, error, handleSend, handleClear } = useStudyAssistantChat();
   const listRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -50,45 +38,12 @@ export function StudyAssistantWidget() {
 
     document.addEventListener('mousedown', handlePointerDown);
     return () => document.removeEventListener('mousedown', handlePointerDown);
-  }, [open]);
-
-  function handleClear() {
-    setMessages([]);
-    setError(null);
-  }
-
-  async function handleSend() {
-    const trimmed = question.trim();
-    if (!trimmed || sending) return;
-
-    // Atalho reconhecido localmente, nunca vira pergunta pra IA (Fase 33: no teste real, "/clear"
-    // foi enviado como texto literal e a IA respondeu "vamos limpar a conversa" sem limpar nada).
-    if (trimmed.toLowerCase() === '/clear') {
-      setQuestion('');
-      handleClear();
-      return;
-    }
-
-    const history: StudyAssistantHistoryItem[] = messages.map((m) => ({ fromUser: m.role === 'user', content: m.text }));
-    setMessages((prev) => [...prev, { role: 'user', text: trimmed }]);
-    setQuestion('');
-    setSending(true);
-    setError(null);
-
-    try {
-      const result = await api.askStudyAssistant(trimmed, context, history);
-      setMessages((prev) => [...prev, { role: 'assistant', text: result.answer }]);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Não foi possível responder agora. Tente de novo.');
-    } finally {
-      setSending(false);
-    }
-  }
+  }, [open, setOpen]);
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      void handleSend();
     }
   }
 
@@ -145,15 +100,18 @@ export function StudyAssistantWidget() {
           <div className="flex items-end gap-2 border-t border-stroke p-3">
             <textarea
               value={question}
-              onChange={(e) => setQuestion(e.target.value.slice(0, MAX_QUESTION_LENGTH))}
+              onChange={(e) => setQuestion(e.target.value.slice(0, STUDY_ASSISTANT_MAX_QUESTION_LENGTH))}
               onKeyDown={handleKeyDown}
               placeholder="Digite sua dúvida..."
               rows={1}
-              className="max-h-24 flex-1 resize-none rounded-xl border border-stroke bg-base px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+              // min-w-0 preventivo (mesmo bug corrigido em StudyAssistantPanel: textarea flex-1 sem
+              // isso nao encolhe abaixo da largura minima intrinseca do navegador) - aqui o painel e
+              // mais largo (340px) e nao chegou a estourar, mas o composer e o mesmo.
+              className="max-h-24 min-w-0 flex-1 resize-none rounded-xl border border-stroke bg-base px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
             />
             <button
               type="button"
-              onClick={handleSend}
+              onClick={() => void handleSend()}
               disabled={!question.trim() || sending}
               aria-label="Enviar pergunta"
               className="shrink-0 rounded-xl bg-accent px-3 py-2.5 text-sm font-bold text-base disabled:opacity-40"

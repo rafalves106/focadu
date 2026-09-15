@@ -19,16 +19,18 @@ export function QuizActivity({
   activity,
   onDailyRefetched,
   onContinue,
+  onBack,
 }: {
   dailyId: string;
   daily: DailyStateDto;
   activity: DailyActivityDto;
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
+  onBack?: () => void;
 }) {
   const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || activity.responses.length > 0);
   const isQuiz = activity.type === ActivityType.Quiz;
-  const { weekly, sidebar } = useMaterialSidebar(daily);
+  const { weekly, materialSidebar, sidebar } = useMaterialSidebar(daily);
 
   if (!started) {
     return (
@@ -39,6 +41,7 @@ export function QuizActivity({
         rules={['1 tentativa por pergunta - a opção correta é revelada logo depois de responder.']}
         ctaLabel={isQuiz ? 'INICIAR QUIZ' : 'COMEÇAR'}
         onStart={() => setStarted(true)}
+        onBack={onBack}
       />
     );
   }
@@ -52,7 +55,9 @@ export function QuizActivity({
       eyebrow={(weekly?.theme ?? weekly?.title ?? '').toUpperCase()}
       stepLabel={`ETAPA ${stepIndex + 1} DE ${total} — ${isQuiz ? 'QUIZ' : 'CLOZE TEST'}`}
       progress={(stepIndex + 1) / total}
+      leftSidebar={materialSidebar}
       sidebar={sidebar}
+      onBack={onBack}
     >
       <p className="text-2xl font-semibold leading-[1.3] text-primary">{activity.prompt}</p>
       <OptionsAnswer dailyId={dailyId} activity={activity} onDailyRefetched={onDailyRefetched} onContinue={onContinue} />

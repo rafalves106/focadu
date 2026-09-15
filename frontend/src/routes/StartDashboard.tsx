@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/useAuth';
 import {
   ActivityStatus,
   CourseStatus,
+  DailyAccessMode,
   DailyStatus,
   ACTIVITY_TYPE_LABEL,
   type CourseDetailDto,
@@ -180,15 +181,23 @@ function TodayCard({
         </div>
       )}
 
-      {nextActivity && (
+      {nextActivity && daily.accessMode !== DailyAccessMode.Blocked && (
         <p className="text-sm text-secondary">
           Próximo: <span className="font-semibold text-primary">{ACTIVITY_TYPE_LABEL[nextActivity.type]}</span>
         </p>
       )}
 
-      <Link to="/hoje" className="self-start rounded-xl bg-accent px-6 py-3 text-sm font-bold tracking-wide text-base">
-        {daily.status === DailyStatus.Completed ? 'REVISAR HOJE' : 'COMEÇAR HOJE'}
-      </Link>
+      {/* DailyAccessMode.Blocked (Fase 37b): usuario ja gastou a unica conclusao permitida hoje
+          (mesmo que retomando um atraso de outro dia - ver Weekly.EvaluateDailyAccess) - a Daily
+          de hoje existe mas ainda nao pode ser iniciada, entao nada aqui deve convidar a clicar
+          "COMEÇAR HOJE" (isso so voltaria a mostrar esse mesmo aviso em /hoje). */}
+      {daily.accessMode === DailyAccessMode.Blocked ? (
+        <p className="text-sm text-secondary">Você já concluiu uma sessão hoje - volte amanhã para continuar.</p>
+      ) : (
+        <Link to="/hoje" className="self-start rounded-xl bg-accent px-6 py-3 text-sm font-bold tracking-wide text-base">
+          {daily.status === DailyStatus.Completed ? 'REVISAR HOJE' : 'COMEÇAR HOJE'}
+        </Link>
+      )}
     </div>
   );
 }

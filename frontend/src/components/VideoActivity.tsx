@@ -24,12 +24,14 @@ export function VideoActivity({
   activity,
   onDailyRefetched,
   onContinue,
+  onBack,
 }: {
   dailyId: string;
   daily: DailyStateDto;
   activity: DailyActivityDto;
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
+  onBack?: () => void;
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,13 +42,20 @@ export function VideoActivity({
     loading,
     retry,
   } = useApiResource(() => api.getCuratedContent(activity.contentId!), [activity.contentId]);
-  const { weekly, sidebar } = useMaterialSidebar(daily, activity.contentId);
+  const { weekly, materialSidebar, sidebar } = useMaterialSidebar(daily, activity.contentId);
 
   if (loading) return <Centered text="Carregando vídeo..." />;
   if (contentError) return <ApiErrorScreen error={contentError} onRetry={retry} />;
   if (!content) return null;
 
+  // Fase 36: mesmo motivo de ReadingActivity - unico outro tipo sem indicador de "ja respondida".
+  const alreadyCompleted = activity.responses.length > 0;
+
   async function handleComplete() {
+    if (alreadyCompleted) {
+      onContinue();
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -71,16 +80,23 @@ export function VideoActivity({
       eyebrow={(weekly?.theme ?? weekly?.title ?? '').toUpperCase()}
       stepLabel={`ETAPA ${stepIndex + 1} DE ${total} — VÍDEO`}
       progress={(stepIndex + 1) / total}
+      leftSidebar={materialSidebar}
       sidebar={sidebar}
+      onBack={onBack}
       // Fase 32: mesma logica de ReadingActivity - da pro Suporte Rapido de IA o titulo/descricao
       // real do video (o transcript em si nao esta disponivel pro frontend, so o que a curadoria
       // registrou como descricao).
       assistantContext={`Vídeo: "${content.title}"${content.bodyText ? `\n\n${content.bodyText}` : ''}`}
     >
-      <div className="flex w-full flex-col gap-5">
-        <div className="flex w-fit items-center gap-2 rounded-full bg-surface-alt px-3 py-1.5">
-          <img src={dotSmall} alt="" className="size-1.5" />
-          <p className="text-[11px] font-medium tracking-[0.5px] text-secondary">MATERIAL: VÍDEO</p>
+      {/* w-[90%] mx-auto (era w-full): encolhe a coluna inteira (badge/video/titulo/botao) ~10% a
+          pedido - o video encolhe junto como consequencia, nao um ajuste isolado nele. */}
+      <div className="mx-auto flex w-[90%] flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex w-fit items-center gap-2 rounded-full bg-surface-alt px-3 py-1.5">
+            <img src={dotSmall} alt="" className="size-1.5" />
+            <p className="text-[11px] font-medium tracking-[0.5px] text-secondary">MATERIAL: VÍDEO</p>
+          </div>
+          {alreadyCompleted && <span className="text-xs font-medium whitespace-nowrap text-accent">✓ Já assistido</span>}
         </div>
 
         <div className="aspect-video w-full overflow-hidden rounded-xl bg-base">
@@ -112,7 +128,7 @@ export function VideoActivity({
             disabled={submitting}
             className="rounded-xl bg-accent py-4 text-center text-sm font-semibold tracking-[1px] text-base disabled:opacity-40"
           >
-            {submitting ? 'ENVIANDO...' : 'ASSISTIDO — PRÓXIMA ETAPA'}
+            {alreadyCompleted ? 'PRÓXIMA ETAPA' : submitting ? 'ENVIANDO...' : 'ASSISTIDO — PRÓXIMA ETAPA'}
           </button>
         </div>
       </div>

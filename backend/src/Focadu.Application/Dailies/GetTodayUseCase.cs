@@ -1,6 +1,7 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
 using Focadu.Domain.Enums;
+using Focadu.Domain.Exceptions;
 using Focadu.Domain.Repositories;
 
 namespace Focadu.Application.Dailies;
@@ -78,7 +79,23 @@ public class GetTodayUseCase
         if (weekly is null || daily is null)
             throw new NotFoundException("daily_hoje_nao_encontrada", "Nenhuma Daily cadastrada para hoje.");
 
-        var accessMode = weekly.EvaluateDailyAccess(daily.Id, today);
+        DailyAccessMode accessMode;
+        try
+        {
+            accessMode = weekly.EvaluateDailyAccess(daily.Id, today);
+        }
+        catch (DomainException ex) when (ex.Code == "daily_limite_diario_atingido")
+        {
+            // "/hoje" e um GET best-effort ("o que devo mostrar agora?") - diferente de
+            // StartOrResumeDaily/CompleteDaily, que legitimamente precisam recusar a mutacao com
+            // 409 quando o limite diario ja foi atingido (ate mesmo por retomar uma Daily
+            // atrasada de outro dia - ver Weekly.EvaluateDailyAccess). Aqui isso nao e um erro,
+            // e sim um estado real pra descrever: a Daily de hoje existe, so nao pode ser
+            // iniciada ainda. Sem este catch, terminar QUALQUER Daily hoje derrubava tanto
+            // "/hoje" quanto o hub "/start" (que reusa este caso de uso) com um 409 cru - bug
+            // real, descoberto em 2026-09-14 ao lado do fix de retomada de Daily atrasada acima.
+            accessMode = DailyAccessMode.Blocked;
+        }
 
         return DailyStateMapper.ToDto(daily, accessMode);
     }

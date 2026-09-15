@@ -28,12 +28,14 @@ export function ClozeFreeTextActivity({
   activity,
   onDailyRefetched,
   onContinue,
+  onBack,
 }: {
   dailyId: string;
   daily: DailyStateDto;
   activity: DailyActivityDto;
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
+  onBack?: () => void;
 }) {
   const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || activity.responses.length > 0);
   const [transcript, setTranscript] = useState('');
@@ -42,7 +44,7 @@ export function ClozeFreeTextActivity({
   const [error, setError] = useState<string | null>(null);
   const [expectedAnswer, setExpectedAnswer] = useState(activity.expectedAnswer);
   const [lastResponse, setLastResponse] = useState(activity.responses.at(-1) ?? null);
-  const { weekly, sidebar } = useMaterialSidebar(daily);
+  const { weekly, materialSidebar, sidebar } = useMaterialSidebar(daily);
 
   const answered = lastResponse !== null;
 
@@ -78,6 +80,7 @@ export function ClozeFreeTextActivity({
         rules={['1 tentativa - sem retorno.', 'Uma justificativa breve é opcional, antes de ver o gabarito.']}
         ctaLabel="COMEÇAR"
         onStart={() => setStarted(true)}
+        onBack={onBack}
       />
     );
   }
@@ -91,7 +94,9 @@ export function ClozeFreeTextActivity({
       eyebrow={(weekly?.theme ?? weekly?.title ?? '').toUpperCase()}
       stepLabel={`ETAPA ${stepIndex + 1} DE ${total} — CLOZE TEST`}
       progress={(stepIndex + 1) / total}
+      leftSidebar={materialSidebar}
       sidebar={sidebar}
+      onBack={onBack}
     >
       <div className="flex flex-col gap-2">
         <p className="text-[11px] font-semibold tracking-[1.5px] text-muted uppercase">Cloze test</p>

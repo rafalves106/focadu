@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useSettings } from '../contexts/useSettings';
 import { ActivityType, AnswerMode, ActivityStatus, DailyAccessMode, type DailyStateDto, type CompleteDailyResult } from '../api/types';
 import { classifyApiError, type ApiFailure } from '../lib/apiError';
 import { ActivityScreen, Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
+import { ErrorLayout } from '../components/errors/ErrorLayout';
+import checkIcon from '../assets/icons/check.png';
 import { QuizActivity } from '../components/QuizActivity';
 import { WordMatchActivity } from '../components/WordMatchActivity';
 import { ClozeFreeTextActivity } from '../components/ClozeFreeTextActivity';
@@ -15,7 +17,7 @@ import { ReadingActivity } from '../components/ReadingActivity';
 import { VideoActivity } from '../components/VideoActivity';
 import { CompletionSummary } from '../components/CompletionSummary';
 import { ReinforcementIntroScreen } from '../components/ReinforcementIntroScreen';
-import { PenaltyGauge } from '../components/gamification/PenaltyGauge';
+import { setDailyPenalty } from '../lib/dailyPenaltyContext';
 
 // "Pino" do passo atual - so identifica QUAL atividade mostrar, nunca guarda uma copia dos dados
 // (que vem sempre fresca de `daily.activities`) - so avancamos quando o usuario clica
@@ -33,12 +35,37 @@ type Step = { kind: 'activity'; activityId: string } | { kind: 'done' };
  */
 type ReplayBaseline = Map<string, number> | null;
 
+/** So usada pra posicionar o `step` inicial ao carregar a Daily (1a atividade ainda nao
+ * concluida) - Fase 36: NAO e mais rechamada a cada "Continuar" (ver handleContinue), que agora
+ * so anda 1 posicao a frente do `step` atual em vez de reavaliar "qual a 1a pendente" do zero. */
 function resolveStep(daily: DailyStateDto, replayBaseline: ReplayBaseline): Step {
   const sorted = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
   const pending = sorted.find((a) =>
     replayBaseline ? a.responses.length <= (replayBaseline.get(a.id) ?? 0) : a.status !== ActivityStatus.Completed,
   );
   return pending ? { kind: 'activity', activityId: pending.id } : { kind: 'done' };
+}
+
+/**
+ * `DailyAccessMode.Blocked` (Fase 37b): a Daily de hoje existe mas nao pode ser iniciada - o
+ * usuario ja gastou a unica conclusao permitida hoje, mesmo que tenha sido retomando um atraso de
+ * outro dia (ver Weekly.EvaluateDailyAccess, "daily_limite_diario_atingido"). Antes disto, esse
+ * estado nem chegava aqui formatado - `GetTodayUseCase` deixava a excecao de dominio estourar
+ * como um 409 cru, e tanto "/hoje" quanto o hub "/start" (mesmo caso de uso) mostravam a tela de
+ * erro generica em vez de avisar que a sessao do dia ja tinha acabado (bug real, corrigido junto
+ * do backend em 2026-09-14).
+ */
+function DailySessionBlockedNotice() {
+  const navigate = useNavigate();
+
+  return (
+    <ErrorLayout
+      icon={<img src={checkIcon} alt="" className="h-12 w-auto" />}
+      title="Sessão de hoje já concluída"
+      description="Você já concluiu uma sessão hoje (inclusive se foi recuperando um dia atrasado) - o limite é 1 por dia. Volte amanhã para continuar."
+      primaryAction={{ label: 'Voltar ao início', onClick: () => navigate('/start') }}
+    />
+  );
 }
 
 /**
@@ -79,9 +106,16 @@ function useSessionExitGuard(active: boolean, onIntercept: () => void) {
 /**
  * `/hoje` (Fase 25: voltou pra dentro do shell `<App/>`, ganhou o `GlobalNav` como todo o resto da
  * plataforma - era full-bleed desde a Fase 20 pra nao colidir com o PenaltyGauge/botao de
- * configuracoes fixos no topo, ver "PenaltyGauge" abaixo pro reajuste). `<App/>` cuida do
- * `<ErrorBoundary key={pathname+search}>` agora (`+search` cobre `/hoje` navegando entre Dailies
- * via `?daily=` sem trocar de rota - sem isso um crash nao seria "esquecido" ao trocar de Daily).
+ * configuracoes fixos no topo). `<App/>` cuida do `<ErrorBoundary key={pathname+search}>` agora
+ * (`+search` cobre `/hoje` navegando entre Dailies via `?daily=` sem trocar de rota - sem isso um
+ * crash nao seria "esquecido" ao trocar de Daily).
+ *
+ * Fase 36: o contador de erros (antigo `PenaltyGauge` fixo `left-6 top-[72px]`, citado no
+ * parágrafo acima) mudou de lugar - agora vive no `GlobalNav` (badge no header), publicado via
+ * `dailyPenaltyContext` (ver useEffect logo abaixo do `resolveStep`). `SessionLayout` continua
+ * com o mesmo `pt-20` de sempre (ver SessionShell.tsx) - a folga ali era pro badge fixo antigo,
+ * hoje meio "orfã" mas inofensiva (só espaço vazio) e não vale reajustar o layout de toda tela de
+ * sessão por causa disso sozinho.
  *
  * GET /api/today - a Daily ativa de hoje. Aceita um override opcional `?daily=` (nao documentado
  * como rota separada - so um parametro a mais na mesma rota `/hoje`) pra reaproveitar toda essa
@@ -153,13 +187,56 @@ export function TodayPage() {
     if (daily && step === null) setStep(resolveStep(daily, replayBaseline));
   }, [daily, step, replayBaseline]);
 
+  // Fase 36: publica o contador de erros da Daily atual pro GlobalNav (ver dailyPenaltyContext) -
+  // mesma janela de visibilidade que o badge fixo antigo tinha (nunca durante a CompletionSummary,
+  // ver early return abaixo). Limpa ao sair da tela de qualquer jeito (completar a Daily, trocar de
+  // Daily via `attempt`/`overrideDailyId`, ou desmontar), senao o badge do header ficaria preso
+  // mostrando o numero de uma sessao que ja acabou.
+  useEffect(() => {
+    setDailyPenalty(
+      daily && completion === null && daily.accessMode !== DailyAccessMode.Blocked
+        ? { penaltyPoints: daily.penaltyPoints, penaltyThreshold: daily.penaltyThreshold }
+        : null,
+    );
+    return () => setDailyPenalty(null);
+  }, [daily, completion]);
+
   // Sessao "ativa" = ja temos passo pra mostrar e ainda nao concluiu - cobre as telas de
-  // atividade e o "done", mas nunca o loading/erro nem a CompletionSummary.
-  const sessionActive = daily !== null && step !== null && completion === null;
+  // atividade e o "done", mas nunca o loading/erro, a CompletionSummary, nem o aviso de
+  // DailyAccessMode.Blocked (nao ha nada pra "sair" ali, so a mensagem).
+  const sessionActive = daily !== null && step !== null && completion === null && daily.accessMode !== DailyAccessMode.Blocked;
   useSessionExitGuard(sessionActive, settings.toggle);
 
+  /**
+   * Avanca pra PROXIMA atividade na ordem (`orderIndex + 1` a partir do `step` atual) - nunca
+   * mais recalcula "primeira nao concluida" (`resolveStep`) a cada Continuar, so no carregamento
+   * inicial da Daily (ver useEffect acima). As duas formas davam o mesmo resultado enquanto o
+   * fluxo era estritamente sequencial, mas divergiam ao voltar por "Etapa anterior" (Fase 36): re-
+   * rodar `resolveStep` a partir de uma etapa ja concluida pulava direto pra etapa real em
+   * andamento, em vez de so avancar 1 - descoberto numa verificacao ao vivo (usuario esperava ir
+   * da Etapa 1 revisitada pra Etapa 2, nao pulava pra Etapa 4). `daily.activities` no closure
+   * pode estar 1 render atrasado (a resposta acabou de ser submetida) mas isso nao importa aqui -
+   * so a ORDEM/identidade das atividades e usada, nunca status/responses, e essas nao mudam.
+   */
   function handleContinue() {
-    setStep(null);
+    if (!daily || step?.kind !== 'activity') {
+      setStep(null); // defensivo - nao deveria disparar fora de um step de atividade.
+      return;
+    }
+    const sorted = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
+    const currentIndex = sorted.findIndex((a) => a.id === step.activityId);
+    const next = currentIndex >= 0 ? sorted[currentIndex + 1] : undefined;
+    setStep(next ? { kind: 'activity', activityId: next.id } : { kind: 'done' });
+  }
+
+  /** Fase 36: pino manual num id de atividade especifico - usado por "Etapa anterior" (ver
+   * renderStep abaixo). Sempre uma atividade que ja existe em `daily.activities`, entao cada
+   * componente renderiza seu proprio estado "ja respondida" (via `activity.responses`) sozinho -
+   * nunca reabre a atividade pra responder de novo, so revisita. "Continuar" a partir dali agora
+   * so avanca 1 posicao por vez (handleContinue acima), levando de volta pra onde o aluno estava
+   * andando pra frente uma etapa de cada vez, nunca pulando direto pro fim da revisao. */
+  function goToActivity(activityId: string) {
+    setStep({ kind: 'activity', activityId });
   }
 
   async function handleComplete() {
@@ -180,31 +257,37 @@ export function TodayPage() {
 
   if (loading) return <Centered text="Carregando..." />;
   if (error) return <ApiErrorScreen error={error} onRetry={() => setAttempt((n) => n + 1)} />;
-  if (!daily || !step) return null;
+  if (!daily) return null;
+  if (daily.accessMode === DailyAccessMode.Blocked) return <DailySessionBlockedNotice />;
+  if (!step) return null;
   if (completion) return <CompletionSummary result={completion} />;
   if (daily.isReinforcement && !reinforcementIntroDismissed) {
     return <ReinforcementIntroScreen onStart={() => setReinforcementIntroDismissed(true)} />;
   }
 
-  return (
-    <>
-      {renderStep()}
-      {/* top-[72px] (era top-6): Fase 25, o GlobalNav (h-14 = 56px) voltou a ficar por cima de
-          /hoje - precisa de clearance pra nao colidir. Botao de engrenagem proprio saiu (o item
-          "Configurações" do GlobalNav abre o mesmo <SettingsMenu>, agora 1 instancia so pro app
-          inteiro - ver SettingsProvider). */}
-      <div className="fixed left-6 top-[72px] z-40">
-        <PenaltyGauge penaltyPoints={daily.penaltyPoints} penaltyThreshold={daily.penaltyThreshold} />
-      </div>
-    </>
-  );
+  // Fase 36: o contador de erros saiu daqui (badge fixo `left-6 top-[72px]`) e foi pro header
+  // (GlobalNav, via dailyPenaltyContext acima) - reportado numa verificacao ao vivo como confuso
+  // ali, parecendo um contador de etapa por estar tao perto do SessionTopBar.
+  return renderStep();
 
   function renderStep() {
     if (!daily || !step) return null;
 
+    const sortedActivities = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
+
     if (step.kind === 'done') {
+      const lastActivity = sortedActivities.at(-1);
       return (
         <ActivityScreen eyebrow="Quase lá" title="Você respondeu tudo por hoje.">
+          {lastActivity && (
+            <button
+              type="button"
+              onClick={() => goToActivity(lastActivity.id)}
+              className="w-fit text-sm text-muted hover:text-primary"
+            >
+              &larr; Etapa anterior
+            </button>
+          )}
           <button
             type="button"
             onClick={handleComplete}
@@ -225,6 +308,11 @@ export function TodayPage() {
       return null;
     }
 
+    // Fase 36: "Etapa anterior" - omitido na 1a atividade da Daily (nada pra onde voltar).
+    const activityIndex = sortedActivities.findIndex((a) => a.id === rawActivity.id);
+    const previousActivity = activityIndex > 0 ? sortedActivities[activityIndex - 1] : null;
+    const onBack = previousActivity ? () => goToActivity(previousActivity.id) : undefined;
+
     // Em replay, corta as respostas desta passada anterior - os componentes de atividade decidem
     // seu proprio "ja respondida" via `activity.responses.length > 0`/`.at(-1)`, sem isso eles
     // pulariam direto pro feedback antigo em vez de pedir uma resposta nova (ver ReplayBaseline).
@@ -240,6 +328,7 @@ export function TodayPage() {
           activity={activity}
           onDailyRefetched={setDaily}
           onContinue={handleContinue}
+          onBack={onBack}
         />
       );
     }
@@ -253,6 +342,7 @@ export function TodayPage() {
           activity={activity}
           onDailyRefetched={setDaily}
           onContinue={handleContinue}
+          onBack={onBack}
         />
       );
     }
@@ -266,6 +356,7 @@ export function TodayPage() {
           activity={activity}
           onDailyRefetched={setDaily}
           onContinue={handleContinue}
+          onBack={onBack}
         />
       );
     }
@@ -279,6 +370,7 @@ export function TodayPage() {
           activity={activity}
           onDailyRefetched={setDaily}
           onContinue={handleContinue}
+          onBack={onBack}
         />
       );
     }
@@ -292,6 +384,7 @@ export function TodayPage() {
           activity={activity}
           onDailyRefetched={setDaily}
           onContinue={handleContinue}
+          onBack={onBack}
         />
       );
     }
@@ -305,6 +398,7 @@ export function TodayPage() {
           activity={activity}
           onDailyRefetched={setDaily}
           onContinue={handleContinue}
+          onBack={onBack}
         />
       );
     }
@@ -318,6 +412,7 @@ export function TodayPage() {
         activity={activity}
         onDailyRefetched={setDaily}
         onContinue={handleContinue}
+        onBack={onBack}
       />
     );
   }

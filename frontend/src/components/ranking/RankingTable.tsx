@@ -1,7 +1,15 @@
+import type { ReactNode } from 'react';
 import type { RankingEntryDto } from '../../api/types';
 import { nameColorClass } from '../../lib/cosmeticStyle';
+import medalGoldIcon from '../../assets/icons/medal-gold.png';
 
-const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+// So o 1o lugar tem PNG pixel art proprio (pedido do Falves) - 2o/3o continuam emoji ate ter as
+// versoes prata/bronze (decisao explicita, nao esquecimento).
+const MEDAL: Record<number, ReactNode> = {
+  1: <img src={medalGoldIcon} alt="" className="inline-block h-6 w-auto" />,
+  2: '🥈',
+  3: '🥉',
+};
 
 /** Lista dos primeiros colocados de um ranking (Fase 16) - destaca `highlightUserId` (o próprio usuário) quando ele aparece no top N. */
 export function RankingTable({ entries, highlightUserId }: { entries: RankingEntryDto[]; highlightUserId: string }) {

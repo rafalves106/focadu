@@ -36,12 +36,14 @@ export function RoleplayActivity({
   activity,
   onDailyRefetched,
   onContinue,
+  onBack,
 }: {
   dailyId: string;
   daily: DailyStateDto;
   activity: DailyActivityDto;
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
+  onBack?: () => void;
 }) {
   const nodesById = new Map(activity.roleplayNodes.map((n) => [n.id, n]));
   const startNode = activity.roleplayNodes.find((n) => n.nodeKey === 'start') ?? activity.roleplayNodes[0];
@@ -52,7 +54,7 @@ export function RoleplayActivity({
   const [error, setError] = useState<string | null>(null);
   const [lastResponse, setLastResponse] = useState(activity.responses.at(-1) ?? null);
   const [finalNode, setFinalNode] = useState<RoleplayNodeDto | null>(null);
-  const { weekly, sidebar } = useMaterialSidebar(daily);
+  const { weekly, materialSidebar, sidebar } = useMaterialSidebar(daily);
 
   const answered = lastResponse !== null;
   const currentNode = currentNodeId ? nodesById.get(currentNodeId) : undefined;
@@ -102,6 +104,7 @@ export function RoleplayActivity({
         rules={['Cada decisão leva a um desfecho diferente.', 'Só é possível responder ao chegar num desfecho (nó terminal).']}
         ctaLabel="COMEÇAR"
         onStart={() => setStarted(true)}
+        onBack={onBack}
       />
     );
   }
@@ -116,7 +119,9 @@ export function RoleplayActivity({
         eyebrow={(weekly?.theme ?? weekly?.title ?? '').toUpperCase()}
         stepLabel={`ETAPA ${stepIndex + 1} DE ${total} — ROLEPLAY`}
         progress={(stepIndex + 1) / total}
+        leftSidebar={materialSidebar}
         sidebar={sidebar}
+        onBack={onBack}
       >
         <p className="text-secondary">Esta atividade ainda não tem diálogo configurado.</p>
       </SessionLayout>
@@ -128,7 +133,9 @@ export function RoleplayActivity({
       eyebrow={(weekly?.theme ?? weekly?.title ?? '').toUpperCase()}
       stepLabel={`ETAPA ${stepIndex + 1} DE ${total} — ROLEPLAY`}
       progress={(stepIndex + 1) / total}
+      leftSidebar={materialSidebar}
       sidebar={sidebar}
+      onBack={onBack}
     >
       <span className="w-fit rounded-full border border-project bg-project/15 px-3 py-2 text-[11px] font-bold tracking-[0.5px] text-project uppercase">
         Roleplay de decisões

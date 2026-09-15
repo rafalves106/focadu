@@ -123,19 +123,21 @@ export function VoiceSummaryActivity({
   activity,
   onDailyRefetched,
   onContinue,
+  onBack,
 }: {
   dailyId: string;
   daily: DailyStateDto;
   activity: DailyActivityDto;
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
+  onBack?: () => void;
 }) {
   const [state, setState] = useState<RecorderState>(activity.responses.length > 0 ? 'answered' : 'idle');
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [lastResponse, setLastResponse] = useState(activity.responses.at(-1) ?? null);
   const [showNotes, setShowNotes] = useState(false);
-  const { weekly, sidebar } = useMaterialSidebar(daily);
+  const { weekly, materialSidebar, sidebar } = useMaterialSidebar(daily);
   const { spokenChars, supported: voiceSupported, replay: replayPrompt } = usePromptVoice(activity.prompt ?? '');
 
   // Defensivo (ver doc da classe acima) - fecha sozinho se a gravacao comecar com o modal aberto.
@@ -236,8 +238,14 @@ export function VoiceSummaryActivity({
       eyebrow={(weekly?.theme ?? weekly?.title ?? '').toUpperCase()}
       stepLabel={`ETAPA ${stepIndex + 1} DE ${total} — RESUMO FALADO`}
       progress={(stepIndex + 1) / total}
+      leftSidebar={materialSidebar}
       sidebar={sidebar}
       card={state === 'answered'}
+      // Fase 36: escondido durante gravacao/envio - mesma cautela de "Ver minhas anotacoes"
+      // (linha abaixo): trocar de atividade nesses estados abandonaria o MediaRecorder no meio do
+      // caminho (o cleanup de unmount para as tracks, o que dispara onstop e sobe um audio parcial
+      // sozinho - ver handleStart/useEffect de cleanup).
+      onBack={state === 'recording' || state === 'submitting' ? undefined : onBack}
     >
       {state !== 'answered' && (
         <div className="flex max-w-[560px] flex-col items-start gap-3">

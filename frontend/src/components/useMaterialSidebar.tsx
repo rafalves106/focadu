@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { ActivityStatus, type DailyStateDto } from '../api/types';
+import { StudyAssistantPanel } from './assistant/StudyAssistantPanel';
 import { ContentPreviewModal } from './ContentPreviewModal';
 import { MaterialSidebar } from './MaterialSidebar';
 import { QuickNotePanel } from './notebook/QuickNotePanel';
+import { PomodoroWidget } from './pomodoro/PomodoroWidget';
 
 /**
  * "Material de hoje" pronto pra usar (Fase 19) - busca a Weekly (pra pegar `curatedContents`) e
@@ -14,9 +16,25 @@ import { QuickNotePanel } from './notebook/QuickNotePanel';
  * Reading/Video (unicos tipos com ContentId proprio de leitura/video, ver DailyActivity.ctor) -
  * as outras atividades passam `null` (nenhum item em destaque, so os concluidos aparecem).
  *
- * Fase 29: ganhou o `<QuickNotePanel>` do Caderninho de Anotacoes empilhado embaixo do
- * `<MaterialSidebar>` - decisao do rascunho (secret/rascunhos/caderninho-de-anotacoes.md):
- * nenhuma funcionalidade atual (reler/reassistir material) e perdida, so acrescenta.
+ * Fase 29: ganhou o `<QuickNotePanel>` do Caderninho de Anotacoes - decisao do rascunho
+ * (secret/rascunhos/caderninho-de-anotacoes.md): nenhuma funcionalidade atual (reler/reassistir
+ * material) e perdida, so acrescenta.
+ *
+ * Fase 36: mesmo padrao aditivo, mais o `<PomodoroWidget>` (ver
+ * secret/rascunhos/timer-pomodoro-sessao.md) - timer manual (aluno liga/desliga, sem relacao com
+ * Daily.Start/Resume/Complete), sincronizado com a versao compacta do header via
+ * `lib/pomodoroTimer` (store modulo-level, mesmo padrao de dailyPenaltyContext).
+ *
+ * Fase 37: reagrupado em 2 colunas balanceadas (pedido explicito) - `materialSidebar` (esquerda,
+ * vira `leftSidebar` no `SessionLayout`) tem "Material de hoje" + `<PomodoroWidget>` (movido pra
+ * ca, antes ficava com o Caderninho); `sidebar` (direita) tem `<QuickNotePanel>` + o novo
+ * `<StudyAssistantPanel>` (Suporte Rapido de IA em formato de card fixo, ver doc daquele arquivo -
+ * substitui o botao flutuante `StudyAssistantWidget` nestas telas). As colunas ficam com a mesma
+ * altura do cartao central via `items-stretch` no `SessionLayout`; a coluna esquerda deixa o
+ * PROPRIO `<PomodoroWidget>` crescer pra preencher o espaco sobrando (`flex-1` nele mesmo, ver doc
+ * daquele arquivo - pedido explicito: "o card podia ocupar esse espaco" em vez de sobrar vao vazio
+ * acima dele). A coluna direita ainda usa `justify-between` (Caderninho de tamanho fixo + vao antes
+ * do chat) - candidato a virar o mesmo padrao se pedirem simetria com a esquerda.
  *
  * Arquivo proprio (separado de SessionShell.tsx) pelo mesmo motivo de lib/statusBadge.ts -
  * co-exportar hook e componente do mesmo arquivo quebra o fast refresh.
@@ -33,7 +51,7 @@ export function useMaterialSidebar(daily: DailyStateDto, activeContentId: string
   // sidebar mostraria a semana inteira.
   const todaysContentIds = new Set(daily.activities.filter((a) => a.contentId).map((a) => a.contentId!));
 
-  const sidebar = weekly ? (
+  const materialSidebar = weekly ? (
     <div className="flex flex-col gap-4">
       <MaterialSidebar
         contents={weekly.curatedContents.filter((c) => todaysContentIds.has(c.id))}
@@ -41,10 +59,24 @@ export function useMaterialSidebar(daily: DailyStateDto, activeContentId: string
         completedContentIds={completedContentIds}
         onSelect={setPreviewContentId}
       />
-      <QuickNotePanel dailyId={daily.id} courseId={weekly.courseId} />
-      {previewContentId && <ContentPreviewModal contentId={previewContentId} onClose={() => setPreviewContentId(null)} />}
+      <PomodoroWidget />
+      {previewContentId && (
+        <ContentPreviewModal
+          contentId={previewContentId}
+          dailyId={daily.id}
+          courseId={weekly.courseId}
+          onClose={() => setPreviewContentId(null)}
+        />
+      )}
     </div>
   ) : undefined;
 
-  return { weekly, sidebar };
+  const sidebar = weekly ? (
+    <div className="flex flex-col justify-between gap-4">
+      <QuickNotePanel dailyId={daily.id} courseId={weekly.courseId} />
+      <StudyAssistantPanel />
+    </div>
+  ) : undefined;
+
+  return { weekly, materialSidebar, sidebar };
 }

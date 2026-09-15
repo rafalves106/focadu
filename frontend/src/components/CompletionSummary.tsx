@@ -1,5 +1,8 @@
 import { Link } from 'react-router-dom';
 import type { CompleteDailyResult } from '../api/types';
+import checkIcon from '../assets/icons/check.png';
+import trophyIcon from '../assets/icons/trophy.png';
+import gemIcon from '../assets/icons/gem.png';
 
 /**
  * Tela pos-conclusao de POST .../complete. Reforco diario/semanal, quando existe, ja foi
@@ -26,7 +29,7 @@ export function CompletionSummary({ result }: { result: CompleteDailyResult }) {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-4 p-6 text-center">
-      <p className="text-4xl">✅</p>
+      <img src={checkIcon} alt="" className="h-12 w-auto" />
       <h1 className="text-2xl font-semibold text-primary">Sessão concluída!</h1>
 
       {/* Discreto de proposito - texto pequeno, sem popup/confete (minimalismo do produto, ver
@@ -35,9 +38,13 @@ export function CompletionSummary({ result }: { result: CompleteDailyResult }) {
           "Bonus de Superacao" no lugar do texto padrao quando veio de um reforco bem-sucedido. */}
       {result.gemsEarned > 0 &&
         (result.wasReinforcementBonus ? (
-          <p className="text-sm font-semibold text-accent">🎯 Bônus de Superação: +{result.gemsEarned} 💎</p>
+          <p className="flex items-center gap-1 text-sm font-semibold text-accent">
+            🎯 Bônus de Superação: +{result.gemsEarned} <img src={gemIcon} alt="" className="size-3.5" />
+          </p>
         ) : (
-          <p className="text-sm font-semibold text-primary">+{result.gemsEarned} 💎</p>
+          <p className="flex items-center gap-1 text-sm font-semibold text-primary">
+            +{result.gemsEarned} <img src={gemIcon} alt="" className="size-3.5" />
+          </p>
         ))}
 
       {approvalRate !== null && (
@@ -49,7 +56,8 @@ export function CompletionSummary({ result }: { result: CompleteDailyResult }) {
             </p>
             {mastered && (
               <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-                🏆 Conceito Dominado
+                <img src={trophyIcon} alt="" className="size-4" />
+                Conceito Dominado
               </p>
             )}
           </div>
