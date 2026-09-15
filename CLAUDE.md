@@ -114,9 +114,11 @@ Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` corr
 - Badge de status de IA (saúde dos provedores Groq/GitHub) no `GlobalNav` (Fase 28).
 - Caderninho de anotações pessoal do aluno (Fase 29).
 - Texto Cru da curadoria ganhou suporte a diagrama (` ```diagrama `, 4 tipos: sequência,
-  comparação, camadas, partes) e bloco de código (` ``` `) — Fases 30/31. Exemplo aplicado nos
-  Dias 1, 8 e 56; retrofit dos demais é backlog, feito sob demanda via skill
-  `aplicar-elementos-visuais`.
+  comparação, camadas, partes) e bloco de código (` ``` `) — Fases 30/31. **Retrofit dos 60 dias
+  do curso concluído em 14/09/2026** (97 diagramas aplicados via skill `aplicar-elementos-visuais`,
+  um dia por vez) — 6 dias (6, 12, 14, 18, 25, 40) ficaram conscientemente sem nenhum, por não
+  terem estrutura real que justificasse (ver nota de backlog em `secret/curadoria/CURADORIA.md`
+  seção 4). Conteúdo curado novo continua avaliado sob os mesmos critérios, via a mesma skill.
 - Mapa/personagem 2D (Fase 25) implementado mas **temporariamente desativado**; hub de entrada
   (`/start` sem params) voltou a ser o `StartDashboard` em cards — ver `docs/ARQUITETURA.md`.
 - Pendência conhecida em aberto: auditoria estática de segurança (SAST) de repositórios de
