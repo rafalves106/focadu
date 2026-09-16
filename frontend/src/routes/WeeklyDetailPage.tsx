@@ -51,7 +51,10 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
   const nextWeek = weekIndex >= 0 && weekIndex < allWeeks.length - 1 ? allWeeks[weekIndex + 1] : null;
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-8">
+    // max-w-5xl/p-8 -> max-w-6xl/px-6 py-8 (pedido explicito): mesmo ajuste ja feito em
+    // SessionShell.tsx pra sessao diaria - padding lateral menor + teto mais largo devolvem
+    // espaco pro conteudo em vez de sobrar como margem morta nas laterais.
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2 text-xs font-medium">
           <Link to="/start" className="text-accent hover:underline">
@@ -189,7 +192,10 @@ function DayCard({ day }: { day: DailyOverviewDto }) {
       ].join(' ')}
     >
       <div className="min-w-0 flex-1">
-        <p className="font-semibold text-primary">Dia {day.dayNumber}</p>
+        {day.title && (
+          <p className="text-xs font-medium uppercase tracking-wide text-secondary">Dia {day.dayNumber}</p>
+        )}
+        <p className="truncate font-semibold text-primary">{day.title ?? `Dia ${day.dayNumber}`}</p>
         {day.status === DailyStatus.InProgress && day.totalActivities > 0 && (
           <div className="mt-1.5 flex flex-col gap-1">
             <p className="text-[11px] font-medium uppercase tracking-wide text-accent">

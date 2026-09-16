@@ -260,6 +260,8 @@ export interface DailyOverviewDto {
   isWeakDay: boolean;
   /** Fase 38b: true quando esta e a Daily nao-reforco de menor DayNumber ainda nao concluida em TODA a matricula - a unica Locked/Available que pode ser iniciada agora. Date nao serve mais pra decidir isso (ver WeeklyDetailPage). */
   isNext: boolean;
+  /** Titulo do material do dia (Leitura, ou Video como fallback) - null se o dia nao tiver nenhum dos dois. So usado por WeeklyDetailPage. */
+  title: string | null;
   totalActivities: number;
   completedActivities: number;
   passedActivities: number;

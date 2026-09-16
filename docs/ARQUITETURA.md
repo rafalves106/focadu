@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 38b - Sequenciamento de Daily por Progresso (nao mais Calendario) + Analogias Sempre em Portugues**.
+> Ultima fase que atualizou este documento: **Fase 39 - Correcao de Transcricao de Voz Antes da Avaliacao + Titulo do Dia na Semana + Destaque de Semana Atual**.
 
 ## Visao geral do projeto
 
@@ -300,7 +300,8 @@ User (Email, PasswordHash, DisplayName, Interests, AdditionalProfileNotes, Profi
         ├── Daily (WeeklyId, DailyTemplateId, DayNumber, Date, Status, IsReinforcement,
         │         PenaltyPoints, ReinforcementDailyId?)     [Activities = pass-through pro Template]
         │   └── ActivityResponse (ActivityId [aponta pro DailyActivity template], AttemptNumber,
-        │                          Score, Passed, Transcript?, Justification?, AiFeedback?)
+        │                          Score, Passed, Transcript?, CorrectedTranscript? [Fase 39],
+        │                          Justification?, AiFeedback?)
         ├── WeeklyProject (Status, SubmissionUrl?)          [1:1 com Weekly - SpecText fica no Template]
         ├── WeeklyReinforcement (TriggeredAt, WeakDailyIds)
         └── ModulePublication (Status, Platform?, SubmittedUrl?, GeneratedDraft?,
@@ -1070,7 +1071,7 @@ So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio boots
 | 🔒 GET | `/api/courses` | `ListCoursesUseCase` | 200 |
 | 🔒 GET | `/api/courses/{courseId}` | `GetCourseDetailUseCase` | 200, 404 se nao existe/usuario nao matriculado (Fase 8: `WeeklyOverviewDto.Days` traz status por dia, pro mini-grid de `CourseDetailPage`) |
 | 🔒 GET | `/api/courses/{courseId}/curriculum` | `GetCourseCurriculumUseCase` (Fase 13b) | 200, 404 - curriculo (Course -> Monthly -> WeeklyTemplate), sem exigir matricula; so `/admin/conteudo` usa isso |
-| 🔒 GET | `/api/weeklies/{weeklyId}` | `GetWeeklyDetailUseCase` | 200, 404 se nao existe/nao e do usuario - Fase 15: `WeeklyDetailDto` ganhou `HasPendingWeeklyReinforcement`. Fase 29: ganhou `CourseId` (resolvido via `IMonthlyRepository.GetByIdAsync(weekly.MonthlyId)` - Weekly/instancia nao guarda CourseId direto, so Monthly/template) |
+| 🔒 GET | `/api/weeklies/{weeklyId}` | `GetWeeklyDetailUseCase` | 200, 404 se nao existe/nao e do usuario - Fase 15: `WeeklyDetailDto` ganhou `HasPendingWeeklyReinforcement`. Fase 29: ganhou `CourseId` (resolvido via `IMonthlyRepository.GetByIdAsync(weekly.MonthlyId)` - Weekly/instancia nao guarda CourseId direto, so Monthly/template). Fase 39: `DailyOverviewDto` ganhou `Title` (titulo do `CuratedContent` da atividade de Leitura do dia, Video como fallback; nulo se nenhum dos dois existir) - Daily nao tem titulo proprio, so usado por `WeeklyDetailPage` |
 | 🔒 GET | `/api/weekly-templates/{id}` | `GetWeeklyTemplateDetailUseCase` (Fase 13b) | 200, 404 - WeeklyTemplate (curriculo), sem exigir matricula; so `/admin/conteudo` usa isso |
 | 🔒 GET | `/api/dailies/{dailyId}` | `GetDailyStateUseCase` | 200, 404/400/409 (ver abaixo) |
 | 🔒 GET | `/api/today` | `GetTodayUseCase` | 200, 404/409 (ver "GET /api/today" abaixo) |
@@ -1244,20 +1245,36 @@ JSON. Fluxo de `SubmitVoiceSummaryResponseUseCase`:
    mode) com `ContentEvaluationRequest(ExpectedAnswer: BodyText ou Prompt (item 2), UserAnswer:
    transcricao, ContextText: Prompt - so quando BodyText ja foi a referencia principal; repeti-lo
    seria redundante se a referencia ja caiu no fallback do Prompt)` - retorna
-   `ContentEvaluationResult(Score, Feedback)`. O modelo original
+   `ContentEvaluationResult(Score, Feedback, CorrectedTranscript)`. O modelo original
    escolhido na Fase 5 (`llama-3.3-70b-versatile`) saiu do catalogo da Groq antes mesmo do
    primeiro teste com chave real - corrigido pra `openai/gpt-oss-120b` nessa mesma validacao (ver
    `ponytail:` no codigo de `GroqContentEvaluationService` - catalogo de modelos da Groq muda com
    frequencia, checar `GET /v1/models` se `model_not_found` aparecer de novo).
 5. Grava a resposta e checa reforco via `ActivityResponseRecorder` (mesmo passo compartilhado com
-   `SubmitActivityResponseUseCase`) - `Transcript` = transcricao, `AiFeedback` = feedback da IA,
-   `Score` = nota da IA, `Justification` = nulo (nao se aplica a VoiceSummary).
+   `SubmitActivityResponseUseCase`) - `Transcript` = transcricao bruta (Whisper), `CorrectedTranscript`
+   (Fase 39) = a mesma transcricao com correcoes da IA, `AiFeedback` = feedback da IA, `Score` = nota
+   da IA, `Justification` = nulo (nao se aplica a VoiceSummary).
 
 Prompt de avaliacao (formato confirmado com o Falves antes de implementar - decisao registrada em
 `docs/fase-5/resumo-implementacao-fase-5.md`): 1 chamada, JSON mode, pedindo 1 nota unica de 0 a
 100 que ja pondera "conteudo correto" e "clareza da explicacao" juntos, mais 1 feedback curto em
 PT-BR. Texto exato dos prompts (sistema + usuario) em
 `Focadu.Infrastructure.Services.GroqContentEvaluationService`.
+
+**Correcao de transcricao antes da avaliacao (Fase 39, bug real relatado ao vivo: erro de
+transcricao do Whisper derrubando o score injustamente).** O mesmo prompt de avaliacao agora pede
+um passo explicito de correcao ANTES de avaliar: a IA recebe instrucao de corrigir, usando
+`ExpectedAnswer`/`ContextText` como vocabulario de referencia, apenas trechos que claramente sao
+erro de reconhecimento de fala (termo tecnico deturpado foneticamente) - nunca completar, reescrever
+ou corrigir um erro conceitual real do aluno (isso e conteudo, pesa na nota). O JSON de resposta
+ganhou o campo `correctedTranscript` (`GroqEvaluationPayload`), sempre a versao que a IA de fato
+avaliou; quando ausente/vazio na resposta (defensivo contra formato antigo/parcial), `ParseEvaluation`
+cai pro `UserAnswer` original, nunca vira motivo de erro sozinho. `ActivityResponse.Transcript`
+continua guardando o texto bruto do Whisper (auditoria); `ActivityResponse.CorrectedTranscript` guarda
+o que a IA avaliou de fato - so preenchido no fluxo de `VoiceSummary`
+(`SubmitActivityResponseUseCase`, usado pelos outros tipos de atividade, sempre passa `null`). Uma
+unica chamada Groq (nao uma 2a chamada separada) - mais barato/rapido, o modelo ja suporta raciocinar
+antes do JSON final.
 
 **Resposta malformada da IA nunca vira uma nota inventada.** Se o JSON retornado pela Groq nao
 tiver `score` (inteiro 0-100) e `feedback` (string) validos, `GroqContentEvaluationService` lanca
@@ -2098,12 +2115,17 @@ frontend/
       WeeklyDetailPage.tsx        <- /start?weekly= - dias da semana + projeto + navegacao entre semanas
                                    (Fase 8); banner + trigger do PublicationModal quando
                                    `requiresPublicationToUnlock` (Fase 11); WeeklyReinforcementBadge
-                                   no cabecalho quando `hasPendingWeeklyReinforcement` (Fase 15)
+                                   no cabecalho quando `hasPendingWeeklyReinforcement` (Fase 15).
+                                   Fase 39: `DayCard` mostra `day.title` (titulo do material do dia)
+                                   em vez de so "Dia N"; container alargado (`max-w-6xl`/`px-6 py-8`,
+                                   mesmo ajuste ja feito em `SessionShell.tsx`)
       CourseDetailPage.tsx        <- /start?course= - trilha completa (semanas + mini-grid de dias)
                                    (Fase 8); badge "🔒 Bloqueado" na Weekly seguinte a uma que ainda
                                    precisa de publicacao (Fase 11); links "🏆 Ver Ranking" ->
                                    /start?course=&ranking=1 (Fase 16) e "🎖️ Conquistas" -> /conquistas
-                                   (Fase 17)
+                                   (Fase 17). Fase 39: `findCurrentWeekId` destaca (borda accent) a
+                                   1a semana acessivel e ainda incompleta em `WeekSummaryCard`, no
+                                   lugar do emoji ▶️/🔒 fixo por semana (🔒 continua so quando bloqueada)
       RankingPage.tsx            <- /start?course=&ranking=1 (Fase 16, tela 13 do inventario
                                    original) - abas Semana/Mes/Curso (RankingScopeTabs), top 10
                                    (RankingTable) + posicao do usuario sempre visivel

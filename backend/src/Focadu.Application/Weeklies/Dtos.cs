@@ -31,6 +31,8 @@ public record DailyOverviewDto(
     bool IsWeakDay,
     /// <summary>Fase 38b: true quando esta e a Daily nao-reforco de menor DayNumber ainda nao concluida em TODA a matricula - a unica Locked/Available que pode ser iniciada agora (ver Weekly.EvaluateDailyAccess/DailySequencing). Nunca true pra Dailies de reforco (acesso sempre por link explicito). O frontend usa isso pra saber qual dia destacar/bloquear, ja que Daily.Date nao serve mais pra isso.</summary>
     bool IsNext,
+    /// <summary>Titulo do material do dia (Leitura, ou Video se nao houver Leitura) - Daily nao tem titulo proprio, este e o do CuratedContent associado. Nulo quando o dia nao tem nenhuma atividade de Leitura/Video (ex: alguma Daily de reforco sintetica). So usado por WeeklyDetailPage (visao de uma semana) - as outras telas continuam mostrando so o numero do dia.</summary>
+    string? Title,
     int TotalActivities,
     int CompletedActivities,
     int PassedActivities);

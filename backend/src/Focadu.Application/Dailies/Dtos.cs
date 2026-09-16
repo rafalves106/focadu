@@ -75,6 +75,7 @@ public record ActivityResponseDto(
     int Score,
     bool Passed,
     string? Transcript,
+    string? CorrectedTranscript,
     string? Justification,
     string? AiFeedback,
     DateTime CreatedAt);

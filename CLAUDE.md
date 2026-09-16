@@ -84,10 +84,19 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 38 (rodadas 1-3, 14/09) + 38b — Bloqueio do Projeto Semanal,
-Painel de Início, e Sequenciamento de Daily por Progresso (não mais Calendário)** (15/09/2026).
+Última fase concluída: **Fase 39 — Correção de Transcrição de Voz Antes da Avaliação, Título do
+Dia na Semana e Destaque de Semana Atual** (16/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Avaliação de Resumo Falado corrige a transcrição do Whisper antes de avaliar (Fase 39, bug
+  real relatado ao vivo)**: erro de reconhecimento de fala (termo técnico deturpado foneticamente)
+  não derruba mais a nota injustamente — a IA corrige o que é claramente ruído de transcrição
+  (usando o conteúdo de referência como vocabulário) antes de avaliar, mas nunca corrige um erro
+  conceitual real do aluno. `ActivityResponse.Transcript` continua guardando o texto bruto para
+  auditoria; a versão corrigida vai para o campo novo `CorrectedTranscript`. Visão de semana
+  (`WeeklyDetailPage`) passou a mostrar o título do material de cada dia em vez de só "Dia N", e a
+  trilha do curso (`CourseDetailPage`) destaca visualmente a semana atual em vez de um emoji fixo
+  por semana.
 - **Sequenciamento de Daily deixou de ser por calendário (Fase 38b, bug real relatado ao vivo)**:
   até aqui, `Daily.Date` era fixado de uma vez só na matrícula (1 dia útil por Daily) e todo
   acesso/agendamento comparava esse calendário hipotético com "hoje" - qualquer folga entre esse

@@ -1,6 +1,8 @@
 using Focadu.Application.Dailies;
 using Focadu.Application.Exceptions;
 using Focadu.Application.Shared;
+using Focadu.Domain.Dailies;
+using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
 
 namespace Focadu.Application.Weeklies;
@@ -33,11 +35,22 @@ public class GetWeeklyDetailUseCase
         var allWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(weekly.EnrollmentId, cancellationToken);
         var nextDailyId = DailySequencing.FindNext(allWeeklies)?.Id;
 
+        // Titulo de cada dia pro frontend exibir "o que sera estudado" em vez de so "Dia N" -
+        // Daily nao tem titulo proprio (so Weekly tem Theme), entao usa o titulo do CuratedContent
+        // da atividade de Leitura do dia (Video como fallback se nao houver Leitura).
+        var contentTitleById = weekly.Template.CuratedContents.ToDictionary(c => c.Id, c => c.Title);
+        string? ResolveDailyTitle(Daily daily)
+        {
+            var material = daily.Activities.FirstOrDefault(a => a.Type == ActivityType.Reading)
+                ?? daily.Activities.FirstOrDefault(a => a.Type == ActivityType.Video);
+            return material?.ContentId is { } contentId ? contentTitleById.GetValueOrDefault(contentId) : null;
+        }
+
         var dailyDtos = weekly.Dailies
             .OrderBy(d => d.DayNumber)
             .Select(d => new DailyOverviewDto(
                 d.Id, d.DayNumber, d.Date, d.Status, d.IsReinforcement, d.PenaltyPoints, d.IsWeakDay,
-                d.Id == nextDailyId,
+                d.Id == nextDailyId, ResolveDailyTitle(d),
                 d.Activities.Count,
                 d.Activities.Count(a => d.Responses.Any(r => r.ActivityId == a.Id)),
                 d.Activities.Count(a => d.Responses.Any(r => r.ActivityId == a.Id && r.Passed))))
