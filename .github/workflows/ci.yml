@@ -28,7 +28,11 @@ jobs:
         run: dotnet build Focadu.slnx --no-restore --configuration Release
 
       - name: Test
-        run: dotnet test Focadu.slnx --no-build --configuration Release
+        # CuratedContentAllFilesTests exclu­ído: depende de secret/curadoria/ (repo privado
+        # focadu-secret), que este runner hospedado não tem acesso. Continua rodando no
+        # runner self-hosted via `docker compose exec backend dotnet test` se precisar
+        # validar isso de verdade - aqui só cobre o que é testável sem o conteúdo privado.
+        run: dotnet test Focadu.slnx --no-build --configuration Release --filter "FullyQualifiedName!~CuratedContentAllFilesTests"
 
   frontend:
     name: Frontend (Node)
