@@ -47,7 +47,7 @@ public class SubmitWeeklyProjectUseCase
         var project = weekly.Project
             ?? throw new NotFoundException("projeto_nao_encontrado", "Esta semana nao tem projeto definido.");
 
-        project.Submit(submissionUrl);
+        weekly.SubmitProject(submissionUrl);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         try
@@ -60,8 +60,8 @@ public class SubmitWeeklyProjectUseCase
             // automatica que nao rolou desta vez. Devolve o estado atual (sem Score/Feedback) em
             // vez de propagar - o frontend ja trata "AGUARDANDO AVALIAÇÃO" normalmente.
             return new WeeklyProjectDto(
-                project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty, project.Status, project.SubmissionUrl,
-                project.Score, project.Feedback);
+                project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty, project.Status, !weekly.AreDailiesComplete(),
+                project.SubmissionUrl, project.Score, project.Feedback);
         }
     }
 }

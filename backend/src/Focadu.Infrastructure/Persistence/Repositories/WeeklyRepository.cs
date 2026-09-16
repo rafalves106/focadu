@@ -46,11 +46,6 @@ public class WeeklyRepository : IWeeklyRepository
     public async Task<IReadOnlyCollection<Weekly>> GetByEnrollmentIdAsync(Guid enrollmentId, CancellationToken cancellationToken = default) =>
         await FullGraph().Where(w => w.EnrollmentId == enrollmentId).ToListAsync(cancellationToken);
 
-    public async Task<Weekly?> GetByEnrollmentAndDateAsync(Guid enrollmentId, DateOnly date, CancellationToken cancellationToken = default) =>
-        await FullGraph()
-            .Where(w => w.EnrollmentId == enrollmentId && w.Dailies.Any(d => d.Date == date))
-            .FirstOrDefaultAsync(cancellationToken);
-
     public async Task AddAsync(Weekly weekly, CancellationToken cancellationToken = default) =>
         await _context.Weeklies.AddAsync(weekly, cancellationToken);
 }

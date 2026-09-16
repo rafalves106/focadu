@@ -54,6 +54,7 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
 
   const weeks = course.monthlies.flatMap((m) => m.weeklies);
   const reinforcementCount = course.dailyReinforcements.length + course.weeklyReinforcements.length;
+  const currentWeekId = findCurrentWeekId(weeks);
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 p-8 lg:flex-row lg:items-start">
@@ -92,6 +93,7 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
                   weekly={weekly}
                   courseId={courseId}
                   isLocked={weeks[index - 1]?.requiresPublicationToUnlock ?? false}
+                  isCurrent={weekly.id === currentWeekId}
                 />
               ))}
               {weeks.length === 0 && (
@@ -136,6 +138,17 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
   );
 }
 
+/** A 1a semana acessivel (nao bloqueada por publicacao pendente da anterior) que ainda nao esta completa - so ela ganha o destaque visual de "semana atual" em WeekSummaryCard. */
+function findCurrentWeekId(weeks: WeeklyOverviewDto[]): string | null {
+  for (let index = 0; index < weeks.length; index++) {
+    const isLocked = weeks[index - 1]?.requiresPublicationToUnlock ?? false;
+    const week = weeks[index];
+    const isComplete = week.totalDailies > 0 && week.completedDailies === week.totalDailies;
+    if (!isLocked && !isComplete) return week.id;
+  }
+  return null;
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between border-t border-surface-alt pt-3 first:border-t-0 first:pt-0">
@@ -149,25 +162,27 @@ function WeekSummaryCard({
   weekly,
   courseId,
   isLocked,
+  isCurrent,
 }: {
   weekly: WeeklyOverviewDto;
   courseId: string;
   isLocked: boolean;
+  isCurrent: boolean;
 }) {
   const isComplete = weekly.totalDailies > 0 && weekly.completedDailies === weekly.totalDailies;
   const primaryDays = weekly.days.filter((d) => !d.isReinforcement).sort((a, b) => a.dayNumber - b.dayNumber);
 
   const body = (
     <div
-      className={`rounded-xl border-[1.5px] bg-surface p-5 ${isLocked ? 'opacity-50' : 'hover:border-accent'} ${isComplete ? 'border-surface-alt' : 'border-accent'}`}
+      className={`rounded-xl border-[1.5px] bg-surface p-5 ${isLocked ? 'opacity-50' : 'hover:border-accent'} ${isCurrent ? 'border-accent' : 'border-surface-alt'}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           {isComplete && !isLocked ? (
             <img src={checkIcon} alt="" className="size-4" aria-hidden="true" />
-          ) : (
-            <span aria-hidden="true">{isLocked ? '🔒' : '▶️'}</span>
-          )}
+          ) : isLocked ? (
+            <span aria-hidden="true">🔒</span>
+          ) : null}
           <p className="font-bold text-primary">
             Semana {weekly.number}: {weekly.theme ?? weekly.title}
           </p>

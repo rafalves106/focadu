@@ -52,36 +52,63 @@ public class WeeklyTests
     }
 
     [Fact]
-    public void EvaluateDailyAccess_ThrowsForFutureDaily()
+    public void EvaluateDailyAccess_Throws_WhenDailyIsNotNextInSequence()
     {
+        // Fase 38b: a barreira pra Dailies ainda nao iniciadas deixou de ser calendario
+        // (Daily.Date vs "hoje") e virou sequencia (isNextInSequence, calculado fora da Weekly -
+        // ver DailySequencing). Aqui isNextInSequence=false simula qualquer motivo pra esta Daily
+        // ainda nao ser a vez dela (ex: uma Daily anterior, em outra Weekly, ainda pendente).
         var weekly = DailyFixtures.NewWeekly();
         var today = DailyFixtures.Today;
-        var futureDaily = DailyFixtures.NewDaily(weekly, 1, today.AddDays(1));
+        var daily = DailyFixtures.NewDaily(weekly, 1, today);
 
-        Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(futureDaily.Id, today));
+        var ex = Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(daily.Id, today, isNextInSequence: false));
+        Assert.Equal("daily_bloqueada", ex.Code);
     }
 
     [Fact]
-    public void EvaluateDailyAccess_AllowsStart_ForTodayNotYetStarted()
+    public void EvaluateDailyAccess_AllowsStart_WhenNextInSequenceAndNotYetStarted()
     {
         var weekly = DailyFixtures.NewWeekly();
         var today = DailyFixtures.Today;
         var daily = DailyFixtures.NewDaily(weekly, 1, today);
 
-        Assert.Equal(DailyAccessMode.Start, weekly.EvaluateDailyAccess(daily.Id, today));
+        Assert.Equal(DailyAccessMode.Start, weekly.EvaluateDailyAccess(daily.Id, today, isNextInSequence: true));
     }
 
     [Fact]
-    public void EvaluateDailyAccess_Throws_WhenAnotherDailyInProgressToday()
+    public void EvaluateDailyAccess_AllowsStart_ForReinforcementDaily_EvenWhenNotNextInSequence()
+    {
+        // Reforco nunca disputa a sequencia principal - acesso e sempre por link explicito
+        // (Daily.ReinforcementDailyId), mesmo que nao seja a isNextInSequence.
+        var weekly = DailyFixtures.NewWeekly();
+        var today = DailyFixtures.Today;
+        var weakDaily = DailyFixtures.NewWeakDaily(weekly, 1, today);
+        var reinforcementDaily = weekly.CreateDailyReinforcement(weakDaily.Id, today);
+        weakDaily.Complete();
+
+        // "tomorrow" isola especificamente o comportamento sob teste: sem isso, o guard de "outra
+        // Daily em andamento" (weakDaily estava InProgress ate a linha acima) ou o limite diario
+        // (weakDaily.Complete() consumiu a cota de hoje) disparariam primeiro.
+        var tomorrow = today.AddDays(1);
+
+        Assert.Equal(
+            DailyAccessMode.Start,
+            weekly.EvaluateDailyAccess(reinforcementDaily.Id, tomorrow, isNextInSequence: false));
+    }
+
+    [Fact]
+    public void EvaluateDailyAccess_Throws_WhenAnotherDailyInProgress()
     {
         var weekly = DailyFixtures.NewWeekly();
         var today = DailyFixtures.Today;
         var daily1 = DailyFixtures.NewDaily(weekly, 1, today);
         var daily2 = DailyFixtures.NewDaily(weekly, 2, today);
 
-        weekly.StartOrResumeDaily(daily1.Id, today);
+        weekly.StartOrResumeDaily(daily1.Id, today, isNextInSequence: true);
 
-        Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(daily2.Id, today));
+        var ex = Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(daily2.Id, today, isNextInSequence: true));
+        Assert.Equal("daily_em_andamento", ex.Code);
     }
 
     [Fact]
@@ -94,7 +121,7 @@ public class WeeklyTests
         daily.SubmitActivityResponse(activity.Id, 100);
         daily.Complete();
 
-        Assert.Equal(DailyAccessMode.Replay, weekly.EvaluateDailyAccess(daily.Id, today));
+        Assert.Equal(DailyAccessMode.Replay, weekly.EvaluateDailyAccess(daily.Id, today, isNextInSequence: true));
     }
 
     [Fact]
@@ -107,7 +134,7 @@ public class WeeklyTests
         pastDaily.SubmitActivityResponse(activity.Id, 100);
         pastDaily.Complete();
 
-        Assert.Equal(DailyAccessMode.Replay, weekly.EvaluateDailyAccess(pastDaily.Id, today));
+        Assert.Equal(DailyAccessMode.Replay, weekly.EvaluateDailyAccess(pastDaily.Id, today, isNextInSequence: true));
     }
 
     [Fact]
@@ -127,21 +154,11 @@ public class WeeklyTests
         var todayDaily = DailyFixtures.NewDaily(weekly, 2, today);
         todayDaily.Start();
 
-        Assert.Equal(DailyAccessMode.ReadOnly, weekly.EvaluateDailyAccess(pastDaily.Id, today));
+        Assert.Equal(DailyAccessMode.ReadOnly, weekly.EvaluateDailyAccess(pastDaily.Id, today, isNextInSequence: true));
     }
 
     [Fact]
-    public void EvaluateDailyAccess_PastDaily_NeverCompleted_IsReadOnly()
-    {
-        var weekly = DailyFixtures.NewWeekly();
-        var today = DailyFixtures.Today;
-        var pastDaily = DailyFixtures.NewDaily(weekly, 1, today.AddDays(-3));
-
-        Assert.Equal(DailyAccessMode.ReadOnly, weekly.EvaluateDailyAccess(pastDaily.Id, today));
-    }
-
-    [Fact]
-    public void EvaluateDailyAccess_ResumesAbandonedPastDaily_RegardlessOfDate()
+    public void EvaluateDailyAccess_ResumesAbandonedPastDaily_RegardlessOfSequence()
     {
         // Cenario reportado: Daily iniciada ha alguns dias e nunca concluida nao pode ficar presa
         // pra sempre - precisa continuar acessivel pra retomar de onde parou.
@@ -150,22 +167,24 @@ public class WeeklyTests
         var abandonedDaily = DailyFixtures.NewDaily(weekly, 1, today.AddDays(-2));
         abandonedDaily.Start();
 
-        Assert.Equal(DailyAccessMode.Resume, weekly.EvaluateDailyAccess(abandonedDaily.Id, today));
+        Assert.Equal(DailyAccessMode.Resume, weekly.EvaluateDailyAccess(abandonedDaily.Id, today, isNextInSequence: false));
     }
 
     [Fact]
-    public void EvaluateDailyAccess_BlocksStartingTodaysDaily_WhenAnEarlierDailyIsStillInProgress()
+    public void EvaluateDailyAccess_BlocksStartingAnotherDaily_WhileAnEarlierDailyIsStillInProgress()
     {
-        // Reproduz o bug: Daily de um dia anterior fica InProgress (abandonada) e a checagem
-        // antiga so olhava Dailies com Date == hoje, entao liberava a Daily de hoje mesmo assim -
-        // resultado eram duas Dailies "Em andamento" ao mesmo tempo.
+        // Reproduz o bug original (Fase 5): uma Daily InProgress abandonada nao pode conviver com
+        // uma segunda Daily "iniciavel" ao mesmo tempo - isNextInSequence=true aqui isola
+        // especificamente o guard de "outra Daily em andamento" (na pratica, com o calculo real de
+        // DailySequencing, a Daily abandonada e sempre quem seria a proxima da sequencia).
         var weekly = DailyFixtures.NewWeekly();
         var today = DailyFixtures.Today;
         var abandonedDaily = DailyFixtures.NewDaily(weekly, 1, today.AddDays(-1));
         abandonedDaily.Start();
         var todayDaily = DailyFixtures.NewDaily(weekly, 2, today);
 
-        Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(todayDaily.Id, today));
+        var ex = Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(todayDaily.Id, today, isNextInSequence: true));
+        Assert.Equal("daily_em_andamento", ex.Code);
     }
 
     [Fact]
@@ -181,39 +200,8 @@ public class WeeklyTests
         abandonedDaily.Complete();
         var todayDaily = DailyFixtures.NewDaily(weekly, 2, today);
 
-        Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(todayDaily.Id, today));
-    }
-
-    [Fact]
-    public void GetDailyByDate_PrefersNonReinforcementDaily_WhenTwoDailiesShareTheSameDate()
-    {
-        var weekly = DailyFixtures.NewWeekly();
-        var today = DailyFixtures.Today;
-        // Dia fraco datado hoje mesmo - a reinforcement Daily gerada a partir dele tambem fica
-        // datada hoje (CreateDailyReinforcement usa a data passada como "hoje"), reproduzindo
-        // exatamente o cenario de ambiguidade da Fase 5.
-        var weakDaily = DailyFixtures.NewWeakDaily(weekly, 1, today);
-
-        var reinforcementDaily = weekly.CreateDailyReinforcement(weakDaily.Id, today);
-
-        Assert.Equal(today, weakDaily.Date);
-        Assert.Equal(today, reinforcementDaily.Date);
-        Assert.True(reinforcementDaily.IsReinforcement);
-
-        var resolved = weekly.GetDailyByDate(today);
-
-        Assert.Equal(weakDaily.Id, resolved?.Id);
-        Assert.NotEqual(reinforcementDaily.Id, resolved?.Id);
-    }
-
-    [Fact]
-    public void GetDailyByDate_ReturnsNull_WhenNoDailyMatchesTheDate()
-    {
-        var weekly = DailyFixtures.NewWeekly();
-        var today = DailyFixtures.Today;
-        DailyFixtures.NewDaily(weekly, 1, today.AddDays(-1));
-
-        Assert.Null(weekly.GetDailyByDate(today));
+        var ex = Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(todayDaily.Id, today, isNextInSequence: true));
+        Assert.Equal("daily_limite_diario_atingido", ex.Code);
     }
 
     // Fase 11: IsModuleComplete/RequiresPublicationToUnlock.
@@ -296,6 +284,46 @@ public class WeeklyTests
         publication.MarkFailed("URL invalida.");
 
         Assert.True(weekly.RequiresPublicationToUnlock());
+    }
+
+    // Fase 38: SubmitProject so libera depois que as Dailies originais da Weekly estiverem
+    // todas concluidas - antes desta fase o projeto podia ser enviado a qualquer momento
+    // (bug reportado ao vivo, card sempre mostrava "PENDENTE" desde o dia 1 da semana).
+
+    [Fact]
+    public void SubmitProject_Throws_WhenDailiesArentAllCompleted()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        DailyFixtures.NewDaily(weekly, 1, DailyFixtures.Today);
+        weekly.InitializeProject();
+
+        var ex = Assert.Throws<DomainException>(() => weekly.SubmitProject("https://github.com/falves/x"));
+
+        Assert.Equal("projeto_semana_bloqueado", ex.Code);
+        Assert.Equal(WeeklyProjectStatus.Pending, weekly.Project!.Status);
+    }
+
+    [Fact]
+    public void SubmitProject_Succeeds_WhenAllDailiesCompleted()
+    {
+        var weekly = CompleteWeeklyDailies(DailyFixtures.NewWeekly());
+        weekly.InitializeProject();
+
+        weekly.SubmitProject("https://github.com/falves/x");
+
+        Assert.Equal(WeeklyProjectStatus.Submitted, weekly.Project!.Status);
+        Assert.Equal("https://github.com/falves/x", weekly.Project!.SubmissionUrl);
+    }
+
+    [Fact]
+    public void SubmitProject_Throws_WhenWeeklyHasNoProject()
+    {
+        var weekly = CompleteWeeklyDailies(DailyFixtures.NewWeekly());
+        // InitializeProject() nunca chamado.
+
+        var ex = Assert.Throws<DomainException>(() => weekly.SubmitProject("https://github.com/falves/x"));
+
+        Assert.Equal("projeto_nao_encontrado", ex.Code);
     }
 
     // Fase 14: IsPerfect (bonus de Gems).

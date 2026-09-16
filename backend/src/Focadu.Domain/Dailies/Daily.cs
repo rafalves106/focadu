@@ -115,7 +115,8 @@ public class Daily : Entity
     /// guardada no histórico normalmente, mas não mexe em PenaltyPoints nem dispara reforço de novo.
     /// </summary>
     public ActivityResponse SubmitActivityResponse(
-        Guid activityId, int score, string? transcript = null, string? justification = null, string? aiFeedback = null)
+        Guid activityId, int score, string? transcript = null, string? correctedTranscript = null,
+        string? justification = null, string? aiFeedback = null)
     {
         if (Status is DailyStatus.Locked or DailyStatus.Available)
             throw new DomainException("A Daily precisa ser iniciada antes de registrar respostas.", "daily_nao_iniciada");
@@ -124,7 +125,8 @@ public class Daily : Entity
             throw new DomainException("Atividade não encontrada nesta Daily.", "atividade_nao_encontrada");
 
         var attemptNumber = _responses.Count(r => r.ActivityId == activityId) + 1;
-        var response = new ActivityResponse(activityId, attemptNumber, score, transcript, justification, aiFeedback);
+        var response = new ActivityResponse(
+            activityId, attemptNumber, score, transcript, correctedTranscript, justification, aiFeedback);
         _responses.Add(response);
 
         if (!HasEverCompleted && !response.Passed)

@@ -17,6 +17,15 @@ public class ActivityResponse : Entity
     public string? Transcript { get; private set; }
 
     /// <summary>
+    /// Versao de Transcript corrigida pela IA (Fase 39) quando a avaliacao e feita via
+    /// IContentEvaluationService (VoiceSummary) - Transcript continua guardando o texto bruto que
+    /// saiu do Whisper (auditoria), este campo guarda o que a IA efetivamente avaliou depois de
+    /// corrigir termos claramente mal reconhecidos pela transcricao de voz. Nulo pros demais tipos
+    /// de atividade (nunca passam por essa correcao) e tambem quando a IA nao mudou nada.
+    /// </summary>
+    public string? CorrectedTranscript { get; private set; }
+
+    /// <summary>
     /// Justificativa em texto livre do usuário sobre a resposta dada (usado no Cloze/FreeText,
     /// pedida antes de revelar se acertou). Apenas armazenada nesta fase - sem avaliação de IA
     /// sobre o conteúdo (fora de escopo até IContentEvaluationService existir).
@@ -31,7 +40,8 @@ public class ActivityResponse : Entity
     }
 
     internal ActivityResponse(
-        Guid activityId, int attemptNumber, int score, string? transcript, string? justification, string? aiFeedback)
+        Guid activityId, int attemptNumber, int score, string? transcript, string? correctedTranscript,
+        string? justification, string? aiFeedback)
     {
         if (score < 0 || score > 100)
             throw new DomainException("Score deve estar entre 0 e 100.");
@@ -44,6 +54,7 @@ public class ActivityResponse : Entity
         // Critério de aprovação centralizado em EvaluationPolicy: nunca duplicar esse número.
         Passed = score >= EvaluationPolicy.PassingScore;
         Transcript = transcript;
+        CorrectedTranscript = correctedTranscript;
         Justification = justification;
         AiFeedback = aiFeedback;
         CreatedAt = DateTime.UtcNow;

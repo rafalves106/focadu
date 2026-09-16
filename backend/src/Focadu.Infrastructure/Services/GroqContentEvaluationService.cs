@@ -12,6 +12,15 @@ namespace Focadu.Infrastructure.Services;
 /// em JSON mode - decisao confirmada na Fase 5 (ver docs/ARQUITETURA.md pro raciocinio do prompt).
 /// Resposta malformada (JSON invalido, campos ausentes, score fora de 0-100) sempre vira
 /// ExternalServiceException (502) - nunca uma nota inventada.
+///
+/// Fase 39 (bug real relatado ao vivo: erro de transcricao do Whisper derrubando o score
+/// injustamente): o prompt agora pede um passo explicito de correcao ANTES da avaliacao - a IA
+/// recebe instrucao de identificar termos/trechos que so fazem sentido como erro de reconhecimento
+/// de fala (nao confundir com erro de conteudo do aluno) usando ExpectedAnswer/ContextText como
+/// vocabulario de referencia, e so avaliar a versao corrigida. Uma unica chamada (nao uma 2a
+/// chamada separada) - mais barato e mais rapido, e o modelo ja suporta raciocinar antes de
+/// produzir o JSON final. correctedTranscript volta no proprio JSON pra ser persistido ao lado do
+/// Transcript bruto (auditoria de quais correcoes a IA realmente fez).
 /// </summary>
 public class GroqContentEvaluationService : IContentEvaluationService
 {
@@ -23,11 +32,21 @@ public class GroqContentEvaluationService : IContentEvaluationService
 
     private const string SystemPrompt =
         "Você é um avaliador pedagógico da Focadu, plataforma de estudo de segurança web. " +
-        "Avalie se a transcrição de um resumo falado pelo aluno demonstra compreensão correta do " +
+        "O texto do aluno é uma transcrição automática (Whisper) de um resumo falado, e pode " +
+        "conter erros de reconhecimento de fala (termos técnicos trocados por outros foneticamente " +
+        "parecidos, palavras cortadas ou repetidas, pontuação ausente). Antes de avaliar, revise a " +
+        "transcrição usando o conteúdo de referência como vocabulário: corrija APENAS trechos que " +
+        "claramente são erro de reconhecimento de fala (ex.: um termo técnico do conteúdo de " +
+        "referência que apareceu deturpado), preservando literalmente tudo o mais - nunca complete, " +
+        "reescreva ou adicione ideias que o aluno não disse, e nunca corrija um erro conceitual real " +
+        "do aluno (isso é conteúdo, não transcrição, e deve pesar na nota). Avalie SEMPRE a versão " +
+        "corrigida, não a bruta, e nunca penalize o aluno por ruído de transcrição que você já " +
+        "corrigiu. Depois, avalie se o resumo (já corrigido) demonstra compreensão correta do " +
         "conteúdo de referência, e a clareza com que foi comunicado. Responda SEMPRE em JSON " +
-        "estrito, exatamente neste formato: {\"score\": <inteiro de 0 a 100>, \"feedback\": " +
-        "\"<até 2 frases em português, direto ao aluno, apontando o que acertou e o que pode " +
-        "melhorar>\"}. Não inclua nenhum texto fora desse JSON.";
+        "estrito, exatamente neste formato: {\"correctedTranscript\": \"<transcrição revisada, ou " +
+        "idêntica à original se nada precisava de correção>\", \"score\": <inteiro de 0 a 100>, " +
+        "\"feedback\": \"<até 2 frases em português, direto ao aluno, apontando o que acertou e o " +
+        "que pode melhorar>\"}. Não inclua nenhum texto fora desse JSON.";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -65,7 +84,7 @@ public class GroqContentEvaluationService : IContentEvaluationService
         try
         {
             return await HttpRetry.RunAsync(
-                () => EvaluateOnceAsync(payload, cancellationToken),
+                () => EvaluateOnceAsync(payload, request.UserAnswer, cancellationToken),
                 ex => HttpRetry.IsTransientFailure(ex, cancellationToken)
                     || ex is ExternalServiceException { Code: "avaliacao_ia_formato_invalido" },
                 cancellationToken);
@@ -87,7 +106,8 @@ public class GroqContentEvaluationService : IContentEvaluationService
         }
     }
 
-    private async Task<ContentEvaluationResult> EvaluateOnceAsync<TPayload>(TPayload payload, CancellationToken cancellationToken)
+    private async Task<ContentEvaluationResult> EvaluateOnceAsync<TPayload>(
+        TPayload payload, string originalUserAnswer, CancellationToken cancellationToken)
     {
         var response = await _httpClient.PostAsJsonAsync("chat/completions", payload, cancellationToken);
         await HttpRetry.EnsureSuccessAsync(response, cancellationToken);
@@ -98,7 +118,7 @@ public class GroqContentEvaluationService : IContentEvaluationService
         // ParseEvaluation lanca "avaliacao_ia_formato_invalido" (200 mas conteudo inutilizavel) -
         // entra no mesmo orcamento de retry do RunAsync acima (a Groq roda com temperature=0.2,
         // nao deterministico; nao e retry indefinido, e a mesma verba de 2 tentativas).
-        return ParseEvaluation(rawContent);
+        return ParseEvaluation(rawContent, originalUserAnswer);
     }
 
     private static string BuildUserPrompt(ContentEvaluationRequest request)
@@ -127,9 +147,11 @@ public class GroqContentEvaluationService : IContentEvaluationService
     /// <summary>
     /// Nunca inventa uma nota se a IA responder algo fora do formato esperado - joga
     /// ExternalServiceException (502) com uma mensagem clara, em vez de deixar passar um Score
-    /// forjado que ninguem validou.
+    /// forjado que ninguem validou. correctedTranscript e opcional na resposta (defensivo contra
+    /// um retorno mais antigo/parcial do modelo) - cai pro texto original (originalUserAnswer)
+    /// quando ausente ou vazio, nunca vira motivo de retry/erro sozinho.
     /// </summary>
-    private static ContentEvaluationResult ParseEvaluation(string? rawContent)
+    private static ContentEvaluationResult ParseEvaluation(string? rawContent, string originalUserAnswer)
     {
         if (string.IsNullOrWhiteSpace(rawContent))
         {
@@ -155,10 +177,14 @@ public class GroqContentEvaluationService : IContentEvaluationService
                 "O servico de avaliacao retornou um formato inesperado (campos ausentes ou score fora de 0-100).");
         }
 
-        return new ContentEvaluationResult(parsed.Score.Value, parsed.Feedback);
+        var correctedTranscript = string.IsNullOrWhiteSpace(parsed.CorrectedTranscript)
+            ? originalUserAnswer
+            : parsed.CorrectedTranscript;
+
+        return new ContentEvaluationResult(parsed.Score.Value, parsed.Feedback, correctedTranscript);
     }
 
-    private record GroqEvaluationPayload(int? Score, string? Feedback);
+    private record GroqEvaluationPayload(int? Score, string? Feedback, string? CorrectedTranscript);
 
     private record GroqChatCompletionResponse(List<GroqChatChoice>? Choices);
 

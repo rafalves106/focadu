@@ -7,12 +7,21 @@ using Focadu.Domain.Repositories;
 namespace Focadu.Application.Dailies;
 
 /// <summary>
-/// Caso de uso: atalho "/hoje" - resolve direto a Daily de hoje, sem o cliente precisar informar
-/// weekly/daily. Fase 13: agora resolve pela Enrollment do usuario logado (userId vem do JWT),
-/// nao mais por "1 Course com Status = Active" global - fecha a limitacao documentada desde a
-/// Fase 2. Hoje, no maximo 1 Enrollment por usuario (so existe 1 Course); mais de uma vira erro
-/// (mesmo tratamento defensivo que "multiplos cursos ativos" tinha antes), preparado pro dia em
-/// que multiplos cursos existirem de verdade.
+/// Caso de uso: atalho "/hoje" - resolve direto a Daily "atual" do usuario logado, sem o cliente
+/// precisar informar weekly/daily. Fase 13: agora resolve pela Enrollment do usuario logado
+/// (userId vem do JWT), nao mais por "1 Course com Status = Active" global. Hoje, no maximo 1
+/// Enrollment por usuario (so existe 1 Course); mais de uma vira erro (mesmo tratamento defensivo
+/// que "multiplos cursos ativos" tinha antes), preparado pro dia em que multiplos cursos
+/// existirem de verdade.
+///
+/// Fase 38b (corrige bug real, 14->15/09/2026): "a Daily de hoje" era resolvida batendo Daily.Date
+/// (fixado de uma vez so na matricula, 1 dia util por Daily - ver EnrollUserInCourseUseCase)
+/// contra o calendario real. Qualquer folga entre esse ritmo hipotetico e o ritmo real do aluno
+/// pulava Dailies inteiras (relatado ao vivo: concluir a Daily 1 num dia so liberou calendarmente
+/// a Daily 4). Agora "hoje" e sempre: a Daily InProgress mais recente em qualquer Weekly da
+/// matricula (prioridade de sempre - permite recuperar uma Daily abandonada), ou senao a Daily
+/// nao concluida de menor DayNumber em toda a matricula (DailySequencing.FindNext) - nunca mais
+/// calendario.
 /// </summary>
 public class GetTodayUseCase
 {
@@ -41,48 +50,19 @@ public class GetTodayUseCase
                 "Mais de uma matricula ativa encontrada; use /api/weeklies/{weeklyId} para escolher qual.");
         }
 
-        var enrollmentId = enrollments.First().Id;
+        var allWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(enrollments.First().Id, cancellationToken);
+
+        var target = DailySequencing.FindInProgress(allWeeklies) ?? DailySequencing.FindNext(allWeeklies);
+        if (target is null)
+            throw new NotFoundException("daily_hoje_nao_encontrada", "Nenhuma Daily pendente encontrada.");
+
+        var weekly = allWeeklies.First(w => w.Id == target.WeeklyId);
         var today = _clock.Today();
-
-        // Uma Daily InProgress tem SEMPRE prioridade sobre a Daily agendada pra hoje - nao so
-        // quando nao ha nada agendado pra hoje (fim de semana/feriado), mas tambem quando HA algo
-        // agendado: Weekly.EvaluateDailyAccess recusa iniciar uma Daily nova enquanto outra
-        // continuar InProgress em QUALQUER lugar da matricula ("daily_em_andamento"), entao
-        // resolver pra "hoje" primeiro e so descobrir esse bloqueio depois deixava o atalho preso
-        // (o usuario so conseguia retomar indo direto na trilha/weekly, nunca por "/hoje" - bug
-        // real, corrigido em 2026-09-14). Comeca pela Weekly de hoje (mesma consulta que ja ia
-        // rodar de qualquer forma - cobre o caso comum, Daily abandonada na mesma semana da atual)
-        // e so cai pra busca cross-Weekly se essa Weekly nao existir ou nao tiver nada InProgress.
-        var todaysWeekly = await _weeklyRepository.GetByEnrollmentAndDateAsync(enrollmentId, today, cancellationToken);
-
-        var weekly = todaysWeekly;
-        var daily = todaysWeekly?.Dailies.FirstOrDefault(d => d.Status == DailyStatus.InProgress);
-
-        if (daily is null)
-        {
-            var allWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(enrollmentId, cancellationToken);
-            foreach (var candidate in allWeeklies)
-            {
-                var inProgress = candidate.Dailies.FirstOrDefault(d => d.Status == DailyStatus.InProgress);
-                if (inProgress is null) continue;
-
-                weekly = candidate;
-                daily = inProgress;
-                break;
-            }
-        }
-
-        // Nenhuma Daily InProgress em lugar nenhum - cai pro comportamento original, a Daily
-        // agendada exatamente pra hoje (se houver).
-        daily ??= weekly?.GetDailyByDate(today);
-
-        if (weekly is null || daily is null)
-            throw new NotFoundException("daily_hoje_nao_encontrada", "Nenhuma Daily cadastrada para hoje.");
 
         DailyAccessMode accessMode;
         try
         {
-            accessMode = weekly.EvaluateDailyAccess(daily.Id, today);
+            accessMode = weekly.EvaluateDailyAccess(target.Id, today, DailySequencing.IsNext(allWeeklies, target.Id));
         }
         catch (DomainException ex) when (ex.Code == "daily_limite_diario_atingido")
         {
@@ -91,12 +71,10 @@ public class GetTodayUseCase
             // 409 quando o limite diario ja foi atingido (ate mesmo por retomar uma Daily
             // atrasada de outro dia - ver Weekly.EvaluateDailyAccess). Aqui isso nao e um erro,
             // e sim um estado real pra descrever: a Daily de hoje existe, so nao pode ser
-            // iniciada ainda. Sem este catch, terminar QUALQUER Daily hoje derrubava tanto
-            // "/hoje" quanto o hub "/start" (que reusa este caso de uso) com um 409 cru - bug
-            // real, descoberto em 2026-09-14 ao lado do fix de retomada de Daily atrasada acima.
+            // iniciada ainda.
             accessMode = DailyAccessMode.Blocked;
         }
 
-        return DailyStateMapper.ToDto(daily, accessMode);
+        return DailyStateMapper.ToDto(target, accessMode);
     }
 }

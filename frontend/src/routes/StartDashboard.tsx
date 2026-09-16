@@ -16,6 +16,7 @@ import {
 } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
+import { CourseCarousel } from '../components/CourseCarousel';
 import { GemBadge } from '../components/gamification/GemBadge';
 import { StreakIndicator } from '../components/gamification/StreakIndicator';
 import { StreakLostModal } from '../components/gamification/StreakLostModal';
@@ -30,6 +31,8 @@ interface DashboardData {
   daily: DailyStateDto;
   weekly: WeeklyDetailDto;
   course: CourseDetailDto | null;
+  /** Fase 38c: todos os cursos matriculados (nao so o ativo) - alimenta o CourseCarousel. */
+  allCourses: CourseDetailDto[];
   gamification: GamificationSummaryDto;
 }
 
@@ -50,11 +53,14 @@ interface DashboardData {
  * Fase 20 (fidelidade revisada): "Olá, Falves" do mockup virou saudacao com o nome real
  * (useAuth().user.displayName - so nao era usado aqui ainda). "INDIE DEV" + foto de usuario no
  * header global nao sao tocados aqui (fora do escopo desta tela, ver App.tsx/HeaderUserBadge). O
- * grid "Seus Cursos" (1 ativo + 2 "bloqueados, libera no nivel X") do Figma continua fora - so
- * existe 1 Course Active (decisao da Fase 8, reafirmada) e nao ha sistema de nivel/desbloqueio
- * (mesma exclusao de XP/Level de sempre). Rodape "Sessões completadas: N" tambem fica de fora -
- * sem contador agregado de sessoes no dominio; "Melhor streak"/"Gems" do mockup sao reais
- * (GamificationSummaryDto) e ganharam a mesma linha discreta de rodape.
+ * grid "Seus Cursos" (1 ativo + 2 "bloqueados, libera no nivel X") do Figma continua fora - nao ha
+ * sistema de nivel/desbloqueio (mesma exclusao de XP/Level de sempre).
+ *
+ * Fase 38c: o label de texto puro acima do nome ("WEB SECURITY", um <p> discreto) virou
+ * CourseCarousel - card visual arrastavel por curso matriculado (so 1 na pratica, ver doc do
+ * componente). O rodape "Melhor streak"/"Gems" em texto simples saiu - duplicava informacao que
+ * ja aparece no header (GemBadge/StreakIndicator, mesmos dados) desde a Fase 14; ter as duas
+ * versoes juntas na tela (pixel art em cima, texto embaixo) foi reportado como redundante.
  */
 export function StartDashboard() {
   const { user } = useAuth();
@@ -66,9 +72,13 @@ export function StartDashboard() {
           api.getCourses(),
           api.getGamification(),
         ]);
+        // Fase 38c: busca o detalhe de TODOS os cursos matriculados (nao so o ativo) - precisa do
+        // CourseProgressDto de cada um pra alimentar o CourseCarousel. N+1 aceitavel (poucos
+        // cursos por usuario nesta fase, ver docs/ARQUITETURA.md).
+        const allCourses = await Promise.all(courses.map((c) => api.getCourse(c.id)));
         const activeSummary = courses.find((c) => c.status === CourseStatus.Active) ?? courses[0] ?? null;
-        const course = activeSummary ? await api.getCourse(activeSummary.id) : null;
-        return { daily, weekly, course, gamification };
+        const course = allCourses.find((c) => c.id === activeSummary?.id) ?? allCourses[0] ?? null;
+        return { daily, weekly, course, allCourses, gamification };
       }),
     [],
   );
@@ -86,7 +96,7 @@ export function StartDashboard() {
   if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
   if (!data) return null;
 
-  const { daily, weekly, course, gamification } = data;
+  const { daily, weekly, course, allCourses, gamification } = data;
   const weeks = course?.monthlies.flatMap((m) => m.weeklies) ?? [];
   const weeksCompleted = weeks.filter((w) => w.totalDailies > 0 && w.completedDailies === w.totalDailies).length;
 
@@ -96,11 +106,10 @@ export function StartDashboard() {
         <StreakLostModal longestStreak={gamification.longestStreak} onClose={() => setDismissed(true)} />
       )}
 
+      <CourseCarousel courses={allCourses} activeCourseId={course?.id ?? null} />
+
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[2px] text-muted">{course?.name ?? 'Focadu'}</p>
-          <h1 className="mt-1 text-3xl font-bold text-primary">Olá, {user?.displayName ?? 'operador'} 👋</h1>
-        </div>
+        <h1 className="text-3xl font-bold text-primary">Olá, {user?.displayName ?? 'operador'} 👋</h1>
         <div className="flex items-center gap-2">
           {/* Fase 17: clicavel de proposito - "faz sentido clicar nele pra ir direto a loja". */}
           <Link to="/loja">
@@ -122,19 +131,6 @@ export function StartDashboard() {
         <WeeklyProjectCard project={weekly.project} weeklyId={weekly.id} courseId={course?.id ?? null} />
         <CourseExplorerLink courseId={course?.id ?? null} weeksTotal={weeks.length} weeksCompleted={weeksCompleted} />
       </div>
-
-      {/* Fase 20 (Figma "Subtle Stats footer"): so os 2 numeros que ja existem de verdade
-          (GamificationSummaryDto) - "Sessões completadas" do mockup nao tem contador agregado no
-          dominio, omitido em vez de inventado. */}
-      <div className="flex items-center gap-3 text-sm text-secondary">
-        <span>
-          Melhor streak: <span className="font-semibold text-primary">{gamification.longestStreak} dia(s)</span>
-        </span>
-        <span className="text-muted">|</span>
-        <span>
-          Gems: <span className="font-semibold text-primary">{gamification.totalGems}</span>
-        </span>
-      </div>
     </div>
   );
 }
@@ -152,7 +148,13 @@ function TodayCard({
 }) {
   const totalDailies = weekly.dailies.filter((d) => !d.isReinforcement).length;
   const nextActivity = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex).find((a) => a.status !== ActivityStatus.Completed);
-  const badge = dailyStatusBadgeProps(daily.status);
+  // Fase 38a: accessMode.Blocked vence Status - sem isso o badge mostrava "Não iniciado" (o
+  // default de dailyStatusBadgeProps pra Status Locked/Available) bem ao lado do aviso "você já
+  // concluiu uma sessão hoje" logo abaixo, se contradizendo (bug reportado ao vivo, 14/09/2026).
+  const badge =
+    daily.accessMode === DailyAccessMode.Blocked
+      ? { icon: '🔒', label: 'BLOQUEADO ATÉ AMANHÃ', tone: 'alert' as const }
+      : dailyStatusBadgeProps(daily.status);
 
   return (
     <div className="flex flex-col gap-5 rounded-[20px] border-[1.5px] border-accent bg-surface p-8">

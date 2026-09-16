@@ -29,8 +29,9 @@ public class GetDailyStateUseCase
         var weekly = await _weeklyRepository.GetByDailyIdAsync(dailyId, userId, cancellationToken)
             ?? throw new NotFoundException("daily_nao_encontrada", "Daily nao encontrada.");
 
+        var allWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(weekly.EnrollmentId, cancellationToken);
         var daily = weekly.Dailies.First(d => d.Id == dailyId);
-        var accessMode = weekly.EvaluateDailyAccess(dailyId, _clock.Today());
+        var accessMode = weekly.EvaluateDailyAccess(dailyId, _clock.Today(), DailySequencing.IsNext(allWeeklies, dailyId));
 
         return DailyStateMapper.ToDto(daily, accessMode);
     }
