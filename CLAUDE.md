@@ -84,10 +84,31 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 37 — Sessão em 2 Colunas + Suporte Rápido de IA em Painel Fixo**
-(14/09/2026).
+Última fase concluída: **Fase 39 — Correção de Transcrição de Voz Antes da Avaliação, Título do
+Dia na Semana e Destaque de Semana Atual** (16/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Avaliação de Resumo Falado corrige a transcrição do Whisper antes de avaliar (Fase 39, bug
+  real relatado ao vivo)**: erro de reconhecimento de fala (termo técnico deturpado foneticamente)
+  não derruba mais a nota injustamente — a IA corrige o que é claramente ruído de transcrição
+  (usando o conteúdo de referência como vocabulário) antes de avaliar, mas nunca corrige um erro
+  conceitual real do aluno. `ActivityResponse.Transcript` continua guardando o texto bruto para
+  auditoria; a versão corrigida vai para o campo novo `CorrectedTranscript`. Visão de semana
+  (`WeeklyDetailPage`) passou a mostrar o título do material de cada dia em vez de só "Dia N", e a
+  trilha do curso (`CourseDetailPage`) destaca visualmente a semana atual em vez de um emoji fixo
+  por semana.
+- **Sequenciamento de Daily deixou de ser por calendário (Fase 38b, bug real relatado ao vivo)**:
+  até aqui, `Daily.Date` era fixado de uma vez só na matrícula (1 dia útil por Daily) e todo
+  acesso/agendamento comparava esse calendário hipotético com "hoje" - qualquer folga entre esse
+  ritmo assumido e o ritmo real do aluno pulava Dailies inteiras (concluir a Daily 1 num dia
+  liberou calendarmente a Daily 4, prendendo 2 e 3 em `Locked` pra sempre). Agora "a próxima
+  Daily" é sempre a de menor `DayNumber` ainda não concluída em toda a matrícula
+  (`DailySequencing`), nunca mais uma comparação de data - ver `docs/fase-38/`.
+- Bloqueio do Projeto Semanal antes das Dailies da semana estarem completas, badge de status
+  "bloqueado"/carrossel de cursos na tela de início, e aviso amigável quando a sessão de hoje já
+  foi concluída (em vez de erro genérico) - Fase 38, rodadas 1-3.
+- Analogia personalizada por IA ("Pra você") corrigida pra sempre responder em português (Fase
+  38b) - era o único adapter Groq do projeto sem essa instrução explícita no prompt.
 - Sessão diária ganhou um 2º sidebar (Fase 37): coluna esquerda com "Material de hoje" + Timer
   Pomodoro, coluna direita com Caderninho de Anotações + Suporte Rápido de IA (agora card fixo,
   antes botão flutuante — o botão flutuante continua só no Projeto Semanal, que não tem esse

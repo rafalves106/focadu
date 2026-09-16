@@ -258,6 +258,10 @@ export interface DailyOverviewDto {
   isReinforcement: boolean;
   penaltyPoints: number;
   isWeakDay: boolean;
+  /** Fase 38b: true quando esta e a Daily nao-reforco de menor DayNumber ainda nao concluida em TODA a matricula - a unica Locked/Available que pode ser iniciada agora. Date nao serve mais pra decidir isso (ver WeeklyDetailPage). */
+  isNext: boolean;
+  /** Titulo do material do dia (Leitura, ou Video como fallback) - null se o dia nao tiver nenhum dos dois. So usado por WeeklyDetailPage. */
+  title: string | null;
   totalActivities: number;
   completedActivities: number;
   passedActivities: number;
@@ -281,6 +285,8 @@ export interface WeeklyProjectDto {
   id: string;
   specText: string;
   status: WeeklyProjectStatus;
+  /** Fase 38: true enquanto as Dailies originais da semana nao estiverem todas concluidas - Weekly.SubmitProject recusa o envio nesse estado. So faz sentido junto de Status Pending; uma vez Submitted/Evaluated, sempre false. */
+  isLocked: boolean;
   submissionUrl: string | null;
   /** Fase 16: nota (0-100) da avaliação, preenchida junto com Status Evaluated. Nulo até então. */
   score: number | null;

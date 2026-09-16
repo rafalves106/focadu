@@ -17,7 +17,7 @@ public class ApiExceptionHandler : IExceptionHandler
     /// </summary>
     private static readonly Dictionary<string, int> DomainCodeStatusOverrides = new()
     {
-        ["daily_futura"] = StatusCodes.Status400BadRequest,
+        ["daily_bloqueada"] = StatusCodes.Status400BadRequest,
         ["daily_em_andamento"] = StatusCodes.Status409Conflict,
         ["daily_limite_diario_atingido"] = StatusCodes.Status409Conflict,
         ["daily_somente_leitura"] = StatusCodes.Status409Conflict,
@@ -29,6 +29,7 @@ public class ApiExceptionHandler : IExceptionHandler
         ["reforco_semanal_condicoes_nao_atingidas"] = StatusCodes.Status409Conflict,
         ["reforco_diario_condicoes_nao_atingidas"] = StatusCodes.Status409Conflict,
         ["modulo_bloqueado_por_publicacao"] = StatusCodes.Status409Conflict,
+        ["projeto_semana_bloqueado"] = StatusCodes.Status409Conflict,
         ["publicacao_ja_validada"] = StatusCodes.Status409Conflict,
         ["credenciais_invalidas"] = StatusCodes.Status401Unauthorized,
     };

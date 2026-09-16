@@ -19,15 +19,8 @@ public interface IWeeklyRepository
     /// <summary>Localiza a Weekly (com grafo completo) que contem a Daily informada - mesmo filtro por userId de GetByIdAsync.</summary>
     Task<Weekly?> GetByDailyIdAsync(Guid dailyId, Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>Todas as Weeklies (instancia) da matricula, pra checagens cross-Weekly (ex: bloqueio por publicacao pendente - ver StartOrResumeDailyUseCase).</summary>
+    /// <summary>Todas as Weeklies (instancia) da matricula, pra checagens cross-Weekly (ex: bloqueio por publicacao pendente - ver StartOrResumeDailyUseCase; ou qual Daily e a proxima da sequencia - ver DailySequencing).</summary>
     Task<IReadOnlyCollection<Weekly>> GetByEnrollmentIdAsync(Guid enrollmentId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Localiza a Weekly (com grafo completo) que, dentro da matricula informada, contem uma
-    /// Daily datada em "date". Usado pelo atalho "/hoje": resolve direto por data, sem precisar
-    /// percorrer todas as Weeklies da matricula em memoria.
-    /// </summary>
-    Task<Weekly?> GetByEnrollmentAndDateAsync(Guid enrollmentId, DateOnly date, CancellationToken cancellationToken = default);
 
     Task AddAsync(Weekly weekly, CancellationToken cancellationToken = default);
 }

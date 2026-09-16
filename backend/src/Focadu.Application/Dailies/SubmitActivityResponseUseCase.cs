@@ -51,7 +51,7 @@ public class SubmitActivityResponseUseCase
         var resolvedScore = ResolveScore(activity, selectedOptionId, selectedRoleplayNodeId, transcript, wordMatchMatches);
 
         return await ActivityResponseRecorder.RecordAsync(
-            weekly, daily, activityId, resolvedScore, transcript, justification, aiFeedback,
+            weekly, daily, activityId, resolvedScore, transcript, correctedTranscript: null, justification, aiFeedback,
             _clock, _unitOfWork, cancellationToken);
     }
 

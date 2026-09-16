@@ -18,6 +18,12 @@ namespace Focadu.Application.Dailies;
 /// Service usa isso so no FEEDBACK, nunca no Score. Usuario sem perfil preenchido (Interests vazio
 /// e AdditionalProfileNotes null) nao muda nada - PersonalizationPromptBuilder retorna null e o
 /// prompt fica identico ao de antes desta fase.
+///
+/// Fase 39: `transcript` (bruto, saido do Whisper) continua sendo o que vai pro ExpectedAnswer/
+/// UserAnswer da avaliacao e o que fica em ActivityResponse.Transcript. `evaluation.CorrectedTranscript`
+/// (a mesma resposta da IA, ja com erros de reconhecimento de fala corrigidos por ela antes de
+/// avaliar) vai pro campo novo ActivityResponse.CorrectedTranscript - guardado ao lado do bruto pra
+/// auditoria, nunca sobrescrevendo Transcript.
 /// </summary>
 public class SubmitVoiceSummaryResponseUseCase
 {
@@ -111,7 +117,7 @@ public class SubmitVoiceSummaryResponseUseCase
             cancellationToken);
 
         return await ActivityResponseRecorder.RecordAsync(
-            weekly, daily, activityId, evaluation.Score, transcript, justification: null, evaluation.Feedback,
-            _clock, _unitOfWork, cancellationToken);
+            weekly, daily, activityId, evaluation.Score, transcript, evaluation.CorrectedTranscript,
+            justification: null, evaluation.Feedback, _clock, _unitOfWork, cancellationToken);
     }
 }

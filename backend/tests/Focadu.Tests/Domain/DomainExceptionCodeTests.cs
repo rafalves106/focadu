@@ -13,15 +13,15 @@ namespace Focadu.Tests.Domain;
 public class DomainExceptionCodeTests
 {
     [Fact]
-    public void EvaluateDailyAccess_FutureDaily_UsesCode_daily_futura()
+    public void EvaluateDailyAccess_NotNextInSequence_UsesCode_daily_bloqueada()
     {
         var weekly = DailyFixtures.NewWeekly();
         var today = DailyFixtures.Today;
-        var futureDaily = DailyFixtures.NewDaily(weekly, 1, today.AddDays(1));
+        var daily = DailyFixtures.NewDaily(weekly, 1, today);
 
-        var ex = Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(futureDaily.Id, today));
+        var ex = Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(daily.Id, today, isNextInSequence: false));
 
-        Assert.Equal("daily_futura", ex.Code);
+        Assert.Equal("daily_bloqueada", ex.Code);
     }
 
     [Fact]
@@ -31,9 +31,9 @@ public class DomainExceptionCodeTests
         var today = DailyFixtures.Today;
         var daily1 = DailyFixtures.NewDaily(weekly, 1, today);
         var daily2 = DailyFixtures.NewDaily(weekly, 2, today);
-        weekly.StartOrResumeDaily(daily1.Id, today);
+        weekly.StartOrResumeDaily(daily1.Id, today, isNextInSequence: true);
 
-        var ex = Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(daily2.Id, today));
+        var ex = Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(daily2.Id, today, isNextInSequence: true));
 
         Assert.Equal("daily_em_andamento", ex.Code);
     }
@@ -49,7 +49,7 @@ public class DomainExceptionCodeTests
         daily1.Complete();
         var daily2 = DailyFixtures.NewDaily(weekly, 2, today);
 
-        var ex = Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(daily2.Id, today));
+        var ex = Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(daily2.Id, today, isNextInSequence: true));
 
         Assert.Equal("daily_limite_diario_atingido", ex.Code);
     }
@@ -77,13 +77,21 @@ public class DomainExceptionCodeTests
     }
 
     [Fact]
-    public void StartOrResumeDaily_OnReadOnlyPastDaily_UsesCode_daily_somente_leitura()
+    public void StartOrResumeDaily_OnReadOnlyCompletedDaily_UsesCode_daily_somente_leitura()
     {
+        // ReadOnly so existe pra uma Daily ja Completed (dia anterior) enquanto outra Daily
+        // segue InProgress - ver Weekly.EvaluateDailyAccess (Fase 38b: deixou de existir ReadOnly
+        // pra Daily nunca iniciada, ver DailySequencing).
         var weekly = DailyFixtures.NewWeekly();
         var today = DailyFixtures.Today;
-        var pastDaily = DailyFixtures.NewDaily(weekly, 1, today.AddDays(-3));
+        var (pastDaily, activity) = DailyFixtures.NewDailyWithOneActivity(weekly, 1, today.AddDays(-1));
+        pastDaily.Start();
+        pastDaily.SubmitActivityResponse(activity.Id, 100);
+        pastDaily.Complete();
+        var todayDaily = DailyFixtures.NewDaily(weekly, 2, today);
+        todayDaily.Start();
 
-        var ex = Assert.Throws<DomainException>(() => weekly.StartOrResumeDaily(pastDaily.Id, today));
+        var ex = Assert.Throws<DomainException>(() => weekly.StartOrResumeDaily(pastDaily.Id, today, isNextInSequence: true));
 
         Assert.Equal("daily_somente_leitura", ex.Code);
     }

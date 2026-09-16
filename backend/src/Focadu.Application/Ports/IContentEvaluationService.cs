@@ -24,5 +24,11 @@ public record ContentEvaluationRequest(
     IReadOnlyCollection<string>? UserInterests = null,
     string? UserNotes = null);
 
-/// <summary>Resultado da avaliacao: Score de 0 a 100 e um feedback textual gerado pela IA.</summary>
-public record ContentEvaluationResult(int Score, string Feedback);
+/// <summary>
+/// Resultado da avaliacao: Score de 0 a 100 e um feedback textual gerado pela IA. CorrectedTranscript
+/// (Fase 39) e a versao de UserAnswer com termos claramente mal reconhecidos pela transcricao de voz
+/// corrigidos pela propria IA usando ExpectedAnswer/ContextText como contexto, antes de avaliar - nulo
+/// quando o adapter nao suporta essa correcao ou nao houve nada a corrigir (nesse caso, igual a
+/// UserAnswer). Ver GroqContentEvaluationService para o raciocinio do prompt.
+/// </summary>
+public record ContentEvaluationResult(int Score, string Feedback, string? CorrectedTranscript = null);

@@ -29,6 +29,10 @@ public record DailyOverviewDto(
     bool IsReinforcement,
     int PenaltyPoints,
     bool IsWeakDay,
+    /// <summary>Fase 38b: true quando esta e a Daily nao-reforco de menor DayNumber ainda nao concluida em TODA a matricula - a unica Locked/Available que pode ser iniciada agora (ver Weekly.EvaluateDailyAccess/DailySequencing). Nunca true pra Dailies de reforco (acesso sempre por link explicito). O frontend usa isso pra saber qual dia destacar/bloquear, ja que Daily.Date nao serve mais pra isso.</summary>
+    bool IsNext,
+    /// <summary>Titulo do material do dia (Leitura, ou Video se nao houver Leitura) - Daily nao tem titulo proprio, este e o do CuratedContent associado. Nulo quando o dia nao tem nenhuma atividade de Leitura/Video (ex: alguma Daily de reforco sintetica). So usado por WeeklyDetailPage (visao de uma semana) - as outras telas continuam mostrando so o numero do dia.</summary>
+    string? Title,
     int TotalActivities,
     int CompletedActivities,
     int PassedActivities);
@@ -37,6 +41,8 @@ public record WeeklyProjectDto(
     Guid Id,
     string SpecText,
     WeeklyProjectStatus Status,
+    /// <summary>Fase 38: true quando as Dailies originais da Weekly ainda nao foram todas concluidas - Weekly.SubmitProject() recusa o envio enquanto isso for verdade (ver Weekly.AreDailiesComplete). So faz sentido junto de Status=Pending; uma vez Submitted/Evaluated, sempre false.</summary>
+    bool IsLocked,
     string? SubmissionUrl,
     /// <summary>Fase 16: nota (0-100) da avaliacao, preenchida junto com Status=Evaluated. Nulo ate entao.</summary>
     int? Score,
