@@ -12,6 +12,7 @@ import {
   type CuratedContentDto,
   type DailyStateDto,
   type EnrollmentDto,
+  type ForgotPasswordRequest,
   type GamificationSummaryDto,
   type GitHubRepoDto,
   type ListNotesFilter,
@@ -24,6 +25,7 @@ import {
   type RankingScope,
   type ReferralInfoDto,
   type RegisterRequest,
+  type ResetPasswordRequest,
   type SquadDto,
   type SquadRankingResultDto,
   type StudyAssistantAnswerDto,
@@ -198,6 +200,9 @@ export const api = {
   register: (data: RegisterRequest) => request<UserDto>('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   login: (data: LoginRequest) => request<UserDto>('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
+  // Redefinicao de senha (Fase 41) - nenhuma das duas cria sessao, entao nao passam pelo AuthContext.
+  forgotPassword: (data: ForgotPasswordRequest) => request<void>('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify(data) }),
+  resetPassword: (data: ResetPasswordRequest) => request<void>('/api/auth/reset-password', { method: 'POST', body: JSON.stringify(data) }),
   // skipAuthRedirect: 401 aqui e o caminho ESPERADO "ninguem logado ainda" (ver AuthContext.tsx),
   // nunca sessao expirada de verdade - nao deve disparar o modal global.
   getCurrentUser: () => request<UserDto>('/api/auth/me', { skipAuthRedirect: true }),

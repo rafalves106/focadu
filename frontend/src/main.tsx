@@ -7,11 +7,13 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
 import { SettingsProvider } from './contexts/SettingsProvider';
 import { CourseSelectionPage } from './routes/CourseSelectionPage';
+import { ForgotPasswordPage } from './routes/ForgotPasswordPage';
 import { LoginPage } from './routes/LoginPage';
 import { MarketplacePage } from './routes/MarketplacePage';
 import { OnboardingWelcomePage } from './routes/OnboardingWelcomePage';
 import { ProfileInterviewPage } from './routes/ProfileInterviewPage';
 import { ProfilePage } from './routes/ProfilePage';
+import { ResetPasswordPage } from './routes/ResetPasswordPage';
 import { SplashPage } from './routes/SplashPage';
 import { StartRoute } from './routes/StartPage';
 import { TodayPage } from './routes/TodayPage';
@@ -28,6 +30,9 @@ createRoot(document.getElementById('root')!).render(
           <Routes>
             <Route index element={<SplashPage />} />
             <Route path="login" element={<LoginPage />} />
+            {/* Fase 41: fora do <ProtectedRoute/> como login, nao exigem sessao. */}
+            <Route path="esqueci-senha" element={<ForgotPasswordPage />} />
+            <Route path="redefinir-senha" element={<ResetPasswordPage />} />
             <Route element={<ProtectedRoute />}>
               {/* Onboarding (Fase 13b): fora do <App/> de proposito - sem o menu global, mesmo
                   tratamento full-bleed de LoginPage/SplashPage. /start (Fase 25): mesmo tratamento
