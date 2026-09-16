@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import type { UserDto } from '../api/types';
 import { LoginForm } from '../components/auth/LoginForm';
 import { RegisterForm } from '../components/auth/RegisterForm';
@@ -19,8 +19,6 @@ type Mode = 'login' | 'register';
  * - Rodape "System stable | LATENCY: 14ms" - telemetria fake, sem monitoramento real no backend;
  *   o app nunca renderiza numero que nao vem de um dado de verdade (mesmo criterio da Fase 18).
  * - Botoes GitHub/Google + divisor "ou continue com" - sem OAuth no backend, nao ha pra onde ir.
- * - "Esqueci minha senha" - sem fluxo de recuperacao de senha construido, nao deixado como link
- *   morto.
  * - Grade de fundo "matrix" (digitos 1/0) do painel esquerdo - opacidade 8% no proprio Figma, ja
  *   imperceptivel no screenshot de referencia; cortado (ponytail: custaria ~225 nos de DOM ou um
  *   tile SVG pra um efeito que ninguem nota - o brilho radial sozinho ja carrega a atmosfera).
@@ -89,6 +87,11 @@ export function LoginPage() {
           {mode === 'login' ? (
             <div className="flex flex-col gap-6">
               <LoginForm onSuccess={handleAuthSuccess} />
+              <p className="font-display text-center text-sm text-secondary">
+                <Link to="/esqueci-senha" className="font-semibold text-accent hover:underline">
+                  Esqueci minha senha
+                </Link>
+              </p>
               <p className="font-display text-center text-sm text-secondary">
                 Primeira vez?{' '}
                 <button type="button" onClick={() => setMode('register')} className="font-semibold text-accent hover:underline">

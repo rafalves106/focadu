@@ -48,6 +48,9 @@ public class FocaduDbContext : DbContext
     public DbSet<ModulePublication> ModulePublications => Set<ModulePublication>();
     public DbSet<User> Users => Set<User>();
 
+    // Redefinicao de senha (Fase 41).
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+
     // Gamificacao (Fase 14) - 1:1 com User, sempre criadas lazy (ver GamificationCreditor).
     public DbSet<UserGemBalance> UserGemBalances => Set<UserGemBalance>();
     public DbSet<UserStreak> UserStreaks => Set<UserStreak>();

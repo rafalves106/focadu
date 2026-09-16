@@ -84,10 +84,18 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 40 — Dockerização (Backend + Frontend) e CI/CD de Deploy
-Automático** (16/09/2026).
+Última fase concluída: **Fase 41 — Redefinição de Senha ("Esqueci minha senha")** (16/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Redefinição de senha por email (Fase 41)**: `LoginPage` ganhou o link "Esqueci minha senha"
+  (antes deliberadamente ausente, sem infraestrutura de email nenhuma no projeto). Fluxo completo
+  de token de uso único (1h de validade, hash SHA-256 nunca o token em texto puro) enviado por
+  SMTP genérico (`SmtpClient` puro do .NET, funciona com Gmail/Outlook/qualquer provedor que o
+  usuário já tenha, sem amarrar a um serviço novo) - decisão do usuário entre SMTP/API
+  transacional/stub sem envio real. Requer configurar `Smtp:*` (user-secrets/env) e
+  `Frontend:BaseUrl` (o link do email aponta pro `localhost:5173` de dev até isso ser preenchido
+  de verdade em produção/homologação, ver `docs/DOCKER.md`) - **ainda não configurado no host de
+  produção**, ver `docs/fase-41/`.
 - **Dockerização completa + CI/CD de deploy automático (Fase 40)**: `backend/Dockerfile` e
   `frontend/Dockerfile` (multi-stage), `docker-compose.yml` (produção) e
   `docker-compose.homolog.yml` (homologação, stack isolada), consolidando o Focadu na mesma

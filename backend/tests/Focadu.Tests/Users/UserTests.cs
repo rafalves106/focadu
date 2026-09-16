@@ -119,4 +119,24 @@ public class UserTests
 
         Assert.Throws<DomainException>(() => user.AssignReferralCode("  "));
     }
+
+    // Fase 41: redefinicao de senha.
+
+    [Fact]
+    public void SetPasswordHash_ReplacesHash()
+    {
+        var user = User.Create("falves@example.com", "hash123", "Falves");
+
+        user.SetPasswordHash("novo-hash");
+
+        Assert.Equal("novo-hash", user.PasswordHash);
+    }
+
+    [Fact]
+    public void SetPasswordHash_Blank_Throws()
+    {
+        var user = User.Create("falves@example.com", "hash123", "Falves");
+
+        Assert.Throws<DomainException>(() => user.SetPasswordHash("   "));
+    }
 }

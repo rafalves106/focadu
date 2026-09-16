@@ -47,6 +47,9 @@ public static class DependencyInjection
         services.AddScoped<RegisterUserUseCase>();
         services.AddScoped<LoginUserUseCase>();
         services.AddScoped<GetCurrentUserUseCase>();
+        // Redefinicao de senha (Fase 41).
+        services.AddScoped<RequestPasswordResetUseCase>();
+        services.AddScoped<ResetPasswordUseCase>();
         services.AddScoped<CompleteProfileUseCase>();
         services.AddScoped<EnrollUserInCourseUseCase>();
         services.AddScoped<GetAvailableCoursesUseCase>();

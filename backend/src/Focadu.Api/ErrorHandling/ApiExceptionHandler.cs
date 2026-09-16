@@ -32,6 +32,9 @@ public class ApiExceptionHandler : IExceptionHandler
         ["projeto_semana_bloqueado"] = StatusCodes.Status409Conflict,
         ["publicacao_ja_validada"] = StatusCodes.Status409Conflict,
         ["credenciais_invalidas"] = StatusCodes.Status401Unauthorized,
+        // Redefinicao de senha (Fase 41) - link invalido/expirado e culpa da entrada do usuario, nao 401 (nao ha sessao envolvida aqui).
+        ["token_invalido"] = StatusCodes.Status400BadRequest,
+        ["token_expirado"] = StatusCodes.Status400BadRequest,
     };
 
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)

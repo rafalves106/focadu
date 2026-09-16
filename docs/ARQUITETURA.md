@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 40 - Dockerizacao (Backend + Frontend) e CI/CD de Deploy Automatico**.
+> Ultima fase que atualizou este documento: **Fase 41 - Redefinicao de Senha ("Esqueci minha senha")**.
 
 ## Visao geral do projeto
 
@@ -1055,13 +1055,16 @@ composicao da Fase 1). Todos sob `/api`, alem de `GET /health`:
 na tabela. Os 🔒 que operam sobre uma instancia especifica (`weeklyId`/`dailyId`) tambem **filtram
 pelo dono** (via Enrollment do `userId` do JWT) direto na query do repositorio - um id de outro
 usuario sempre vira 404 igual "nao existe", nunca revela que aquele recurso existe mas nao e seu.
-So `POST /api/auth/register`/`login`/`logout` ficam de fora (sao o proprio bootstrap da sessao).
+So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password` ficam de fora
+(sao o proprio bootstrap/recuperacao da sessao, sem sessao existente ainda pra exigir).
 
 | Metodo | Rota | Caso de uso | Sucesso |
 |---|---|---|---|
 | POST | `/api/auth/register` | `RegisterUserUseCase` (Fase 12) | 201, seta cookie `focadu_auth`, 409/400 (ver "Autenticacao") - Fase 17: aceita `referralCode` opcional |
 | POST | `/api/auth/login` | `LoginUserUseCase` (Fase 12) | 200, seta cookie, 401 `credenciais_invalidas` |
 | POST | `/api/auth/logout` | - (limpa o cookie direto no endpoint) | 200 |
+| POST | `/api/auth/forgot-password` | `RequestPasswordResetUseCase` (Fase 41) | 200 sempre (mesmo email nao cadastrado - nunca revela quais emails existem), gera token + manda email (SMTP) |
+| POST | `/api/auth/reset-password` | `ResetPasswordUseCase` (Fase 41) | 200, 400 `token_invalido`/`token_expirado`/`senha_muito_curta` |
 | 🔒 GET | `/api/auth/me` | `GetCurrentUserUseCase` (Fase 12) | 200, 401 `nao_autenticado` - Fase 18: `UserDto` ganhou `interests`/`additionalProfileNotes` (aba Informações do Perfil le direto daqui, sem endpoint novo) |
 | 🔒 PUT | `/api/users/me/profile` | `CompleteProfileUseCase` (Fase 13) | 200 - Entrevista de Perfil (Onboarding); sem guarda de "so uma vez", Fase 18 reaproveita pra editar depois |
 | 🔒 GET | `/api/users/me/gamification` | `GetGamificationSummaryUseCase` (Fase 14) | 200 (`GamificationSummaryDto`) - nunca 404, `UserGemBalance`/`UserStreak` sao lazy |
@@ -1366,6 +1369,8 @@ default (400):
 | `modulo_bloqueado_por_publicacao` | 409 | `StartOrResumeDailyUseCase` quando a Weekly anterior (mesmo Monthly) ainda `RequiresPublicationToUnlock` (Fase 11) |
 | `publicacao_ja_validada` | 409 | `ModulePublication.Submit` chamado depois que a publicacao ja esta `Validated` (Fase 11) |
 | `credenciais_invalidas` | 401 | `LoginUserUseCase` - email nao existe OU senha errada (nunca diferenciado, ver "Autenticacao") (Fase 12) |
+| `token_invalido` | 400 | `ResetPasswordUseCase`/`PasswordResetToken.Consume` - token de reset inexistente ou ja usado (Fase 41) |
+| `token_expirado` | 400 | `PasswordResetToken.Consume` - token de reset passou da 1h de validade (Fase 41) |
 
 Qualquer outro `DomainException.Code` (as validacoes de criacao de conteudo em `Course`,
 `Monthly`, `DailyActivity`, `QuizOption`, `RoleplayNode`, etc., que ainda nao tem endpoint de
@@ -1782,6 +1787,53 @@ cd backend/src/Focadu.Api
 dotnet user-secrets set "Jwt:SecretKey" "uma-chave-longa-e-aleatoria-aqui"
 ```
 
+### Redefinicao de senha (Fase 41)
+
+`User` nao tinha nenhum jeito de recuperar acesso perdido - `LoginPage.tsx` chegou a documentar
+isso como decisao deliberada ("Esqueci minha senha - sem fluxo de recuperacao de senha construido,
+nao deixado como link morto"), porque nao havia infraestrutura de email nenhuma no projeto. Esta
+fase implementa o fluxo completo:
+
+- **`PasswordResetToken`** (`Focadu.Domain.Users`) - aggregate root proprio (nao filho de `User`),
+  guarda so `UserId` + `TokenHash` (SHA-256, nunca o token em texto puro - mesmo raciocinio de
+  `User.PasswordHash`) + `ExpiresAt`/`UsedAt`. `Consume(now)` valida (nao usado, nao expirado - 1h
+  de validade, definida em `RequestPasswordResetUseCase`) e marca `UsedAt` na mesma chamada -
+  nunca reaproveitavel, mesmo se a troca de senha em si falhar depois.
+- **`PasswordResetTokenGenerator`** (`Focadu.Application.Shared`, internal static, testado direto)
+  - `RandomNumberGenerator` (nao `Random.Shared` como `UniqueCodeGenerator`): este token protege
+  troca de senha/acesso a conta, precisa ser imprevisivel, nao so "nao repetido" como um codigo de
+  indicacao. 32 bytes aleatorios, base64url; `Hash()` e SHA-256 simples (nao BCrypt) - a entropia
+  do token sozinha ja torna brute-force inviavel, sem precisar do hashing lento de senha.
+- **`RequestPasswordResetUseCase`** (`POST /auth/forgot-password`) - nunca revela se o email existe
+  (mesmo raciocinio de `credenciais_invalidas`): sempre 200, so gera token + manda email quando o
+  usuario existe de verdade.
+- **`ResetPasswordUseCase`** (`POST /auth/reset-password`) - valida o token (`token_invalido`/
+  `token_expirado`) e a forca da nova senha (reaproveita `RegisterUserUseCase.ValidatePassword`,
+  nunca duplicada), troca o hash (`User.SetPasswordHash`, mutator novo) e marca o token usado, tudo
+  antes de 1 `SaveChangesAsync`.
+- **`IPasswordResetEmailSender`** (port, `Focadu.Application.Ports`) - recebe o token em TEXTO PURO
+  (unico lugar que ve essa versao) e quem monta o link final (dominio do frontend + rota
+  `/redefinir-senha?token=`) e o adapter concreto, nao a Application - mesma decisao de
+  `GitHubService` conhecer sua propria `BaseAddress`. Adapter: `SmtpPasswordResetEmailSender`
+  (`Focadu.Infrastructure.Services`) via `System.Net.Mail.SmtpClient` puro (sem lib de terceiro) -
+  generico, funciona com qualquer provedor SMTP (Gmail com senha de app, Outlook, etc), decisao
+  tomada em vez de uma API transacional (Resend/SendGrid) pra nao amarrar a um servico novo nem
+  exigir criar conta antes de funcionar.
+- **`Smtp:*`/`Frontend:BaseUrl`** (config) - mesma decisao do Groq/GitHub: `Smtp:Host` ausente nao
+  impede o app de subir, so o envio falha (com erro claro, `smtp_nao_configurado`) quando de fato
+  chamado. `Frontend:BaseUrl` default `http://localhost:5173` (dev) - **producao/homologacao
+  precisam configurar de verdade** (env var `FRONTEND_BASE_URL`, ver `docs/DOCKER.md`), senao o
+  link do email aponta pro localhost de quem hospeda o backend, inutil pra quem recebe o email.
+
+```bash
+cd backend/src/Focadu.Api
+dotnet user-secrets set "Smtp:Host" "smtp.gmail.com"
+dotnet user-secrets set "Smtp:Port" "587"
+dotnet user-secrets set "Smtp:User" "seu-email@gmail.com"
+dotnet user-secrets set "Smtp:Password" "sua-senha-de-app"  # nao a senha normal da conta, ver https://myaccount.google.com/apppasswords
+dotnet user-secrets set "Frontend:BaseUrl" "http://localhost:5173"
+```
+
 ## Como rodar localmente
 
 ```bash
@@ -1793,6 +1845,7 @@ dotnet test tests/Focadu.Tests/Focadu.Tests.csproj      # roda os testes de domi
 dotnet user-secrets set "Groq:ApiKey" "sua-chave-aqui" --project src/Focadu.Api  # so necessario pra VoiceSummary/rascunho de LinkedIn funcionar de verdade
 dotnet user-secrets set "GitHub:Token" "seu-token-aqui" --project src/Focadu.Api  # so necessario pro commit de resumo do modulo funcionar de verdade
 dotnet user-secrets set "Jwt:SecretKey" "uma-chave-longa-aqui" --project src/Focadu.Api  # obrigatorio desde a Fase 12, a Api nao sobe sem isso
+dotnet user-secrets set "Smtp:Host" "smtp.gmail.com" --project src/Focadu.Api  # so necessario pro fluxo de "esqueci minha senha" enviar email de verdade, ver "Redefinicao de senha" acima
 dotnet run --project src/Focadu.Api -- seed              # popula o curso "Web Security" (idempotente)
 dotnet run --project src/Focadu.Api                      # sobe a API completa
 ```
@@ -1960,7 +2013,8 @@ frontend/
   src/
     main.tsx              <- BrowserRouter + AuthProvider + SettingsProvider (Fase 25, ver
                               contexts/SettingsProvider.tsx) + Routes ("/" Splash, "/login" fora do
-                              ProtectedRoute; onboarding/onboarding/perfil/selecionar-curso/start
+                              ProtectedRoute; /esqueci-senha e /redefinir-senha (Fase 41) tambem
+                              fora, mesmo motivo; onboarding/onboarding/perfil/selecionar-curso/start
                               fora do <App/> - so start SEM params fica sem shell de verdade, ver
                               routes/StartPage.tsx; /hoje voltou pra DENTRO do <Route
                               element={<App/>}> na Fase 25, usa <TodayPage/> direto - era
@@ -2060,7 +2114,17 @@ frontend/
                                    /login, ou resolveLandingPath(user) (onboarding/selecao de
                                    curso/start - Fase 13b), duracao minima de 700ms
       LoginPage.tsx                <- "/login" (Fase 12) - abas Entrar/Criar Conta; onSuccess de
-                                   ambos os forms passa pelo mesmo resolveLandingPath (Fase 13b)
+                                   ambos os forms passa pelo mesmo resolveLandingPath (Fase 13b).
+                                   Fase 41: link "Esqueci minha senha" -> /esqueci-senha (antes
+                                   deliberadamente ausente, sem backend pra sustentar)
+      ForgotPasswordPage.tsx      <- /esqueci-senha (Fase 41) - fora do <ProtectedRoute/>, layout
+                                   proprio (cartao centralizado, nao reproduz o painel de marca
+                                   dividido da LoginPage - sem node de Figma pra esta tela).
+                                   POST /api/auth/forgot-password sempre "sucesso", mesma tela pra
+                                   email cadastrado ou nao
+      ResetPasswordPage.tsx       <- /redefinir-senha?token= (Fase 41) - token vem da query string
+                                   (link do email); POST /api/auth/reset-password,
+                                   token_invalido/token_expirado mostrados como veio do backend
       OnboardingWelcomePage.tsx   <- /onboarding (Fase 13b, passo 1/3) - "Pular tour" conclui o
                                    perfil com interesses vazios (User.CompleteProfile aceita lista
                                    vazia) e pula direto pra /selecionar-curso
@@ -2244,6 +2308,11 @@ frontend/
         RegisterForm.tsx              <- nome + email + senha + confirmacao (Fase 12); onSuccess
                                    recebe o UserDto (Fase 13b); `referralCode` opcional (Fase 17,
                                    vem de /login?ref=, ver LoginPage)
+        ForgotPasswordForm.tsx       <- Fase 41 - so email, onSubmitted(email) (nao ha UserDto, essa
+                                   chamada nunca cria sessao)
+        ResetPasswordForm.tsx        <- Fase 41 - nova senha + confirmacao (mesmo padrao de
+                                   RegisterForm), recebe `token` por prop (vem da query string de
+                                   ResetPasswordPage), onSuccess() sem payload
       onboarding/                  <- Fase 13b
         InterestChip.tsx                <- chip de interesse multi-select (Entrevista de Perfil)
         OnboardingStepper.tsx             <- "Passo X de 3" + pontinhos, compartilhado pelas 3 telas
@@ -2401,6 +2470,8 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 |---|---|---|
 | `/` | `GET /api/auth/me` (via AuthProvider) | `SplashPage` (Fase 12) - decide entre `/login` e `resolveLandingPath(user)` (Fase 13b) |
 | `/login` | `POST /api/auth/register` ou `/login` | `LoginPage` (Fase 12) - abas Entrar/Criar Conta; `?ref=CODIGO` (Fase 17) pula pra Criar Conta com o codigo pre-preenchido |
+| `/esqueci-senha` | `POST /api/auth/forgot-password` | `ForgotPasswordPage` (Fase 41) - fora do `<ProtectedRoute/>` |
+| `/redefinir-senha?token=` | `POST /api/auth/reset-password` | `ResetPasswordPage` (Fase 41) - fora do `<ProtectedRoute/>`, token vem da query string (link do email) |
 | `/onboarding` | `PUT /api/users/me/profile` (so no "Pular tour") | `OnboardingWelcomePage` (Fase 13b) - passo 1/3 |
 | `/onboarding/perfil` | `PUT /api/users/me/profile` | `ProfileInterviewPage` (Fase 13b) - passo 2/3, Entrevista de Perfil. `?edit=1` (Fase 18) - mesma tela em modo edicao, pre-populada, volta pro `/perfil` |
 | `/selecionar-curso` | `GET /api/courses/available` + `POST /api/enrollments` | `CourseSelectionPage` (Fase 13b) - passo 3/3 |
