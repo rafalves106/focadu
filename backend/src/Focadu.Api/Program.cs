@@ -59,8 +59,28 @@ if (string.IsNullOrWhiteSpace(jwtSecretKey))
 var jwtOptions = new JwtOptions(jwtSecretKey);
 const string AuthCookieName = "focadu_auth";
 
+// Smtp (Fase 41, redefinicao de senha): mesma decisao do Groq/GitHub acima - host ausente nao
+// impede o app de subir, so o envio do email falha (com erro claro) quando de fato chamado sem
+// estar configurado. Generico (SmtpClient puro), funciona com qualquer provedor (Gmail com senha
+// de app, Outlook, etc) - ver docs/ARQUITETURA.md.
+var smtpOptions = new SmtpOptions(
+    builder.Configuration["Smtp:Host"] ?? string.Empty,
+    int.TryParse(builder.Configuration["Smtp:Port"], out var smtpPort) ? smtpPort : 587,
+    builder.Configuration["Smtp:User"] ?? string.Empty,
+    builder.Configuration["Smtp:Password"] ?? string.Empty,
+    builder.Configuration["Smtp:FromAddress"] is { Length: > 0 } fromAddress ? fromAddress : builder.Configuration["Smtp:User"] ?? string.Empty,
+    builder.Configuration["Smtp:FromName"] is { Length: > 0 } fromName ? fromName : "Focadu",
+    !bool.TryParse(builder.Configuration["Smtp:EnableSsl"], out var smtpEnableSsl) || smtpEnableSsl);
+
+// Frontend:BaseUrl (Fase 41): so usado pra montar o link de redefinicao de senha no email - "onde
+// fica o frontend" e informacao de deploy (Infrastructure), a Application so trabalha com o token
+// em si. Default localhost:5173 (mesma origem hardcoded do CORS abaixo, so dev) - producao precisa
+// configurar via env var Frontend__BaseUrl.
+var frontendOptions = new FrontendOptions(
+    builder.Configuration["Frontend:BaseUrl"] is { Length: > 0 } frontendBaseUrl ? frontendBaseUrl : "http://localhost:5173");
+
 builder.Services.AddFocaduApplication();
-builder.Services.AddFocaduInfrastructure(connectionString, groqApiKey, gitHubOptions, jwtOptions);
+builder.Services.AddFocaduInfrastructure(connectionString, groqApiKey, gitHubOptions, jwtOptions, smtpOptions, frontendOptions);
 
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -238,6 +258,22 @@ api.MapPost("/auth/logout", (HttpContext http) =>
         return Results.Ok();
     })
     .WithName("Logout");
+
+// Redefinicao de senha (Fase 41) - as duas rotas sao anonimas, como registro/login/logout acima.
+// /forgot-password sempre devolve 200 (mesmo pra email nao cadastrado, ver RequestPasswordResetUseCase).
+api.MapPost("/auth/forgot-password", async (ForgotPasswordRequest? request, RequestPasswordResetUseCase useCase, CancellationToken ct) =>
+    {
+        await useCase.ExecuteAsync(request?.Email ?? string.Empty, ct);
+        return Results.Ok();
+    })
+    .WithName("ForgotPassword");
+
+api.MapPost("/auth/reset-password", async (ResetPasswordRequest? request, ResetPasswordUseCase useCase, CancellationToken ct) =>
+    {
+        await useCase.ExecuteAsync(request?.Token ?? string.Empty, request?.NewPassword ?? string.Empty, ct);
+        return Results.Ok();
+    })
+    .WithName("ResetPassword");
 
 api.MapGet("/auth/me", async (ClaimsPrincipal principal, GetCurrentUserUseCase useCase, CancellationToken ct) =>
         Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))

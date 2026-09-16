@@ -471,6 +471,17 @@ export interface LoginRequest {
   password: string;
 }
 
+// Redefinicao de senha (Fase 41) - forgotPassword sempre devolve 200 (mesmo pra email nao
+// cadastrado, ver RequestPasswordResetUseCase no backend).
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
 // Matricula (Fase 13) - Onboarding/Selecao de Curso.
 export interface AvailableCourseDto {
   id: string;

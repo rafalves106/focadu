@@ -35,7 +35,8 @@ public static class DependencyInjection
     private static readonly TimeSpan GroqAudioTranscriptionAttemptTimeout = TimeSpan.FromSeconds(15);
 
     public static IServiceCollection AddFocaduInfrastructure(
-        this IServiceCollection services, string connectionString, string groqApiKey, GitHubOptions gitHubOptions, JwtOptions jwtOptions)
+        this IServiceCollection services, string connectionString, string groqApiKey, GitHubOptions gitHubOptions, JwtOptions jwtOptions,
+        SmtpOptions smtpOptions, FrontendOptions frontendOptions)
     {
         services.AddDbContext<FocaduDbContext>(options => options.UseNpgsql(connectionString));
 
@@ -54,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<ISquadRepository, SquadRepository>();
         services.AddScoped<IPersonalizedAnalogyRepository, PersonalizedAnalogyRepository>();
         services.AddScoped<INoteRepository, NoteRepository>();
+        services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<IClock, SystemClock>();
 
@@ -121,6 +123,13 @@ public static class DependencyInjection
             client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
             client.Timeout = TimeSpan.FromSeconds(20);
         });
+
+        // Redefinicao de senha (Fase 41) - Smtp:Host ausente nao impede o app de subir, mesma
+        // decisao de Groq/GitHub acima: so o envio do email falha (com erro claro) quando de fato
+        // chamado sem estar configurado. FrontendOptions so serve pra montar o link do email.
+        services.AddSingleton(smtpOptions);
+        services.AddSingleton(frontendOptions);
+        services.AddSingleton<IPasswordResetEmailSender, SmtpPasswordResetEmailSender>();
 
         return services;
 

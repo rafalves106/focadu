@@ -88,4 +88,13 @@ public class User : Entity
 
         ReferralCode = code;
     }
+
+    /// <summary>Troca o hash da senha (Fase 41, redefinicao de senha) - a Application ja validou o token de reset e a forca da nova senha antes de chamar isso; o dominio so garante que o hash recebido nao chegue vazio (mesma checagem de User.Create).</summary>
+    public void SetPasswordHash(string newPasswordHash)
+    {
+        if (string.IsNullOrWhiteSpace(newPasswordHash))
+            throw new DomainException("Hash de senha e obrigatorio.");
+
+        PasswordHash = newPasswordHash;
+    }
 }

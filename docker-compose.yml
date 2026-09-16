@@ -31,6 +31,18 @@ services:
       Jwt__SecretKey: ${JWT_SECRET_KEY:?JWT_SECRET_KEY precisa ser definido no .env (minimo 32 caracteres)}
       Groq__ApiKey: ${GROQ_API_KEY:-}
       GitHub__Token: ${GITHUB_TOKEN:-}
+      # Redefinicao de senha (Fase 41) - Smtp:Host ausente nao impede o app de subir, so o envio
+      # do email falha (com erro claro) quando de fato chamado. Frontend:BaseUrl monta o link do
+      # email - sem valor aqui, o backend cai no fallback de dev (localhost:5173), inutil em
+      # producao: configure FRONTEND_BASE_URL no .env real.
+      Smtp__Host: ${SMTP_HOST:-}
+      Smtp__Port: ${SMTP_PORT:-587}
+      Smtp__User: ${SMTP_USER:-}
+      Smtp__Password: ${SMTP_PASSWORD:-}
+      Smtp__FromAddress: ${SMTP_FROM_ADDRESS:-}
+      Smtp__FromName: ${SMTP_FROM_NAME:-Focadu}
+      Smtp__EnableSsl: ${SMTP_ENABLE_SSL:-true}
+      Frontend__BaseUrl: ${FRONTEND_BASE_URL:-}
       # Contorna a busca por `.git` de CuratedContentPath (nao existe dentro do container) -
       # aponta direto pro bind mount do clone de focadu-secret abaixo. Ver
       # SeedWebSecurityCourseUseCase.CuratedContentPath.

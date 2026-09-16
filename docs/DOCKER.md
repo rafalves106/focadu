@@ -78,12 +78,17 @@ de novo, já com o conteúdo mais recente).
 ## Variáveis de ambiente
 
 Ver `.env.example` na raiz — cobre banco de dados, backend (`JWT_SECRET_KEY` obrigatório,
-`GROQ_API_KEY`/`GITHUB_TOKEN` opcionais), `SECRET_PATH` (onde fica o clone de `focadu-secret` no
-host) e `FRONTEND_PORT`/`VITE_API_BASE_URL`.
+`GROQ_API_KEY`/`GITHUB_TOKEN`/`SMTP_*` opcionais), `SECRET_PATH` (onde fica o clone de
+`focadu-secret` no host) e `FRONTEND_PORT`/`VITE_API_BASE_URL`.
 
 `VITE_API_BASE_URL` vazio é o default recomendado: o frontend chama caminhos relativos
 (`/api/...`) e o nginx do próprio container faz proxy same-origin pro backend (ver
 `frontend/nginx.conf`) — não precisa de subdomínio de API dedicado no Cloudflare Tunnel.
+
+`SMTP_*` (Fase 41, redefinição de senha) são opcionais pro app subir, mas **`FRONTEND_BASE_URL`
+precisa ser preenchido com o domínio público de verdade em produção/homologação** antes do 1º uso
+real do fluxo — sem ele, o link do email de redefinição aponta pro fallback de dev
+(`http://localhost:5173`), inútil pra quem recebe o email fora da máquina de desenvolvimento.
 
 ## Portas (convenção fixa)
 
