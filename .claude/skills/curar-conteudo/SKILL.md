@@ -33,11 +33,18 @@ metadata:
    nomes de campo, mesma forma de tratar `contentRef`, `quizOptions` e `roleplayNodes`.
    Se uma mensagem vier cortada (limite de caracteres), sinalize a lacuna no lugar certo e
    peça o restante — nunca invente conteúdo para preencher.
-5. **Valide** o JSON (`python3 -c "import json; json.load(open('...'))"` ou equivalente)
+5. **Revise cada Quiz e Cloze/`MultipleChoice`** contra o checklist de 4 critérios anti-resposta-
+   óbvia em CURADORIA.md seção 2.2 (espelhamento estrutural, distrator fora de assunto, resposta
+   mais longa, termo repetido) — o teste prático é "dá pra eliminar as 3 erradas e acertar só de
+   leitura/lógica, sem saber o assunto de verdade?". Se sim pra qualquer pergunta, reescreva os
+   distratores problemáticos (nunca a resposta certa) antes de seguir. Descoberto ao vivo depois
+   de várias fases já concluídas (ver nota de auditoria em CURADORIA.md seção 4) — não pular essa
+   revisão em conteúdo novo.
+6. **Valide** o JSON (`python3 -c "import json; json.load(open('...'))"` ou equivalente)
    antes de considerar pronto.
-6. **Grave** em `secret/curadoria/<curso-slug>/semana-N/dia-N.json` (curso piloto:
+7. **Grave** em `secret/curadoria/<curso-slug>/semana-N/dia-N.json` (curso piloto:
    `web-security`).
-7. **Atualize** a tabela "Estado atual" em `secret/curadoria/CURADORIA.md` marcando o dia
+8. **Atualize** a tabela "Estado atual" em `secret/curadoria/CURADORIA.md` marcando o dia
    recém-criado como concluído.
 
 ## Regras de Ouro (não negociáveis)
@@ -55,7 +62,8 @@ metadata:
 - **Vídeo**: 10 a 15 minutos no máximo, PT-BR de preferência, com título + canal +
   justificativa de por que assistir.
 - **Quiz** (5-6 passos): todas as alternativas tecnicamente corretas sobre o assunto — só
-  uma responde ao enunciado específico. Proibido distrator obviamente errado.
+  uma responde ao enunciado específico. Proibido distrator obviamente errado (checklist de
+  validação em CURADORIA.md seção 2.2 — ver passo 5 do Fluxo).
 - **Cloze Test** (4 passos): uma lacuna exata por frase.
 - **Ligar Palavras**: exatamente 3 grupos de 4 pares — Conceitos (palavra×palavra),
   Definições (frase×palavra), Processos (frase×frase).
