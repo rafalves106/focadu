@@ -178,9 +178,17 @@ public class SeedWebSecurityCourseUseCase
     /// seu proprio `.git`), lado a lado com este. Por isso tenta as duas localizacoes, nessa ordem:
     /// 1) raiz-deste-repo/secret/... (compatibilidade com quem tiver o symlink local).
     /// 2) pasta-irma/focadu-secret/... (arranjo real de hoje, 2 repos lado a lado).
+    ///
+    /// Dentro de um container Docker nao existe `.git` nem repo irmao pra subir/achar - a imagem so
+    /// tem o publish output. CURATED_CONTENT_ROOT (setada no docker-compose, apontando pro bind
+    /// mount do clone de focadu-secret) contorna a busca inteira quando presente.
     /// </summary>
     private static string CuratedContentPath(string weekFolder, string fileName)
     {
+        var contentRoot = Environment.GetEnvironmentVariable("CURATED_CONTENT_ROOT");
+        if (!string.IsNullOrWhiteSpace(contentRoot))
+            return Path.Combine(contentRoot, "curadoria", CourseSlug, weekFolder, fileName);
+
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, ".git")))
             dir = dir.Parent;

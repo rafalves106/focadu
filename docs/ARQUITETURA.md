@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 39 - Correcao de Transcricao de Voz Antes da Avaliacao + Titulo do Dia na Semana + Destaque de Semana Atual**.
+> Ultima fase que atualizou este documento: **Fase 40 - Dockerizacao (Backend + Frontend) e CI/CD de Deploy Automatico**.
 
 ## Visao geral do projeto
 
@@ -1438,7 +1438,9 @@ skill `curar-conteudo`) do disco e aplica a uma `WeeklyTemplate`: cria `DailyTem
 incluidos, resolvido em 2 passadas porque `NodeKey` pode apontar pra um node definido depois no
 JSON). `SeedWebSecurityCourseUseCase.AddDay1` chama `CuratedDayImporter.ImportFile` em vez do
 placeholder hardcoded que existia (o `TODO` original); acha a raiz do repo subindo diretorios ate
-achar `.git` (o seed pode rodar tanto da raiz quanto de `backend/`). Dias 2-4 continuam no
+achar `.git` (o seed pode rodar tanto da raiz quanto de `backend/`) - **Fase 40:** ou, se a env var
+`CURATED_CONTENT_ROOT` estiver definida (caso do container Docker, que nao tem `.git`), usa ela
+direto sem subir diretorio nenhum (ver "Docker e Deploy" abaixo). Dias 2-4 continuam no
 placeholder - so o Dia 1 foi pedido nesta fase, trocar os outros e a mesma 1 linha cada.
 
 ## Persistencia (EF Core + Postgres)
@@ -1809,6 +1811,78 @@ Password=focadu` (definida em `backend/src/Focadu.Api/appsettings.json` e como f
 `FocaduDbContextFactory`; pode ser sobrescrita pela env var `FOCADU_CONNECTION_STRING` para
 ferramentas de design-time do EF, ou por `ConnectionStrings:Focadu` / env var equivalente para a
 Api em runtime).
+
+**Fase 40:** migrations agora tambem aplicam automaticamente no boot da Api (`Program.cs`, antes
+de `app.Run()`), em todo ambiente - nao so em Dev. O passo manual `dotnet ef database update`
+acima continua funcionando e e inofensivo rodar (idempotente), mas deixou de ser estritamente
+necessario. Motivacao: a imagem Docker de runtime (`aspnet:10.0`) nao tem o SDK/`dotnet-ef`
+instalado, entao nao havia como rodar a migration manualmente dentro do container - ver "Docker e
+Deploy" abaixo.
+
+## Docker e Deploy (Fase 40)
+
+Guia pratico completo (comandos, variaveis, runbook de deploy) em `docs/DOCKER.md` - esta secao
+so resume as decisoes de arquitetura.
+
+**Dois Dockerfiles, multi-stage:**
+- `backend/Dockerfile`: SDK 10.0 restaura/publica so `Focadu.Api.csproj` -> runtime `aspnet:10.0`
+  (porta interna 8080, `HEALTHCHECK` em `/health`, `curl` instalado so pra isso).
+- `frontend/Dockerfile`: `node:22-alpine` builda (`npm ci && npm run build`) -> `nginx:alpine`
+  serve `dist/` (porta interna 80). `VITE_API_BASE_URL` e build ARG (Vite embute em build-time,
+  nao da pra trocar depois em runtime) - default vazio, ver proxy abaixo.
+
+**Frontend e backend nunca ficam em dominios separados** - `frontend/nginx.conf` faz proxy
+same-origin de `/api/` pro container do backend (mesmo truque do projeto "financas"). Como
+`frontend/src/api/client.ts` ja monta URLs como `${BASE_URL}${path}` com `path` incluindo `/api/...`
+e `BASE_URL` cai pra string vazia quando `VITE_API_BASE_URL` nao e definida, o SPA em producao
+chama caminhos relativos e o navegador nunca faz uma requisicao cross-origin de verdade. Isso
+evita precisar de subdominio de API dedicado no Cloudflare Tunnel e evita mexer na allowlist de
+CORS (`Program.cs`, ainda fixa em `localhost:5173`/`127.0.0.1:5173` - so precisaria mudar se um dia
+o backend for exposto num dominio proprio).
+
+**`docker-compose.yml`** (producao) e **`docker-compose.homolog.yml`** (homologacao, stack
+completa e isolada - nomes de container, volume de Postgres e portas de host proprios, nunca
+compartilha dados com producao) vivem na raiz do repo, ao lado de `.env.example`. Servicos:
+`postgres`/`backend`/`frontend`. Portas de host (via `.env`, nao versionado): producao
+frontend `5280`/backend `5282`/postgres `5432`; homolog frontend `5290`/backend `5292`/postgres
+`5433`.
+
+**Sincronizacao com `secret/` (Fase 40, achado importante):** o conteudo curado
+(`secret/curadoria/*.json`) so e lido pelo comando `dotnet run -- seed`
+(`SeedWebSecurityCourseUseCase`), nunca por nenhum endpoint HTTP em runtime normal (ver "Seed de
+conteudo" acima). `CuratedContentPath` originalmente resolvia o caminho subindo diretorios ate
+achar `.git` - isso nao existe dentro de um container (a imagem so tem o publish output). Fase 40
+adicionou um atalho: se a env var `CURATED_CONTENT_ROOT` estiver definida, o metodo usa ela
+diretamente (`Path.Combine(root, "curadoria", CourseSlug, ...)`), sem subir diretorio nenhum. O
+compose monta `secret/` do host como bind mount **read-only** no container do backend (path fixo
+`/secret`) e seta `CURATED_CONTENT_ROOT=/secret` - assim uma atualizacao do clone de
+`focadu-secret` no host fica visivel pro container sem rebuild de imagem, so precisa reiniciar (ou
+re-executar o seed).
+
+**Ressalva que fica pro futuro, nao resolvida nesta fase:** `SeedWebSecurityCourseUseCase` e
+idempotente **por Curso** - depois que "Web Security" ja existe no banco, `ExecuteAsync` retorna
+sem ler nenhum arquivo de novo. Ou seja: editar um `dia-N.json` ja seedado e reiniciar/re-rodar o
+seed **nao** atualiza o conteudo ja carregado no Postgres; isso so reflete de verdade num banco
+ainda vazio (primeiro deploy de um ambiente, ou homolog logo apos um reset de banco). Reseed
+incremental (por semana/dia, nao so por curso inteiro) ainda nao existe - ver `docs/fase-40/
+resumo-implementacao-fase-40.md` pra mais detalhe.
+
+**CI/CD (dois repositorios, dois gatilhos):**
+- `focadu/.github/workflows/ci.yml`: build+test do backend (.NET) e lint+build do frontend
+  (Node), em push/PR pra `main`/`develop`.
+- `focadu/.github/workflows/deploy.yml`: dispara via `workflow_run` apos o CI passar (so em push,
+  nunca em PR) - resolve ambiente pela branch (`main` -> producao, `develop` -> homologacao),
+  `git reset --hard` no path do codigo E no `secret/` correspondente, `docker compose up -d
+  --build`, roda o seed (idempotente, seguro toda vez), healthcheck HTTP no frontend.
+- `focadu-secret/.github/workflows/deploy.yml` (repo separado, so branch `main` - mesmo conteudo
+  serve os dois ambientes): `git reset --hard` nos dois checkouts do host, restart + seed nos dois
+  backends (sem rebuild de imagem, ja que `secret/` e bind mount).
+- Runner: `[self-hosted, Windows, falveshub-server]`, mesmo runner fisico registrado nos dois
+  repositorios (registro em si e passo manual, feito quando a maquina Windows estiver pronta - ver
+  `docs/DOCKER.md`).
+- Convencao de pasta no host: `C:\Servidor\focadu` (producao, branch `main`) e
+  `C:\Servidor\focadu-hml` (homologacao, branch `develop`) - dentro de cada uma, `secret\` e o
+  clone de `focadu-secret`.
 
 ## Frontend (Fase 3, telas de atividade completadas nas Fases 4 e 5, autoria na Fase 6)
 
@@ -2676,6 +2750,9 @@ manual. `:not(:disabled)` preserva o cursor default nos botoes desabilitados (`d
 | 35 | Caderninho no Resumo Falado | `docs/fase-35/resumo-implementacao-fase-35.md` |
 | 36 | Etapa Anterior na Sessao + Contador de Erros no Header + Timer Pomodoro | `docs/fase-36/resumo-implementacao-fase-36.md` |
 | 37 | Sessao em 2 Colunas + Suporte Rapido de IA em Painel Fixo | `docs/fase-37/resumo-implementacao-fase-37.md` |
+| 38 | Bloqueio do Projeto Semanal + Painel de Inicio + Sequenciamento de Daily por Progresso | `docs/fase-38/resumo-implementacao-fase-38.md` |
+| 39 | Correcao de Transcricao de Voz Antes da Avaliacao + Titulo do Dia + Destaque de Semana Atual | `docs/fase-39/resumo-implementacao-fase-39.md` |
+| 40 | Dockerizacao (Backend + Frontend) e CI/CD de Deploy Automatico | `docs/fase-40/resumo-implementacao-fase-40.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
