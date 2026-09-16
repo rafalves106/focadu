@@ -24,8 +24,10 @@ using Focadu.Application.Users;
 using Focadu.Application.Weeklies;
 using Focadu.Domain.Enums;
 using Focadu.Infrastructure;
+using Focadu.Infrastructure.Persistence;
 using Focadu.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -116,6 +118,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+// Dockerizacao: aplica migrations pendentes automaticamente no boot, em vez de exigir
+// `dotnet ef database update` manual no host (a imagem runtime nem tem o SDK/dotnet-ef instalado).
+// Seguro em todo ambiente porque MigrateAsync so aplica o que falta (idempotente) - o
+// docker-compose garante Postgres saudavel antes do backend subir via depends_on condition:
+// service_healthy, entao nao precisa de retry aqui.
+using (var migrationScope = app.Services.CreateScope())
+{
+    var dbContext = migrationScope.ServiceProvider.GetRequiredService<FocaduDbContext>();
+    await dbContext.Database.MigrateAsync();
+}
 
 // Cookie de sessao (Fase 12): Secure=true exige HTTPS - desligado so em dev local (http://localhost),
 // senao o navegador nunca gravaria o cookie. SameSite=Lax basta pro cenario atual (front e back em

@@ -84,10 +84,23 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 39 — Correção de Transcrição de Voz Antes da Avaliação, Título do
-Dia na Semana e Destaque de Semana Atual** (16/09/2026).
+Última fase concluída: **Fase 40 — Dockerização (Backend + Frontend) e CI/CD de Deploy
+Automático** (16/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Dockerização completa + CI/CD de deploy automático (Fase 40)**: `backend/Dockerfile` e
+  `frontend/Dockerfile` (multi-stage), `docker-compose.yml` (produção) e
+  `docker-compose.homolog.yml` (homologação, stack isolada), consolidando o Focadu na mesma
+  infra Cloudflare Tunnel dos demais projetos pessoais (`falveshub.com`). Frontend faz proxy
+  same-origin de `/api/` pro backend via nginx (sem subdomínio de API separado). `secret/` vira
+  bind mount read-only no container do backend (`CURATED_CONTENT_ROOT`), já que o conteúdo
+  curado só é lido pelo comando `seed` (idempotente por Curso — não recarrega edição de dia já
+  seedado, ver `docs/ARQUITETURA.md` "Docker e Deploy"). Migrations do EF Core passaram a aplicar
+  automaticamente no boot da Api (antes só manual via `dotnet ef database update`). Dois
+  workflows do GitHub Actions (`focadu/.github/workflows/deploy.yml` e
+  `focadu-secret/.github/workflows/deploy.yml`) automatizam o deploy em runner self-hosted
+  próprio (`falveshub-server`) — guia prático completo em `docs/DOCKER.md`. Runner ainda não
+  registrado (depende da máquina Windows + Docker Desktop de destino ficar pronta).
 - **Avaliação de Resumo Falado corrige a transcrição do Whisper antes de avaliar (Fase 39, bug
   real relatado ao vivo)**: erro de reconhecimento de fala (termo técnico deturpado foneticamente)
   não derruba mais a nota injustamente — a IA corrige o que é claramente ruído de transcrição

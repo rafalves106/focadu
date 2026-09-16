@@ -1,0 +1,68 @@
+name: Deploy
+
+# Dispara depois que o workflow CI (ci.yml) terminar num push em main/develop - nao direto em
+# `push`, pra nunca subir codigo que nao passou no build/teste. `workflow_run` so reage a eventos
+# do branch default por padrao, mas o filtro abaixo (head_branch + conclusion) garante que so
+# roda pra main/develop e so quando a CI passou de verdade.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main, develop]
+
+jobs:
+  deploy:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: [self-hosted, macOS, falveshub-server]
+    steps:
+      - name: Resolver ambiente pela branch
+        id: env
+        run: |
+          branch="${{ github.event.workflow_run.head_branch }}"
+          if [ "$branch" = "main" ]; then
+            echo "path=/Users/falves/Dev/Servidor/focadu" >> "$GITHUB_OUTPUT"
+            echo "compose_file=docker-compose.yml" >> "$GITHUB_OUTPUT"
+            echo "frontend_port=5280" >> "$GITHUB_OUTPUT"
+          elif [ "$branch" = "develop" ]; then
+            echo "path=/Users/falves/Dev/Servidor/focadu-hml" >> "$GITHUB_OUTPUT"
+            echo "compose_file=docker-compose.homolog.yml" >> "$GITHUB_OUTPUT"
+            echo "frontend_port=5290" >> "$GITHUB_OUTPUT"
+          else
+            echo "Branch '$branch' nao mapeada para nenhum ambiente de deploy." >&2
+            exit 1
+          fi
+
+      - name: Atualizar codigo (rafalves106/focadu)
+        working-directory: ${{ steps.env.outputs.path }}
+        run: |
+          git fetch origin
+          git reset --hard "origin/${{ github.event.workflow_run.head_branch }}"
+
+      - name: Atualizar conteudo curado (rafalves106/focadu-secret)
+        working-directory: ${{ steps.env.outputs.path }}/secret
+        run: |
+          git fetch origin
+          git reset --hard origin/main
+
+      - name: Subir stack Docker (build + up)
+        working-directory: ${{ steps.env.outputs.path }}
+        run: docker compose -f ${{ steps.env.outputs.compose_file }} up -d --build
+
+      - name: Popular curriculo (idempotente - so faz algo em ambiente novo/DB vazio)
+        working-directory: ${{ steps.env.outputs.path }}
+        run: docker compose -f ${{ steps.env.outputs.compose_file }} exec -T backend dotnet Focadu.Api.dll seed
+
+      - name: Healthcheck do frontend
+        run: |
+          port="${{ steps.env.outputs.frontend_port }}"
+          ok=false
+          for i in $(seq 1 15); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$port/" || echo "000")
+            if [ "$code" = "200" ]; then ok=true; break; fi
+            sleep 3
+          done
+          if [ "$ok" != "true" ]; then
+            echo "Healthcheck falhou: frontend nao respondeu 200 em http://localhost:$port/ apos o deploy." >&2
+            exit 1
+          fi
+          echo "Deploy OK - frontend respondendo em http://localhost:$port/"
