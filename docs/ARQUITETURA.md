@@ -1546,9 +1546,14 @@ detalhe de HTTP), tambem usado por `GitHubService` (ver secao GitHub abaixo).
   HTTP).
 - **Backoff:** exponencial + jitter (~500ms na 1a espera, ~1s na 2a), com teto de 2s de espera por
   tentativa - mesmo se a Groq mandar um `Retry-After` maior num 429.
-- **Timeout por tentativa - corrigido em 2026-09-13, verificacao ao vivo:** `EvaluateAsync`
-  (avaliacao, texto puro) usa 2s (`GroqRetryAttemptTimeout`) - cobre folgado o tempo real de
-  resposta da Groq em chat completion (LPU, geralmente sub-segundo). `TranscribeAsync`
+- **Timeout por tentativa - corrigido em 2026-09-13 e 2026-09-17, verificacao ao vivo:**
+  `EvaluateAsync` (avaliacao, texto puro) usa 6s (`GroqContentEvaluationAttemptTimeout`) - valor
+  original era 2s (cobria folgado o tempo real de resposta da Groq em chat completion simples),
+  mas se mostrou curto demais depois da Fase 39 ter acrescentado um passo de raciocinio/correcao
+  ao prompt antes do score: confirmado ao vivo (logs de 2026-09-17) que as 3 tentativas bateram no
+  timeout de 2s em sequencia sem nenhuma completar. Esse timeout de 6s se aplica a CADA UMA das 2
+  chamadas Groq que `EvaluateAsync` faz desde a Fase 42 (correcao de transcricao numa chamada
+  dedicada, depois a nota numa 2a - ver secao "Resumo falado por voz" acima). `TranscribeAsync`
   (transcricao) usa 15s (`GroqAudioTranscriptionAttemptTimeout`) - **valor original tambem era
   2s, mas se mostrou curto demais na pratica**: diferente de `EvaluateAsync`, essa chamada faz
   upload do audio gravado (multipart) antes da Groq comecar a processar, e o tempo de upload
@@ -1557,9 +1562,10 @@ detalhe de HTTP), tambem usado por `GitHubService` (ver secao GitHub abaixo).
   `groq_timeout` (`"A transcricao demorou demais para responder"`) num audio legitimo, nao numa
   falha de rede de verdade.
 - **Orcamento do fluxo:** pior caso de transcricao+avaliacao juntas (transcricao ate 3 tentativas
-  de 15s + avaliacao ate 3 tentativas de 2s, mais backoff) fica em ~55s, dentro dos 70s que o
-  frontend usa como referencia pro timeout dessa chamada (`VOICE_SUMMARY_TIMEOUT_MS = 70_000`,
-  `frontend/src/api/client.ts`).
+  de 15s + avaliacao = 2 chamadas sequenciais, cada uma ate 3 tentativas de 6s, mais backoff) fica
+  em ~85s, dentro dos 95s que o frontend usa como referencia pro timeout dessa chamada
+  (`VOICE_SUMMARY_TIMEOUT_MS = 95_000`, `frontend/src/api/client.ts` - 70_000 ate a Fase 42, quando
+  a avaliacao virou 2 chamadas em vez de 1).
 - Falha definitiva (depois de esgotar as tentativas) cai no mesmo erro/`Code` de antes
   (`groq_transcricao_falhou`, `groq_avaliacao_falhou`, `groq_timeout`, `groq_indisponivel`,
   `transcricao_vazia`, `avaliacao_ia_formato_invalido`) - sem mudanca de contrato pro frontend,
@@ -2116,7 +2122,7 @@ frontend/
                                    GitHubRepoDto (Fase 11)
       client.ts               <- fetch tipado, ApiError, VITE_API_BASE_URL, suporte a FormData
                                    (upload de audio, Fase 5, sem forcar Content-Type json); request()
-                                   usa AbortSignal.timeout() desde a Fase 10 (10s padrao, 70s pro
+                                   usa AbortSignal.timeout() desde a Fase 10 (10s padrao, 95s pro
                                    endpoint de audio - ver "Timeout de requisicoes"); credentials:
                                    'include' desde a Fase 12 (senao o cookie de sessao nunca vai/volta)
       useApiResource.ts        <- hook pra loading/error/cancelamento (usado pelas sub-telas de /start e /admin/conteudo);
@@ -2630,10 +2636,11 @@ exibida" via query string precisa de uma `key` que muda junto**, React nao remon
 porque uma prop mudou.
 
 **Timeout de requisicoes (Fase 10):** `api/client.ts.request()` usa `AbortSignal.timeout()` - 10s
-por padrao (`DEFAULT_TIMEOUT_MS`), exceto `submitVoiceSummaryResponse` (70s,
-`VOICE_SUMMARY_TIMEOUT_MS`) - o endpoint de audio transcreve + avalia por IA em sequencia no
-backend, que ja tem seu proprio timeout de 60s pra Groq (ver "Resumo falado por voz" acima); um
-timeout de cliente de 10s quebraria essa atividade toda vez.
+por padrao (`DEFAULT_TIMEOUT_MS`), exceto `submitVoiceSummaryResponse` (95s desde a Fase 42, 70s
+antes, `VOICE_SUMMARY_TIMEOUT_MS`) - o endpoint de audio transcreve e avalia por IA em sequencia no
+backend (avaliacao virou 2 chamadas Groq na Fase 42, ver "Resumo falado por voz" acima pro
+orcamento completo de timeout/retry); um timeout de cliente de 10s quebraria essa atividade toda
+vez.
 
 **Roleplay, na tela:** navega o grafo inteiramente no cliente (todos os `RoleplayNode`/
 `RoleplayOption` ja vieram no `DailyActivityDto` inicial - nao ha ida-e-volta a cada escolha). O
