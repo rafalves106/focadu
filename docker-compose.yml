@@ -26,6 +26,10 @@ services:
     ports:
       - "${BACKEND_PORT:-5282}:8080"
     environment:
+      # SO do container roda em UTC por padrao - sem isso, DateTime.Now (ver SystemClock) cai no
+      # dia UTC errado entre ~21h e 23h59 no horario de Brasilia, travando a liberacao diaria da
+      # Daily (ver docs/fase-43/).
+      TZ: America/Sao_Paulo
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ConnectionStrings__Focadu: Host=postgres;Port=5432;Database=${DB_NAME:-focadu};Username=${DB_USER:-focadu};Password=${DB_PASSWORD:?DB_PASSWORD precisa ser definido no .env}
       Jwt__SecretKey: ${JWT_SECRET_KEY:?JWT_SECRET_KEY precisa ser definido no .env (minimo 32 caracteres)}

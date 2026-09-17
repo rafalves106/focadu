@@ -84,9 +84,20 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 42 — Correção de Nota Injusta no Resumo Falado** (17/09/2026).
+Última fase concluída: **Fase 43 — Fuso Horário do Container Bloqueando a Daily** (17/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Fuso horário do container bloqueando a Daily (Fase 43, bug real relatado ao vivo)**: o
+  container do backend rodava o relógio do SO em UTC (sem `TZ` setada em lugar nenhum), então
+  `SystemClock.Today()` (que usa `DateTime.Now` de propósito, pro "dia do calendário vivido pelo
+  usuário") na prática retornava a data em UTC. Concluir uma Daily entre ~21h e 23h59 no horário
+  de Brasília gravava `CompletedAt` já no dia seguinte em UTC, e a trava de "1 Daily por dia
+  corrido" (`Weekly.EvaluateDailyAccess`, Fase 38b) bloqueava o usuário o dia inteiro seguinte,
+  só liberando de novo às 21h local (virada do dia em UTC), nunca à meia-noite local esperada.
+  Corrigido com `TZ: America/Sao_Paulo` fixo no `environment` do serviço `backend`, replicado nos
+  quatro `docker-compose*.yml` (produção e homologação, nos dois checkouts do host) — puramente
+  configuração de ambiente, sem mudança de código C#. Containers recriados manualmente no host
+  pra alívio imediato; `git push` ainda pendente de confirmação (ver `docs/fase-43/`).
 - **Correção de nota injusta no Resumo Falado (Fase 42, bug real relatado ao vivo)**: a correção de
   transcrição da Fase 39 não pegava um erro comum do Whisper - trocar um termo técnico pelo seu
   antônimo foneticamente parecido (ex. "simétrica" por "assimétrica"), o que gera uma frase

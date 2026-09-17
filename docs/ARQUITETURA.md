@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 42 - Correcao de Nota Injusta no Resumo Falado**.
+> Ultima fase que atualizou este documento: **Fase 43 - Fuso Horario do Container Bloqueando a Daily**.
 
 ## Visao geral do projeto
 
@@ -1954,6 +1954,21 @@ resumo-implementacao-fase-40.md` pra mais detalhe.
 - Convencao de pasta no host: `C:\Servidor\focadu` (producao, branch `main`) e
   `C:\Servidor\focadu-hml` (homologacao, branch `develop`) - dentro de cada uma, `secret\` e o
   clone de `focadu-secret`.
+
+**Fuso horario do container (Fase 43, bug real relatado ao vivo):** o container do backend roda
+o relogio do SO em UTC por padrao - sem nenhuma variavel `TZ` setada, `DateTime.Now` (usado por
+`SystemClock.Today()`, a "hora local" de que as regras de acesso a Daily dependem) na verdade
+retornava hora UTC, nao hora de Brasilia. Concluir uma Daily entre ~21h e 23h59 no horario local
+gravava `CompletedAt` (UTC) ja no dia seguinte em UTC; a comparacao de "1 Daily por dia corrido"
+(`Weekly.EvaluateDailyAccess`, correcao da Fase 38b) fazia `ToLocalTime()` sobre esse timestamp
+mas o "local" do container era o proprio UTC - entao ela achava que a conclusao ja tinha
+acontecido "hoje" e bloqueava o usuario o dia inteiro seguinte, so liberando de novo na virada do
+dia em UTC (21h de Brasilia, nao meia-noite local). Correcao: `TZ: America/Sao_Paulo` fixo (nao
+via `.env`) no `environment` do servico `backend`, em `docker-compose.yml` e
+`docker-compose.homolog.yml` dos dois checkouts (`focadu` e `focadu-hml`) - imagem runtime
+(`aspnet:10.0`, Debian) ja tem `tzdata`, `TimeZoneInfo.FindSystemTimeZoneById` funciona sem
+mudanca de codigo. Não precisa de rebuild de imagem, so recreate do container (`docker compose up
+-d backend`) pra pegar a env var nova.
 
 ## Frontend (Fase 3, telas de atividade completadas nas Fases 4 e 5, autoria na Fase 6)
 
