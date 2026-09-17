@@ -24,3 +24,6 @@ TestResults/
 
 ## Curadoria
 secret/
+
+## Backups locais de banco (não versionar)
+backups/

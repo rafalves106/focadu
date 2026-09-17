@@ -84,9 +84,19 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 41 — Redefinição de Senha ("Esqueci minha senha")** (16/09/2026).
+Última fase concluída: **Fase 42 — Correção de Nota Injusta no Resumo Falado** (17/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Correção de nota injusta no Resumo Falado (Fase 42, bug real relatado ao vivo)**: a correção de
+  transcrição da Fase 39 não pegava um erro comum do Whisper - trocar um termo técnico pelo seu
+  antônimo foneticamente parecido (ex. "simétrica" por "assimétrica"), o que gera uma frase
+  gramaticalmente válida só que com o sentido invertido, e que o modelo então avalia como erro
+  conceitual do aluno. Verificado ao vivo contra a API da Groq que isso só é corrigido de forma
+  confiável numa chamada dedicada só à correção, separada da chamada que calcula a nota (antes era
+  1 chamada só, decisão de custo da Fase 39, revertida aqui). Achado um 2º bug no mesmo caso: a nota
+  também penalizava por não cobrir um subtópico do conteúdo curado inteiro que a instrução da
+  atividade nunca pediu - completude agora é medida contra a instrução, não contra a referência
+  inteira. Requer redeploy do backend pra valer em produção - ver `docs/fase-42/`.
 - **Redefinição de senha por email (Fase 41)**: `LoginPage` ganhou o link "Esqueci minha senha"
   (antes deliberadamente ausente, sem infraestrutura de email nenhuma no projeto). Fluxo completo
   de token de uso único (1h de validade, hash SHA-256 nunca o token em texto puro) enviado por

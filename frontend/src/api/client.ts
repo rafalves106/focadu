@@ -42,11 +42,13 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5282';
 // Fase 10: timeout padrao de 10s (sugerido no prompt) - alto o suficiente pra nao disparar em
 // requisicoes normais, baixo o suficiente pra nao deixar a TimeoutError demorar pra aparecer.
 // VoiceSummary e excecao: o endpoint de audio transcreve (Groq Whisper) e avalia (Groq chat
-// completion) em sequencia no backend, que ja tem seu proprio timeout de 60s pra Groq (ver
-// GroqContentEvaluationService/docs/ARQUITETURA.md) - o timeout do cliente aqui precisa ser maior
-// que esse, senao a TimeoutError apareceria antes do backend ter chance de responder de verdade.
+// completion, desde a Fase 42 em 2 chamadas sequenciais - correcao de transcricao + nota, ver
+// GroqContentEvaluationService) em sequencia no backend - o timeout do cliente aqui precisa ser
+// maior que o pior caso de tudo isso somado (transcricao + as 2 chamadas de avaliacao, cada uma
+// com ate 3 tentativas de retry - ver DependencyInjection.cs pro calculo, ~85s), senao a
+// TimeoutError apareceria antes do backend ter chance de responder de verdade.
 const DEFAULT_TIMEOUT_MS = 10_000;
-const VOICE_SUMMARY_TIMEOUT_MS = 70_000;
+const VOICE_SUMMARY_TIMEOUT_MS = 95_000;
 // Fase 27b: submeter o projeto agora avalia na hora (GitHub fetch + 1 chamada Groq, sequencial no
 // backend, ver SubmitWeeklyProjectUseCase/EvaluateWeeklyProjectUseCase) - mesmo motivo do timeout
 // de VoiceSummary acima, so um pouco mais curto (1 chamada Groq sem retry, nao 2). Falha na

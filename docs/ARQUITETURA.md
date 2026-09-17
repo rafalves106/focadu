@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 41 - Redefinicao de Senha ("Esqueci minha senha")**.
+> Ultima fase que atualizou este documento: **Fase 42 - Correcao de Nota Injusta no Resumo Falado**.
 
 ## Visao geral do projeto
 
@@ -1259,25 +1259,37 @@ JSON. Fluxo de `SubmitVoiceSummaryResponseUseCase`:
    da IA, `Justification` = nulo (nao se aplica a VoiceSummary).
 
 Prompt de avaliacao (formato confirmado com o Falves antes de implementar - decisao registrada em
-`docs/fase-5/resumo-implementacao-fase-5.md`): 1 chamada, JSON mode, pedindo 1 nota unica de 0 a
-100 que ja pondera "conteudo correto" e "clareza da explicacao" juntos, mais 1 feedback curto em
-PT-BR. Texto exato dos prompts (sistema + usuario) em
-`Focadu.Infrastructure.Services.GroqContentEvaluationService`.
+`docs/fase-5/resumo-implementacao-fase-5.md`): pede 1 nota unica de 0 a 100 que ja pondera "conteudo
+correto" e "clareza da explicacao" juntos, mais 1 feedback curto em PT-BR. Texto exato dos prompts
+(sistema + usuario) em `Focadu.Infrastructure.Services.GroqContentEvaluationService`.
 
-**Correcao de transcricao antes da avaliacao (Fase 39, bug real relatado ao vivo: erro de
-transcricao do Whisper derrubando o score injustamente).** O mesmo prompt de avaliacao agora pede
-um passo explicito de correcao ANTES de avaliar: a IA recebe instrucao de corrigir, usando
-`ExpectedAnswer`/`ContextText` como vocabulario de referencia, apenas trechos que claramente sao
-erro de reconhecimento de fala (termo tecnico deturpado foneticamente) - nunca completar, reescrever
-ou corrigir um erro conceitual real do aluno (isso e conteudo, pesa na nota). O JSON de resposta
-ganhou o campo `correctedTranscript` (`GroqEvaluationPayload`), sempre a versao que a IA de fato
-avaliou; quando ausente/vazio na resposta (defensivo contra formato antigo/parcial), `ParseEvaluation`
-cai pro `UserAnswer` original, nunca vira motivo de erro sozinho. `ActivityResponse.Transcript`
-continua guardando o texto bruto do Whisper (auditoria); `ActivityResponse.CorrectedTranscript` guarda
-o que a IA avaliou de fato - so preenchido no fluxo de `VoiceSummary`
-(`SubmitActivityResponseUseCase`, usado pelos outros tipos de atividade, sempre passa `null`). Uma
-unica chamada Groq (nao uma 2a chamada separada) - mais barato/rapido, o modelo ja suporta raciocinar
-antes do JSON final.
+**Correcao de transcricao antes da avaliacao, em chamada Groq separada da nota (Fase 42, revisando
+a Fase 39 - bug real relatado ao vivo: erro de transcricao do Whisper derrubando o score
+injustamente mesmo depois da correcao da Fase 39).** A Fase 39 pedia correcao e nota na mesma
+chamada; verificado ao vivo contra a API real que, quando o erro de transcricao troca um termo
+tecnico pelo seu antonimo foneticamente parecido (ex.: "simetrica" por "assimetrica" - continua
+sendo uma frase gramaticalmente valida, so com o sentido invertido), o modelo e cauteloso demais
+pra corrigir sozinho na mesma chamada em que tambem calcula a nota, mesmo com a instrucao de
+correcao reforcada - e penaliza o aluno mesmo quando o resto da resposta demonstra dominio
+consistente do conceito. Separado em 2 chamadas (`CorrectTranscriptAsync` depois `GradeAsync`), o
+mesmo modelo corrige de forma confiavel. Custo extra (2 chamadas por submissao em vez de 1) e
+desprezivel pro volume de uso da Focadu - reverte a decisao de custo da Fase 39. Correcao e um
+passo aditivo/best-effort: se a IA nao devolver JSON valido nem apos o orcamento de retry do
+`HttpRetry`, `CorrectTranscriptAsync` cai pro `UserAnswer` bruto em vez de falhar a submissao
+inteira. `ActivityResponse.Transcript` continua guardando o texto bruto do Whisper (auditoria);
+`ActivityResponse.CorrectedTranscript` guarda o que a IA de fato avaliou - so preenchido no fluxo
+de `VoiceSummary` (`SubmitActivityResponseUseCase`, usado pelos outros tipos de atividade, sempre
+passa `null`).
+
+**Nota mede completude contra a Instrucao, nao contra o conteudo de referencia inteiro (Fase 42,
+2o bug achado no mesmo caso ao vivo).** Quando `ContextText` (Instrucao da atividade) esta
+presente, o `ExpectedAnswer` (conteudo curado inteiro, que pode ter mais de uma secao/subtopico)
+pode cobrir mais do que a atividade especificamente pediu - a IA estava penalizando o aluno por nao
+cobrir um subtopico do conteudo curado que a Instrucao nunca pediu. Prompt de avaliacao agora mede
+completude contra "o que a instrucao pediu" quando ha Instrucao separada, usando o conteudo de
+referencia so pra checar se o que foi dito esta correto; sem Instrucao separada (BodyText ausente,
+`ExpectedAnswer` cai pro proprio `Prompt`), continua medindo contra a referencia como antes (nesse
+caso sao a mesma coisa).
 
 **Resposta malformada da IA nunca vira uma nota inventada.** Se o JSON retornado pela Groq nao
 tiver `score` (inteiro 0-100) e `feedback` (string) validos, `GroqContentEvaluationService` lanca
@@ -1534,9 +1546,14 @@ detalhe de HTTP), tambem usado por `GitHubService` (ver secao GitHub abaixo).
   HTTP).
 - **Backoff:** exponencial + jitter (~500ms na 1a espera, ~1s na 2a), com teto de 2s de espera por
   tentativa - mesmo se a Groq mandar um `Retry-After` maior num 429.
-- **Timeout por tentativa - corrigido em 2026-09-13, verificacao ao vivo:** `EvaluateAsync`
-  (avaliacao, texto puro) usa 2s (`GroqRetryAttemptTimeout`) - cobre folgado o tempo real de
-  resposta da Groq em chat completion (LPU, geralmente sub-segundo). `TranscribeAsync`
+- **Timeout por tentativa - corrigido em 2026-09-13 e 2026-09-17, verificacao ao vivo:**
+  `EvaluateAsync` (avaliacao, texto puro) usa 6s (`GroqContentEvaluationAttemptTimeout`) - valor
+  original era 2s (cobria folgado o tempo real de resposta da Groq em chat completion simples),
+  mas se mostrou curto demais depois da Fase 39 ter acrescentado um passo de raciocinio/correcao
+  ao prompt antes do score: confirmado ao vivo (logs de 2026-09-17) que as 3 tentativas bateram no
+  timeout de 2s em sequencia sem nenhuma completar. Esse timeout de 6s se aplica a CADA UMA das 2
+  chamadas Groq que `EvaluateAsync` faz desde a Fase 42 (correcao de transcricao numa chamada
+  dedicada, depois a nota numa 2a - ver secao "Resumo falado por voz" acima). `TranscribeAsync`
   (transcricao) usa 15s (`GroqAudioTranscriptionAttemptTimeout`) - **valor original tambem era
   2s, mas se mostrou curto demais na pratica**: diferente de `EvaluateAsync`, essa chamada faz
   upload do audio gravado (multipart) antes da Groq comecar a processar, e o tempo de upload
@@ -1545,9 +1562,10 @@ detalhe de HTTP), tambem usado por `GitHubService` (ver secao GitHub abaixo).
   `groq_timeout` (`"A transcricao demorou demais para responder"`) num audio legitimo, nao numa
   falha de rede de verdade.
 - **Orcamento do fluxo:** pior caso de transcricao+avaliacao juntas (transcricao ate 3 tentativas
-  de 15s + avaliacao ate 3 tentativas de 2s, mais backoff) fica em ~55s, dentro dos 70s que o
-  frontend usa como referencia pro timeout dessa chamada (`VOICE_SUMMARY_TIMEOUT_MS = 70_000`,
-  `frontend/src/api/client.ts`).
+  de 15s + avaliacao = 2 chamadas sequenciais, cada uma ate 3 tentativas de 6s, mais backoff) fica
+  em ~85s, dentro dos 95s que o frontend usa como referencia pro timeout dessa chamada
+  (`VOICE_SUMMARY_TIMEOUT_MS = 95_000`, `frontend/src/api/client.ts` - 70_000 ate a Fase 42, quando
+  a avaliacao virou 2 chamadas em vez de 1).
 - Falha definitiva (depois de esgotar as tentativas) cai no mesmo erro/`Code` de antes
   (`groq_transcricao_falhou`, `groq_avaliacao_falhou`, `groq_timeout`, `groq_indisponivel`,
   `transcricao_vazia`, `avaliacao_ia_formato_invalido`) - sem mudanca de contrato pro frontend,
@@ -2104,7 +2122,7 @@ frontend/
                                    GitHubRepoDto (Fase 11)
       client.ts               <- fetch tipado, ApiError, VITE_API_BASE_URL, suporte a FormData
                                    (upload de audio, Fase 5, sem forcar Content-Type json); request()
-                                   usa AbortSignal.timeout() desde a Fase 10 (10s padrao, 70s pro
+                                   usa AbortSignal.timeout() desde a Fase 10 (10s padrao, 95s pro
                                    endpoint de audio - ver "Timeout de requisicoes"); credentials:
                                    'include' desde a Fase 12 (senao o cookie de sessao nunca vai/volta)
       useApiResource.ts        <- hook pra loading/error/cancelamento (usado pelas sub-telas de /start e /admin/conteudo);
@@ -2618,10 +2636,11 @@ exibida" via query string precisa de uma `key` que muda junto**, React nao remon
 porque uma prop mudou.
 
 **Timeout de requisicoes (Fase 10):** `api/client.ts.request()` usa `AbortSignal.timeout()` - 10s
-por padrao (`DEFAULT_TIMEOUT_MS`), exceto `submitVoiceSummaryResponse` (70s,
-`VOICE_SUMMARY_TIMEOUT_MS`) - o endpoint de audio transcreve + avalia por IA em sequencia no
-backend, que ja tem seu proprio timeout de 60s pra Groq (ver "Resumo falado por voz" acima); um
-timeout de cliente de 10s quebraria essa atividade toda vez.
+por padrao (`DEFAULT_TIMEOUT_MS`), exceto `submitVoiceSummaryResponse` (95s desde a Fase 42, 70s
+antes, `VOICE_SUMMARY_TIMEOUT_MS`) - o endpoint de audio transcreve e avalia por IA em sequencia no
+backend (avaliacao virou 2 chamadas Groq na Fase 42, ver "Resumo falado por voz" acima pro
+orcamento completo de timeout/retry); um timeout de cliente de 10s quebraria essa atividade toda
+vez.
 
 **Roleplay, na tela:** navega o grafo inteiramente no cliente (todos os `RoleplayNode`/
 `RoleplayOption` ja vieram no `DailyActivityDto` inicial - nao ha ida-e-volta a cada escolha). O
