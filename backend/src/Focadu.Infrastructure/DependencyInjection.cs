@@ -20,8 +20,14 @@ public static class DependencyInjection
     // MaxTotalChars), sem o orcamento apertado do fluxo de VoiceSummary abaixo.
     private static readonly TimeSpan GroqDefaultTimeout = TimeSpan.FromSeconds(60);
 
-    // Timeout por tentativa pros adapters que passam por HttpRetry (ver nota no registro deles).
-    private static readonly TimeSpan GroqRetryAttemptTimeout = TimeSpan.FromSeconds(2);
+    // Avaliacao (chat completion) via HttpRetry - bug real relatado ao vivo em 2026-09-17: 2s
+    // (valor original, assumindo LPU sub-segundo em texto puro) se mostrou curto demais depois da
+    // Fase 39 (prompt de avaliacao ganhou um passo explicito de correcao de transcricao antes do
+    // score, mais raciocinio = mais tempo) - as 3 tentativas bateram no timeout em sequencia sem
+    // nenhuma completar (logs: tentativas as 01:41:28/31/34, ~2.5s entre cada). 6s por tentativa
+    // ainda deixa a soma do fluxo (ver nota no registro abaixo) dentro do orcamento de 70s do
+    // frontend.
+    private static readonly TimeSpan GroqContentEvaluationAttemptTimeout = TimeSpan.FromSeconds(6);
 
     // Transcricao de audio tem uma tentativa mais generosa que os outros adapters via HttpRetry:
     // ao contrario de chat completion (texto puro, chega em 1 payload pequeno), essa chamada
@@ -31,7 +37,7 @@ public static class DependencyInjection
     // 2026-09-13, as 3 tentativas de retry bateram no timeout sem nenhuma chegar a completar (ver
     // docs/ARQUITETURA.md). 15s por tentativa ainda deixa margem confortavel dentro do orcamento
     // de VOICE_SUMMARY_TIMEOUT_MS (70s no frontend, ver api/client.ts) somado ao passo seguinte
-    // (avaliacao do transcript, GroqRetryAttemptTimeout acima).
+    // (avaliacao do transcript, GroqContentEvaluationAttemptTimeout acima).
     private static readonly TimeSpan GroqAudioTranscriptionAttemptTimeout = TimeSpan.FromSeconds(15);
 
     public static IServiceCollection AddFocaduInfrastructure(
@@ -72,17 +78,16 @@ public static class DependencyInjection
         // Timeout por tentativa menor que o padrao (60s): estes dois adapters agora fazem ate 3
         // tentativas (HttpRetry) em sequencia dentro de 1 unico fluxo (SubmitVoiceSummary-
         // ResponseUseCase: transcreve -> avalia) - com o timeout padrao, 3 tentativas x 2 chamadas
-        // encostariam em 6min. Transcricao usa GroqAudioTranscriptionAttemptTimeout (15s, ver
-        // constante acima - upload de audio real precisa de mais margem que chat completion);
-        // avaliacao usa GroqRetryAttemptTimeout (2s, cobre folgado o tempo real de resposta da
-        // Groq em texto puro, LPU geralmente sub-segundo). Pior caso do fluxo inteiro (transcricao
-        // + avaliacao, cada uma ate 3 tentativas + backoff) fica em ~55s, dentro dos 70s do
-        // client.Timeout que o frontend usa como referencia (VOICE_SUMMARY_TIMEOUT_MS em
-        // api/client.ts).
+        // encostariam em 6min. Transcricao usa GroqAudioTranscriptionAttemptTimeout (15s - upload
+        // de audio real precisa de mais margem que chat completion); avaliacao usa
+        // GroqContentEvaluationAttemptTimeout (6s, ver constante acima). Pior caso do fluxo
+        // inteiro (transcricao + avaliacao, cada uma ate 3 tentativas + backoff) fica em ~65s,
+        // dentro dos 70s do client.Timeout que o frontend usa como referencia
+        // (VOICE_SUMMARY_TIMEOUT_MS em api/client.ts).
         services.AddHttpClient<IAudioTranscriptionService, GroqAudioTranscriptionService>(
             client => ConfigureGroqClient(client, GroqAudioTranscriptionAttemptTimeout));
         services.AddHttpClient<IContentEvaluationService, GroqContentEvaluationService>(
-            client => ConfigureGroqClient(client, GroqRetryAttemptTimeout));
+            client => ConfigureGroqClient(client, GroqContentEvaluationAttemptTimeout));
         // Rascunho de post do LinkedIn (Fase 11) - mesmo cliente/chave do Groq, so um adapter
         // diferente (gera texto livre, sem JSON mode/Score).
         services.AddHttpClient<IDraftGenerationService, GroqDraftGenerationService>(
