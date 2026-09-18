@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 45 - Certificacoes de mercado sugeridas por modulo**.
+> Ultima fase que atualizou este documento: **Fase 46 - Repositorios de Projeto Semanal no Forgejo interno**.
 
 ## Visao geral do projeto
 
@@ -1797,9 +1797,11 @@ validacao real do Groq na Fase 5):**
      feliz de `GetRepositoryAsync`.
   4. `submit` com URL de repo **privado** ou **inexistente** - confirma que cai no
      `GitHubValidationError` (nao um 502 cru).
-  5. `POST /project/evaluate` (`EvaluateWeeklyProjectUseCase`) contra um repo com codigo de
-     verdade - confirma `GetContentSnapshotAsync` (Git Trees API + blobs) e o prompt de
-     `GroqProjectEvaluationService` juntos; e o unico dos 3 fluxos que tambem depende da Groq.
+  5. ~~`POST /project/evaluate` (`EvaluateWeeklyProjectUseCase`) contra um repo com codigo de
+     verdade~~ - **desde a Fase 46, esse fluxo nao usa mais `IGitHubService`** (migrou pro
+     Forgejo interno, ver secao propria abaixo). O checklist original desta fase (Fase 11) ficou
+     obsoleto nesse item especifico - os outros 5 continuam valendo pro fluxo de prova publica de
+     modulo, que segue no GitHub de verdade.
   6. Token **sem** escopo `repo` (ou vazio) - confirma `github_token_nao_configurado`/
      `github_falhou` em vez de um erro sem contexto.
 
@@ -1808,6 +1810,103 @@ validacao real do Groq na Fase 5):**
 | `github_token_nao_configurado` | 502 | `GitHub:Token` vazio - qualquer chamada que precise dele |
 | `github_timeout` | 503 | GitHub nao respondeu a tempo (timeout de 20s) |
 | `github_indisponivel` / `github_falhou` | 502 | Erro de rede ou status HTTP de erro vindo do GitHub - inclui rate limit e token sem escopo, ver acima |
+
+## Forgejo interno - repositorios de Projeto Semanal (Fase 46)
+
+Antes desta fase, o repositorio do Projeto Semanal era criado pelo proprio aluno no GitHub
+pessoal dele e a URL era colada manualmente (`WeeklyProjectPage`). Desde a Fase 46, a Focadu
+hospeda e provisiona esses repositorios sozinha, num **Forgejo self-hosted** (container `forgejo`
+novo, `codeberg.org/forgejo/forgejo:9`, SQLite - sem Postgres proprio, app isolada sem join com o
+dominio C#) - ver `secret/rascunhos/repositorios-gerenciados-projeto-semanal.md` pro raciocinio
+completo por tras da decisao.
+
+**`IForgejoService`** (`Focadu.Application.Ports`) + **`ForgejoService`** (adapter concreto,
+`Focadu.Infrastructure.Services`) - mesmo padrao sem SDK do `IGitHubService`/`GitHubService`
+(HttpClient cru + `HttpRetry`), 3 operacoes:
+
+- `CreateUserAccountAsync` - cria a conta do aluno via API administrativa (`POST /admin/users`),
+  desabilita criacao de repositorio pra ela (`PATCH .../max_repo_creation=0` - "so a Focadu cria
+  repositorio", nunca vira um GitHub generico dentro da Focadu) e gera um access token.
+  **Ponytail confirmado ao vivo**: `POST /users/{username}/tokens` recusa autenticacao via API
+  token (mesmo com header `Sudo`) - so aceita Basic Auth de verdade (Gitea/Forgejo bloqueiam de
+  proposito "um token gerar outro token"). Resolvido autenticando como o proprio aluno, com a
+  senha aleatoria que a Focadu acabou de definir pra ele nas 2 chamadas anteriores - unico lugar
+  deste service que nao usa o token administrativo padrao.
+- `ForkTemplateAsync` - fork de um repositorio-template (dono: conta administrativa
+  `focadu-admin`) pra dentro da conta do aluno, via impersonacao administrativa (header `Sudo`) -
+  o template nunca e alterado. **Confirmado ao vivo**: `max_repo_creation: 0` bloqueia o aluno de
+  criar repositorio pela propria conta, mas nao impede o fork feito via `Sudo` - o mecanismo de
+  restricao funciona exatamente como desenhado. Corpo da requisicao precisa ser `{}` explicito
+  (nao `null`/sem `Content-Type`) - confirmado ao vivo, o Forgejo responde `422 "Empty
+  Content-Type"` sem isso, mesmo o corpo sendo semanticamente opcional.
+- `GetContentSnapshotAsync` - mesma forma que o equivalente do GitHub (arvore recursiva + blobs,
+  filtro por extensao/limite de tamanho), reaproveitado por `EvaluateWeeklyProjectUseCase`.
+
+**`UserForgejoAccount`** (`Focadu.Domain.GitHosting`, novo namespace) - 1:1 com `User`, lazy
+(mesmo principio de `UserGemBalance`/`UserStreak`, Fase 14): `ForgejoUsername`/`AccessToken`. Um
+so token por aluno, reusado por todos os repositorios que sao dele no Forgejo - nao 1 token por
+`WeeklyProject`. Username/email derivados deterministicamente do `User.Id` (nunca do email real
+do aluno - login no Forgejo em si nao e usado, so o access token, exibido na tela do Projeto
+Semanal).
+
+**`WeeklyTemplate.ForgejoTemplateSlug`** (novo campo, nullable) - nome do repositorio-template no
+Forgejo (dono: `focadu-admin`), mantido pela curadoria (mesmo espirito de `secret/curadoria/`) -
+sem isso preenchido, aquela semana simplesmente nao recebe repositorio (nao bloqueia a matricula).
+**Ainda so a Semana 1 do curso piloto tem isso configurado** (`template-web-security-semana-1`,
+criado manualmente pra validar o mecanismo) - as outras 11 semanas ficam pendentes.
+
+**`EnrollUserInCourseUseCase`** - dentro do mesmo loop que ja cria `Weekly`/`WeeklyProject` pra
+cada `WeeklyTemplate` (eager, na matricula - decisao confirmada com o Falves, nao lazy no primeiro
+acesso a tela), se a semana tem `ForgejoTemplateSlug`, garante a `UserForgejoAccount` (lazy, uma
+vez so por matricula) e da fork do template, anexando a URL via `WeeklyProject.AttachRepository`
+(metodo novo - so seta `SubmissionUrl`, mantem `Status = Pending`, diferente de `Submit`). Falha
+do Forgejo (fora do ar, etc) **nunca derruba a matricula** - mesmo espirito "bonus, nunca core" ja
+usado em `SubmitWeeklyProjectUseCase` pra falha de avaliacao automatica; o projeto so fica sem
+`SubmissionUrl`.
+
+**`EvaluateWeeklyProjectUseCase`** parou de depender de `IGitHubService`/`GitHubUrlParser` (que
+continuam existindo, intocados, so pro fluxo de prova publica de modulo abaixo) - resolve
+owner/repo direto (`ForgejoUsername` do aluno + `ForgejoTemplateSlug` da semana), sem parsear a
+`SubmissionUrl`.
+
+**Publicacao no GitHub pessoal do aluno (portfolio) e manual, fora do produto** - decisao
+confirmada com o Falves: o aluno adiciona um segundo `git remote` local e da `git push` com as
+proprias credenciais (SSH key/`gh auth login` ja configuradas na maquina dele), sem nenhuma
+orquestracao da Focadu (nada de push-mirror, nada de token de GitHub pessoal guardado no banco).
+Ver "Publicacao publica e bloqueio de modulo" abaixo - esse fluxo (GitHub+LinkedIn, prova publica
+de MODULO) e **completamente separado e continua intocado**: o Forgejo e o ambiente de trabalho/
+avaliacao do Projeto Semanal, nao substitui a prova publica.
+
+**Bootstrap administrativo (fora de codigo, feito manualmente por enquanto)**: conta
+`focadu-admin` + token administrativo criados via CLI (`docker exec ... forgejo admin user
+create`/`generate-access-token`), nao pela web -
+`FORGEJO__security__INSTALL_LOCK: "true"` pula o wizard de instalacao interativo. Configuracao via
+`Forgejo:BaseUrl`/`Forgejo:AdminToken` (mesmo padrao de 3 formas de `GitHub:Token`, nunca bloqueia
+o boot se ausente - so as chamadas que precisam falham com erro claro).
+
+**`FORGEJO__server__ROOT_URL` precisa ser setado explicitamente** - sem isso, o Forgejo deriva a
+URL de clone da porta *interna* do container (3000), nao da porta que o host expoe, gerando
+`clone_url` inacessivel de fora do container (confirmado ao vivo). Porta padrao do Forgejo (3000)
+evitada de proposito neste host - ja em uso por outro projeto (`homepage-homepage-1`) - produção
+usa 3020, homologação 3030 (ver tabela de portas em `docs/DOCKER.md`). **`ROOT_URL` aponta pra
+`localhost` por enquanto** (teste rodando no mesmo host) - precisa virar o endereco real
+alcancavel pelos alunos antes de qualquer acesso de fora desta maquina.
+
+**`START_SSH_SERVER` precisa ser `"false"` explicito** - `"true"` entra em conflito com o sshd
+externo que a propria imagem do Forgejo ja sobe por padrao (`listen tcp :22: bind: address
+already in use`, confirmado ao vivo) - o sshd externo ja serve git+ssh sozinho, o servidor Go
+interno do Forgejo e redundante e nunca deveria ser ligado nesta imagem.
+
+**Testado ao vivo, ponta a ponta** (nao so leitura de codigo): matricula real via API criou a
+conta Forgejo + fork automaticamente, `git clone`/`git commit`/`git push` funcionaram de verdade
+com as credenciais devolvidas pela Api, e o snapshot de arvore/blob leu o conteudo pusheado
+corretamente - ver `docs/fase-46/resumo-implementacao-fase-46.md` pros 3 bugs reais encontrados
+nesse processo (nenhum visivel so por leitura de codigo).
+
+**Pendente pra fases futuras**: SAST em si (Fase 24c, os 8 checks ja escopados, webhook receiver
+ainda nao construido - o gancho natural seria o webhook de push do Forgejo disparando o mesmo
+pipeline de `GetContentSnapshotAsync` + avaliacao por IA), repositorio-template pras outras 11
+semanas do curso piloto, wiring da curadoria pra gerar isso automaticamente.
 
 ## Autenticacao (Fase 12)
 
@@ -1965,9 +2064,10 @@ o backend for exposto num dominio proprio).
 **`docker-compose.yml`** (producao) e **`docker-compose.homolog.yml`** (homologacao, stack
 completa e isolada - nomes de container, volume de Postgres e portas de host proprios, nunca
 compartilha dados com producao) vivem na raiz do repo, ao lado de `.env.example`. Servicos:
-`postgres`/`backend`/`frontend`. Portas de host (via `.env`, nao versionado): producao
-frontend `5280`/backend `5282`/postgres `5432`; homolog frontend `5290`/backend `5292`/postgres
-`5433`.
+`postgres`/`backend`/`frontend`/**`forgejo`** (Fase 46, ver secao propria "Forgejo interno"
+acima). Portas de host (via `.env`, nao versionado): producao frontend `5280`/backend
+`5282`/postgres `5432`/forgejo `3020`; homolog frontend `5290`/backend `5292`/postgres
+`5433`/forgejo `3030`.
 
 **Sincronizacao com `secret/` (Fase 40, achado importante):** o conteudo curado
 (`secret/curadoria/*.json`) so e lido pelo comando `dotnet run -- seed`
@@ -2916,6 +3016,8 @@ manual. `:not(:disabled)` preserva o cursor default nos botoes desabilitados (`d
 | 38 | Bloqueio do Projeto Semanal + Painel de Inicio + Sequenciamento de Daily por Progresso | `docs/fase-38/resumo-implementacao-fase-38.md` |
 | 39 | Correcao de Transcricao de Voz Antes da Avaliacao + Titulo do Dia + Destaque de Semana Atual | `docs/fase-39/resumo-implementacao-fase-39.md` |
 | 40 | Dockerizacao (Backend + Frontend) e CI/CD de Deploy Automatico | `docs/fase-40/resumo-implementacao-fase-40.md` |
+| 41-45 | Redefinicao de Senha, correcoes ao vivo (Transcricao/Fuso/Ligar Palavras) e Certificacoes de Mercado | `docs/fase-41/` a `docs/fase-45/` - tabela nao mantida atualizada entre a Fase 40 e a Fase 46, ver pastas individuais |
+| 46 | Repositorios de Projeto Semanal no Forgejo interno | `docs/fase-46/resumo-implementacao-fase-46.md` |
 
 ## O que uma proxima fase provavelmente precisa saber
 
@@ -3085,11 +3187,14 @@ manual. `:not(:disabled)` preserva o cursor default nos botoes desabilitados (`d
   de Frontend) - o refetch precisa esperar o usuario decidir sair (`onClose`), nao disparar no
   meio do fluxo de sucesso/erro do modal.
 - **"Auditoria de Repositorios" (citada no prompt da Fase 11 como proxima fase) - decisao de
-  escopo tomada em 2026-08-31: estatica (SAST)**, ler o codigo do repo via GitHub API sem
-  executar nada, mesmo padrao sincrono do fluxo GitHub atual (`IGitHubService.
-  GetContentSnapshotAsync`, ja usado por `EvaluateWeeklyProjectUseCase`/`GroqProjectEvaluationService`
-  - a auditoria reaproveitaria o MESMO snapshot, so trocando o prompt) - dinamica (DAST, testar a
-  app rodando de verdade) descartada por enquanto.
+  escopo tomada em 2026-08-31: estatica (SAST)**, ler o codigo do repo sem executar nada, mesmo
+  padrao sincrono do fluxo de avaliacao atual - dinamica (DAST, testar a app rodando de verdade)
+  descartada por enquanto. **Atualizado na Fase 46**: o snapshot de codigo que a auditoria
+  reaproveitaria deixou de vir do GitHub (`IGitHubService.GetContentSnapshotAsync`) e passou a vir
+  do Forgejo interno (`IForgejoService.GetContentSnapshotAsync`, mesma forma) - `EvaluateWeeklyProjectUseCase`
+  ja usa esse caminho novo. O gatilho tambem ficou mais concreto: o webhook de push do Forgejo
+  (ainda nao construido) dispararia o mesmo pipeline a cada `git push` do aluno, nao so na
+  submissao manual - ver "Forgejo interno" acima.
   **Lista de checks definida em 2026-08-31 (Fase 24c)** - escopo web (curriculo do curso, nao
   scanner generico de qualquer linguagem), cada um marcado com como seria detectado dado o modelo
   atual (determinístico/regex em C#, mais barato e sem alucinacao, vs. julgamento via LLM Groq

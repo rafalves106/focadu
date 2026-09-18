@@ -12,11 +12,14 @@ public class GetWeeklyDetailUseCase
 {
     private readonly IWeeklyRepository _weeklyRepository;
     private readonly IMonthlyRepository _monthlyRepository;
+    private readonly IUserForgejoAccountRepository _userForgejoAccountRepository;
 
-    public GetWeeklyDetailUseCase(IWeeklyRepository weeklyRepository, IMonthlyRepository monthlyRepository)
+    public GetWeeklyDetailUseCase(
+        IWeeklyRepository weeklyRepository, IMonthlyRepository monthlyRepository, IUserForgejoAccountRepository userForgejoAccountRepository)
     {
         _weeklyRepository = weeklyRepository;
         _monthlyRepository = monthlyRepository;
+        _userForgejoAccountRepository = userForgejoAccountRepository;
     }
 
     public async Task<WeeklyDetailDto> ExecuteAsync(Guid userId, Guid weeklyId, CancellationToken cancellationToken = default)
@@ -60,12 +63,17 @@ public class GetWeeklyDetailUseCase
             .Select(c => new CuratedContentDto(c.Id, c.Type, c.Title, c.ExternalUrl, c.BodyText))
             .ToList();
 
-        var projectDto = weekly.Project is null
-            ? null
-            : new WeeklyProjectDto(
-                weekly.Project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty,
-                weekly.Project.Status, !weekly.AreDailiesComplete(), weekly.Project.SubmissionUrl,
-                weekly.Project.Score, weekly.Project.Feedback);
+        WeeklyProjectDto? projectDto = null;
+        if (weekly.Project is { } project)
+        {
+            // So busca a conta Forgejo quando ha projeto - evita 1 lookup extra em Weeklies sem
+            // projeto (nao deveria existir na pratica, mas o campo e nullable no dominio).
+            var forgejoAccount = await _userForgejoAccountRepository.GetByUserIdAsync(userId, cancellationToken);
+            projectDto = new WeeklyProjectDto(
+                project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty,
+                project.Status, !weekly.AreDailiesComplete(), project.SubmissionUrl,
+                project.Score, project.Feedback, forgejoAccount?.AccessToken, forgejoAccount?.ForgejoUsername);
+        }
 
         var reinforcementDtos = weekly.Reinforcements
             .Select(r => new WeeklyReinforcementSummaryDto(r.Id, weekly.Id, r.TriggeredAt, r.WeakDailyIds))

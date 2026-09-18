@@ -35,9 +35,9 @@ const STATUS_PROGRESS: Record<number, number> = {
  */
 export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; courseId: string | null }) {
   const { data: weekly, error, loading, retry } = useApiResource(() => api.getWeekly(weeklyId), [weeklyId]);
-  const [submissionUrl, setSubmissionUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [tokenCopied, setTokenCopied] = useState(false);
 
   // Fase 32: SessionLayout faz isso sozinho via `assistantContext` (ver SessionShell.tsx) - esta
   // tela nao usa SessionLayout (so SessionTopBar + QuickQuestionOrb soltos), entao alimenta o
@@ -63,16 +63,29 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   const badge = project.isLocked ? LOCKED_BADGE : STATUS_BADGE[project.status];
   const canSubmit = project.status !== WeeklyProjectStatus.Evaluated && !project.isLocked;
 
+  // Repositorio de Projeto Semanal e provisionado pela Focadu (fork no Forgejo interno, ver
+  // secret/rascunhos/repositorios-gerenciados-projeto-semanal.md) - o aluno nao digita mais URL
+  // nenhuma, so confirma que terminou o trabalho no repositorio que ja recebeu.
   async function handleSubmit() {
-    if (!submissionUrl.trim()) return;
+    if (!project.submissionUrl) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await api.submitWeeklyProject(weeklyId, submissionUrl.trim());
+      await api.submitWeeklyProject(weeklyId, project.submissionUrl);
       window.location.reload(); // mais simples que replicar o refetch aqui - so essa tela usa este caso de uso.
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : 'Não foi possível enviar. Tente de novo.');
       setSubmitting(false);
+    }
+  }
+
+  async function handleCopyToken(token: string) {
+    try {
+      await navigator.clipboard.writeText(token);
+      setTokenCopied(true);
+      setTimeout(() => setTokenCopied(false), 2000);
+    } catch {
+      // Clipboard indisponivel (ex: contexto nao seguro) - sem tratamento especial, so nao copia.
     }
   }
 
@@ -124,12 +137,48 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
           )}
 
           {project.submissionUrl && (
-            <div className="flex flex-col gap-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">Sua submissão</p>
-              <a href={project.submissionUrl} target="_blank" rel="noreferrer" className="w-fit text-sm text-accent hover:underline">
-                {project.submissionUrl}
-              </a>
+            <div className="flex flex-col gap-3 rounded-xl border border-stroke bg-surface-alt p-5">
+              <div className="flex flex-col gap-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">Seu repositório</p>
+                <a href={project.submissionUrl} target="_blank" rel="noreferrer" className="w-fit text-sm text-accent hover:underline">
+                  {project.submissionUrl}
+                </a>
+              </div>
+              {/* Fase de integração com Forgejo interno: repositório já vem pronto (fork do
+                  template da semana) - o aluno só precisa clonar e trabalhar, usando o token
+                  abaixo como senha do git (ver "Credencial git" em secret/rascunhos/
+                  repositorios-gerenciados-projeto-semanal.md). */}
+              {project.forgejoAccessToken && project.forgejoUsername && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                    Credenciais do git — usuário <span className="text-primary">{project.forgejoUsername}</span>, use o token abaixo
+                    como senha
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 truncate rounded-lg bg-base px-3 py-2 text-sm text-primary">{project.forgejoAccessToken}</code>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyToken(project.forgejoAccessToken!)}
+                      className="shrink-0 rounded-lg bg-accent px-3 py-2 text-xs font-bold text-base"
+                    >
+                      {tokenCopied ? 'COPIADO ✓' : 'COPIAR'}
+                    </button>
+                  </div>
+                  <code className="whitespace-pre-wrap break-all rounded-lg bg-base px-3 py-2 text-xs text-secondary">
+                    git clone {project.submissionUrl}
+                  </code>
+                  <p className="text-xs text-muted">
+                    O git vai pedir usuário e senha na hora do clone/push - use o usuário e o token acima.
+                  </p>
+                </div>
+              )}
             </div>
+          )}
+
+          {!project.submissionUrl && (
+            <p className="rounded-xl border border-alert/40 bg-surface-alt px-4 py-3 text-sm text-alert">
+              Seu repositório ainda não foi provisionado - tente recarregar a página em alguns instantes.
+            </p>
           )}
 
           {/* Fase 38: so aparece enquanto IsLocked - a Weekly ainda tem Daily original nao
@@ -141,30 +190,19 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
             </p>
           )}
 
-          {canSubmit && (
+          {canSubmit && project.submissionUrl && (
             <div className="flex flex-col gap-3">
-              <label className="flex flex-col gap-2">
-                <span className="text-sm text-secondary">
-                  Cole a URL da sua submissão (repositório GitHub, post no LinkedIn, etc.)
-                </span>
-                <input
-                  type="url"
-                  value={submissionUrl}
-                  onChange={(e) => setSubmissionUrl(e.target.value)}
-                  placeholder="https://github.com/..."
-                  className="rounded-xl border border-stroke bg-surface-alt px-4 py-3 text-primary outline-none focus:border-project"
-                />
-              </label>
-              {/* Fase 27b: repositorio GitHub publico e avaliado na hora (nota + feedback acima) -
-                  qualquer outra URL (ex: post do LinkedIn) so fica registrada, sem nota automatica. */}
-              <p className="text-xs text-muted">Repositórios GitHub públicos recebem nota automática ao enviar.</p>
+              {/* Repositorio gerenciado no Forgejo interno e avaliado automaticamente ao entregar
+                  (ver EvaluateWeeklyProjectUseCase) - nao ha mais URL pra colar, so confirmar que
+                  o trabalho no repositorio ja provisionado esta pronto. */}
+              <p className="text-xs text-muted">Terminou de commitar seu código? Entregue para receber nota automática.</p>
 
               {submitError && <p className="text-sm text-alert">{submitError}</p>}
 
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={!submissionUrl.trim() || submitting}
+                disabled={submitting}
                 className="self-end rounded-xl bg-project px-8 py-4 text-sm font-bold text-base disabled:opacity-40"
               >
                 {submitting ? 'ENVIANDO...' : 'ENTREGAR PROJETO'}

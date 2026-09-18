@@ -48,6 +48,12 @@ var groqApiKey = builder.Configuration["Groq:ApiKey"] ?? string.Empty;
 // "GitHub:Token" precisa de escopo de escrita (repo), nao so leitura - ver docs/ARQUITETURA.md.
 var gitHubOptions = new GitHubOptions(builder.Configuration["GitHub:Token"] ?? string.Empty);
 
+// Forgejo interno (hospedagem de Projeto Semanal) - mesma decisao de resiliencia do GitHub acima:
+// BaseUrl/AdminToken ausentes nao impedem o app de subir, so as chamadas de ForgejoService falham
+// (com erro claro) quando de fato invocadas sem eles configurados.
+var forgejoOptions = new ForgejoOptions(
+    builder.Configuration["Forgejo:BaseUrl"] ?? string.Empty, builder.Configuration["Forgejo:AdminToken"] ?? string.Empty);
+
 // Jwt:SecretKey (Fase 12): ao contrario de Groq/GitHub acima, esta e exigida no boot - a partir
 // desta fase, autenticacao e fundacao (nao uma integracao opcional), e sem a chave literalmente
 // nenhum login/registro/sessao funcionaria. Mesmo tratamento que a connection string (falha cedo,
@@ -80,7 +86,7 @@ var frontendOptions = new FrontendOptions(
     builder.Configuration["Frontend:BaseUrl"] is { Length: > 0 } frontendBaseUrl ? frontendBaseUrl : "http://localhost:5173");
 
 builder.Services.AddFocaduApplication();
-builder.Services.AddFocaduInfrastructure(connectionString, groqApiKey, gitHubOptions, jwtOptions, smtpOptions, frontendOptions);
+builder.Services.AddFocaduInfrastructure(connectionString, groqApiKey, gitHubOptions, forgejoOptions, jwtOptions, smtpOptions, frontendOptions);
 
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();

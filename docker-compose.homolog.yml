@@ -34,6 +34,9 @@ services:
       Jwt__SecretKey: ${JWT_SECRET_KEY:?JWT_SECRET_KEY precisa ser definido no .env (minimo 32 caracteres)}
       Groq__ApiKey: ${GROQ_API_KEY:-}
       GitHub__Token: ${GITHUB_TOKEN:-}
+      # Forgejo interno (Projeto Semanal) - ver docker-compose.yml (producao) pro comentario completo.
+      Forgejo__BaseUrl: ${FORGEJO_BASE_URL:-http://forgejo:3000/api/v1/}
+      Forgejo__AdminToken: ${FORGEJO_ADMIN_TOKEN:-}
       # Redefinicao de senha (Fase 41) - ver docker-compose.yml (producao) pro comentario completo.
       Smtp__Host: ${SMTP_HOST:-}
       Smtp__Port: ${SMTP_PORT:-587}
@@ -64,5 +67,28 @@ services:
       backend:
         condition: service_healthy
 
+  # Forgejo interno (repositorios de Projeto Semanal) - instancia separada da de producao, mesmo
+  # espirito de stack isolada por ambiente que postgres/backend/frontend ja seguem aqui.
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:9
+    container_name: focadu-hml-forgejo
+    restart: unless-stopped
+    environment:
+      USER_UID: 1000
+      USER_GID: 1000
+      FORGEJO__database__DB_TYPE: sqlite3
+      FORGEJO__server__SSH_PORT: 2232
+      # Ver comentario em docker-compose.yml (producao) - sem isso, clone_url aponta pra porta
+      # interna do container, nao a que o host expõe.
+      FORGEJO__server__ROOT_URL: http://localhost:${FORGEJO_PORT:-3030}/
+      FORGEJO__server__START_SSH_SERVER: "false"
+      FORGEJO__security__INSTALL_LOCK: "true"
+    ports:
+      - "${FORGEJO_PORT:-3030}:3000"
+      - "${FORGEJO_SSH_PORT:-2232}:22"
+    volumes:
+      - focadu-hml-forgejo-data:/data
+
 volumes:
   focadu-hml-postgres-data:
+  focadu-hml-forgejo-data:

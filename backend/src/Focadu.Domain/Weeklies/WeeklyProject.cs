@@ -32,6 +32,24 @@ public class WeeklyProject : Entity
         Status = WeeklyProjectStatus.Pending;
     }
 
+    /// <summary>
+    /// Anexa a URL do repositorio ja provisionado pela Focadu (fork no Forgejo interno, ver
+    /// EnrollUserInCourseUseCase) - so seta SubmissionUrl, NAO muda Status (o repo ja existe, mas
+    /// o aluno ainda nao "entregou" o trabalho). So pode ser chamado uma vez, com o projeto ainda
+    /// Pending - diferente de Submit(), que e o aluno afirmando "terminei".
+    /// </summary>
+    public void AttachRepository(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            throw new DomainException("URL do repositorio e obrigatoria.");
+        if (Status != WeeklyProjectStatus.Pending)
+            throw new DomainException("So e possivel anexar um repositorio a um projeto ainda pendente.");
+        if (SubmissionUrl is not null)
+            throw new DomainException("Este projeto ja tem um repositorio anexado.");
+
+        SubmissionUrl = url;
+    }
+
     public void Submit(string submissionUrl)
     {
         if (string.IsNullOrWhiteSpace(submissionUrl))

@@ -27,13 +27,16 @@ namespace Focadu.Application.Weeklies;
 public class SubmitWeeklyProjectUseCase
 {
     private readonly IWeeklyRepository _weeklyRepository;
+    private readonly IUserForgejoAccountRepository _userForgejoAccountRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly EvaluateWeeklyProjectUseCase _evaluateWeeklyProjectUseCase;
 
     public SubmitWeeklyProjectUseCase(
-        IWeeklyRepository weeklyRepository, IUnitOfWork unitOfWork, EvaluateWeeklyProjectUseCase evaluateWeeklyProjectUseCase)
+        IWeeklyRepository weeklyRepository, IUserForgejoAccountRepository userForgejoAccountRepository, IUnitOfWork unitOfWork,
+        EvaluateWeeklyProjectUseCase evaluateWeeklyProjectUseCase)
     {
         _weeklyRepository = weeklyRepository;
+        _userForgejoAccountRepository = userForgejoAccountRepository;
         _unitOfWork = unitOfWork;
         _evaluateWeeklyProjectUseCase = evaluateWeeklyProjectUseCase;
     }
@@ -59,9 +62,10 @@ public class SubmitWeeklyProjectUseCase
             // Ver doc da classe - submissao ja foi salva (Submitted) acima, so a avaliacao
             // automatica que nao rolou desta vez. Devolve o estado atual (sem Score/Feedback) em
             // vez de propagar - o frontend ja trata "AGUARDANDO AVALIAÇÃO" normalmente.
+            var account = await _userForgejoAccountRepository.GetByUserIdAsync(userId, cancellationToken);
             return new WeeklyProjectDto(
                 project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty, project.Status, !weekly.AreDailiesComplete(),
-                project.SubmissionUrl, project.Score, project.Feedback);
+                project.SubmissionUrl, project.Score, project.Feedback, account?.AccessToken, account?.ForgejoUsername);
         }
     }
 }

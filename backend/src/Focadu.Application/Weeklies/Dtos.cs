@@ -48,4 +48,8 @@ public record WeeklyProjectDto(
     string? SubmissionUrl,
     /// <summary>Fase 16: nota (0-100) da avaliacao, preenchida junto com Status=Evaluated. Nulo ate entao.</summary>
     int? Score,
-    string? Feedback);
+    string? Feedback,
+    /// <summary>Token de acesso do aluno no Forgejo interno (UserForgejoAccount.AccessToken) - so populado quando ha SubmissionUrl (repositorio ja provisionado). Frontend usa pra montar as instrucoes de `git clone`/`git push`, mesmo espirito de "codigo pra copiar" do ReferralCard.</summary>
+    string? ForgejoAccessToken,
+    /// <summary>Username do aluno no Forgejo (UserForgejoAccount.ForgejoUsername) - junto do token acima, e o que o `git clone` HTTP pede quando autentica.</summary>
+    string? ForgejoUsername);

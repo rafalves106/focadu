@@ -5,6 +5,7 @@ using Focadu.Domain.Courses;
 using Focadu.Domain.Dailies;
 using Focadu.Domain.Enrollments;
 using Focadu.Domain.Gamification;
+using Focadu.Domain.GitHosting;
 using Focadu.Domain.Monthlies;
 using Focadu.Domain.Notes;
 using Focadu.Domain.Referrals;
@@ -71,6 +72,9 @@ public class FocaduDbContext : DbContext
 
     // Caderninho de Anotacoes (Fase 29) - anotacao livre do aluno, vinculada a uma Daily especifica.
     public DbSet<Note> Notes => Set<Note>();
+
+    // Forgejo interno (Projeto Semanal) - 1:1 com User, lazy-created (ver EnrollUserInCourseUseCase).
+    public DbSet<UserForgejoAccount> UserForgejoAccounts => Set<UserForgejoAccount>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -1,6 +1,7 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
 using Focadu.Domain.Enrollments;
+using Focadu.Domain.GitHosting;
 using Focadu.Domain.Repositories;
 using Focadu.Domain.Weeklies;
 
@@ -19,6 +20,8 @@ public class EnrollUserInCourseUseCase
     private readonly IEnrollmentRepository _enrollmentRepository;
     private readonly IWeeklyRepository _weeklyRepository;
     private readonly IReferralRepository _referralRepository;
+    private readonly IUserForgejoAccountRepository _userForgejoAccountRepository;
+    private readonly IForgejoService _forgejoService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
 
@@ -27,6 +30,8 @@ public class EnrollUserInCourseUseCase
         IEnrollmentRepository enrollmentRepository,
         IWeeklyRepository weeklyRepository,
         IReferralRepository referralRepository,
+        IUserForgejoAccountRepository userForgejoAccountRepository,
+        IForgejoService forgejoService,
         IUnitOfWork unitOfWork,
         IClock clock)
     {
@@ -34,6 +39,8 @@ public class EnrollUserInCourseUseCase
         _enrollmentRepository = enrollmentRepository;
         _weeklyRepository = weeklyRepository;
         _referralRepository = referralRepository;
+        _userForgejoAccountRepository = userForgejoAccountRepository;
+        _forgejoService = forgejoService;
         _unitOfWork = unitOfWork;
         _clock = clock;
     }
@@ -52,6 +59,13 @@ public class EnrollUserInCourseUseCase
 
         var cursor = FirstBusinessDayOnOrAfter(_clock.Today());
 
+        // Repositorios de Projeto Semanal (Forgejo interno) - conta do aluno e criada uma vez so,
+        // sob demanda, na 1a matricula que de fato precisar de um fork (nunca no registro, mesmo
+        // principio lazy de UserGemBalance/UserStreak). Resolvida fora do loop de Weeklies porque
+        // e a MESMA conta pra todos os forks desta matricula (1 token por aluno, nao por semana -
+        // ver secret/rascunhos/repositorios-gerenciados-projeto-semanal.md).
+        UserForgejoAccount? forgejoAccount = null;
+
         foreach (var monthly in course.Monthlies.OrderBy(m => m.Number))
         {
             foreach (var weeklyTemplate in monthly.WeeklyTemplates.OrderBy(w => w.Number))
@@ -67,7 +81,30 @@ public class EnrollUserInCourseUseCase
                     cursor = NextBusinessDay(cursor);
                 }
 
-                weekly.InitializeProject();
+                var project = weekly.InitializeProject();
+
+                // Sem repositorio-template configurado ainda pra esta semana (curadoria nao
+                // preencheu WeeklyTemplate.ForgejoTemplateSlug) - projeto fica Pending sem
+                // SubmissionUrl, exatamente como sempre foi ate esta fase. Nunca bloqueia a
+                // matricula.
+                if (weeklyTemplate.ForgejoTemplateSlug is { } templateSlug)
+                {
+                    // Falha de Forgejo (fora do ar, etc) NUNCA derruba a matricula - mesmo espirito
+                    // "bonus, nunca core" ja usado em SubmitWeeklyProjectUseCase pra falha da
+                    // avaliacao automatica por IA. O projeto so fica sem SubmissionUrl; nada
+                    // tenta de novo automaticamente ainda (upgrade natural se isso importar).
+                    try
+                    {
+                        forgejoAccount ??= await GetOrCreateForgejoAccountAsync(userId, cancellationToken);
+                        var repoUrl = await _forgejoService.ForkTemplateAsync(templateSlug, forgejoAccount.ForgejoUsername, cancellationToken);
+                        project.AttachRepository(repoUrl);
+                    }
+                    catch (ExternalServiceException)
+                    {
+                        // Ver comentario acima - segue sem repositorio pra esta Weekly.
+                    }
+                }
+
                 await _weeklyRepository.AddAsync(weekly, cancellationToken);
             }
         }
@@ -81,6 +118,25 @@ public class EnrollUserInCourseUseCase
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new EnrollmentDto(enrollment.Id, course.Id, course.Name, enrollment.EnrolledAt);
+    }
+
+    /// <summary>
+    /// Conta do aluno no Forgejo - lazy, so criada quando de fato precisa dar um fork pela 1a vez
+    /// (mesmo padrao de GamificationCreditor.GetOrCreateGemBalanceAsync). Username/email
+    /// derivados deterministicamente do userId (nunca do email real do aluno - conta interna, o
+    /// login no Forgejo em si nao e usado, so o access token, ver "Credencial git" no rascunho).
+    /// </summary>
+    private async Task<UserForgejoAccount> GetOrCreateForgejoAccountAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var existing = await _userForgejoAccountRepository.GetByUserIdAsync(userId, cancellationToken);
+        if (existing is not null) return existing;
+
+        var slug = userId.ToString("N");
+        var info = await _forgejoService.CreateUserAccountAsync($"aluno-{slug}", $"{slug}@focadu.internal", cancellationToken);
+
+        var account = new UserForgejoAccount(userId, info.Username, info.AccessToken);
+        await _userForgejoAccountRepository.AddAsync(account, cancellationToken);
+        return account;
     }
 
     private static DateOnly FirstBusinessDayOnOrAfter(DateOnly date) => date.DayOfWeek switch

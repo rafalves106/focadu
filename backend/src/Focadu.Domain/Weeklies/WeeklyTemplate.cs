@@ -23,6 +23,9 @@ public class WeeklyTemplate : Entity
     /// <summary>Especificacao do projeto pratico da semana (era `WeeklyProject.SpecText`) - curriculo, igual pra todo mundo, so muda de "definido" pra "definido" uma vez via seed/autoria.</summary>
     public string? WeeklyProjectSpecText { get; private set; }
 
+    /// <summary>Nome do repositorio-template no Forgejo interno (ex: "template-web-security-semana-1"), mantido pela curadoria - EnrollUserInCourseUseCase da fork disso pra cada aluno matriculado. Nulo ate a curadoria configurar; sem isso, a Weekly nao recebe repositorio (ver "repositorios-gerenciados-projeto-semanal.md").</summary>
+    public string? ForgejoTemplateSlug { get; private set; }
+
     private readonly List<DailyTemplate> _dailyTemplates = new();
     public IReadOnlyCollection<DailyTemplate> DailyTemplates => _dailyTemplates.AsReadOnly();
 
@@ -73,5 +76,16 @@ public class WeeklyTemplate : Entity
             throw new DomainException("Esta WeeklyTemplate ja tem uma especificacao de projeto definida.");
 
         WeeklyProjectSpecText = specText;
+    }
+
+    /// <summary>Define o repositorio-template no Forgejo pra esta semana (uma vez so - curriculo nao muda depois de publicado, mesmo espirito de SetProjectSpec).</summary>
+    public void SetProjectTemplateRepo(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+            throw new DomainException("Slug do repositorio-template e obrigatorio.");
+        if (ForgejoTemplateSlug is not null)
+            throw new DomainException("Esta WeeklyTemplate ja tem um repositorio-template definido.");
+
+        ForgejoTemplateSlug = slug;
     }
 }

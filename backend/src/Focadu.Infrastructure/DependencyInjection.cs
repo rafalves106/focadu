@@ -42,8 +42,8 @@ public static class DependencyInjection
     private static readonly TimeSpan GroqAudioTranscriptionAttemptTimeout = TimeSpan.FromSeconds(15);
 
     public static IServiceCollection AddFocaduInfrastructure(
-        this IServiceCollection services, string connectionString, string groqApiKey, GitHubOptions gitHubOptions, JwtOptions jwtOptions,
-        SmtpOptions smtpOptions, FrontendOptions frontendOptions)
+        this IServiceCollection services, string connectionString, string groqApiKey, GitHubOptions gitHubOptions,
+        ForgejoOptions forgejoOptions, JwtOptions jwtOptions, SmtpOptions smtpOptions, FrontendOptions frontendOptions)
     {
         services.AddDbContext<FocaduDbContext>(options => options.UseNpgsql(connectionString));
 
@@ -63,6 +63,7 @@ public static class DependencyInjection
         services.AddScoped<IPersonalizedAnalogyRepository, PersonalizedAnalogyRepository>();
         services.AddScoped<INoteRepository, NoteRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+        services.AddScoped<IUserForgejoAccountRepository, UserForgejoAccountRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<IClock, SystemClock>();
 
@@ -130,6 +131,21 @@ public static class DependencyInjection
             // A Api do GitHub exige User-Agent e recusa a requisicao sem ele.
             client.DefaultRequestHeaders.UserAgent.ParseAdd("Focadu/1.0");
             client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+            client.Timeout = TimeSpan.FromSeconds(20);
+        });
+
+        // Forgejo interno (Projeto Semanal, hospedagem de repositorio) - mesma decisao de
+        // resiliencia do GitHub acima: config ausente nao impede o app de subir. Diferente do
+        // GitHub, a BaseUrl nao e uma constante fixa (instancia self-hosted, endereco muda por
+        // ambiente - container `forgejo` no Compose local, host proprio em producao/homolog).
+        services.AddSingleton(forgejoOptions);
+        services.AddHttpClient<IForgejoService, ForgejoService>(client =>
+        {
+            if (!string.IsNullOrWhiteSpace(forgejoOptions.BaseUrl))
+                client.BaseAddress = new Uri(forgejoOptions.BaseUrl);
+            if (!string.IsNullOrWhiteSpace(forgejoOptions.AdminToken))
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("token", forgejoOptions.AdminToken);
+            client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
             client.Timeout = TimeSpan.FromSeconds(20);
         });
 

@@ -17,5 +17,33 @@ services:
       timeout: 5s
       retries: 10
 
+  # Forgejo interno (repositorios de Projeto Semanal, ver secret/rascunhos/
+  # repositorios-gerenciados-projeto-semanal.md) - SQLite (app isolada, sem join com o dominio C#,
+  # nao precisa do Postgres acima). Porta 3020 (host) = web/API, 2222 = SSH (git clone/push) -
+  # ambas mapeadas pra localhost. 3000 padrao evitado de proposito, ja em uso por outro projeto
+  # neste host.
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:9
+    container_name: focadu-forgejo
+    restart: unless-stopped
+    environment:
+      USER_UID: 1000
+      USER_GID: 1000
+      FORGEJO__database__DB_TYPE: sqlite3
+      FORGEJO__server__SSH_PORT: 2222
+      # Ver comentario em ../docker-compose.yml (producao) - sem isso, clone_url aponta pra porta
+      # interna do container, nao a que o host expõe.
+      FORGEJO__server__ROOT_URL: http://localhost:3020/
+      FORGEJO__server__START_SSH_SERVER: "false"
+      # Pula o wizard de instalacao interativo - a conta admin e o token sao criados via CLI
+      # depois (docker exec + forgejo admin user create/generate-access-token), nao pela web.
+      FORGEJO__security__INSTALL_LOCK: "true"
+    ports:
+      - "3020:3000"
+      - "2222:22"
+    volumes:
+      - focadu-forgejo-data:/data
+
 volumes:
   focadu-postgres-data:
+  focadu-forgejo-data:

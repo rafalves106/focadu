@@ -301,6 +301,10 @@ export interface WeeklyProjectDto {
   /** Fase 16: nota (0-100) da avaliação, preenchida junto com Status Evaluated. Nulo até então. */
   score: number | null;
   feedback: string | null;
+  /** Token de acesso do aluno no Forgejo interno - só populado quando há submissionUrl (repositório já provisionado). Usar como senha do git ao clonar/pushar. */
+  forgejoAccessToken: string | null;
+  /** Username do aluno no Forgejo - junto do token acima, é o que o `git clone` HTTP pede ao autenticar. */
+  forgejoUsername: string | null;
 }
 
 export interface WeeklyDetailDto {

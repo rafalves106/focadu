@@ -92,10 +92,21 @@ real do fluxo — sem ele, o link do email de redefinição aponta pro fallback 
 
 ## Portas (convenção fixa)
 
-| Ambiente | Frontend | Backend | Postgres |
-|---|---|---|---|
-| Produção | `5280` | `5282` | `5432` |
-| Homologação | `5290` | `5292` | `5433` |
+| Ambiente | Frontend | Backend | Postgres | Forgejo (web/API) | Forgejo (SSH) |
+|---|---|---|---|---|---|
+| Produção | `5280` | `5282` | `5432` | `3020` | `2222` |
+| Homologação | `5290` | `5292` | `5433` | `3030` | `2232` |
+
+Forgejo foge da porta padrão 3000 de propósito - já em uso por outro projeto (`homepage-homepage-1`) neste mesmo host, confirmado ao vivo ao subir o container pela primeira vez (18/09/2026).
+
+Forgejo (repositórios de Projeto Semanal, ver `secret/rascunhos/repositorios-gerenciados-projeto-
+semanal.md`) é o único serviço novo desde a Fase 40 — SQLite, sem Postgres próprio (app isolada,
+sem join com o domínio C#). `FORGEJO_ADMIN_TOKEN` não é gerado automaticamente: após o primeiro
+boot do container, crie manualmente a conta administrativa `focadu-admin` (via UI ou `forgejo
+admin user create` dentro do container) e gere um Personal Access Token com escopo admin — cole
+o valor em `FORGEJO_ADMIN_TOKEN` no `.env` correspondente. Sem isso configurado, o backend sobe
+normalmente; só o provisionamento automático de repositório na matrícula fica degradado
+(`WeeklyProject` fica sem `SubmissionUrl`, mesmo comportamento de antes desta integração).
 
 ## Deploy automático (CI/CD)
 

@@ -84,9 +84,23 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 45 — Certificações de mercado sugeridas por módulo** (18/09/2026).
+Última fase concluída: **Fase 46 — Repositórios de Projeto Semanal no Forgejo interno** (18/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Repositórios de Projeto Semanal no Forgejo interno (Fase 46)**: o aluno deixa de criar/colar
+  manualmente uma URL de repositório GitHub — a Focadu hospeda tudo sozinha num Forgejo
+  self-hosted (container novo, SQLite). Na matrícula, a conta do aluno no Forgejo é criada e o
+  repositório da semana nasce como fork de um repositório-template (mantido pela curadoria,
+  `WeeklyTemplate.ForgejoTemplateSlug`), via impersonação administrativa — o aluno só recebe a
+  URL + um token de acesso na tela do Projeto Semanal (usar como senha do `git clone`/`push`).
+  `EvaluateWeeklyProjectUseCase` migrou de `IGitHubService` pro Forgejo interno
+  (`IForgejoService`); o fluxo GitHub+LinkedIn de prova pública de *módulo* (`ModulePublication`,
+  Fase 11) continua intocado e separado — publicar o projeto no GitHub pessoal do aluno é manual
+  (`git remote add` + `git push`, sem orquestração da Focadu). Testado ao vivo, ponta a ponta
+  (matrícula real → fork → `git clone`/`push` funcionando) — achou e corrigiu 3 bugs reais da
+  integração com a API do Forgejo, ver `docs/fase-46/`. Só a Semana 1 do curso piloto tem
+  repositório-template configurado por enquanto; SAST (Fase 24c) continua sem o webhook receiver.
+  Origem: `secret/rascunhos/repositorios-gerenciados-projeto-semanal.md`.
 - **Certificações de mercado sugeridas por módulo (Fase 45)**: informativo (nunca emissão de
   certificado) mostrando ao aluno quais certificações de segurança reconhecidas pelo mercado
   (CompTIA Security+, eJPT, CEH, PNPT — lista aberta) o currículo já cobre, por `Monthly` (os 4

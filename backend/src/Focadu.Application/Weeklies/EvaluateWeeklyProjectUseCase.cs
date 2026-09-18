@@ -27,28 +27,33 @@ namespace Focadu.Application.Weeklies;
 /// (GetCourseRankingUseCase).
 ///
 /// Fase 21: a nota/feedback deixaram de vir do chamador (curl manual) e passaram a ser calculados
-/// automaticamente - busca o conteudo do repositorio publico (IGitHubService.
-/// GetContentSnapshotAsync) e pede pro Groq (IProjectEvaluationService) comparar com
-/// WeeklyTemplate.WeeklyProjectSpecText. So funciona quando SubmissionUrl e um repositorio GitHub
-/// (o outro formato aceito, link do LinkedIn, nao tem conteudo pra IA analisar - ver
-/// SubmitPublicationUseCase pro fluxo de "prova de publicacao", que e separado deste). Continua
-/// sem UI propria, so o endpoint.
+/// automaticamente - busca o conteudo do repositorio (IGitHubService.GetContentSnapshotAsync) e
+/// pede pro Groq (IProjectEvaluationService) comparar com WeeklyTemplate.WeeklyProjectSpecText.
+///
+/// Repositorios gerenciados no Forgejo interno: para de depender de IGitHubService/
+/// GitHubUrlParser (que continuam existindo, intocados, so pro fluxo de prova publica de modulo -
+/// ver SubmitPublicationUseCase). owner/repo nao vem mais de parsear SubmissionUrl - a Focadu ja
+/// sabe os dois (o ForgejoUsername do aluno + o ForgejoTemplateSlug da semana, o mesmo nome que o
+/// fork herdou do template), resolvidos direto em vez de parsing fragil de URL. Continua sem UI
+/// propria, so o endpoint.
 /// </summary>
 public class EvaluateWeeklyProjectUseCase
 {
     private readonly IWeeklyRepository _weeklyRepository;
-    private readonly IGitHubService _gitHubService;
+    private readonly IUserForgejoAccountRepository _userForgejoAccountRepository;
+    private readonly IForgejoService _forgejoService;
     private readonly IProjectEvaluationService _projectEvaluationService;
     private readonly GamificationCreditor _gamificationCreditor;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
 
     public EvaluateWeeklyProjectUseCase(
-        IWeeklyRepository weeklyRepository, IGitHubService gitHubService, IProjectEvaluationService projectEvaluationService,
-        GamificationCreditor gamificationCreditor, IUnitOfWork unitOfWork, IClock clock)
+        IWeeklyRepository weeklyRepository, IUserForgejoAccountRepository userForgejoAccountRepository, IForgejoService forgejoService,
+        IProjectEvaluationService projectEvaluationService, GamificationCreditor gamificationCreditor, IUnitOfWork unitOfWork, IClock clock)
     {
         _weeklyRepository = weeklyRepository;
-        _gitHubService = gitHubService;
+        _userForgejoAccountRepository = userForgejoAccountRepository;
+        _forgejoService = forgejoService;
         _projectEvaluationService = projectEvaluationService;
         _gamificationCreditor = gamificationCreditor;
         _unitOfWork = unitOfWork;
@@ -63,20 +68,24 @@ public class EvaluateWeeklyProjectUseCase
         var project = weekly.Project
             ?? throw new NotFoundException("projeto_nao_encontrado", "Esta semana nao tem projeto definido.");
 
-        // Falha antes de gastar uma chamada a GitHub/Groq (paga) se o projeto nem estiver no
+        // Falha antes de gastar uma chamada a Forgejo/Groq (paga) se o projeto nem estiver no
         // estado certo - WeeklyProject.Evaluate() tambem valida isso, mas so depois da IA rodar.
         if (project.Status != WeeklyProjectStatus.Submitted)
             throw new DomainException("Só é possível avaliar um projeto que foi submetido.");
 
-        var repoRef = project.SubmissionUrl is not null ? GitHubUrlParser.TryParse(project.SubmissionUrl) : null;
-        if (repoRef is not { } repo)
+        if (weekly.Template.ForgejoTemplateSlug is not { } templateSlug)
         {
             throw new ValidationException(
-                "projeto_nao_e_repositorio_github",
-                "A avaliacao automatica exige que o projeto tenha sido submetido com uma URL de repositorio GitHub publico.");
+                "projeto_sem_repositorio_forgejo",
+                "Esta semana nao tem repositorio-template configurado - a avaliacao automatica nao tem o que buscar.");
         }
 
-        var snapshot = await _gitHubService.GetContentSnapshotAsync(repo.Owner, repo.Repo, cancellationToken);
+        var forgejoAccount = await _userForgejoAccountRepository.GetByUserIdAsync(userId, cancellationToken)
+            ?? throw new ValidationException(
+                "aluno_sem_conta_forgejo",
+                "Este aluno ainda nao tem conta no Forgejo - o repositorio do projeto nao foi provisionado.");
+
+        var snapshot = await _forgejoService.GetContentSnapshotAsync(forgejoAccount.ForgejoUsername, templateSlug, cancellationToken);
         var specText = weekly.Template.WeeklyProjectSpecText ?? string.Empty;
         var evaluation = await _projectEvaluationService.EvaluateAsync(
             new ContentEvaluationRequest(specText, snapshot, null), cancellationToken);
@@ -97,6 +106,6 @@ public class EvaluateWeeklyProjectUseCase
 
         return new WeeklyProjectDto(
             project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty, project.Status, !weekly.AreDailiesComplete(),
-            project.SubmissionUrl, project.Score, project.Feedback);
+            project.SubmissionUrl, project.Score, project.Feedback, forgejoAccount.AccessToken, forgejoAccount.ForgejoUsername);
     }
 }
