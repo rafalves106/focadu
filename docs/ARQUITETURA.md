@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 43 - Fuso Horario do Container Bloqueando a Daily**.
+> Ultima fase que atualizou este documento: **Fase 44 - Flash de "tudo errado" em Ligar Palavras**.
 
 ## Visao geral do projeto
 
@@ -2429,7 +2429,14 @@ frontend/
       WordMatchActivity.tsx         <- matcher visual de 2 colunas por toque (tap-to-connect), 1 DailyActivity = 1 grupo de pares inteiro
                                    (Fase 23, reforma completa - substitui a versao Fase 9/19 que
                                    reaproveitava OptionsAnswer por termo, ver nota de divergencia
-                                   removida do proprio arquivo)
+                                   removida do proprio arquivo). Fase 44 (bug real relatado ao
+                                   vivo): em handleSubmit, o refetch do gabarito (api.getDaily ->
+                                   setTerms/setDefinitions) precisa terminar ANTES de
+                                   setLastResponse (o que vira `answered=true` e revela o
+                                   resultado) - na ordem antiga, havia 1 render com answered=true
+                                   e terms ainda sem CorrectDefinitionId, e termVerdict acusava
+                                   "errado" em todos os pares nesse instante (flash de feedback
+                                   falso antes do resultado real).
       OptionsAnswer.tsx          <- nucleo "escolher opcao" - Quiz, Cloze/MultipleChoice; usa OptionCard desde a Fase 9. WordMatch usava isto ate a Fase 21, tem interacao propria desde a Fase 23 (ver WordMatchActivity.tsx)
       ClozeFreeTextActivity.tsx   <- Cloze/FreeText (resposta + justificativa); Intro + CodeHighlight desde a Fase 9. Fase 19: SessionLayout + bloco de codigo/labels fieis ao node "sessao-cloze-test" - campo de justificativa continua texto (nao microfone, ver nota no arquivo)
       RoleplayActivity.tsx        <- navega o grafo de RoleplayNode client-side; Intro + OptionCard desde a Fase 9. Fase 19: SessionLayout + badge ambar "Roleplay de Decisoes" + bloco "Cenario" persistente (activity.prompt, antes so na Intro) + opcoes numeradas; indicador de "arvore de decisao" (1->2->3->4) do Figma omitido (profundidade do grafo e variavel, nao um numero fixo de passos)

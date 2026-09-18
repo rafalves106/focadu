@@ -238,16 +238,20 @@ export function WordMatchActivity({
 
     try {
       const result = await api.submitActivityResponse(dailyId, activity.id, { wordMatchMatches: matches });
-      setLastResponse(result.response);
 
       // Depois de responder, o gabarito e revelado (mesmo padrao de OptionsAnswer) - busca o
-      // estado atualizado pra pegar CorrectDefinitionId preenchido.
+      // estado atualizado pra pegar CorrectDefinitionId preenchido ANTES de marcar como
+      // respondido. Se `lastResponse` fosse setado primeiro, `answered` viraria true com `terms`
+      // ainda sem gabarito (correctDefinitionId null) por 1 render, e termVerdict acusaria
+      // "errado" em todos os pares ate o refetch chegar - flash de feedback falso relatado ao
+      // vivo (Fase 44).
       const refreshedDaily = await api.getDaily(dailyId);
       const refreshedActivity = refreshedDaily.activities.find((a) => a.id === activity.id);
       if (refreshedActivity) {
         setTerms(refreshedActivity.wordMatchTerms);
         setDefinitions(refreshedActivity.wordMatchDefinitions);
       }
+      setLastResponse(result.response);
       onDailyRefetched(refreshedDaily);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Nao foi possivel enviar sua resposta. Tente de novo.');
