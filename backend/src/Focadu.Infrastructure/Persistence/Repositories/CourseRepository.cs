@@ -20,6 +20,7 @@ public class CourseRepository : ICourseRepository
     public async Task<Course?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         await _context.Courses
             .Include(c => c.Monthlies).ThenInclude(m => m.WeeklyTemplates)
+            .Include(c => c.Monthlies).ThenInclude(m => m.CertificationCoverages)
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
     public async Task<Course?> GetFullTemplateGraphAsync(Guid id, CancellationToken cancellationToken = default) =>
@@ -33,6 +34,7 @@ public class CourseRepository : ICourseRepository
     public async Task<IReadOnlyCollection<Course>> GetAllAsync(CancellationToken cancellationToken = default) =>
         await _context.Courses
             .Include(c => c.Monthlies).ThenInclude(m => m.WeeklyTemplates)
+            .Include(c => c.Monthlies).ThenInclude(m => m.CertificationCoverages)
             .ToListAsync(cancellationToken);
 
     public async Task AddAsync(Course course, CancellationToken cancellationToken = default) =>

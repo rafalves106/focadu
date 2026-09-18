@@ -75,3 +75,7 @@ metadata:
 
 - `secret/curadoria/CURADORIA.md` — filosofia, schema, roteiro completo, estado atual.
 - `secret/curadoria/web-security/semana-1/dia-1.json` a `dia-4.json` — exemplos canônicos.
+- `secret/curadoria/web-security/certificacoes.json` (schema em CURADORIA.md seção 6, Fase 45) —
+  cobertura de certificações de mercado por módulo. Não é um passo obrigatório desta skill (é por
+  módulo, não por dia) — revisite esse arquivo quando o trabalho abranger um módulo inteiro
+  (currículo novo ou revisão de conteúdo já existente), não em toda curadoria de dia individual.

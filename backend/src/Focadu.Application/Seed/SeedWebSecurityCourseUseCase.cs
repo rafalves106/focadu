@@ -37,14 +37,34 @@ public class SeedWebSecurityCourseUseCase
     public async Task<SeedResult> ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var existingCourses = await _courseRepository.GetAllAsync(cancellationToken);
-        if (existingCourses.Any(c => c.Name == CourseName))
+        var existingCourse = existingCourses.FirstOrDefault(c => c.Name == CourseName);
+        if (existingCourse is not null)
+        {
+            await BackfillCertificationCoverageAsync(existingCourse, cancellationToken);
             return new SeedResult(AlreadyExisted: true, CourseId: null);
+        }
 
         var course = BuildCourse();
         await _courseRepository.AddAsync(course, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new SeedResult(AlreadyExisted: false, CourseId: course.Id);
+    }
+
+    /// <summary>
+    /// O seed acima e idempotente por nome do Course - reexecutar contra um banco que ja tem
+    /// "Web Security" nao insere nada de novo, incluindo cobertura de certificacao adicionada
+    /// depois do curso original ja ter sido seedado (Fase 45). Backfill pontual: roda o importer
+    /// so se nenhum Monthly ainda tiver CertificationCoverage - idempotente, nao duplica numa
+    /// segunda execucao.
+    /// </summary>
+    private async Task BackfillCertificationCoverageAsync(Course course, CancellationToken cancellationToken)
+    {
+        if (course.Monthlies.Any(m => m.CertificationCoverages.Count > 0))
+            return;
+
+        ImportCertificationCoverage(course);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>
@@ -129,8 +149,18 @@ public class SeedWebSecurityCourseUseCase
             "Defesa em Profundidade, Evasao, Purple Teaming, Gestao de Risco Executivo e IA Ofensiva");
         ImportWeek(semana12, "semana-12", 56, 60);
 
+        ImportCertificationCoverage(course);
+
         return course;
     }
+
+    /// <summary>
+    /// Cobertura curada de certificacoes de mercado por Monthly (Fase 45, secret/rascunhos/
+    /// informativo-certificacoes.md) - certificacoes.json e um arquivo de nivel de CURSO (nao de
+    /// semana), diferente de todo o resto importado acima.
+    /// </summary>
+    private static void ImportCertificationCoverage(Course course) =>
+        CertificationCoverageImporter.ImportFile(course, CuratedContentPath(null, "certificacoes.json"));
 
     /// <summary>
     /// Importa uma semana inteira (5 dias + 1 projeto pratico) do curriculo curado. Generico por
@@ -183,11 +213,16 @@ public class SeedWebSecurityCourseUseCase
     /// tem o publish output. CURATED_CONTENT_ROOT (setada no docker-compose, apontando pro bind
     /// mount do clone de focadu-secret) contorna a busca inteira quando presente.
     /// </summary>
-    private static string CuratedContentPath(string weekFolder, string fileName)
+    /// <summary>Pasta de semana e opcional - arquivos de curadoria em nivel de curso (ex: certificacoes.json, Fase 45) usam weekFolder null/vazio.</summary>
+    private static string CuratedContentPath(string? weekFolder, string fileName)
     {
+        var relativeSegments = string.IsNullOrEmpty(weekFolder)
+            ? new[] { CourseSlug, fileName }
+            : new[] { CourseSlug, weekFolder, fileName };
+
         var contentRoot = Environment.GetEnvironmentVariable("CURATED_CONTENT_ROOT");
         if (!string.IsNullOrWhiteSpace(contentRoot))
-            return Path.Combine(contentRoot, "curadoria", CourseSlug, weekFolder, fileName);
+            return Path.Combine([contentRoot, "curadoria", .. relativeSegments]);
 
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, ".git")))
@@ -196,14 +231,14 @@ public class SeedWebSecurityCourseUseCase
         var repoRoot = dir?.FullName
             ?? throw new InvalidOperationException("Nao foi possivel localizar a raiz do repositorio (procurando por .git) para achar o conteudo curado.");
 
-        var nested = Path.Combine(repoRoot, "secret", "curadoria", CourseSlug, weekFolder, fileName);
+        var nested = Path.Combine([repoRoot, "secret", "curadoria", .. relativeSegments]);
         if (File.Exists(nested))
             return nested;
 
         var siblingParent = Directory.GetParent(repoRoot)?.FullName;
         var sibling = siblingParent is null
             ? null
-            : Path.Combine(siblingParent, "focadu-secret", "curadoria", CourseSlug, weekFolder, fileName);
+            : Path.Combine([siblingParent, "focadu-secret", "curadoria", .. relativeSegments]);
         if (sibling is not null && File.Exists(sibling))
             return sibling;
 
