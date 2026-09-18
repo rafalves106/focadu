@@ -84,9 +84,17 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 43 — Fuso Horário do Container Bloqueando a Daily** (17/09/2026).
+Última fase concluída: **Fase 44 — Flash de "tudo errado" em Ligar Palavras** (17/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Flash de "tudo errado" em Ligar Palavras (Fase 44, bug real relatado ao vivo)**: ao confirmar
+  a resposta, `WordMatchActivity.handleSubmit` marcava a atividade como respondida
+  (`setLastResponse`, o que revela o gabarito) **antes** de terminar o refetch que preenche
+  `CorrectDefinitionId` dos termos. Por 1 render, o veredito de cada par era calculado contra
+  `CorrectDefinitionId` ainda `null` (escondido pelo backend antes de responder) - e a tela
+  piscava tudo vermelho por um instante antes do resultado real aparecer. Corrigido invertendo a
+  ordem: só marca como respondido depois que o gabarito já chegou. `focadu-hml` (branch
+  `develop`) tem o mesmo trecho e ainda precisa do mesmo fix - ver `docs/fase-44/`.
 - **Fuso horário do container bloqueando a Daily (Fase 43, bug real relatado ao vivo)**: o
   container do backend rodava o relógio do SO em UTC (sem `TZ` setada em lugar nenhum), então
   `SystemClock.Today()` (que usa `DateTime.Now` de propósito, pro "dia do calendário vivido pelo
