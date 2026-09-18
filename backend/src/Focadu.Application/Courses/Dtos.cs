@@ -29,7 +29,9 @@ public record MonthlyOverviewDto(
     Guid Id,
     int Number,
     string Title,
-    IReadOnlyCollection<WeeklyOverviewDto> Weeklies);
+    IReadOnlyCollection<WeeklyOverviewDto> Weeklies,
+    /// <summary>Fase 45: certificacoes de mercado que este modulo (curadoria estatica) ja cobre/aproxima - ver secret/rascunhos/informativo-certificacoes.md.</summary>
+    IReadOnlyCollection<CertificationCoverageDto> Certifications);
 
 public record WeeklyOverviewDto(
     Guid Id,

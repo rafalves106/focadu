@@ -7,12 +7,13 @@ import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { EmptyStateError } from '../components/errors/EmptyStateError';
 import { CourseDetailTabs, type CourseDetailTab } from '../components/notebook/CourseDetailTabs';
 import { NotebookTab } from '../components/notebook/NotebookTab';
+import { CertificationsTab } from '../components/certifications/CertificationsTab';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
 import { ProgressBar } from '../components/ProgressBar';
 import trophyIcon from '../assets/icons/trophy.png';
 import checkIcon from '../assets/icons/check.png';
 
-const VALID_TABS: CourseDetailTab[] = ['conteudo', 'caderninho'];
+const VALID_TABS: CourseDetailTab[] = ['conteudo', 'caderninho', 'certificacoes'];
 
 const DAY_MINI_TONE: Record<number, string> = {
   0: 'border-transparent bg-surface-alt text-muted', // Locked
@@ -103,6 +104,8 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
           )}
 
           {tab === 'caderninho' && <NotebookTab courseId={courseId} />}
+
+          {tab === 'certificacoes' && <CertificationsTab monthlies={course.monthlies} />}
         </div>
       </div>
 

@@ -28,6 +28,7 @@ public class FocaduDbContext : DbContext
 
     public DbSet<Course> Courses => Set<Course>();
     public DbSet<Monthly> Monthlies => Set<Monthly>();
+    public DbSet<CertificationCoverage> CertificationCoverages => Set<CertificationCoverage>();
 
     // Template (curriculo, Fase 13) - ver docs/ARQUITETURA.md "Template vs Instancia".
     public DbSet<WeeklyTemplate> WeeklyTemplates => Set<WeeklyTemplate>();

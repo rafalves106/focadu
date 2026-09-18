@@ -97,6 +97,22 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
         </div>
       )}
 
+      {weekly.moduleCertifications.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-2xl border border-surface-alt bg-surface p-5">
+          <p className="text-sm font-semibold text-primary">🛡️ Este módulo te aproxima de:</p>
+          <div className="flex flex-wrap gap-2">
+            {weekly.moduleCertifications.map((cert) => (
+              <StatusBadge
+                key={cert.certificationCode}
+                icon="🛡️"
+                label={`${cert.certificationName} (${cert.certifier})`}
+                tone="accent"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {(prevWeek || nextWeek) && (
         <div className="flex items-center justify-between text-sm">
           {prevWeek ? (

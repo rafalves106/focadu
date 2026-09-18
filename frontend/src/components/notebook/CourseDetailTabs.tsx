@@ -1,8 +1,9 @@
-export type CourseDetailTab = 'conteudo' | 'caderninho';
+export type CourseDetailTab = 'conteudo' | 'caderninho' | 'certificacoes';
 
 const TABS: { tab: CourseDetailTab; label: string }[] = [
   { tab: 'conteudo', label: 'Conteúdo Programático' },
   { tab: 'caderninho', label: 'Caderninho' },
+  { tab: 'certificacoes', label: 'Certificações' },
 ];
 
 /** Abas de `/start?course=` (Fase 29, Caderninho de Anotações) - mesmo padrão de ProfileTabs.tsx/RankingScopeTabs. Conteúdo Programático continua o visual ATUAL (decisão do rascunho: fora de escopo reskinar essa aba agora), só ganhou o envólucro. */

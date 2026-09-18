@@ -20,6 +20,11 @@ public class MonthlyConfiguration : IEntityTypeConfiguration<Monthly>
             .HasForeignKey(w => w.MonthlyId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(m => m.CertificationCoverages)
+            .WithOne()
+            .HasForeignKey(c => c.MonthlyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasIndex(m => new { m.CourseId, m.Number }).IsUnique();
     }
 }

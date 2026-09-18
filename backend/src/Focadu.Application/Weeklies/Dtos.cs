@@ -18,7 +18,9 @@ public record WeeklyDetailDto(
     /// <summary>Fase 11: true quando o modulo esta completo mas ainda falta uma publicacao Validated - o frontend usa isso pro banner/bloqueio, sem precisar de uma 2a chamada a /publication/status so pra saber "precisa ou nao".</summary>
     bool RequiresPublicationToUnlock,
     /// <summary>Fase 15: true quando existe um WeeklyReinforcement (2+ dias fracos) ainda nao totalmente atendido - ver Weekly.HasPendingWeeklyReinforcement. So indicador, nunca bloqueia nada.</summary>
-    bool HasPendingWeeklyReinforcement);
+    bool HasPendingWeeklyReinforcement,
+    /// <summary>Fase 45: certificacoes de mercado do Monthly ao qual esta Weekly pertence - usado no reforco mostrado junto da prova publica (PublicationModal) e no banner desta tela.</summary>
+    IReadOnlyCollection<CertificationCoverageDto> ModuleCertifications);
 
 /// <summary>Desempenho de um dia dentro da semana: quantas atividades tem, quantas ja foram feitas, quantas passaram.</summary>
 public record DailyOverviewDto(

@@ -12,6 +12,7 @@ import { StartDashboard } from './StartDashboard';
 import { CourseDetailPage } from './CourseDetailPage';
 import { WeeklyDetailPage } from './WeeklyDetailPage';
 import { RankingPage } from './RankingPage';
+import { CertificationsPage } from './CertificationsPage';
 
 /**
  * `/start` (Fase 25): fora do shell `<App/>` no roteador - mesmo motivo/tratamento de `/hoje`
@@ -37,11 +38,12 @@ export function StartRoute() {
 }
 
 /**
- * `/start` cobre 6 telas via query string (nao path params - ver docs/ARQUITETURA.md):
+ * `/start` cobre 7 telas via query string (nao path params - ver docs/ARQUITETURA.md):
  * sem params -> StartDashboard (hub de cards, Fase 8); ?course= -> CourseDetailPage; ?course=&
- * ranking= -> RankingPage (Fase 16); ?course=&weekly= -> WeeklyDetailPage; ?course=&weekly=&daily=
- * -> estado de uma Daily especifica (recapitulacao simples, sem polimento - fora do escopo da
- * Fase 8); ?course=&weekly=&project= -> projeto pratico da semana (Fase 7).
+ * ranking= -> RankingPage (Fase 16); ?course=&certifications= -> CertificationsPage (Fase 45);
+ * ?course=&weekly= -> WeeklyDetailPage; ?course=&weekly=&daily= -> estado de uma Daily especifica
+ * (recapitulacao simples, sem polimento - fora do escopo da Fase 8); ?course=&weekly=&project= ->
+ * projeto pratico da semana (Fase 7).
  *
  * A antiga CourseListView (lista de cursos) saiu na Fase 8: como so existe 1 Course Active nesta
  * fase (mesma premissa de GET /api/today - ver docs/ARQUITETURA.md), a tela sem params vai direto
@@ -60,6 +62,7 @@ function StartPage() {
   const dailyId = searchParams.get('daily');
   const showProject = searchParams.get('project') !== null;
   const showRanking = searchParams.get('ranking') !== null;
+  const showCertifications = searchParams.get('certifications') !== null;
 
   if (showProject && weeklyId) {
     return (
@@ -72,6 +75,13 @@ function StartPage() {
     return (
       <App>
         <RankingPage courseId={courseId} />
+      </App>
+    );
+  }
+  if (showCertifications && courseId) {
+    return (
+      <App>
+        <CertificationsPage courseId={courseId} />
       </App>
     );
   }

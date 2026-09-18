@@ -26,6 +26,7 @@ import { ProgressBar } from '../components/ProgressBar';
 import { WeeklyProjectCard } from '../components/WeeklyProjectCard';
 import { WeeklyReinforcementBadge } from '../components/WeeklyReinforcementBadge';
 import { EmptyStateStartPage } from './EmptyStateStartPage';
+import { isMonthlyComplete } from '../lib/certifications';
 
 interface DashboardData {
   daily: DailyStateDto;
@@ -130,6 +131,7 @@ export function StartDashboard() {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <WeeklyProjectCard project={weekly.project} weeklyId={weekly.id} courseId={course?.id ?? null} />
         <CourseExplorerLink courseId={course?.id ?? null} weeksTotal={weeks.length} weeksCompleted={weeksCompleted} />
+        <CertificationsSummaryCard course={course} className="md:col-span-2" />
       </div>
     </div>
   );
@@ -224,6 +226,40 @@ function CourseExplorerLink({
       {courseId && (
         <Link to={`/start?course=${courseId}`} className="self-start text-sm font-semibold text-accent hover:underline">
           Explorar Curso Completo →
+        </Link>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Fase 45: resumo de quantas certificações de mercado o curso ativo já cobre/está cobrindo,
+ * informativo (a Focadu não emite certificação nenhuma). Reaproveita CourseDetailDto já carregado
+ * por StartDashboard - sem endpoint novo.
+ */
+function CertificationsSummaryCard({ course, className = '' }: { course: CourseDetailDto | null; className?: string }) {
+  const monthlies = course?.monthlies ?? [];
+  const allCertCodes = new Set(monthlies.flatMap((m) => m.certifications.map((c) => c.certificationCode)));
+  const unlockedCertCodes = new Set(
+    monthlies.filter(isMonthlyComplete).flatMap((m) => m.certifications.map((c) => c.certificationCode)),
+  );
+
+  if (allCertCodes.size === 0) return null;
+
+  return (
+    <div className={`flex flex-col justify-between gap-4 rounded-2xl border border-stroke bg-surface p-6 ${className}`}>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Certificações de Mercado</p>
+        <p className="mt-1 text-sm text-secondary">
+          Você já avançou em {unlockedCertCodes.size} de {allCertCodes.size} certificação(ões) mapeada(s) neste curso
+        </p>
+      </div>
+      {course && (
+        <Link
+          to={`/start?course=${course.id}&certifications=1`}
+          className="self-start text-sm font-semibold text-accent hover:underline"
+        >
+          Ver Certificações →
         </Link>
       )}
     </div>

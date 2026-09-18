@@ -71,9 +71,13 @@ public class GetWeeklyDetailUseCase
             .Select(r => new WeeklyReinforcementSummaryDto(r.Id, weekly.Id, r.TriggeredAt, r.WeakDailyIds))
             .ToList();
 
+        var certificationDtos = monthly.CertificationCoverages
+            .Select(c => new CertificationCoverageDto(c.CertificationCode, c.CertificationName, c.Certifier, c.CoveredDomains))
+            .ToList();
+
         return new WeeklyDetailDto(
             weekly.Id, weekly.MonthlyId, monthly.CourseId, weekly.Number, weekly.Title, weekly.Theme,
             dailyDtos, contentDtos, projectDto, reinforcementDtos, weekly.RequiresPublicationToUnlock(),
-            weekly.HasPendingWeeklyReinforcement());
+            weekly.HasPendingWeeklyReinforcement(), certificationDtos);
     }
 }

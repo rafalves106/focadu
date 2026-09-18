@@ -83,7 +83,11 @@ public class GetCourseDetailUseCase
                     .Select(r => new WeeklyReinforcementSummaryDto(r.Id, weekly.Id, r.TriggeredAt, r.WeakDailyIds)));
             }
 
-            monthlyDtos.Add(new MonthlyOverviewDto(monthly.Id, monthly.Number, monthly.Title, weeklyDtos));
+            var certificationDtos = monthly.CertificationCoverages
+                .Select(c => new CertificationCoverageDto(c.CertificationCode, c.CertificationName, c.Certifier, c.CoveredDomains))
+                .ToList();
+
+            monthlyDtos.Add(new MonthlyOverviewDto(monthly.Id, monthly.Number, monthly.Title, weeklyDtos, certificationDtos));
         }
 
         var completionPercentage = totalDailies == 0 ? 0d : Math.Round(100d * completedDailies / totalDailies, 1);

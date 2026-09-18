@@ -14,6 +14,9 @@ public class Monthly : Entity
     private readonly List<WeeklyTemplate> _weeklyTemplates = new();
     public IReadOnlyCollection<WeeklyTemplate> WeeklyTemplates => _weeklyTemplates.AsReadOnly();
 
+    private readonly List<CertificationCoverage> _certificationCoverages = new();
+    public IReadOnlyCollection<CertificationCoverage> CertificationCoverages => _certificationCoverages.AsReadOnly();
+
     private Monthly()
     {
         Title = string.Empty;
@@ -39,5 +42,15 @@ public class Monthly : Entity
         var weeklyTemplate = new WeeklyTemplate(Id, number, title, theme);
         _weeklyTemplates.Add(weeklyTemplate);
         return weeklyTemplate;
+    }
+
+    public CertificationCoverage AddCertificationCoverage(string certificationCode, string certificationName, string certifier, string coveredDomains)
+    {
+        if (_certificationCoverages.Any(c => c.CertificationCode == certificationCode))
+            throw new DomainException("Ja existe uma CertificationCoverage com esse CertificationCode neste Monthly.");
+
+        var coverage = new CertificationCoverage(Id, certificationCode, certificationName, certifier, coveredDomains);
+        _certificationCoverages.Add(coverage);
+        return coverage;
     }
 }

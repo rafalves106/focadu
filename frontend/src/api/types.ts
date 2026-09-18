@@ -223,6 +223,16 @@ export interface MonthlyOverviewDto {
   number: number;
   title: string;
   weeklies: WeeklyOverviewDto[];
+  /** Fase 45: certificacoes de mercado que este modulo (curadoria estatica) ja cobre/aproxima. */
+  certifications: CertificationCoverageDto[];
+}
+
+/** Fase 45: cobertura curada (manual, nunca gerada por IA) de uma certificacao de mercado por modulo. */
+export interface CertificationCoverageDto {
+  certificationCode: string;
+  certificationName: string;
+  certifier: string;
+  coveredDomains: string;
 }
 
 export interface DailyReinforcementSummaryDto {
@@ -309,6 +319,8 @@ export interface WeeklyDetailDto {
   requiresPublicationToUnlock: boolean;
   /** Fase 15: true quando existe um reforco semanal (2+ dias fracos) ainda nao totalmente atendido - so indicador, nunca bloqueia nada. */
   hasPendingWeeklyReinforcement: boolean;
+  /** Fase 45: certificacoes de mercado do Monthly ao qual esta Weekly pertence. */
+  moduleCertifications: CertificationCoverageDto[];
 }
 
 // Ranking (Fase 16) - Score de Estudo, metrica de QUALIDADE (diferente de Gems, que recompensa

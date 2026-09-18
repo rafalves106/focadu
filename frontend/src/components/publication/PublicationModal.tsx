@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
-import { PublicationPlatform, PublicationStatus, type CourseDetailDto, type GitHubRepoDto, type ModulePublicationDto } from '../../api/types';
+import {
+  PublicationPlatform,
+  PublicationStatus,
+  type CertificationCoverageDto,
+  type CourseDetailDto,
+  type GitHubRepoDto,
+  type ModulePublicationDto,
+} from '../../api/types';
 import { classifyApiError, type ApiFailure } from '../../lib/apiError';
 
 const LINKEDIN_MAX_CHARS = 3000;
@@ -136,6 +143,8 @@ export function PublicationModal({
   const allWeeklies = course?.monthlies.flatMap((m) => m.weeklies) ?? [];
   const currentWeeklyNumber = allWeeklies.find((w) => w.id === weeklyId)?.number;
   const nextWeekly = currentWeeklyNumber ? allWeeklies.find((w) => w.number === currentWeeklyNumber + 1) : undefined;
+  // Fase 45: certificacoes de mercado do Monthly ao qual esta Weekly pertence - reforco mostrado no SuccessStep.
+  const currentMonthly = course?.monthlies.find((m) => m.weeklies.some((w) => w.id === weeklyId));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/70 p-6" onClick={onClose} role="presentation">
@@ -214,6 +223,7 @@ export function PublicationModal({
             courseProgress={course?.progress.completionPercentage ?? null}
             nextWeeklyId={nextWeekly?.id ?? null}
             courseId={courseId}
+            moduleCertifications={currentMonthly?.certifications ?? []}
             onGoToNext={(url) => navigate(url)}
             onClose={onClose}
           />
@@ -502,6 +512,7 @@ function SuccessStep({
   courseProgress,
   nextWeeklyId,
   courseId,
+  moduleCertifications,
   onGoToNext,
   onClose,
 }: {
@@ -509,6 +520,7 @@ function SuccessStep({
   courseProgress: number | null;
   nextWeeklyId: string | null;
   courseId: string | null;
+  moduleCertifications: CertificationCoverageDto[];
   onGoToNext: (url: string) => void;
   onClose: () => void;
 }) {
@@ -539,6 +551,22 @@ function SuccessStep({
       <p className="text-sm text-secondary">
         Seu aprendizado está visível.{nextWeeklyId ? ' Próximo módulo desbloqueado!' : ''}
       </p>
+
+      {moduleCertifications.length > 0 && (
+        <div className="flex w-full flex-col gap-2 rounded-lg border border-surface-alt bg-base p-4 text-left">
+          <p className="text-[11px] font-bold uppercase text-muted">🛡️ Você avançou em direção a</p>
+          <div className="flex flex-wrap gap-2">
+            {moduleCertifications.map((cert) => (
+              <span
+                key={cert.certificationCode}
+                className="rounded-full border border-accent bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent"
+              >
+                {cert.certificationName}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {courseProgress !== null && (
         <div className="flex w-full flex-col gap-1.5">

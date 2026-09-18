@@ -84,9 +84,18 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 44 — Flash de "tudo errado" em Ligar Palavras** (17/09/2026).
+Última fase concluída: **Fase 45 — Certificações de mercado sugeridas por módulo** (18/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Certificações de mercado sugeridas por módulo (Fase 45)**: informativo (nunca emissão de
+  certificado) mostrando ao aluno quais certificações de segurança reconhecidas pelo mercado
+  (CompTIA Security+, eJPT, CEH, PNPT — lista aberta) o currículo já cobre, por `Monthly` (os 4
+  módulos grandes). Curadoria 100% manual e estática (`secret/curadoria/web-security/
+  certificacoes.json`, primeiro arquivo de curadoria em nível de curso nessa pasta), sem endpoint
+  novo (embutido em `GET /api/courses/{id}` e `GET /api/weeklies/{id}`). Aparece em 4 lugares:
+  aba nova em `CourseDetailPage`, card resumo na `StartDashboard`, bloco/reforço na Visão Semanal
+  + `SuccessStep` da publicação, e tela dedicada (`/start?course=&certifications=1`). Origem:
+  `secret/rascunhos/informativo-certificacoes.md`.
 - **Flash de "tudo errado" em Ligar Palavras (Fase 44, bug real relatado ao vivo)**: ao confirmar
   a resposta, `WordMatchActivity.handleSubmit` marcava a atividade como respondida
   (`setLastResponse`, o que revela o gabarito) **antes** de terminar o refetch que preenche
