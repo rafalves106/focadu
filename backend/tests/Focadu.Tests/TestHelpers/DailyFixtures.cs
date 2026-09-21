@@ -56,6 +56,14 @@ internal static class DailyFixtures
         return daily;
     }
 
+    /// <summary>
+    /// Recua `CompletedAt` (so o setter e privado) - Daily.Complete() grava sempre "agora", entao sem
+    /// isto nao ha como montar "concluida ontem" pra testar a cota diaria. Mesmo padrao de
+    /// reflexao ja usado em LeaveSquadUseCaseTests.
+    /// </summary>
+    public static void BackdateCompletion(Daily daily, int days) =>
+        typeof(Daily).GetProperty(nameof(Daily.CompletedAt))!.SetValue(daily, daily.CompletedAt!.Value.AddDays(-days));
+
     /// <summary>Respostas de uma Daily-instancia pra uma atividade especifica - ActivityResponse mora em Daily desde a Fase 13, nao mais em DailyActivity (curriculo compartilhado).</summary>
     public static IEnumerable<ActivityResponse> ResponsesFor(Daily daily, Guid activityId) =>
         daily.Responses.Where(r => r.ActivityId == activityId);

@@ -302,6 +302,9 @@ public class Weekly : Entity
     /// propria conclusao de hoje (a tela de conclusao ate oferece o botao na hora), entao a cota
     /// diaria que aquela conclusao acabou de gastar nao pode barra-la; (b) continua valendo
     /// (uma Daily em andamento por vez).
+    /// Fase 55 (decisao do dono, 21/09/2026): o reforco tambem nao CONSOME a cota - so conclusoes
+    /// de Dailies originais (nao-reforco) contam pra "uma por dia". Sem isso, fazer o reforco de
+    /// um dia fraco antes da Daily do dia adiaria a Daily do dia pra amanha.
     ///
     /// Fase 38b (corrige bug real, 14->15/09/2026): antes, essa barreira comparava Daily.Date
     /// (fixado de uma vez so na matricula, 1 dia util por Daily - ver EnrollUserInCourseUseCase)
@@ -345,7 +348,8 @@ public class Weekly : Entity
                 "daily_em_andamento");
         }
 
-        // Reforco fica de fora da cota diaria (Fase 54) - ver o comentario do metodo.
+        // Reforco fica de fora da cota diaria nos dois sentidos (Fase 54: nao e barrado por ela;
+        // Fase 55: a conclusao dele tambem nao a consome) - ver o comentario do metodo.
         if (!target.IsReinforcement)
         {
             // CompletedAt e gravado em UTC (Daily.Complete), mas "today" chega em hora local (mesma
@@ -353,7 +357,8 @@ public class Weekly : Entity
             // sempre que UTC e hora local caem em datas diferentes (qualquer horario da noite no
             // fuso do Brasil, por exemplo).
             var completedToday = enrollmentDailies.Any(d =>
-                d.CompletedAt.HasValue && DateOnly.FromDateTime(d.CompletedAt.Value.ToLocalTime()) == today);
+                !d.IsReinforcement
+                && d.CompletedAt.HasValue && DateOnly.FromDateTime(d.CompletedAt.Value.ToLocalTime()) == today);
             if (completedToday)
             {
                 throw new DomainException(

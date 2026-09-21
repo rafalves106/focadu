@@ -93,8 +93,8 @@ function WeekClosurePendingNotice({ weeklyId }: { weeklyId: string }) {
 const DAILY_REFUSAL_COPY: Record<string, string> = {
   daily_limite_diario_atingido: 'Você já concluiu uma sessão hoje - o limite é 1 por dia. Volte amanhã para continuar.',
   daily_em_andamento: 'Você já tem uma sessão em andamento. Conclua (ou retome) essa antes de começar outra.',
-  projeto_semana_anterior_pendente: 'O projeto da semana anterior precisa ser enviado e avaliado antes de começar esta semana.',
-  modulo_bloqueado_por_publicacao: 'A semana anterior precisa de uma publicação validada antes de começar esta.',
+  projeto_semana_anterior_pendente: 'O projeto de uma semana anterior ainda não foi concluído. Envie-o e aguarde a avaliação para liberar esta semana.',
+  modulo_bloqueado_por_publicacao: 'Uma semana anterior precisa de uma publicação validada antes de começar esta.',
 };
 
 /**

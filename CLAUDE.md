@@ -84,9 +84,16 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 54 — Travas de acesso: reforço iniciável no mesmo dia, "1 Daily por dia" na matrícula inteira e projeto semanal libera a próxima semana** (21/09/2026).
+Última fase concluída: **Fase 55 — Reforço fora da cota diária e projeto pendente bloqueia todas as semanas seguintes** (21/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Reforço fora da cota e bloqueio de todas as semanas seguintes (Fase 55, duas decisões do dono)**:
+  a conclusão de um reforço não gasta mais a cota de "1 Daily por dia" (só Dailies originais contam) —
+  senão fazer o reforço antes da Daily do dia adiaria a Daily para amanhã. E "se existe um projeto
+  pendente, todas as semanas seguintes ficam bloqueadas, do mesmo curso": a trava passou de "só a
+  semana `N-1`" para "qualquer semana anterior ainda não fechada" (`DailySequencing.FindPendingClosureBefore`),
+  e a trilha do curso usa a mesma regra via `WeeklyOverviewDto.IsLocked` (calculado no servidor).
+  Ver `docs/fase-55/`.
 - **Travas de acesso (Fase 54, 3 bugs reais vistos ao vivo ao fechar a Daily 5)**: (1) o botão "Ir para
   a sessão de reforço" dava 409 — o reforço nasce na Weekly da Daily que acabou de gastar a cota
   diária; agora o reforço não é barrado pela cota. (2) "Hoje" abria a Daily 6 (Semana 2) no mesmo dia —

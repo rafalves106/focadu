@@ -61,7 +61,7 @@ public class GetTodayUseCase
 
         // Fase 54 (bug real, 21/09/2026): terminar a ultima Daily da Semana 1 fazia "/hoje" cair
         // direto na 1a Daily da Semana 2, sem o projeto da Semana 1 - que e o que vem depois. Se a
-        // Weekly anterior ainda nao fechou (projeto nao avaliado / publicacao nao validada), nao ha
+        // Weekly anterior (qualquer uma - Fase 55) ainda nao fechou (projeto nao avaliado / publicacao nao validada), nao ha
         // Daily "de hoje" pra mostrar: devolve a ultima Daily original dela, ja Completed, marcada
         // WeekPendingClosure - o cliente cai na Weekly certa (onde esta o card do projeto). Vem
         // ANTES da cota diaria: "voltar amanha" nao resolveria, amanha continua faltando o projeto.

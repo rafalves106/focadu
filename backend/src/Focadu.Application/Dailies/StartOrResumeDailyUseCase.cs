@@ -13,6 +13,9 @@ namespace Focadu.Application.Dailies;
 ///
 /// Fase 11: antes de iniciar, checa se a Weekly ANTERIOR (mesma matricula, Number menor, a mais
 /// proxima) ainda exige publicacao (Weekly.RequiresPublicationToUnlock) - se sim, bloqueia.
+/// Fase 54/55: tambem bloqueia por projeto semanal nao avaliado (Weekly.RequiresProjectToUnlock),
+/// e olha TODAS as Weeklies anteriores da matricula, nao so a mais proxima (ver
+/// DailySequencing.FindPendingClosureBefore).
 /// Fase 13: o escopo virou "mesma Enrollment" (era "mesma Monthly") ao trocar
 /// GetByMonthlyIdAsync por GetByEnrollmentIdAsync - isso fecha de graca a limitacao documentada
 /// desde a Fase 11 ("nao atravessa Monthly"), ja que uma Enrollment cobre o Course inteiro,
@@ -38,21 +41,24 @@ public class StartOrResumeDailyUseCase
             ?? throw new NotFoundException("daily_nao_encontrada", "Daily nao encontrada.");
 
         var siblingWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(weekly.EnrollmentId, cancellationToken);
-        var previousWeekly = DailySequencing.FindPreviousWeekly(siblingWeeklies, weekly);
+        // Fase 55: qualquer Weekly anterior ainda nao fechada trava esta (nao so a imediatamente
+        // anterior) - ver DailySequencing.FindPendingClosureBefore.
+        var pendingClosure = DailySequencing.FindPendingClosureBefore(siblingWeeklies, weekly);
 
-        if (previousWeekly?.RequiresPublicationToUnlock() == true)
+        if (pendingClosure?.RequiresPublicationToUnlock() == true)
         {
             throw new DomainException(
-                "A semana anterior precisa de uma publicacao validada antes de comecar esta.",
+                "Uma semana anterior precisa de uma publicacao validada antes de comecar esta.",
                 "modulo_bloqueado_por_publicacao");
         }
 
         // Fase 54: sem isto a trava acima so ligava com o projeto JA avaliado - com o projeto ainda
-        // pendente a Semana N+1 abria normalmente (bug real, 21/09/2026).
-        if (previousWeekly?.RequiresProjectToUnlock() == true)
+        // pendente a Semana N+1 abria normalmente (bug real, 21/09/2026). Pendente aqui, e nao
+        // por publicacao, so pode ser por projeto (RequiresPublicationToUnlock exige projeto avaliado).
+        if (pendingClosure is not null)
         {
             throw new DomainException(
-                "O projeto da semana anterior precisa ser enviado e avaliado antes de comecar esta.",
+                "O projeto de uma semana anterior ainda nao foi concluido - envie-o e aguarde a avaliacao antes de comecar esta.",
                 "projeto_semana_anterior_pendente");
         }
 

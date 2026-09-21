@@ -39,23 +39,21 @@ internal static class DailySequencing
     public static IReadOnlyCollection<Daily> DailiesOfOtherWeeklies(IEnumerable<Weekly> weeklies, Weekly weekly) =>
         weeklies.Where(w => w.Id != weekly.Id).SelectMany(w => w.Dailies).ToList();
 
-    /// <summary>A Weekly imediatamente anterior a <paramref name="weekly"/> na matricula (maior Number menor que o dela), se houver.</summary>
-    public static Weekly? FindPreviousWeekly(IEnumerable<Weekly> weeklies, Weekly weekly) =>
+    /// <summary>
+    /// Alguma Weekly ANTERIOR a <paramref name="weekly"/> (qualquer uma da matricula, nao so a
+    /// imediatamente anterior) que ainda nao "fechou" e por isso segura a entrada nela - projeto
+    /// semanal nao avaliado ou, depois dele, publicacao nao validada (Weekly.
+    /// RequiresProjectToUnlock / RequiresPublicationToUnlock). Null = pode entrar.
+    ///
+    /// Fase 55 (decisao do dono, 21/09/2026): "se existe um projeto, todas as semanas seguintes
+    /// ficam bloqueadas, do mesmo curso". Ate a Fase 54 so a Weekly imediatamente anterior era
+    /// olhada, entao uma semana fechada no meio nao mantinha bloqueadas as seguintes a uma mais
+    /// antiga ainda pendente. Devolve a MAIS ANTIGA pendente (a que o aluno precisa fechar
+    /// primeiro). "Mesmo curso" e o escopo de <paramref name="weeklies"/> (uma matricula = um curso).
+    /// </summary>
+    public static Weekly? FindPendingClosureBefore(IEnumerable<Weekly> weeklies, Weekly weekly) =>
         weeklies
             .Where(w => w.Number < weekly.Number)
-            .OrderByDescending(w => w.Number)
-            .FirstOrDefault();
-
-    /// <summary>
-    /// A Weekly anterior a <paramref name="weekly"/> que ainda nao "fechou" e por isso segura a
-    /// entrada nela - projeto semanal nao avaliado ou, depois dele, publicacao nao validada
-    /// (Weekly.RequiresProjectToUnlock / RequiresPublicationToUnlock). Null = pode entrar.
-    /// </summary>
-    public static Weekly? FindPendingClosureBefore(IEnumerable<Weekly> weeklies, Weekly weekly)
-    {
-        var previous = FindPreviousWeekly(weeklies, weekly);
-        return previous is not null && (previous.RequiresProjectToUnlock() || previous.RequiresPublicationToUnlock())
-            ? previous
-            : null;
-    }
+            .OrderBy(w => w.Number)
+            .FirstOrDefault(w => w.RequiresProjectToUnlock() || w.RequiresPublicationToUnlock());
 }

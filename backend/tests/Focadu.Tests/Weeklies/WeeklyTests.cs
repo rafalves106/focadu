@@ -87,9 +87,10 @@ public class WeeklyTests
         var reinforcementDaily = weekly.CreateDailyReinforcement(weakDaily.Id, today);
         weakDaily.Complete();
 
-        // "tomorrow" isola especificamente o comportamento sob teste: sem isso, o guard de "outra
-        // Daily em andamento" (weakDaily estava InProgress ate a linha acima) ou o limite diario
-        // (weakDaily.Complete() consumiu a cota de hoje) disparariam primeiro.
+        // "tomorrow" isola especificamente o comportamento sob teste ("reforco nao precisa ser a
+        // isNextInSequence"): sem isso o guard de "outra Daily em andamento" (weakDaily estava
+        // InProgress ate a linha acima) poderia interferir. (O limite diario nunca barra reforco,
+        // ver os testes da Fase 54 abaixo - "tomorrow" aqui ja nao e por causa dele.)
         var tomorrow = today.AddDays(1);
 
         Assert.Equal(
@@ -342,6 +343,65 @@ public class WeeklyTests
         Assert.Equal(
             DailyAccessMode.Resume,
             week2.EvaluateDailyAccess(inProgressInWeek2.Id, today, isNextInSequence: true, otherWeekliesDailies: week1.Dailies));
+    }
+
+    // Fase 55 (decisao do dono, 21/09/2026): o reforco e sessao extra - alem de nao ser barrado pela
+    // cota diaria (Fase 54), a CONCLUSAO dele tambem nao a consome. Sem isso, fazer o reforco de
+    // um dia fraco antes da Daily do dia adiaria a Daily do dia pra amanha.
+
+    [Fact]
+    public void EvaluateDailyAccess_AllowsStart_OfTheNextDaily_WhenOnlyAReinforcementWasCompletedToday()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var today = DailyFixtures.Today;
+        var weakDaily = DailyFixtures.NewWeakDaily(weekly, 1, today);
+        var nextDaily = DailyFixtures.NewDaily(weekly, 2, today); // antes do reforco: ele ocupa max(DayNumber) + 1
+        var reinforcementDaily = weekly.CreateDailyReinforcement(weakDaily.Id, today);
+        weakDaily.Complete();
+        DailyFixtures.BackdateCompletion(weakDaily, days: 1); // a Daily original foi concluida ontem
+        reinforcementDaily.Start();
+        reinforcementDaily.Complete(); // so o reforco foi concluido hoje
+
+        Assert.Equal(
+            DailyAccessMode.Start,
+            weekly.EvaluateDailyAccess(nextDaily.Id, today, isNextInSequence: true));
+    }
+
+    [Fact]
+    public void EvaluateDailyAccess_StillBlocksTheNextDaily_WhenAnOriginalDailyWasCompletedToday_EvenAfterItsReinforcement()
+    {
+        // A isencao e so do reforco: a Daily original que gerou o reforco continua gastando a cota de hoje.
+        var weekly = DailyFixtures.NewWeekly();
+        var today = DailyFixtures.Today;
+        var weakDaily = DailyFixtures.NewWeakDaily(weekly, 1, today);
+        var nextDaily = DailyFixtures.NewDaily(weekly, 2, today); // antes do reforco: ele ocupa max(DayNumber) + 1
+        var reinforcementDaily = weekly.CreateDailyReinforcement(weakDaily.Id, today);
+        weakDaily.Complete();
+        reinforcementDaily.Start();
+        reinforcementDaily.Complete();
+
+        var ex = Assert.Throws<DomainException>(() =>
+            weekly.EvaluateDailyAccess(nextDaily.Id, today, isNextInSequence: true));
+        Assert.Equal("daily_limite_diario_atingido", ex.Code);
+    }
+
+    [Fact]
+    public void EvaluateDailyAccess_IgnoresAReinforcementCompletedTodayInAnotherWeekly()
+    {
+        var week1 = DailyFixtures.NewWeekly(1);
+        var week2 = DailyFixtures.NewWeekly(2);
+        var today = DailyFixtures.Today;
+        var weakDaily = DailyFixtures.NewWeakDaily(week1, 5, today);
+        var reinforcementDaily = week1.CreateDailyReinforcement(weakDaily.Id, today);
+        weakDaily.Complete();
+        DailyFixtures.BackdateCompletion(weakDaily, days: 1);
+        reinforcementDaily.Start();
+        reinforcementDaily.Complete();
+        var firstOfWeek2 = DailyFixtures.NewDaily(week2, 6, today);
+
+        Assert.Equal(
+            DailyAccessMode.Start,
+            week2.EvaluateDailyAccess(firstOfWeek2.Id, today, isNextInSequence: true, otherWeekliesDailies: week1.Dailies));
     }
 
     // Fase 11: IsModuleComplete/RequiresPublicationToUnlock.

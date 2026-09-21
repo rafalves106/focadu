@@ -88,12 +88,12 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
 
           {tab === 'conteudo' && (
             <div className="flex flex-col gap-3">
-              {weeks.map((weekly, index) => (
+              {weeks.map((weekly) => (
                 <WeekSummaryCard
                   key={weekly.id}
                   weekly={weekly}
                   courseId={courseId}
-                  isLocked={weeks[index - 1]?.requiresPublicationToUnlock ?? false}
+                  isLocked={weekly.isLocked}
                   isCurrent={weekly.id === currentWeekId}
                 />
               ))}
@@ -141,13 +141,11 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
   );
 }
 
-/** A 1a semana acessivel (nao bloqueada por publicacao pendente da anterior) que ainda nao esta completa - so ela ganha o destaque visual de "semana atual" em WeekSummaryCard. */
+/** A 1a semana acessivel (nao bloqueada por uma semana anterior ainda nao fechada - projeto/publicacao pendente, ver `isLocked`) que ainda nao esta completa - so ela ganha o destaque visual de "semana atual" em WeekSummaryCard. */
 function findCurrentWeekId(weeks: WeeklyOverviewDto[]): string | null {
-  for (let index = 0; index < weeks.length; index++) {
-    const isLocked = weeks[index - 1]?.requiresPublicationToUnlock ?? false;
-    const week = weeks[index];
+  for (const week of weeks) {
     const isComplete = week.totalDailies > 0 && week.completedDailies === week.totalDailies;
-    if (!isLocked && !isComplete) return week.id;
+    if (!week.isLocked && !isComplete) return week.id;
   }
   return null;
 }

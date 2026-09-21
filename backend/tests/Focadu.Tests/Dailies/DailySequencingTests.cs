@@ -1,5 +1,6 @@
 using Focadu.Application.Dailies;
 using Focadu.Domain.Enums;
+using Focadu.Domain.Weeklies;
 using Focadu.Tests.TestHelpers;
 using Xunit;
 
@@ -100,27 +101,6 @@ public class DailySequencingTests
     // ve as proprias Dailies, entao a Application cruza as Weeklies e entrega pronto pro dominio.
 
     [Fact]
-    public void FindPreviousWeekly_ReturnsTheClosestLowerNumber()
-    {
-        var week1 = DailyFixtures.NewWeekly(1);
-        var week2 = DailyFixtures.NewWeekly(2);
-        var week3 = DailyFixtures.NewWeekly(3);
-
-        var previous = DailySequencing.FindPreviousWeekly(new[] { week3, week1, week2 }, week3);
-
-        Assert.Equal(week2.Id, previous?.Id);
-    }
-
-    [Fact]
-    public void FindPreviousWeekly_ReturnsNull_ForTheFirstWeekly()
-    {
-        var week1 = DailyFixtures.NewWeekly(1);
-        var week2 = DailyFixtures.NewWeekly(2);
-
-        Assert.Null(DailySequencing.FindPreviousWeekly(new[] { week1, week2 }, week1));
-    }
-
-    [Fact]
     public void DailiesOfOtherWeeklies_ExcludesTheWeeklyItself()
     {
         var week1 = DailyFixtures.NewWeekly(1);
@@ -193,5 +173,80 @@ public class DailySequencingTests
         var week1 = DailyFixtures.NewWeekly(1);
 
         Assert.Null(DailySequencing.FindPendingClosureBefore(new[] { week1 }, week1));
+    }
+
+    // Fase 55 (decisao do dono, 21/09/2026): "se existe um projeto [pendente], todas as semanas
+    // seguintes ficam bloqueadas, do mesmo curso" - nao so a imediatamente seguinte.
+
+    [Fact]
+    public void FindPendingClosureBefore_BlocksEveryLaterWeekly_NotJustTheNextOne()
+    {
+        var week1 = ClosableWeek(1, projectEvaluated: false, published: false); // projeto pendente
+        var week2 = ClosableWeek(2, projectEvaluated: true, published: true);   // fechada
+        var week3 = DailyFixtures.NewWeekly(3);
+        var week4 = DailyFixtures.NewWeekly(4);
+        var all = new[] { week4, week2, week3, week1 };
+
+        // A semana 2 esta fechada, mas isso nao "destranca" as seguintes: a 1 continua pendente.
+        Assert.Equal(week1.Id, DailySequencing.FindPendingClosureBefore(all, week2)?.Id);
+        Assert.Equal(week1.Id, DailySequencing.FindPendingClosureBefore(all, week3)?.Id);
+        Assert.Equal(week1.Id, DailySequencing.FindPendingClosureBefore(all, week4)?.Id);
+    }
+
+    [Fact]
+    public void FindPendingClosureBefore_ReturnsTheEarliestPendingWeekly()
+    {
+        // A que o aluno precisa fechar primeiro e a mais antiga.
+        var week1 = ClosableWeek(1, projectEvaluated: false, published: false);
+        var week2 = ClosableWeek(2, projectEvaluated: false, published: false);
+        var week3 = DailyFixtures.NewWeekly(3);
+
+        Assert.Equal(week1.Id, DailySequencing.FindPendingClosureBefore(new[] { week3, week2, week1 }, week3)?.Id);
+    }
+
+    [Fact]
+    public void FindPendingClosureBefore_DoesNotLookAtTheWeeklyItselfOrLaterOnes()
+    {
+        var week1 = DailyFixtures.NewWeekly(1);
+        var week2 = ClosableWeek(2, projectEvaluated: false, published: false); // pendente, mas e POSTERIOR a week1
+
+        Assert.Null(DailySequencing.FindPendingClosureBefore(new[] { week1, week2 }, week1));
+        Assert.Null(DailySequencing.FindPendingClosureBefore(new[] { week1, week2 }, week2)); // nem ela mesma
+    }
+
+    [Fact]
+    public void FindPendingClosureBefore_ReturnsNull_WhenEveryEarlierWeeklyIsClosed()
+    {
+        var week1 = ClosableWeek(1, projectEvaluated: true, published: true);
+        var week2 = ClosableWeek(2, projectEvaluated: true, published: true);
+        var week3 = DailyFixtures.NewWeekly(3);
+
+        Assert.Null(DailySequencing.FindPendingClosureBefore(new[] { week1, week2, week3 }, week3));
+    }
+
+    /// <summary>Weekly com 1 Daily ja concluida (todas as originais feitas) e o projeto/publicacao no ponto pedido - "fechar" a semana = projeto avaliado + publicacao validada.</summary>
+    private static Weekly ClosableWeek(int number, bool projectEvaluated, bool published)
+    {
+        var week = DailyFixtures.NewWeekly(number);
+        var (daily, activity) = DailyFixtures.NewDailyWithOneActivity(week, 1, DailyFixtures.Today);
+        daily.Start();
+        daily.SubmitActivityResponse(activity.Id, 100);
+        daily.Complete();
+
+        var project = week.InitializeProject();
+        if (projectEvaluated)
+        {
+            project.Submit("https://github.com/x");
+            project.Evaluate(90, "Bom trabalho.");
+        }
+
+        if (published)
+        {
+            var publication = week.StartPublication();
+            publication.Submit(PublicationPlatform.GitHub, "https://github.com/falves/x");
+            publication.MarkValidated();
+        }
+
+        return week;
     }
 }

@@ -204,8 +204,10 @@ export interface WeeklyOverviewDto {
   hasWeeklyReinforcement: boolean;
   /** Fase 8: status por dia, pra grids de navegacao (Detalhes do Curso) sem round-trip extra por semana. */
   days: DailyStatusSummaryDto[];
-  /** Fase 11: true quando ESTA Weekly esta com o modulo completo mas sem publicacao Validated - a PROXIMA Weekly (Number+1) fica bloqueada por causa disso. */
+  /** Fase 11: true quando ESTA Weekly esta com o modulo completo mas sem publicacao Validated - trava as proximas Weeklies (o que a trilha usa pra trancar e `isLocked`, abaixo). */
   requiresPublicationToUnlock: boolean;
+  /** Fase 55: true quando alguma Weekly ANTERIOR do mesmo curso ainda nao fechou (projeto nao avaliado / publicacao nao validada) - "se existe um projeto pendente, todas as semanas seguintes ficam bloqueadas". Calculado no servidor, a mesma regra do 409 ao iniciar uma Daily. */
+  isLocked: boolean;
 }
 
 /** Resumo enxuto de uma Daily pra grids de navegacao (Fase 8) - versao mais leve de DailyOverviewDto. */
