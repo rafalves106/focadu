@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 53 - Remove a branch develop e corrige as docs do host (macOS)**.
+> Ultima fase que atualizou este documento: **Fase 54 - Travas de acesso: reforco iniciavel no mesmo dia, "1 Daily por dia" na matricula inteira e projeto semanal libera a proxima semana**.
 
 ## Visao geral do projeto
 
@@ -245,10 +245,13 @@ tests/
                                        DailyTemplate.AddActivity antes de Weekly.AddDaily
     Dailies/DailySequencingTests.cs <- FindNext/FindInProgress/IsNext cruzando Weeklies (Fase 38b) -
                                        Weekly.GetDailyByDate (Fase 5) removido, sequencia
-                                       substitui data
+                                       substitui data; + FindPreviousWeekly/DailiesOfOtherWeeklies/
+                                       FindPendingClosureBefore (Fase 54)
     Weeklies/WeeklyTests.cs         <- + IsModuleComplete/RequiresPublicationToUnlock (Fase 11), +
                                        InitializeProject idempotencia (Fase 13), + acesso por
-                                       isNextInSequence no lugar de Date (Fase 38b)
+                                       isNextInSequence no lugar de Date (Fase 38b), +
+                                       reforco fora da cota diaria, travas cross-Weekly e
+                                       RequiresProjectToUnlock (Fase 54)
     Weeklies/WeeklyProjectTests.cs      <- Submit/Evaluate (Fase 13: usa Weekly.InitializeProject()
                                        no lugar do antigo DefineProject(specText))
     Weeklies/WeeklyTemplateTests.cs      <- SetProjectSpec/AddDailyTemplate (novo, Fase 13)
@@ -994,10 +997,34 @@ Weekly - uma Weekly sozinha nunca enxerga as irmas), retorna um `DailyAccessMode
   dela. Reforco (`IsReinforcement`) nunca disputa a sequencia principal - acesso e sempre por link
   explicito (`Daily.ReinforcementDailyId`), permitido mesmo sem ser a `isNextInSequence`.
 - **Daily ainda nao iniciada e (`isNextInSequence` OU reforco)**: `Start`, **exceto**
-  `DomainException` quando ja existe outra Daily `InProgress` em qualquer lugar da Weekly
+  `DomainException` quando ja existe outra Daily `InProgress` em qualquer lugar da **matricula**
   (`Code = "daily_em_andamento"`, conclua/retome-a primeiro) ou quando outra Daily ja foi
-  concluida hoje (`Code = "daily_limite_diario_atingido"`, comparando `CompletedAt` em hora local -
-  ver comentario no metodo sobre UTC vs. hora local).
+  concluida hoje em qualquer lugar da matricula (`Code = "daily_limite_diario_atingido"`,
+  comparando `CompletedAt` em hora local - ver comentario no metodo sobre UTC vs. hora local).
+  **Reforco fica de fora da cota diaria** (so dessa: "uma em andamento por vez" vale pra ele).
+
+> **Fase 54 (21/09/2026) - as duas travas acima passaram a valer pra matricula inteira, e o
+> reforco saiu da cota diaria.** Dois bugs reais relatados ao vivo no mesmo dia (Daily 5, a ultima
+> da Semana 1):
+>
+> 1. **Reforco nao abria (409).** A tela de conclusao oferece "Ir para a sessao de reforco" na
+>    hora, mas o reforco cai na mesma Weekly da Daily de origem, que acabara de gastar a cota
+>    diaria - `daily_limite_diario_atingido`, mostrado como "Algo Deu Errado". O teste antigo
+>    `AllowsStart_ForReinforcementDaily...` so passava porque avaliava em `today + 1`. Agora o
+>    reforco nao e barrado pela cota (a cota continua contando **qualquer** conclusao de hoje,
+>    inclusive a dele - nao mudou quem consome a cota, so quem e barrado por ela).
+> 2. **"Hoje" abria a Daily 6 (Semana 2) no mesmo dia.** `EvaluateDailyAccess` so enxerga a propria
+>    Weekly, entao "1 por dia" e "1 em andamento" eram checados por Weekly, nao por matricula.
+>    `EvaluateDailyAccess`/`StartOrResumeDaily` ganharam o parametro opcional
+>    `otherWeekliesDailies` (as Dailies das OUTRAS Weeklies, montado por
+>    `DailySequencing.DailiesOfOtherWeeklies`); `null` (default) = so a propria Weekly, o que
+>    mantem os testes de dominio isolados intactos. Todos os casos de uso que avaliam acesso
+>    (`GetTodayUseCase`, `GetDailyStateUseCase`, `StartOrResumeDailyUseCase`) passam o parametro.
+>
+> Efeito colateral a conhecer: uma Daily deixada `InProgress` em outra Weekly agora **bloqueia**
+> iniciar o reforco (`daily_em_andamento`). Nao ha mais como chegar nesse estado pela Api, mas o dado
+> que o bug antigo deixou no banco do aluno (Daily 6 `InProgress`, sem respostas) precisa ser
+> revertido pra `Locked` na mao - ver "pontos abertos" em `docs/fase-54/`.
 
 ### Reforco diario e semanal
 
@@ -1024,14 +1051,30 @@ GitHub) antes da proxima Weekly liberar.
   Validated`. `Weekly.Publication` so existe depois da primeira acao do usuario no modal
   (`StartPublication()`, idempotente) - antes disso e `null`, e o front interpreta isso como
   `Pending` quando o modulo ja esta completo (`GetPublicationStatusUseCase`).
+- **`Weekly.RequiresProjectToUnlock()`** (Fase 54): `AreDailiesComplete() && Project.Status !=
+  Evaluated` (projeto `Pending` ou `Submitted`). Existe porque `RequiresPublicationToUnlock()` so
+  liga com o modulo **ja completo** (projeto `Evaluated`): com o projeto ainda pendente **nada**
+  segurava a proxima semana - bug real, a Daily 6 (Semana 2) abriu com o projeto da Semana 1
+  `Pending`. Falso enquanto as Dailies nao estao todas concluidas (ai quem segura e a sequencia,
+  `daily_bloqueada`) e falso sem projeto definido (nunca deve ocorrer; travar o curso pra sempre
+  por dado ausente seria pior). A Weekly "fecha" (MESTRE 2.3) com Dailies + projeto avaliado +
+  publicacao validada; `DailySequencing.FindPendingClosureBefore` junta as duas travas.
 - **Bloqueio em si vive em `StartOrResumeDailyUseCase`** (Application), nao em `Weekly` -
   `Weekly.EvaluateDailyAccess` so enxerga a propria Weekly, nunca as irmas. O use case busca as
   Weeklies da mesma `EnrollmentId` (`IWeeklyRepository.GetByEnrollmentIdAsync` - trocado de
-  `GetByMonthlyIdAsync` na Fase 13), acha a de `Number - 1` e, se ela
-  `RequiresPublicationToUnlock()`, lanca `modulo_bloqueado_por_publicacao` (409) antes de chamar
-  `Weekly.StartOrResumeDaily`. **Escopo: so a Weekly anterior dentro da mesma Enrollment** - a
-  troca pra Enrollment (Fase 13) fechou de graca a limitacao antiga ("nao atravessa Monthlies"):
-  uma Enrollment cobre o Course inteiro, nao um Monthly especifico.
+  `GetByMonthlyIdAsync` na Fase 13), acha a de `Number - 1` (`DailySequencing.FindPreviousWeekly`)
+  e, se ela `RequiresPublicationToUnlock()`, lanca `modulo_bloqueado_por_publicacao` (409) e, se
+  ela `RequiresProjectToUnlock()` (Fase 54), lanca `projeto_semana_anterior_pendente` (409) -
+  ambos antes de chamar `Weekly.StartOrResumeDaily`. **Escopo: so a Weekly anterior dentro da
+  mesma Enrollment** - a troca pra Enrollment (Fase 13) fechou de graca a limitacao antiga ("nao
+  atravessa Monthlies"): uma Enrollment cobre o Course inteiro, nao um Monthly especifico.
+- **`GET /api/today` e a trava (Fase 54):** `GetTodayUseCase` e um GET "best-effort" - devolver a
+  1a Daily da semana seguinte pra o cliente so descobrir o 409 ao clicar seria enganoso. Se a
+  Weekly anterior a da Daily-alvo ainda nao fechou (`FindPendingClosureBefore`), ele devolve a
+  **ultima Daily original dessa Weekly** (ja `Completed`) com `DailyAccessMode.WeekPendingClosure`
+  (valor 5) - o cliente cai na Weekly que ainda tem o card do projeto/publicacao. Isso vem
+  **antes** da checagem da cota diaria (`Blocked`): "volte amanha" nao resolveria. `StartOrResume`
+  continua recusando a mutacao com 409.
 - **Acesso a conteudo ja visto nunca e bloqueado** - o bloqueio so entra no caminho de
   `StartOrResumeDailyUseCase` (comecar/retomar uma Daily nova); `Weekly.EvaluateDailyAccess`
   (Replay/ReadOnly de Dailies passadas) nunca passa por essa checagem.
@@ -1150,7 +1193,9 @@ Os dois usam `Weekly.EvaluateDailyAccess` internamente e devolvem o **mesmo form
 (`DailyStateDto`, com a lista completa de `Activities`) tanto para a Daily ativa quanto para uma
 Daily passada - quem diferencia "tela de estudo imersiva" de "resumo/gabarito" e o campo
 `AccessMode` no corpo da resposta (`Start`/`Resume`/`Replay` = editavel; `ReadOnly` = so
-consulta), nao um shape de resposta diferente. Isso vale tambem para a resposta de
+consulta; `Blocked` = cota diaria ja gasta, `WeekPendingClosure` (Fase 54) = semana concluida
+faltando projeto/publicacao - os dois so vem de `/today`, sao "nada a rodar, so avisar"), nao um
+shape de resposta diferente. Isso vale tambem para a resposta de
 `POST .../start` - ela retorna `DailyStateDto` direto, para o cliente sempre ter o estado
 atualizado sem precisar de uma segunda chamada. `POST .../complete` retorna um shape diferente
 (`CompleteDailyResult`, ver abaixo) porque, alem do estado da Daily, precisa reportar reforco.
@@ -1211,6 +1256,13 @@ comparando `Daily.Date` com o calendario: (1) `DailySequencing.FindInProgress` -
 abandonada); (2) senao, `DailySequencing.FindNext` - a Daily nao-reforco de menor `DayNumber`
 ainda nao concluida em TODA a matricula. `Weekly.GetDailyByDate` e
 `IWeeklyRepository.GetByEnrollmentAndDateAsync` foram removidos (ficaram sem nenhum outro uso).
+
+**Fase 54:** antes de avaliar o acesso, `GetTodayUseCase` checa se a Weekly anterior a da Daily-alvo
+ainda nao fechou (projeto nao avaliado / publicacao nao validada) e, se sim, devolve a ultima Daily
+original dela com `DailyAccessMode.WeekPendingClosure` em vez da 1a Daily da semana seguinte - ver
+"Publicacao publica e bloqueio de modulo". A avaliacao do acesso passou a enxergar a matricula
+inteira (`otherWeekliesDailies`), entao "1 Daily por dia" tambem barra a Daily 1 de uma Weekly nova
+quando a ultima da anterior foi concluida hoje (`Blocked`).
 
 ### Score no servidor para todo tipo de atividade (Fase 3 + Fase 4 + Fase 5)
 
@@ -1397,7 +1449,9 @@ default (400):
 | Code | Status | Disparado por |
 |---|---|---|
 | `daily_bloqueada` | 400 | `Weekly.EvaluateDailyAccess` numa Daily que nao e a `isNextInSequence` (nem reforco) - ate a Fase 38b era `daily_futura`, disparado por `Date > hoje` |
-| `daily_em_andamento` | 409 | `Weekly.EvaluateDailyAccess` quando outra Daily ja esta `InProgress` |
+| `daily_em_andamento` | 409 | `Weekly.EvaluateDailyAccess` quando outra Daily ja esta `InProgress` em qualquer Weekly da matricula (ate a Fase 54, so na propria Weekly) |
+| `daily_limite_diario_atingido` | 409 | `Weekly.EvaluateDailyAccess` numa Daily nao-reforco quando ja ha uma Daily concluida hoje em qualquer Weekly da matricula (Fase 38 / matricula inteira na Fase 54; reforco e isento). `GET /api/today` captura e devolve `AccessMode = Blocked` |
+| `projeto_semana_anterior_pendente` | 409 | `StartOrResumeDailyUseCase` quando a Weekly anterior tem todas as Dailies concluidas mas o projeto ainda nao foi avaliado - `Weekly.RequiresProjectToUnlock` (Fase 54) |
 | `daily_somente_leitura` | 409 | `Weekly.StartOrResumeDaily` numa Daily `ReadOnly` |
 | `daily_ja_concluida` | 409 | `Daily.Start()` numa Daily ja `Completed` |
 | `daily_nao_iniciada` | 409 | `Daily.SubmitActivityResponse` antes de `Start()` |

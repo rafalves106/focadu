@@ -38,10 +38,7 @@ public class StartOrResumeDailyUseCase
             ?? throw new NotFoundException("daily_nao_encontrada", "Daily nao encontrada.");
 
         var siblingWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(weekly.EnrollmentId, cancellationToken);
-        var previousWeekly = siblingWeeklies
-            .Where(w => w.Number < weekly.Number)
-            .OrderByDescending(w => w.Number)
-            .FirstOrDefault();
+        var previousWeekly = DailySequencing.FindPreviousWeekly(siblingWeeklies, weekly);
 
         if (previousWeekly?.RequiresPublicationToUnlock() == true)
         {
@@ -50,12 +47,22 @@ public class StartOrResumeDailyUseCase
                 "modulo_bloqueado_por_publicacao");
         }
 
+        // Fase 54: sem isto a trava acima so ligava com o projeto JA avaliado - com o projeto ainda
+        // pendente a Semana N+1 abria normalmente (bug real, 21/09/2026).
+        if (previousWeekly?.RequiresProjectToUnlock() == true)
+        {
+            throw new DomainException(
+                "O projeto da semana anterior precisa ser enviado e avaliado antes de comecar esta.",
+                "projeto_semana_anterior_pendente");
+        }
+
         var today = _clock.Today();
         var isNext = DailySequencing.IsNext(siblingWeeklies, dailyId);
-        var daily = weekly.StartOrResumeDaily(dailyId, today, isNext);
+        var otherWeekliesDailies = DailySequencing.DailiesOfOtherWeeklies(siblingWeeklies, weekly);
+        var daily = weekly.StartOrResumeDaily(dailyId, today, isNext, otherWeekliesDailies);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var accessMode = weekly.EvaluateDailyAccess(dailyId, today, isNext);
+        var accessMode = weekly.EvaluateDailyAccess(dailyId, today, isNext, otherWeekliesDailies);
         return DailyStateMapper.ToDto(daily, accessMode);
     }
 }

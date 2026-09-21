@@ -69,6 +69,59 @@ function DailySessionBlockedNotice() {
 }
 
 /**
+ * `DailyAccessMode.WeekPendingClosure` (Fase 54): todas as Dailies da Weekly ja foram concluidas,
+ * mas a proxima semana so abre depois do projeto semanal (e da publicacao). Antes disto, terminar
+ * a ultima Daily da Semana 1 e clicar em "Hoje" caia direto na 1a Daily da Semana 2, sem o
+ * projeto (bug real, 21/09/2026). Diferente de `DailySessionBlockedNotice`, "volte amanha" nao
+ * resolve aqui - o que destrava e fechar a semana, entao o CTA leva pra ela.
+ */
+function WeekClosurePendingNotice({ weeklyId }: { weeklyId: string }) {
+  const navigate = useNavigate();
+
+  return (
+    <ErrorLayout
+      icon={<img src={checkIcon} alt="" className="h-12 w-auto" />}
+      title="Semana concluída - falta o projeto"
+      description="Você terminou todas as sessões desta semana. Envie o projeto semanal (e valide a publicação, quando pedida) para liberar a próxima semana."
+      primaryAction={{ label: 'Ir para a semana', onClick: () => navigate(`/start?weekly=${weeklyId}`) }}
+      secondaryAction={{ label: 'Voltar ao início', onClick: () => navigate('/start') }}
+    />
+  );
+}
+
+/** Textos (com acento) das recusas de regra de negocio ao abrir uma Daily - o backend manda a mensagem sem acento, so serve de fallback. */
+const DAILY_REFUSAL_COPY: Record<string, string> = {
+  daily_limite_diario_atingido: 'Você já concluiu uma sessão hoje - o limite é 1 por dia. Volte amanhã para continuar.',
+  daily_em_andamento: 'Você já tem uma sessão em andamento. Conclua (ou retome) essa antes de começar outra.',
+  projeto_semana_anterior_pendente: 'O projeto da semana anterior precisa ser enviado e avaliado antes de começar esta semana.',
+  modulo_bloqueado_por_publicacao: 'A semana anterior precisa de uma publicação validada antes de começar esta.',
+};
+
+/**
+ * Recusa de regra de negocio (HTTP 409) ao abrir uma Daily - nao e falha do sistema, entao
+ * "Algo Deu Errado / Tentar Novamente" (`GenericError`) so confundia: tentar de novo nao muda o
+ * resultado. Mostra o motivo real (bug real, 21/09/2026: o botao "Ir para a sessao de reforco"
+ * caia nessa tela generica sem dizer nada).
+ */
+function DailyRefusedNotice({ error }: { error: ApiFailure }) {
+  const navigate = useNavigate();
+
+  return (
+    <ErrorLayout
+      icon="🔒"
+      title="Não dá para abrir essa sessão agora"
+      description={(error.code && DAILY_REFUSAL_COPY[error.code]) ?? error.message}
+      primaryAction={{ label: 'Voltar ao início', onClick: () => navigate('/start') }}
+    />
+  );
+}
+
+/** Modos em que "/hoje" nao tem sessao pra rodar - so um aviso (ver os dois avisos acima). */
+function isSessionBlockedMode(mode: DailyAccessMode) {
+  return mode === DailyAccessMode.Blocked || mode === DailyAccessMode.WeekPendingClosure;
+}
+
+/**
  * Intercepta ESC e o botao "voltar" do navegador enquanto `active` - abre o menu de configuracoes
  * (Fase 7, "menu de estilo jogo indie") em vez de deixar o usuario sair da sessao sem querer. Um
  * BrowserRouter declarativo (ver main.tsx) nao expoe useBlocker (isso so existe em cima de um data
@@ -194,7 +247,7 @@ export function TodayPage() {
   // mostrando o numero de uma sessao que ja acabou.
   useEffect(() => {
     setDailyPenalty(
-      daily && completion === null && daily.accessMode !== DailyAccessMode.Blocked
+      daily && completion === null && !isSessionBlockedMode(daily.accessMode)
         ? { penaltyPoints: daily.penaltyPoints, penaltyThreshold: daily.penaltyThreshold }
         : null,
     );
@@ -204,7 +257,7 @@ export function TodayPage() {
   // Sessao "ativa" = ja temos passo pra mostrar e ainda nao concluiu - cobre as telas de
   // atividade e o "done", mas nunca o loading/erro, a CompletionSummary, nem o aviso de
   // DailyAccessMode.Blocked (nao ha nada pra "sair" ali, so a mensagem).
-  const sessionActive = daily !== null && step !== null && completion === null && daily.accessMode !== DailyAccessMode.Blocked;
+  const sessionActive = daily !== null && step !== null && completion === null && !isSessionBlockedMode(daily.accessMode);
   useSessionExitGuard(sessionActive, settings.toggle);
 
   /**
@@ -256,9 +309,11 @@ export function TodayPage() {
   }
 
   if (loading) return <Centered text="Carregando..." />;
+  if (error?.status === 409) return <DailyRefusedNotice error={error} />;
   if (error) return <ApiErrorScreen error={error} onRetry={() => setAttempt((n) => n + 1)} />;
   if (!daily) return null;
   if (daily.accessMode === DailyAccessMode.Blocked) return <DailySessionBlockedNotice />;
+  if (daily.accessMode === DailyAccessMode.WeekPendingClosure) return <WeekClosurePendingNotice weeklyId={daily.weeklyId} />;
   if (!step) return null;
   if (completion) return <CompletionSummary result={completion} />;
   if (daily.isReinforcement && !reinforcementIntroDismissed) {

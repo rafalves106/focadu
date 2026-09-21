@@ -26,5 +26,17 @@ public enum DailyAccessMode
     /// continuam recusando com 409 normalmente, porque ali é uma tentativa explícita de
     /// iniciar/mutar, não uma leitura de "o que devo mostrar agora".
     /// </summary>
-    Blocked = 4
+    Blocked = 4,
+
+    /// <summary>
+    /// Fase 54: todas as Dailies da Weekly ja foram concluidas, mas o projeto semanal (ou, depois
+    /// dele, a publicacao) ainda esta pendente - a proxima Weekly nao abre ate isso fechar (ver
+    /// Weekly.RequiresProjectToUnlock/RequiresPublicationToUnlock). Como o atalho "/hoje" nao tem
+    /// nenhuma Daily "de hoje" pra mostrar nesse caso, GetTodayUseCase devolve a ultima Daily
+    /// original da Weekly que ainda nao fechou (ja Completed) com este modo - assim o cliente cai
+    /// na Weekly certa (onde esta o card do projeto) em vez de na 1a Daily da semana seguinte.
+    /// Diferente de <see cref="Blocked"/>, "voltar amanha" nao resolve: precisa fechar a semana.
+    /// Como Blocked, so existe vindo de "/hoje"; StartOrResumeDaily recusa a mutacao com 409.
+    /// </summary>
+    WeekPendingClosure = 5
 }

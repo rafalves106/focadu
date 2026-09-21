@@ -84,9 +84,17 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 53 — Remove a branch develop e corrige as docs do host (macOS)** (21/09/2026).
+Última fase concluída: **Fase 54 — Travas de acesso: reforço iniciável no mesmo dia, "1 Daily por dia" na matrícula inteira e projeto semanal libera a próxima semana** (21/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Travas de acesso (Fase 54, 3 bugs reais vistos ao vivo ao fechar a Daily 5)**: (1) o botão "Ir para
+  a sessão de reforço" dava 409 — o reforço nasce na Weekly da Daily que acabou de gastar a cota
+  diária; agora o reforço não é barrado pela cota. (2) "Hoje" abria a Daily 6 (Semana 2) no mesmo dia —
+  "1 Daily por dia" e "1 em andamento" só olhavam a própria Weekly; agora valem pra matrícula inteira
+  (`EvaluateDailyAccess(..., otherWeekliesDailies)`). (3) A Semana 2 abria sem o projeto da Semana 1 —
+  a única trava entre semanas só ligava com o projeto já avaliado; novo `Weekly.RequiresProjectToUnlock()`
+  + `DailyAccessMode.WeekPendingClosure` (`/hoje` mostra a semana que falta fechar, com o card do
+  projeto). O front mostra o motivo do 409 em vez de "Algo Deu Errado". Ver `docs/fase-54/`.
 - **Sem `develop` e docs do host corrigidas (Fase 53)**: a branch `develop` foi apagada nos repos
   `focadu` e `focadu-secret` (nada exclusivo nelas) e saiu do `ci.yml`, que agora roda só em `main`.
   As docs (`DOCKER.md`, `ARQUITETURA.md`, `.env.example`) passaram a descrever o host real — este Mac,

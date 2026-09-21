@@ -94,4 +94,104 @@ public class DailySequencingTests
         Assert.True(DailySequencing.IsNext(new[] { weekly }, daily1.Id));
         Assert.False(DailySequencing.IsNext(new[] { weekly }, daily2.Id));
     }
+
+    // Fase 54 (bug real, 21/09/2026): as travas entre semanas ("1 Daily por dia", "1 em andamento",
+    // "projeto da semana anterior") precisam enxergar a matricula inteira - uma Weekly sozinha so
+    // ve as proprias Dailies, entao a Application cruza as Weeklies e entrega pronto pro dominio.
+
+    [Fact]
+    public void FindPreviousWeekly_ReturnsTheClosestLowerNumber()
+    {
+        var week1 = DailyFixtures.NewWeekly(1);
+        var week2 = DailyFixtures.NewWeekly(2);
+        var week3 = DailyFixtures.NewWeekly(3);
+
+        var previous = DailySequencing.FindPreviousWeekly(new[] { week3, week1, week2 }, week3);
+
+        Assert.Equal(week2.Id, previous?.Id);
+    }
+
+    [Fact]
+    public void FindPreviousWeekly_ReturnsNull_ForTheFirstWeekly()
+    {
+        var week1 = DailyFixtures.NewWeekly(1);
+        var week2 = DailyFixtures.NewWeekly(2);
+
+        Assert.Null(DailySequencing.FindPreviousWeekly(new[] { week1, week2 }, week1));
+    }
+
+    [Fact]
+    public void DailiesOfOtherWeeklies_ExcludesTheWeeklyItself()
+    {
+        var week1 = DailyFixtures.NewWeekly(1);
+        var week2 = DailyFixtures.NewWeekly(2);
+        var today = DailyFixtures.Today;
+        var dailyOfWeek1 = DailyFixtures.NewDaily(week1, 5, today);
+        DailyFixtures.NewDaily(week2, 6, today);
+
+        var others = DailySequencing.DailiesOfOtherWeeklies(new[] { week1, week2 }, week2);
+
+        Assert.Equal(new[] { dailyOfWeek1.Id }, others.Select(d => d.Id));
+    }
+
+    [Fact]
+    public void FindPendingClosureBefore_ReturnsThePreviousWeekly_WhenItsProjectIsPending()
+    {
+        var week1 = DailyFixtures.NewWeekly(1);
+        var week2 = DailyFixtures.NewWeekly(2);
+        var (lastOfWeek1, activity) = DailyFixtures.NewDailyWithOneActivity(week1, 5, DailyFixtures.Today);
+        lastOfWeek1.Start();
+        lastOfWeek1.SubmitActivityResponse(activity.Id, 100);
+        lastOfWeek1.Complete();
+        week1.InitializeProject(); // Pending: nunca enviado.
+
+        var pending = DailySequencing.FindPendingClosureBefore(new[] { week1, week2 }, week2);
+
+        Assert.Equal(week1.Id, pending?.Id);
+    }
+
+    [Fact]
+    public void FindPendingClosureBefore_ReturnsThePreviousWeekly_WhenProjectIsEvaluatedButPublicationIsNot()
+    {
+        var week1 = DailyFixtures.NewWeekly(1);
+        var week2 = DailyFixtures.NewWeekly(2);
+        var (lastOfWeek1, activity) = DailyFixtures.NewDailyWithOneActivity(week1, 5, DailyFixtures.Today);
+        lastOfWeek1.Start();
+        lastOfWeek1.SubmitActivityResponse(activity.Id, 100);
+        lastOfWeek1.Complete();
+        var project = week1.InitializeProject();
+        project.Submit("https://github.com/x");
+        project.Evaluate(90, "Bom trabalho.");
+
+        var pending = DailySequencing.FindPendingClosureBefore(new[] { week1, week2 }, week2);
+
+        Assert.Equal(week1.Id, pending?.Id);
+    }
+
+    [Fact]
+    public void FindPendingClosureBefore_ReturnsNull_WhenPreviousWeeklyIsFullyClosed()
+    {
+        var week1 = DailyFixtures.NewWeekly(1);
+        var week2 = DailyFixtures.NewWeekly(2);
+        var (lastOfWeek1, activity) = DailyFixtures.NewDailyWithOneActivity(week1, 5, DailyFixtures.Today);
+        lastOfWeek1.Start();
+        lastOfWeek1.SubmitActivityResponse(activity.Id, 100);
+        lastOfWeek1.Complete();
+        var project = week1.InitializeProject();
+        project.Submit("https://github.com/x");
+        project.Evaluate(90, "Bom trabalho.");
+        var publication = week1.StartPublication();
+        publication.Submit(PublicationPlatform.GitHub, "https://github.com/falves/x");
+        publication.MarkValidated();
+
+        Assert.Null(DailySequencing.FindPendingClosureBefore(new[] { week1, week2 }, week2));
+    }
+
+    [Fact]
+    public void FindPendingClosureBefore_ReturnsNull_ForTheFirstWeekly()
+    {
+        var week1 = DailyFixtures.NewWeekly(1);
+
+        Assert.Null(DailySequencing.FindPendingClosureBefore(new[] { week1 }, week1));
+    }
 }

@@ -13,7 +13,8 @@ export const ActivityType = {
 } as const;
 export type ActivityType = (typeof ActivityType)[keyof typeof ActivityType];
 
-export const DailyAccessMode = { Start: 0, Resume: 1, Replay: 2, ReadOnly: 3, Blocked: 4 } as const;
+// WeekPendingClosure (Fase 54): todas as Dailies da Weekly concluidas, falta o projeto (ou a publicacao) pra liberar a proxima - "/hoje" devolve a ultima Daily dessa Weekly com este modo.
+export const DailyAccessMode = { Start: 0, Resume: 1, Replay: 2, ReadOnly: 3, Blocked: 4, WeekPendingClosure: 5 } as const;
 export type DailyAccessMode = (typeof DailyAccessMode)[keyof typeof DailyAccessMode];
 
 export const ActivityStatus = { Pending: 0, Completed: 1 } as const;

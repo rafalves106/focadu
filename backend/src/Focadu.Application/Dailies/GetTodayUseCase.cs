@@ -59,10 +59,25 @@ public class GetTodayUseCase
         var weekly = allWeeklies.First(w => w.Id == target.WeeklyId);
         var today = _clock.Today();
 
+        // Fase 54 (bug real, 21/09/2026): terminar a ultima Daily da Semana 1 fazia "/hoje" cair
+        // direto na 1a Daily da Semana 2, sem o projeto da Semana 1 - que e o que vem depois. Se a
+        // Weekly anterior ainda nao fechou (projeto nao avaliado / publicacao nao validada), nao ha
+        // Daily "de hoje" pra mostrar: devolve a ultima Daily original dela, ja Completed, marcada
+        // WeekPendingClosure - o cliente cai na Weekly certa (onde esta o card do projeto). Vem
+        // ANTES da cota diaria: "voltar amanha" nao resolveria, amanha continua faltando o projeto.
+        var pendingClosure = DailySequencing.FindPendingClosureBefore(allWeeklies, weekly);
+        if (pendingClosure is not null)
+        {
+            var lastOriginalDaily = pendingClosure.Dailies.Where(d => !d.IsReinforcement).MaxBy(d => d.DayNumber)!;
+            return DailyStateMapper.ToDto(lastOriginalDaily, DailyAccessMode.WeekPendingClosure);
+        }
+
         DailyAccessMode accessMode;
         try
         {
-            accessMode = weekly.EvaluateDailyAccess(target.Id, today, DailySequencing.IsNext(allWeeklies, target.Id));
+            accessMode = weekly.EvaluateDailyAccess(
+                target.Id, today, DailySequencing.IsNext(allWeeklies, target.Id),
+                DailySequencing.DailiesOfOtherWeeklies(allWeeklies, weekly));
         }
         catch (DomainException ex) when (ex.Code == "daily_limite_diario_atingido")
         {

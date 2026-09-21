@@ -16,9 +16,10 @@ internal static class DailyFixtures
 {
     public static DateOnly Today => DateOnly.FromDateTime(DateTime.Now);
 
-    public static Weekly NewWeekly()
+    /// <summary>`number` so importa pra testes que cruzam Weeklies (ex: "Weekly anterior" por Number menor) - os demais ficam com o default.</summary>
+    public static Weekly NewWeekly(int number = 1)
     {
-        var template = new WeeklyTemplate(Guid.NewGuid(), 1, "Semana de teste");
+        var template = new WeeklyTemplate(Guid.NewGuid(), number, "Semana de teste");
         return new Weekly(Guid.NewGuid(), template, Today);
     }
 

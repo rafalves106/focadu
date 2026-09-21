@@ -31,7 +31,9 @@ public class GetDailyStateUseCase
 
         var allWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(weekly.EnrollmentId, cancellationToken);
         var daily = weekly.Dailies.First(d => d.Id == dailyId);
-        var accessMode = weekly.EvaluateDailyAccess(dailyId, _clock.Today(), DailySequencing.IsNext(allWeeklies, dailyId));
+        var accessMode = weekly.EvaluateDailyAccess(
+            dailyId, _clock.Today(), DailySequencing.IsNext(allWeeklies, dailyId),
+            DailySequencing.DailiesOfOtherWeeklies(allWeeklies, weekly));
 
         return DailyStateMapper.ToDto(daily, accessMode);
     }

@@ -134,6 +134,23 @@ public class Weekly : Entity
         IsModuleComplete() && _publication?.Status != PublicationStatus.Validated;
 
     /// <summary>
+    /// Verdadeiro quando as Dailies originais ja foram todas concluidas mas o projeto semanal ainda
+    /// nao foi avaliado (Pending ou Submitted) - trava a proxima Weekly, como
+    /// RequiresPublicationToUnlock trava depois dele (ver MESTRE.md 2.3: a Weekly so "fecha" com
+    /// todas as Dailies + projeto avaliado + publicacao validada).
+    ///
+    /// Fase 54 (bug real, 21/09/2026): a unica trava entre semanas era RequiresPublicationToUnlock,
+    /// que so liga com o modulo JA completo (projeto Evaluated) - com o projeto ainda Pending
+    /// nada segurava a proxima Weekly e a Daily 6 (Semana 2) abriu sem o projeto da Semana 1.
+    /// Enquanto as Dailies nao estiverem todas concluidas isto e false de proposito: ai quem
+    /// segura a proxima Weekly e a sequencia (daily_bloqueada), nao o projeto. Sem projeto
+    /// definido tambem e false (a matricula sempre inicializa um; travar o curso pra sempre por
+    /// um dado ausente seria pior que deixar passar).
+    /// </summary>
+    public bool RequiresProjectToUnlock() =>
+        AreDailiesComplete() && _project is { Status: not WeeklyProjectStatus.Evaluated };
+
+    /// <summary>
     /// "Perfeita" (Fase 14, Gamificacao): modulo completo e nenhuma Daily original teve
     /// penalidade (nunca errou o suficiente pra disparar reforco/dia fraco). Reforco fica de fora
     /// da checagem pelo mesmo motivo de IsModuleComplete - nao e parte do conteudo planejado.
@@ -275,6 +292,17 @@ public class Weekly : Entity
     /// - Daily ainda nao iniciada e que NAO e a isNextInSequence: bloqueada - ainda nao chegou a
     ///   vez dela.
     ///
+    /// Fase 54 (bug real, 21/09/2026): (b) e (c) acima valem pra MATRICULA inteira, nao so pra esta
+    /// Weekly - concluir a Daily 5 (Semana 1) e clicar em "Hoje" abria a Daily 6 (Semana 2) no
+    /// mesmo dia, porque esta Weekly sozinha nao enxergava a conclusao de hoje na outra. Quem
+    /// chama passa as Dailies das OUTRAS Weeklies em <paramref name="otherWeekliesDailies"/>
+    /// (a Application e quem enxerga todas - ver DailySequencing.DailiesOfOtherWeeklies); null =
+    /// so esta Weekly conta (comportamento de antes, usado por testes de dominio isolados).
+    /// Tambem nessa fase: a Daily de REFORCO fica de fora de (c) - e uma sessao extra gerada pela
+    /// propria conclusao de hoje (a tela de conclusao ate oferece o botao na hora), entao a cota
+    /// diaria que aquela conclusao acabou de gastar nao pode barra-la; (b) continua valendo
+    /// (uma Daily em andamento por vez).
+    ///
     /// Fase 38b (corrige bug real, 14->15/09/2026): antes, essa barreira comparava Daily.Date
     /// (fixado de uma vez so na matricula, 1 dia util por Daily - ver EnrollUserInCourseUseCase)
     /// com "hoje". Qualquer folga entre esse ritmo hipotetico e o ritmo real do aluno pulava
@@ -282,7 +310,8 @@ public class Weekly : Entity
     /// Daily 4, deixando 2 e 3 presas em Locked pra sempre, sem nunca virar "a vez delas"). Agora
     /// a barreira e sempre sequencial (isNextInSequence), nunca mais calendario.
     /// </summary>
-    public DailyAccessMode EvaluateDailyAccess(Guid dailyId, DateOnly today, bool isNextInSequence)
+    public DailyAccessMode EvaluateDailyAccess(
+        Guid dailyId, DateOnly today, bool isNextInSequence, IEnumerable<Daily>? otherWeekliesDailies = null)
     {
         var target = _dailies.FirstOrDefault(d => d.Id == dailyId)
             ?? throw new DomainException("Daily nao encontrada nesta Weekly.", "daily_nao_encontrada");
@@ -305,7 +334,10 @@ public class Weekly : Entity
         if (!target.IsReinforcement && !isNextInSequence)
             throw new DomainException("Esta Daily ainda nao foi liberada - conclua as anteriores primeiro.", "daily_bloqueada");
 
-        var otherInProgress = _dailies.Any(d => d.Id != target.Id && d.Status == DailyStatus.InProgress);
+        // Matricula inteira (Fase 54), nao so esta Weekly - ver o comentario do metodo.
+        var enrollmentDailies = otherWeekliesDailies is null ? _dailies : _dailies.Concat(otherWeekliesDailies).ToList();
+
+        var otherInProgress = enrollmentDailies.Any(d => d.Id != target.Id && d.Status == DailyStatus.InProgress);
         if (otherInProgress)
         {
             throw new DomainException(
@@ -313,26 +345,31 @@ public class Weekly : Entity
                 "daily_em_andamento");
         }
 
-        // CompletedAt e gravado em UTC (Daily.Complete), mas "today" chega em hora local (mesma
-        // convencao de IClock.Today - ver SystemClock) - sem ToLocalTime aqui, a comparacao falha
-        // sempre que UTC e hora local caem em datas diferentes (qualquer horario da noite no
-        // fuso do Brasil, por exemplo).
-        var completedToday = _dailies.Any(d =>
-            d.CompletedAt.HasValue && DateOnly.FromDateTime(d.CompletedAt.Value.ToLocalTime()) == today);
-        if (completedToday)
+        // Reforco fica de fora da cota diaria (Fase 54) - ver o comentario do metodo.
+        if (!target.IsReinforcement)
         {
-            throw new DomainException(
-                "Voce ja concluiu uma Daily hoje (inclusive se foi recuperando um dia atrasado). Volte amanha para continuar.",
-                "daily_limite_diario_atingido");
+            // CompletedAt e gravado em UTC (Daily.Complete), mas "today" chega em hora local (mesma
+            // convencao de IClock.Today - ver SystemClock) - sem ToLocalTime aqui, a comparacao falha
+            // sempre que UTC e hora local caem em datas diferentes (qualquer horario da noite no
+            // fuso do Brasil, por exemplo).
+            var completedToday = enrollmentDailies.Any(d =>
+                d.CompletedAt.HasValue && DateOnly.FromDateTime(d.CompletedAt.Value.ToLocalTime()) == today);
+            if (completedToday)
+            {
+                throw new DomainException(
+                    "Voce ja concluiu uma Daily hoje (inclusive se foi recuperando um dia atrasado). Volte amanha para continuar.",
+                    "daily_limite_diario_atingido");
+            }
         }
 
         return DailyAccessMode.Start;
     }
 
     /// <summary>Inicia, retoma ou reabre (replay) uma Daily desta Weekly, respeitando EvaluateDailyAccess.</summary>
-    public Daily StartOrResumeDaily(Guid dailyId, DateOnly today, bool isNextInSequence)
+    public Daily StartOrResumeDaily(
+        Guid dailyId, DateOnly today, bool isNextInSequence, IEnumerable<Daily>? otherWeekliesDailies = null)
     {
-        var mode = EvaluateDailyAccess(dailyId, today, isNextInSequence);
+        var mode = EvaluateDailyAccess(dailyId, today, isNextInSequence, otherWeekliesDailies);
         var daily = _dailies.First(d => d.Id == dailyId);
 
         switch (mode)

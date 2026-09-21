@@ -153,10 +153,25 @@ function TodayCard({
   // Fase 38a: accessMode.Blocked vence Status - sem isso o badge mostrava "Não iniciado" (o
   // default de dailyStatusBadgeProps pra Status Locked/Available) bem ao lado do aviso "você já
   // concluiu uma sessão hoje" logo abaixo, se contradizendo (bug reportado ao vivo, 14/09/2026).
-  const badge =
-    daily.accessMode === DailyAccessMode.Blocked
+  //
+  // Fase 54: WeekPendingClosure = todas as Dailies da semana feitas, falta fechar a semana
+  // (projeto, depois publicacao) pra liberar a proxima - "/hoje" devolve a ultima Daily da Weekly
+  // que ainda nao fechou, entao `weekly` aqui ja e ela (e o card do projeto logo abaixo tambem).
+  const closurePending = daily.accessMode === DailyAccessMode.WeekPendingClosure;
+  const sessionBlocked = closurePending || daily.accessMode === DailyAccessMode.Blocked;
+  const badge = closurePending
+    ? { icon: '🔒', label: weekly.requiresPublicationToUnlock ? 'PUBLICAÇÃO PENDENTE' : 'PROJETO PENDENTE', tone: 'alert' as const }
+    : daily.accessMode === DailyAccessMode.Blocked
       ? { icon: '🔒', label: 'BLOQUEADO ATÉ AMANHÃ', tone: 'alert' as const }
       : dailyStatusBadgeProps(daily.status);
+  // Fora de closurePending, "Semana X" e a primeira ainda nao completa (weeksCompleted + 1); em
+  // closurePending a semana em foco ja tem todas as Dailies feitas, entao contar +1 mostraria
+  // "Semana 2" ao lado de "Dia 5 de 5" da Semana 1.
+  const currentWeekNumber = closurePending
+    ? weekly.number
+    : weeksCompleted + 1 <= weeksTotal
+      ? weeksCompleted + 1
+      : weeksTotal;
 
   return (
     <div className="flex flex-col gap-5 rounded-[20px] border-[1.5px] border-accent bg-surface p-8">
@@ -177,7 +192,7 @@ function TodayCard({
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between text-[13px]">
             <span className="text-secondary">
-              Semana {weeksCompleted + 1 <= weeksTotal ? weeksCompleted + 1 : weeksTotal} de {weeksTotal}
+              Semana {currentWeekNumber} de {weeksTotal}
             </span>
             <span className="font-semibold text-accent">{Math.round((100 * weeksCompleted) / weeksTotal)}% completo</span>
           </div>
@@ -185,7 +200,7 @@ function TodayCard({
         </div>
       )}
 
-      {nextActivity && daily.accessMode !== DailyAccessMode.Blocked && (
+      {nextActivity && !sessionBlocked && (
         <p className="text-sm text-secondary">
           Próximo: <span className="font-semibold text-primary">{ACTIVITY_TYPE_LABEL[nextActivity.type]}</span>
         </p>
@@ -195,7 +210,18 @@ function TodayCard({
           (mesmo que retomando um atraso de outro dia - ver Weekly.EvaluateDailyAccess) - a Daily
           de hoje existe mas ainda nao pode ser iniciada, entao nada aqui deve convidar a clicar
           "COMEÇAR HOJE" (isso so voltaria a mostrar esse mesmo aviso em /hoje). */}
-      {daily.accessMode === DailyAccessMode.Blocked ? (
+      {closurePending ? (
+        <div className="flex flex-col items-start gap-3">
+          <p className="text-sm text-secondary">
+            {weekly.requiresPublicationToUnlock
+              ? 'Você concluiu todas as sessões desta semana. Falta validar a publicação para liberar a próxima semana.'
+              : 'Você concluiu todas as sessões desta semana. Envie o projeto semanal para liberar a próxima semana.'}
+          </p>
+          <Link to={`/start?weekly=${weekly.id}`} className="rounded-xl bg-accent px-6 py-3 text-sm font-bold tracking-wide text-base">
+            VER A SEMANA
+          </Link>
+        </div>
+      ) : daily.accessMode === DailyAccessMode.Blocked ? (
         <p className="text-sm text-secondary">Você já concluiu uma sessão hoje - volte amanhã para continuar.</p>
       ) : (
         <Link to="/hoje" className="self-start rounded-xl bg-accent px-6 py-3 text-sm font-bold tracking-wide text-base">

@@ -29,4 +29,33 @@ internal static class DailySequencing
 
     public static bool IsNext(IEnumerable<Weekly> weeklies, Guid dailyId) =>
         FindNext(weeklies)?.Id == dailyId;
+
+    /// <summary>
+    /// Fase 54: as Dailies de todas as OUTRAS Weeklies da matricula - o que Weekly.
+    /// EvaluateDailyAccess precisa pra aplicar "1 Daily por dia" e "1 em andamento por vez" na
+    /// matricula inteira (uma Weekly sozinha so enxerga as proprias Dailies; bug real,
+    /// 21/09/2026: concluir a Daily 5 da Semana 1 nao impedia abrir a Daily 6 da Semana 2 no mesmo dia).
+    /// </summary>
+    public static IReadOnlyCollection<Daily> DailiesOfOtherWeeklies(IEnumerable<Weekly> weeklies, Weekly weekly) =>
+        weeklies.Where(w => w.Id != weekly.Id).SelectMany(w => w.Dailies).ToList();
+
+    /// <summary>A Weekly imediatamente anterior a <paramref name="weekly"/> na matricula (maior Number menor que o dela), se houver.</summary>
+    public static Weekly? FindPreviousWeekly(IEnumerable<Weekly> weeklies, Weekly weekly) =>
+        weeklies
+            .Where(w => w.Number < weekly.Number)
+            .OrderByDescending(w => w.Number)
+            .FirstOrDefault();
+
+    /// <summary>
+    /// A Weekly anterior a <paramref name="weekly"/> que ainda nao "fechou" e por isso segura a
+    /// entrada nela - projeto semanal nao avaliado ou, depois dele, publicacao nao validada
+    /// (Weekly.RequiresProjectToUnlock / RequiresPublicationToUnlock). Null = pode entrar.
+    /// </summary>
+    public static Weekly? FindPendingClosureBefore(IEnumerable<Weekly> weeklies, Weekly weekly)
+    {
+        var previous = FindPreviousWeekly(weeklies, weekly);
+        return previous is not null && (previous.RequiresProjectToUnlock() || previous.RequiresPublicationToUnlock())
+            ? previous
+            : null;
+    }
 }
