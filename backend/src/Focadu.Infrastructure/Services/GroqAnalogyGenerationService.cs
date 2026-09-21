@@ -9,9 +9,13 @@ namespace Focadu.Infrastructure.Services;
 /// <summary>
 /// Adapter concreto de IAnalogyGenerationService via Groq (chat completion, JSON mode - mesmo
 /// formato de GroqContentEvaluationService/GroqProjectEvaluationService) - gera 1 analogia por
-/// secao do Reading, conectando cada uma a um interesse/hobby do aluno (Fase 21/22). Pede as N
-/// analogias numa unica chamada (nao 1 chamada por secao) pra IA ver o texto inteiro de contexto e
-/// variar os interesses usados entre secoes, em vez de repetir a mesma analogia.
+/// secao do Reading (Fase 21/22). Pede as N analogias numa unica chamada (nao 1 chamada por secao)
+/// pra IA ver o texto inteiro de contexto e variar o cenario entre secoes, em vez de repetir a
+/// mesma analogia.
+/// Fase 47: o interesse/hobby do aluno deixou de ser o eixo obrigatorio da analogia - so entra quando
+/// reproduz o mecanismo da secao elemento por elemento; na duvida, cenario universal do cotidiano.
+/// Antes, o prompt "conecte um interesse do aluno ao conceito" fazia o modelo inventar mecanicas de
+/// jogo pra caber (ex: "lista de bans do CS" pra explicar OCSP) - ver docs/fase-47/.
 /// </summary>
 public class GroqAnalogyGenerationService : IAnalogyGenerationService
 {
@@ -19,16 +23,35 @@ public class GroqAnalogyGenerationService : IAnalogyGenerationService
 
     private const string SystemPrompt =
         "Você ajuda alunos de segurança web da Focadu a entender conceitos técnicos através de " +
-        "analogias com os hobbies/interesses pessoais deles. Você recebe um texto técnico dividido " +
-        "em seções numeradas e os interesses do aluno. Para CADA seção, escreva uma analogia curta " +
-        "(2 a 3 frases), sempre em português do Brasil (mesmo que o interesse ou o termo técnico " +
-        "citado seja em inglês), que conecte um interesse do aluno ao conceito central DAQUELA " +
-        "seção especificamente - varie os interesses usados entre seções quando fizer sentido, " +
-        "nunca repita a mesma analogia genérica em seções diferentes. Nunca reescreva ou repita o " +
-        "texto técnico em si, só complemente com a analogia. Se nenhum interesse permitir uma " +
-        "conexão natural pra alguma seção, use o que fizer mais sentido, mas nunca force uma " +
-        "analogia absurda ou tecnicamente incorreta. Responda SEMPRE em JSON estrito, exatamente " +
-        "neste formato: {\"analogies\": [\"<analogia da seção 1>\", \"<analogia da seção 2>\", ...]} " +
+        "analogias curtas e realistas. Você recebe um texto técnico dividido em seções numeradas e " +
+        "os interesses do aluno. Para CADA seção, escreva uma analogia de no máximo 3 frases curtas " +
+        "(cerca de 50 palavras), sempre em português do Brasil (mesmo que o interesse ou o termo " +
+        "técnico citado seja em inglês), seguindo estas regras: " +
+        "(1) O mecanismo técnico vem primeiro. A analogia precisa reproduzir o funcionamento real " +
+        "do conceito central DAQUELA seção: cada elemento do cenário corresponde a um elemento real " +
+        "(ex.: carta = pacote, endereço no envelope = destino) e a relação entre eles funciona do " +
+        "mesmo jeito. Se a analogia sugerir um funcionamento diferente do real, descarte e escolha " +
+        "outro cenário. " +
+        "(2) Use um interesse do aluno SOMENTE se ele reproduzir o mecanismo da seção elemento por " +
+        "elemento, usando apenas aspectos verdadeiros e conhecidos desse interesse. Na dúvida, NÃO " +
+        "use o interesse e siga a regra 3: na maioria das seções nenhum interesse vai se encaixar, " +
+        "e isso é o esperado. Nunca invente regras, mecânicas ou detalhes do interesse para a " +
+        "analogia caber, e não cite um interesse apenas para personalizar o texto: citar um " +
+        "interesse sem correspondência real é pior do que não citá-lo. " +
+        "(3) Se nenhum interesse se encaixar de forma natural (o que é normal e esperado), use um " +
+        "cenário universal do cotidiano: correio e cartas, portaria de prédio, chaves e fechaduras, " +
+        "cofres, trânsito urbano simples, filas, listas telefônicas. Isso é sempre melhor do que uma " +
+        "analogia forçada. Exemplo do que NÃO fazer: explicar o handshake TCP com a fila de entrada " +
+        "de uma partida de um jogo (o jogo não funciona assim e a analogia induz um modelo errado). " +
+        "Exemplo do que fazer: uma ligação telefônica (\"alô, está me ouvindo?\" / \"estou, e você?\" " +
+        "/ \"também\") reproduz os três passos do handshake. " +
+        "(4) Um único cenário simples por seção, com poucos elementos e sem enredo; se a analogia " +
+        "precisar de mais de 3 frases, ela está complexa demais. Tom sóbrio e realista: sem " +
+        "exageros, humor, personagens fantasiosos ou comparações absurdas. " +
+        "(5) Varie o cenário entre as seções e nunca repita a mesma analogia. Não repita nem " +
+        "resuma o texto técnico da seção: só complemente com a analogia. " +
+        "Responda SEMPRE em JSON estrito, exatamente neste formato: " +
+        "{\"analogies\": [\"<analogia da seção 1>\", \"<analogia da seção 2>\", ...]} " +
         "- um item por seção recebida, na MESMA ordem e MESMA quantidade. Não inclua nenhum texto " +
         "fora desse JSON.";
 
@@ -55,7 +78,7 @@ public class GroqAnalogyGenerationService : IAnalogyGenerationService
         var payload = new
         {
             model = Model,
-            temperature = 0.8,
+            temperature = 0.4, // Fase 47: era 0.8 - criatividade alta empurrava o modelo a forcar o interesse do aluno em cenarios que nao mapeiam o mecanismo.
             response_format = new { type = "json_object" },
             messages = new object[]
             {
@@ -105,10 +128,11 @@ public class GroqAnalogyGenerationService : IAnalogyGenerationService
             sections.Append($"[Seção {i + 1}]\n{request.Sections[i]}\n\n");
 
         return
-            $"Interesses do aluno: {interests}\n\n" +
+            $"Interesses do aluno (opcionais: use-os só se reproduzirem fielmente o mecanismo da seção; caso contrário, ignore-os): {interests}\n\n" +
             notes +
             $"Seções do texto (na ordem):\n\n{sections}" +
-            $"Escreva uma analogia para cada uma das {request.Sections.Count} seções acima, nessa ordem.";
+            $"Escreva uma analogia para cada uma das {request.Sections.Count} seções acima, nessa ordem. " +
+            "Em cada seção, prefira um cenário universal do cotidiano, a menos que um interesse reproduza o mecanismo fielmente.";
     }
 
     /// <summary>Nunca inventa/completa analogias faltando se a IA responder fora do formato ou com a quantidade errada - ExternalServiceException, mesma decisao de GroqContentEvaluationService.</summary>

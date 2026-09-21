@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 46 - Repositorios de Projeto Semanal no Forgejo interno**.
+> Ultima fase que atualizou este documento: **Fase 47 - Analogia personalizada mais realista (prompt do Groq)**.
 
 ## Visao geral do projeto
 
@@ -680,8 +680,9 @@ vez de virar uma tela nova).
 Fase 13 o comentario em `User.cs` dizia "uso automatico em prompts de IA fica pra uma fase futura" -
 essa fase e o primeiro uso: `GetCuratedContentUseCase`, ao servir uma leitura (`Reading` com
 `BodyText`), gera (via `IAnalogyGenerationService`/`GroqAnalogyGenerationService`, port a parte pelo
-mesmo motivo de `IProjectEvaluationService`) 1 analogia POR SECAO do texto, conectando aquela secao
-especifica a um interesse do aluno - exatamente a "ancora pra analogia" que `CURADORIA.md` previa.
+mesmo motivo de `IProjectEvaluationService`) 1 analogia POR SECAO do texto, ligando aquela secao
+especifica a um cenario que reproduza o mecanismo dela (um interesse do aluno so entra quando o
+reproduz fielmente - Fase 47, abaixo) - a "ancora pra analogia" que `CURADORIA.md` previa.
 Nao 1 analogia so cobrindo o texto inteiro (opcao mais simples, descartada durante o desenvolvimento
 desta mesma fase - ficava perdida no fim de leituras longas, menos intuitivo que reexplicar cada
 secao com a analogia dela): `GetCuratedContentUseCase.SplitIntoSections` divide o Texto Cru por titulo
@@ -707,6 +708,22 @@ explicita. Como `PersonalizedAnalogy` e gerado uma vez e nunca reavaliado (ver a
 analogia ja cacheada em ingles antes deste fix continua em ingles ate o cache ser invalidado
 manualmente (sem endpoint pra isso ainda - nao e o caso comum, avaliado como nao valer a pena
 por ora).
+
+**Fase 47: interesse do aluno virou opcional, prompt reescrito.** Feedback real: as analogias
+saiam forcadas. O prompt original mandava "conecte um interesse do aluno ao conceito" e o modelo
+inventava mecanica do hobby pra caber (ex: "lista de bans do CS" pra explicar OCSP, "convite/
+confirmacao de partida do Valorant" pro handshake TCP); numa das rodadas de teste chegou a devolver
+4 itens pra 3 secoes, que `ParseAnalogies` rejeita. `SystemPrompt` de `GroqAnalogyGenerationService`
+agora manda: reproduzir o mecanismo elemento por elemento; usar o interesse SO quando isso for
+verdade ("na duvida, nao use"); cair num cenario universal do cotidiano (correio, portaria, chaves,
+cofres, filas...) nos demais casos; no maximo 3 frases curtas (~50 palavras); e traz um exemplo do
+que nao fazer (handshake TCP explicado com a fila de uma partida de jogo) contra o que fazer
+(ligacao telefonica). A mensagem do aluno passou a apresentar os interesses como opcionais e a
+preferir cenario universal, e `temperature` caiu de 0.8 pra 0.4. Validado ao vivo contra a API real
+do Groq antes de adotar (ver `docs/fase-47/`). So vale pras analogias geradas dali pra frente: o
+cache `PersonalizedAnalogy` nao e reavaliado - pra regenerar uma leitura ja vista, apagar a linha
+dela em `PersonalizedAnalogies` (as secoes, owned em `PersonalizedAnalogySections`, vao junto); sem
+endpoint pra isso.
 
 **Fase 27: personalizacao estendida pra avaliacao de voz + rascunho de LinkedIn.** A Fase 21 so
 cobria Leitura - `secret/MESTRE.md` secao 12 ainda listava "nenhum outro prompt de IA consome o

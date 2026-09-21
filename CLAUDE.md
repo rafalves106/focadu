@@ -84,9 +84,16 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 46 — Repositórios de Projeto Semanal no Forgejo interno** (18/09/2026).
+Última fase concluída: **Fase 47 — Analogia personalizada mais realista (prompt do Groq)** (21/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Analogia "Pra você" sem contexto forçado (Fase 47)**: o interesse/hobby do aluno deixou de ser
+  o eixo obrigatório da analogia gerada pela IA — agora só entra quando reproduz o mecanismo da
+  seção elemento por elemento; senão, cenário universal do cotidiano (correio, portaria, chaves…).
+  O prompt antigo fazia o modelo inventar mecânica de jogo pra caber (ex.: "lista de bans do CS"
+  pra explicar OCSP). Testado ao vivo contra a API do Groq; `temperature` 0.8 → 0.4. Só vale pra
+  analogias geradas dali pra frente (cache `PersonalizedAnalogy` não é reavaliado) e só entra em
+  produção com o deploy do backend — ver `docs/fase-47/`.
 - **Repositórios de Projeto Semanal no Forgejo interno (Fase 46)**: o aluno deixa de criar/colar
   manualmente uma URL de repositório GitHub — a Focadu hospeda tudo sozinha num Forgejo
   self-hosted (container novo, SQLite). Na matrícula, a conta do aluno no Forgejo é criada e o
