@@ -3,8 +3,8 @@ name: Deploy
 # Dispara depois que o workflow CI (ci.yml) terminar num push em main - nao direto em `push`, pra
 # nunca subir codigo que nao passou no build/teste. `workflow_run` so reage a eventos do branch
 # default por padrao, mas o filtro abaixo (head_branch + conclusion) garante que so roda pra main e
-# so quando a CI passou de verdade. Homologacao (branch develop -> focadu-hml) foi descontinuada em
-# 17/09/2026: nao existe mais mapeamento de ambiente pra develop (a CI ainda roda la, sem deploy).
+# so quando a CI passou de verdade. Producao e o unico ambiente de deploy: push em outra branch
+# (ex: develop) roda a CI, mas nao dispara deploy.
 on:
   workflow_run:
     workflows: ["CI"]

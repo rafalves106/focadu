@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 49 - Remove o mapeamento da branch develop do deploy**.
+> Ultima fase que atualizou este documento: **Fase 50 - Remove os restos da homologacao (focadu-hml)**.
 
 ## Visao geral do projeto
 
@@ -1511,7 +1511,7 @@ de curso.
 
 **Gotcha de idempotencia do seed, resolvido nesta fase**: o seed e idempotente por nome de
 `Course` - reexecutar contra um banco que ja tem "Web Security" (todo ambiente hoje, local/
-homologacao/producao) nao inseria nada de novo, incluindo esta cobertura de certificacao
+producao) nao inseria nada de novo, incluindo esta cobertura de certificacao
 adicionada depois do curso original ja seedado. `SeedWebSecurityCourseUseCase.ExecuteAsync` agora,
 mesmo quando o curso ja existe, carrega o grafo completo e roda o importer como *backfill* se
 nenhum `Monthly` ainda tiver `CertificationCoverage` - idempotente (nao duplica numa segunda
@@ -1914,7 +1914,7 @@ o boot se ausente - so as chamadas que precisam falham com erro claro).
 URL de clone da porta *interna* do container (3000), nao da porta que o host expoe, gerando
 `clone_url` inacessivel de fora do container (confirmado ao vivo). Porta padrao do Forgejo (3000)
 evitada de proposito neste host - ja em uso por outro projeto (`homepage-homepage-1`) - produção
-usa 3020, homologação 3030 (ver tabela de portas em `docs/DOCKER.md`). **`ROOT_URL` aponta pra
+usa 3020 (ver tabela de portas em `docs/DOCKER.md`). **`ROOT_URL` aponta pra
 `localhost` por enquanto** (teste rodando no mesmo host) - precisa virar o endereco real
 alcancavel pelos alunos antes de qualquer acesso de fora desta maquina.
 
@@ -2015,8 +2015,8 @@ fase implementa o fluxo completo:
   exigir criar conta antes de funcionar.
 - **`Smtp:*`/`Frontend:BaseUrl`** (config) - mesma decisao do Groq/GitHub: `Smtp:Host` ausente nao
   impede o app de subir, so o envio falha (com erro claro, `smtp_nao_configurado`) quando de fato
-  chamado. `Frontend:BaseUrl` default `http://localhost:5173` (dev) - **producao/homologacao
-  precisam configurar de verdade** (env var `FRONTEND_BASE_URL`, ver `docs/DOCKER.md`), senao o
+  chamado. `Frontend:BaseUrl` default `http://localhost:5173` (dev) - **producao
+  precisa configurar de verdade** (env var `FRONTEND_BASE_URL`, ver `docs/DOCKER.md`), senao o
   link do email aponta pro localhost de quem hospeda o backend, inutil pra quem recebe o email.
 
 ```bash
@@ -2087,13 +2087,10 @@ evita precisar de subdominio de API dedicado no Cloudflare Tunnel e evita mexer 
 CORS (`Program.cs`, ainda fixa em `localhost:5173`/`127.0.0.1:5173` - so precisaria mudar se um dia
 o backend for exposto num dominio proprio).
 
-**`docker-compose.yml`** (producao) e **`docker-compose.homolog.yml`** (homologacao, stack
-completa e isolada - nomes de container, volume de Postgres e portas de host proprios, nunca
-compartilha dados com producao) vivem na raiz do repo, ao lado de `.env.example`. Servicos:
+**`docker-compose.yml`** (producao) vive na raiz do repo, ao lado de `.env.example`. Servicos:
 `postgres`/`backend`/`frontend`/**`forgejo`** (Fase 46, ver secao propria "Forgejo interno"
-acima). Portas de host (via `.env`, nao versionado): producao frontend `5280`/backend
-`5282`/postgres `5432`/forgejo `3020`; homolog frontend `5290`/backend `5292`/postgres
-`5433`/forgejo `3030`.
+acima). Portas de host (via `.env`, nao versionado): frontend `5280`/backend `5282`/postgres
+`5432`/forgejo `3020`.
 
 **Sincronizacao com `secret/` (Fase 40, achado importante):** o conteudo curado
 (`secret/curadoria/*.json`) so e lido pelo comando `dotnet run -- seed`
@@ -2111,7 +2108,7 @@ re-executar o seed).
 idempotente **por Curso** - depois que "Web Security" ja existe no banco, `ExecuteAsync` retorna
 sem ler nenhum arquivo de novo. Ou seja: editar um `dia-N.json` ja seedado e reiniciar/re-rodar o
 seed **nao** atualiza o conteudo ja carregado no Postgres; isso so reflete de verdade num banco
-ainda vazio (primeiro deploy de um ambiente, ou homolog logo apos um reset de banco). Reseed
+ainda vazio (primeiro deploy de um ambiente, ou logo apos um reset de banco). Reseed
 incremental (por semana/dia, nao so por curso inteiro) ainda nao existe - ver `docs/fase-40/
 resumo-implementacao-fase-40.md` pra mais detalhe.
 
@@ -2119,21 +2116,18 @@ resumo-implementacao-fase-40.md` pra mais detalhe.
 - `focadu/.github/workflows/ci.yml`: build+test do backend (.NET) e lint+build do frontend
   (Node), em push/PR pra `main`/`develop`.
 - `focadu/.github/workflows/deploy.yml`: dispara via `workflow_run` apos o CI passar (so em push,
-  nunca em PR) **so na branch `main`** (producao e o unico ambiente de deploy; o mapeamento
-  `develop` -> homologacao foi removido na Fase 49 - push em `develop` ainda roda o CI, sem
-  deploy), `git reset --hard` no path do codigo E no `secret/`, `docker compose up -d --build`,
-  roda o seed (idempotente, seguro toda vez), healthcheck HTTP no frontend.
+  nunca em PR) **so na branch `main`** (producao e o unico ambiente de deploy - push em
+  `develop` ainda roda o CI, sem deploy), `git reset --hard` no path do codigo E no `secret/`,
+  `docker compose up -d --build`, roda o seed (idempotente, seguro toda vez), healthcheck HTTP no
+  frontend.
 - `focadu-secret/.github/workflows/deploy.yml` (repo separado, so branch `main`): `git reset
   --hard` no `secret/` do checkout de producao, restart + seed do backend (sem rebuild de imagem,
-  ja que `secret/` e bind mount). As etapas de homologacao foram removidas em 21/09/2026 (o
-  checkout `focadu-hml` nao existe mais e elas faziam o job falhar em todo push).
+  ja que `secret/` e bind mount).
 - Runner: `[self-hosted, Windows, falveshub-server]`, mesmo runner fisico registrado nos dois
   repositorios (registro em si e passo manual, feito quando a maquina Windows estiver pronta - ver
   `docs/DOCKER.md`).
 - Convencao de pasta no host: `C:\Servidor\focadu` (producao, branch `main`), com `secret\` dentro
-  como clone de `focadu-secret`. A homologacao (`focadu-hml`, branch `develop`) foi descontinuada
-  em 17/09/2026; `docker-compose.homolog.yml` continua no repo mas nao e mais usado por nenhum
-  deploy.
+  como clone de `focadu-secret`.
 
 **Fuso horario do container (Fase 43, bug real relatado ao vivo):** o container do backend roda
 o relogio do SO em UTC por padrao - sem nenhuma variavel `TZ` setada, `DateTime.Now` (usado por
@@ -2144,8 +2138,7 @@ gravava `CompletedAt` (UTC) ja no dia seguinte em UTC; a comparacao de "1 Daily 
 mas o "local" do container era o proprio UTC - entao ela achava que a conclusao ja tinha
 acontecido "hoje" e bloqueava o usuario o dia inteiro seguinte, so liberando de novo na virada do
 dia em UTC (21h de Brasilia, nao meia-noite local). Correcao: `TZ: America/Sao_Paulo` fixo (nao
-via `.env`) no `environment` do servico `backend`, em `docker-compose.yml` e
-`docker-compose.homolog.yml` dos dois checkouts (`focadu` e `focadu-hml`) - imagem runtime
+via `.env`) no `environment` do servico `backend` do `docker-compose.yml` - imagem runtime
 (`aspnet:10.0`, Debian) ja tem `tzdata`, `TimeZoneInfo.FindSystemTimeZoneById` funciona sem
 mudanca de codigo. Não precisa de rebuild de imagem, so recreate do container (`docker compose up
 -d backend`) pra pegar a env var nova.

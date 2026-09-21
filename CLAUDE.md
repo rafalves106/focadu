@@ -84,14 +84,17 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 49 — Remove o mapeamento da branch develop do deploy** (21/09/2026).
+Última fase concluída: **Fase 50 — Remove os restos da homologação (focadu-hml)** (21/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
-- **Deploy só da `main` (Fase 49)**: a homologação (`develop` → `focadu-hml`) foi descontinuada em
-  17/09/2026; `deploy.yml` deixou de mapear `develop` (push lá ainda roda o CI, sem deploy) e as
-  etapas de homologação do deploy do `focadu-secret` foram removidas (faziam o job falhar em todo
-  push). Produção é o único ambiente; as menções a `focadu-hml` em marcos antigos abaixo são
-  históricas — ver `docs/fase-49/`.
+- **Sem homologação (Fases 49 e 50)**: o ambiente `focadu-hml` (branch `develop`) foi
+  descontinuado em 17/09/2026. A Fase 49 tirou o mapeamento de `develop` do `deploy.yml`; a
+  Fase 50 removeu o que sobrava: `docker-compose.homolog.yml` e as instruções, portas e
+  variáveis de homologação em `docs/DOCKER.md`, `.env.example` e `docs/ARQUITETURA.md`.
+  Produção é o único ambiente. A branch remota `develop` ainda existe (o `ci.yml` roda testes
+  nela, sem deploy) — removê-la é decisão à parte. Os `docs/fase-N/` antigos que citam
+  homologação são histórico imutável e não foram editados — ver `docs/fase-49/` e
+  `docs/fase-50/`.
 - **Guarda de idioma nas analogias (Fase 48, bug real visto ao vivo)**: logo após o deploy da Fase
   47 o modelo devolveu as analogias do dia 5 em inglês, e o cache nunca é reavaliado. Agora
   `GroqAnalogyGenerationService` rejeita resposta com cara de inglês (nada é gravado, a leitura abre
@@ -133,8 +136,7 @@ Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` corr
   `CorrectDefinitionId` dos termos. Por 1 render, o veredito de cada par era calculado contra
   `CorrectDefinitionId` ainda `null` (escondido pelo backend antes de responder) - e a tela
   piscava tudo vermelho por um instante antes do resultado real aparecer. Corrigido invertendo a
-  ordem: só marca como respondido depois que o gabarito já chegou. `focadu-hml` (branch
-  `develop`) tem o mesmo trecho e ainda precisa do mesmo fix - ver `docs/fase-44/`.
+  ordem: só marca como respondido depois que o gabarito já chegou - ver `docs/fase-44/`.
 - **Fuso horário do container bloqueando a Daily (Fase 43, bug real relatado ao vivo)**: o
   container do backend rodava o relógio do SO em UTC (sem `TZ` setada em lugar nenhum), então
   `SystemClock.Today()` (que usa `DateTime.Now` de propósito, pro "dia do calendário vivido pelo
@@ -142,10 +144,9 @@ Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` corr
   de Brasília gravava `CompletedAt` já no dia seguinte em UTC, e a trava de "1 Daily por dia
   corrido" (`Weekly.EvaluateDailyAccess`, Fase 38b) bloqueava o usuário o dia inteiro seguinte,
   só liberando de novo às 21h local (virada do dia em UTC), nunca à meia-noite local esperada.
-  Corrigido com `TZ: America/Sao_Paulo` fixo no `environment` do serviço `backend`, replicado nos
-  quatro `docker-compose*.yml` (produção e homologação, nos dois checkouts do host) — puramente
-  configuração de ambiente, sem mudança de código C#. Containers recriados manualmente no host
-  pra alívio imediato; `git push` ainda pendente de confirmação (ver `docs/fase-43/`).
+  Corrigido com `TZ: America/Sao_Paulo` fixo no `environment` do serviço `backend` do
+  `docker-compose.yml` — puramente configuração de ambiente, sem mudança de código C#. Containers
+  recriados manualmente no host pra alívio imediato; `git push` ainda pendente de confirmação (ver `docs/fase-43/`).
 - **Correção de nota injusta no Resumo Falado (Fase 42, bug real relatado ao vivo)**: a correção de
   transcrição da Fase 39 não pegava um erro comum do Whisper - trocar um termo técnico pelo seu
   antônimo foneticamente parecido (ex. "simétrica" por "assimétrica"), o que gera uma frase
@@ -163,12 +164,11 @@ Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` corr
   usuário já tenha, sem amarrar a um serviço novo) - decisão do usuário entre SMTP/API
   transacional/stub sem envio real. Requer configurar `Smtp:*` (user-secrets/env) e
   `Frontend:BaseUrl` (o link do email aponta pro `localhost:5173` de dev até isso ser preenchido
-  de verdade em produção/homologação, ver `docs/DOCKER.md`) - **ainda não configurado no host de
+  de verdade em produção, ver `docs/DOCKER.md`) - **ainda não configurado no host de
   produção**, ver `docs/fase-41/`.
 - **Dockerização completa + CI/CD de deploy automático (Fase 40)**: `backend/Dockerfile` e
-  `frontend/Dockerfile` (multi-stage), `docker-compose.yml` (produção) e
-  `docker-compose.homolog.yml` (homologação, stack isolada), consolidando o Focadu na mesma
-  infra Cloudflare Tunnel dos demais projetos pessoais (`falveshub.com`). Frontend faz proxy
+  `frontend/Dockerfile` (multi-stage), `docker-compose.yml` (produção), consolidando o Focadu na
+  mesma infra Cloudflare Tunnel dos demais projetos pessoais (`falveshub.com`). Frontend faz proxy
   same-origin de `/api/` pro backend via nginx (sem subdomínio de API separado). `secret/` vira
   bind mount read-only no container do backend (`CURATED_CONTENT_ROOT`), já que o conteúdo
   curado só é lido pelo comando `seed` (idempotente por Curso — não recarrega edição de dia já

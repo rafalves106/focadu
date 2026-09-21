@@ -137,7 +137,7 @@ public static class DependencyInjection
         // Forgejo interno (Projeto Semanal, hospedagem de repositorio) - mesma decisao de
         // resiliencia do GitHub acima: config ausente nao impede o app de subir. Diferente do
         // GitHub, a BaseUrl nao e uma constante fixa (instancia self-hosted, endereco muda por
-        // ambiente - container `forgejo` no Compose local, host proprio em producao/homolog).
+        // ambiente - container `forgejo` no Compose local, host proprio em producao).
         services.AddSingleton(forgejoOptions);
         services.AddHttpClient<IForgejoService, ForgejoService>(client =>
         {

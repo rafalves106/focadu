@@ -17,14 +17,10 @@ Os dois precisam estar clonados lado a lado no host, com `secret/` sendo literal
 ```
 C:\Servidor\focadu\           <- clone de rafalves106/focadu, branch main
 C:\Servidor\focadu\secret\    <- clone de rafalves106/focadu-secret, branch main
-
-C:\Servidor\focadu-hml\          <- clone de rafalves106/focadu, branch develop
-C:\Servidor\focadu-hml\secret\   <- clone de rafalves106/focadu-secret, branch main
 ```
 
-Note que `secret/` é sempre a branch `main` de `focadu-secret` nos dois ambientes — não existe
-uma branch de homologação separada para conteúdo (ver `secret/.github/workflows/deploy.yml`, que
-atualiza os dois checkouts a partir do mesmo push).
+Note que `secret/` é sempre a branch `main` de `focadu-secret` (ver
+`secret/.github/workflows/deploy.yml`).
 
 ## Subir localmente com Docker
 
@@ -50,14 +46,6 @@ docker compose exec backend dotnet Focadu.Api.dll seed
 Migrations do EF Core aplicam sozinhas no boot do backend (não precisa rodar `dotnet ef database
 update` manualmente contra o container).
 
-Para homologação localmente, mesma ideia com o outro arquivo:
-
-```bash
-cp .env.example .env.hml   # ajuste DB_NAME/portas/senhas - nunca reaproveitar os de produção
-docker compose -f docker-compose.homolog.yml --env-file .env.hml up -d --build
-docker compose -f docker-compose.homolog.yml --env-file .env.hml exec backend dotnet Focadu.Api.dll seed
-```
-
 ### Atualizando conteúdo curado sem rebuild
 
 `secret/` é montado como bind mount **read-only** no container do backend (path fixo `/secret`,
@@ -72,8 +60,8 @@ docker compose restart backend
 ainda não existir no banco daquele ambiente. O seed é idempotente por Curso — depois que ele já
 rodou uma vez com sucesso, `docker compose exec backend dotnet Focadu.Api.dll seed` (ou um
 restart) não reimporta nem sobrescreve um `dia-N.json` que já tinha sido lido antes. Isso vale
-sobretudo pra homologação logo após um reset de banco (banco vazio = seed de verdade insere tudo
-de novo, já com o conteúdo mais recente).
+sobretudo logo após um reset de banco (banco vazio = seed de verdade insere tudo de novo, já com
+o conteúdo mais recente).
 
 ## Variáveis de ambiente
 
@@ -86,7 +74,7 @@ Ver `.env.example` na raiz — cobre banco de dados, backend (`JWT_SECRET_KEY` o
 `frontend/nginx.conf`) — não precisa de subdomínio de API dedicado no Cloudflare Tunnel.
 
 `SMTP_*` (Fase 41, redefinição de senha) são opcionais pro app subir, mas **`FRONTEND_BASE_URL`
-precisa ser preenchido com o domínio público de verdade em produção/homologação** antes do 1º uso
+precisa ser preenchido com o domínio público de verdade em produção** antes do 1º uso
 real do fluxo — sem ele, o link do email de redefinição aponta pro fallback de dev
 (`http://localhost:5173`), inútil pra quem recebe o email fora da máquina de desenvolvimento.
 
@@ -95,7 +83,6 @@ real do fluxo — sem ele, o link do email de redefinição aponta pro fallback 
 | Ambiente | Frontend | Backend | Postgres | Forgejo (web/API) | Forgejo (SSH) |
 |---|---|---|---|---|---|
 | Produção | `5280` | `5282` | `5432` | `3020` | `2222` |
-| Homologação | `5290` | `5292` | `5433` | `3030` | `2232` |
 
 Forgejo foge da porta padrão 3000 de propósito - já em uso por outro projeto (`homepage-homepage-1`) neste mesmo host, confirmado ao vivo ao subir o container pela primeira vez (18/09/2026).
 
@@ -117,16 +104,14 @@ Dois repositórios, dois workflows, convergindo no mesmo host:
 
 **`focadu/.github/workflows/deploy.yml`** — dispara via `workflow_run` assim que o CI acima
 termina com sucesso (só em push, nunca em PR) **na branch `main`** — produção é o único ambiente
-de deploy. A homologação (`develop` → `focadu-hml`) foi descontinuada em 17/09/2026 e o
-mapeamento foi removido: um push em `develop` ainda roda o CI, mas não dispara deploy. O workflow
+de deploy; um push em `develop` roda o CI, mas não dispara deploy. O workflow
 atualiza o código (`git reset --hard`) tanto no checkout do repo quanto no `secret/`, sobe a stack
 (`docker compose up -d --build`), roda o seed (idempotente) e valida com um healthcheck HTTP no
 frontend.
 
 **`focadu-secret/.github/workflows/deploy.yml`** (no OUTRO repositório) — dispara em push na
 branch `main` de `focadu-secret`. Atualiza o `secret/` do checkout de produção e reinicia +
-reseeda o backend — sem rebuild de imagem, já que `secret/` é bind mount. (As etapas de
-homologação foram removidas junto com o ambiente; antes elas faziam o job falhar em todo push.)
+reseeda o backend — sem rebuild de imagem, já que `secret/` é bind mount.
 
 ### Registrando o runner self-hosted (fazer quando a máquina Windows + Docker Desktop estiver pronta)
 
@@ -147,8 +132,7 @@ Em cada repositório (`rafalves106/focadu` e `rafalves106/focadu-secret`):
 ### Antes do primeiro deploy automático
 
 - Criar o diretório `C:\Servidor\focadu` no host, com o clone de `focadu` (branch `main`) +
-  `secret/` clonado dentro. (Não há mais checkout de homologação nem branch `develop` mapeada.)
-- Criar o `.env` de cada checkout (nunca commitado) com os valores reais — senhas e
-  `JWT_SECRET_KEY` **diferentes** entre produção e homologação.
-- Rodar `docker compose up -d --build` manualmente uma primeira vez em cada diretório, pra
-  validar que a stack sobe antes de depender do runner/CI.
+  `secret/` clonado dentro.
+- Criar o `.env` (nunca commitado) com os valores reais.
+- Rodar `docker compose up -d --build` manualmente uma primeira vez, pra validar que a stack
+  sobe antes de depender do runner/CI.
