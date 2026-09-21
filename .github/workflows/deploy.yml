@@ -1,14 +1,15 @@
 name: Deploy
 
-# Dispara depois que o workflow CI (ci.yml) terminar num push em main/develop - nao direto em
-# `push`, pra nunca subir codigo que nao passou no build/teste. `workflow_run` so reage a eventos
-# do branch default por padrao, mas o filtro abaixo (head_branch + conclusion) garante que so
-# roda pra main/develop e so quando a CI passou de verdade.
+# Dispara depois que o workflow CI (ci.yml) terminar num push em main - nao direto em `push`, pra
+# nunca subir codigo que nao passou no build/teste. `workflow_run` so reage a eventos do branch
+# default por padrao, mas o filtro abaixo (head_branch + conclusion) garante que so roda pra main e
+# so quando a CI passou de verdade. Homologacao (branch develop -> focadu-hml) foi descontinuada em
+# 17/09/2026: nao existe mais mapeamento de ambiente pra develop (a CI ainda roda la, sem deploy).
 on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
-    branches: [main, develop]
+    branches: [main]
 
 jobs:
   deploy:
@@ -23,10 +24,6 @@ jobs:
             echo "path=/Users/falves/Dev/Servidor/focadu" >> "$GITHUB_OUTPUT"
             echo "compose_file=docker-compose.yml" >> "$GITHUB_OUTPUT"
             echo "frontend_port=5280" >> "$GITHUB_OUTPUT"
-          elif [ "$branch" = "develop" ]; then
-            echo "path=/Users/falves/Dev/Servidor/focadu-hml" >> "$GITHUB_OUTPUT"
-            echo "compose_file=docker-compose.homolog.yml" >> "$GITHUB_OUTPUT"
-            echo "frontend_port=5290" >> "$GITHUB_OUTPUT"
           else
             echo "Branch '$branch' nao mapeada para nenhum ambiente de deploy." >&2
             exit 1

@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 48 - Guarda de idioma nas analogias personalizadas**.
+> Ultima fase que atualizou este documento: **Fase 49 - Remove o mapeamento da branch develop do deploy**.
 
 ## Visao geral do projeto
 
@@ -2119,18 +2119,21 @@ resumo-implementacao-fase-40.md` pra mais detalhe.
 - `focadu/.github/workflows/ci.yml`: build+test do backend (.NET) e lint+build do frontend
   (Node), em push/PR pra `main`/`develop`.
 - `focadu/.github/workflows/deploy.yml`: dispara via `workflow_run` apos o CI passar (so em push,
-  nunca em PR) - resolve ambiente pela branch (`main` -> producao, `develop` -> homologacao),
-  `git reset --hard` no path do codigo E no `secret/` correspondente, `docker compose up -d
-  --build`, roda o seed (idempotente, seguro toda vez), healthcheck HTTP no frontend.
-- `focadu-secret/.github/workflows/deploy.yml` (repo separado, so branch `main` - mesmo conteudo
-  serve os dois ambientes): `git reset --hard` nos dois checkouts do host, restart + seed nos dois
-  backends (sem rebuild de imagem, ja que `secret/` e bind mount).
+  nunca em PR) **so na branch `main`** (producao e o unico ambiente de deploy; o mapeamento
+  `develop` -> homologacao foi removido na Fase 49 - push em `develop` ainda roda o CI, sem
+  deploy), `git reset --hard` no path do codigo E no `secret/`, `docker compose up -d --build`,
+  roda o seed (idempotente, seguro toda vez), healthcheck HTTP no frontend.
+- `focadu-secret/.github/workflows/deploy.yml` (repo separado, so branch `main`): `git reset
+  --hard` no `secret/` do checkout de producao, restart + seed do backend (sem rebuild de imagem,
+  ja que `secret/` e bind mount). As etapas de homologacao foram removidas em 21/09/2026 (o
+  checkout `focadu-hml` nao existe mais e elas faziam o job falhar em todo push).
 - Runner: `[self-hosted, Windows, falveshub-server]`, mesmo runner fisico registrado nos dois
   repositorios (registro em si e passo manual, feito quando a maquina Windows estiver pronta - ver
   `docs/DOCKER.md`).
-- Convencao de pasta no host: `C:\Servidor\focadu` (producao, branch `main`) e
-  `C:\Servidor\focadu-hml` (homologacao, branch `develop`) - dentro de cada uma, `secret\` e o
-  clone de `focadu-secret`.
+- Convencao de pasta no host: `C:\Servidor\focadu` (producao, branch `main`), com `secret\` dentro
+  como clone de `focadu-secret`. A homologacao (`focadu-hml`, branch `develop`) foi descontinuada
+  em 17/09/2026; `docker-compose.homolog.yml` continua no repo mas nao e mais usado por nenhum
+  deploy.
 
 **Fuso horario do container (Fase 43, bug real relatado ao vivo):** o container do backend roda
 o relogio do SO em UTC por padrao - sem nenhuma variavel `TZ` setada, `DateTime.Now` (usado por

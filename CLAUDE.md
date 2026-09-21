@@ -84,9 +84,14 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 48 — Guarda de idioma nas analogias personalizadas** (21/09/2026).
+Última fase concluída: **Fase 49 — Remove o mapeamento da branch develop do deploy** (21/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Deploy só da `main` (Fase 49)**: a homologação (`develop` → `focadu-hml`) foi descontinuada em
+  17/09/2026; `deploy.yml` deixou de mapear `develop` (push lá ainda roda o CI, sem deploy) e as
+  etapas de homologação do deploy do `focadu-secret` foram removidas (faziam o job falhar em todo
+  push). Produção é o único ambiente; as menções a `focadu-hml` em marcos antigos abaixo são
+  históricas — ver `docs/fase-49/`.
 - **Guarda de idioma nas analogias (Fase 48, bug real visto ao vivo)**: logo após o deploy da Fase
   47 o modelo devolveu as analogias do dia 5 em inglês, e o cache nunca é reavaliado. Agora
   `GroqAnalogyGenerationService` rejeita resposta com cara de inglês (nada é gravado, a leitura abre

@@ -116,15 +116,17 @@ Dois repositórios, dois workflows, convergindo no mesmo host:
 (Node), em todo push/PR pra `main`/`develop`.
 
 **`focadu/.github/workflows/deploy.yml`** — dispara via `workflow_run` assim que o CI acima
-termina com sucesso (só em push, nunca em PR). Resolve o ambiente pela branch (`main` → produção,
-`develop` → homologação), atualiza o código (`git reset --hard`) tanto no checkout do repo quanto
-no `secret/` correspondente, sobe a stack (`docker compose up -d --build`), roda o seed
-(idempotente) e valida com um healthcheck HTTP no frontend.
+termina com sucesso (só em push, nunca em PR) **na branch `main`** — produção é o único ambiente
+de deploy. A homologação (`develop` → `focadu-hml`) foi descontinuada em 17/09/2026 e o
+mapeamento foi removido: um push em `develop` ainda roda o CI, mas não dispara deploy. O workflow
+atualiza o código (`git reset --hard`) tanto no checkout do repo quanto no `secret/`, sobe a stack
+(`docker compose up -d --build`), roda o seed (idempotente) e valida com um healthcheck HTTP no
+frontend.
 
 **`focadu-secret/.github/workflows/deploy.yml`** (no OUTRO repositório) — dispara em push na
-branch `main` de `focadu-secret`. Atualiza `secret/` nos DOIS checkouts do host (produção e
-homologação) e reinicia + reseeda os dois backends — sem rebuild de imagem, já que `secret/` é
-bind mount.
+branch `main` de `focadu-secret`. Atualiza o `secret/` do checkout de produção e reinicia +
+reseeda o backend — sem rebuild de imagem, já que `secret/` é bind mount. (As etapas de
+homologação foram removidas junto com o ambiente; antes elas faziam o job falhar em todo push.)
 
 ### Registrando o runner self-hosted (fazer quando a máquina Windows + Docker Desktop estiver pronta)
 
@@ -144,10 +146,8 @@ Em cada repositório (`rafalves106/focadu` e `rafalves106/focadu-secret`):
 
 ### Antes do primeiro deploy automático
 
-- Criar a branch `develop` a partir de `main` nos dois repositórios (`git checkout -b develop &&
-  git push -u origin develop`).
-- Criar os diretórios `C:\Servidor\focadu` e `C:\Servidor\focadu-hml` no host, cada um com seu
-  clone de `focadu` (branch correspondente) + `secret/` clonado dentro.
+- Criar o diretório `C:\Servidor\focadu` no host, com o clone de `focadu` (branch `main`) +
+  `secret/` clonado dentro. (Não há mais checkout de homologação nem branch `develop` mapeada.)
 - Criar o `.env` de cada checkout (nunca commitado) com os valores reais — senhas e
   `JWT_SECRET_KEY` **diferentes** entre produção e homologação.
 - Rodar `docker compose up -d --build` manualmente uma primeira vez em cada diretório, pra
