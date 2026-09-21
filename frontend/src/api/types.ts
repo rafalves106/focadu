@@ -585,6 +585,8 @@ export interface ListNotesFilter {
   to?: string;
   q?: string;
   tag?: string;
+  /** Fase 57: so as notas dessa sessao (Daily) - e, se ela for um reforco, as do dia base dele (ver NoteDailyScope no backend). Preferir a `from`/`to`: a Date de uma Daily de reforco e o dia em que foi gerada, nao o dia base. */
+  dailyId?: string;
 }
 
 /** Suporte Rápido de IA (Fase 32) - POST /api/study-assistant/ask. So o texto de resposta, sem Score/estrutura (nao e avaliacao). */

@@ -260,6 +260,7 @@ export const api = {
     if (filter.to) params.set('to', filter.to);
     if (filter.q) params.set('q', filter.q);
     if (filter.tag) params.set('tag', filter.tag);
+    if (filter.dailyId) params.set('dailyId', filter.dailyId);
     const query = params.toString();
     return request<NoteDto[]>(`/api/courses/${courseId}/notes${query ? `?${query}` : ''}`);
   },

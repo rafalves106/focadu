@@ -404,6 +404,32 @@ public class WeeklyTests
             week2.EvaluateDailyAccess(firstOfWeek2.Id, today, isNextInSequence: true, otherWeekliesDailies: week1.Dailies));
     }
 
+    // Fase 57 (bug real, 21/09/2026): o reforco nao puxava as anotacoes do dia base - a Daily de
+    // reforco e outra Daily (outro Id, outra Date), e as notas ficam presas ao DailyId de origem.
+
+    [Fact]
+    public void FindReinforcementSource_ReturnsTheDailyThatGeneratedTheReinforcement()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var today = DailyFixtures.Today;
+        var weakDaily = DailyFixtures.NewWeakDaily(weekly, 5, today);
+        var reinforcement = weekly.CreateDailyReinforcement(weakDaily.Id, today);
+
+        Assert.Equal(weakDaily.Id, weekly.FindReinforcementSource(reinforcement.Id)?.Id);
+    }
+
+    [Fact]
+    public void FindReinforcementSource_ReturnsNull_ForANonReinforcementOrUnknownDaily()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var today = DailyFixtures.Today;
+        var weakDaily = DailyFixtures.NewWeakDaily(weekly, 5, today);
+        weekly.CreateDailyReinforcement(weakDaily.Id, today);
+
+        Assert.Null(weekly.FindReinforcementSource(weakDaily.Id));
+        Assert.Null(weekly.FindReinforcementSource(Guid.NewGuid()));
+    }
+
     // Fase 11: IsModuleComplete/RequiresPublicationToUnlock.
 
     [Fact]

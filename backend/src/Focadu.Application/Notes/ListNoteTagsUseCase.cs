@@ -16,7 +16,7 @@ public class ListNoteTagsUseCase
 
     public async Task<IReadOnlyCollection<string>> ExecuteAsync(Guid userId, Guid courseId, CancellationToken cancellationToken = default)
     {
-        var notes = await _listNotesUseCase.ExecuteAsync(userId, courseId, from: null, to: null, searchText: null, tag: null, cancellationToken);
+        var notes = await _listNotesUseCase.ExecuteAsync(userId, courseId, from: null, to: null, searchText: null, tag: null, cancellationToken: cancellationToken);
 
         return notes
             .SelectMany(n => n.Tags)

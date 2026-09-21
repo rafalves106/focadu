@@ -84,9 +84,14 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 56 — Botão de sessão de reforço visível enquanto ela não for concluída** (21/09/2026).
+Última fase concluída: **Fase 57 — Reforço puxa as anotações do dia base dele** (21/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Reforço puxa as anotações do dia base (Fase 57, bug real visto ao vivo)**: no Resumo Falado de uma
+  sessão de reforço o painel "Suas anotações de hoje" aparecia vazio — ele buscava por data da Daily, e o
+  reforço é outra Daily (com a data do dia em que foi gerado); as notas ficam presas à Daily de origem.
+  Agora `GET /courses/{id}/notes?dailyId=` devolve a Daily pedida **mais a Daily base que gerou o reforço**
+  (`NoteDailyScope`), o modal vira "Anotações do dia base" e cada nota diz de qual dia veio. Ver `docs/fase-57/`.
 - **Botão de sessão de reforço sempre visível (Fase 56, pedido do dono)**: o único caminho até um reforço
   era o link da tela de conclusão da Daily de origem, que aparece uma vez só — se o aluno saísse dali ou o
   clique falhasse, perdia o acesso. Agora `GET /api/today` devolve `DailyStateDto.PendingReinforcementDailyId`

@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 56 - Botao de sessao de reforco visivel enquanto ela nao for concluida**.
+> Ultima fase que atualizou este documento: **Fase 57 - Reforco puxa as anotacoes do dia base dele**.
 
 ## Visao geral do projeto
 
@@ -888,7 +888,11 @@ que a UI mostra explicito, sem `Note` guardar isso. `ListNotesUseCase` (histico 
 "Caderninho") resolve os `DailyId` de toda a Enrollment via `IWeeklyRepository.
 GetByEnrollmentIdAsync` (mesmo grafo de `GetCourseDetailUseCase`) e filtra `Note` por esse
 conjunto - filtro por periodo/busca textual/tag acontece em memoria (volume por curso e pequeno,
-dezenas de Dailies), nao via query composta no banco. `ListNoteTagsUseCase` reaproveita
+dezenas de Dailies), nao via query composta no banco. **Filtro `dailyId` (Fase 57):** restringe as
+notas a uma sessao - a Daily pedida **e, se ela for um reforco, a Daily base que o gerou**
+(`NoteDailyScope.Resolve`, via `Weekly.FindReinforcementSource`, que segue `Daily.ReinforcementDailyId`
+da origem pro reforco); Daily fora da matricula do usuario vira 404 `daily_nao_encontrada`, nunca
+vaza nota de ninguem. `ListNoteTagsUseCase` reaproveita
 `ListNotesUseCase` sem filtro, so extrai tags distintas (autocomplete).
 
 **Frontend**: painel de captura rapida (`components/notebook/QuickNotePanel.tsx`), no sidebar de
@@ -908,8 +912,11 @@ contexto de uma Daily em andamento, sem endpoint novo.
 **Consulta no Resumo Falado (Fase 35, ver `secret/rascunhos/caderninho-no-resumo-falado.md`):**
 `VoiceSummaryActivity` ganhou o botao "📓 Ver minhas anotações de hoje", que abre
 `DailyNotesModal.tsx` (novo, so-leitura, mesmo chrome de `ContentPreviewModal`) listando as notas
-da Daily atual (`api.listNotes(courseId, {from: Daily.Date, to: Daily.Date})` - mesmo filtro de
-periodo que `NotebookTab` ja usa, sem endpoint novo). **So disponivel ANTES de comecar a gravar**
+da Daily atual (ate a Fase 56 por DATA: `api.listNotes(courseId, {from: Daily.Date, to: Daily.Date})`;
+**desde a Fase 57 por `dailyId`**, e num reforco o modal vira "Anotações do dia base" e mostra as
+notas do dia que gerou o reforco - a busca por data deixava o reforco sempre vazio, porque o reforco
+e outra Daily com a Date do dia em que foi gerado, e ainda vazava notas quando essa Date coincidia
+com a data agendada de uma Daily futura). **So disponivel ANTES de comecar a gravar**
 (`state === 'idle' | 'permission_denied'` no componente) - decisao deliberada: reler a propria nota
 pra relembrar antes de falar e legitimo, mas poder ler ela em voz alta DURANTE a gravacao
 esvaziaria o proposito da atividade (Score/Feedback avaliam recall real, ver "Resumo falado por
@@ -1206,7 +1213,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 POST | `/api/dailies/{dailyId}/notes` | `CreateNoteUseCase` (Fase 29) | 201 (`NoteDto`), 404 `daily_nao_encontrada`, 400 `nota_vazia`/`nota_muito_longa`/`tag_muito_longa`/`notas_tags_demais` |
 | 🔒 PUT | `/api/notes/{noteId}` | `EditNoteUseCase` (Fase 29) | 200 (`NoteDto`), 404 `nota_nao_encontrada`, 400 (mesmos codigos de validacao acima) |
 | 🔒 DELETE | `/api/notes/{noteId}` | `DeleteNoteUseCase` (Fase 29) | 204, 404 `nota_nao_encontrada` |
-| 🔒 GET | `/api/courses/{courseId}/notes?from=&to=&q=&tag=` | `ListNotesUseCase` (Fase 29) | 200 (`NoteDto[]`, mais recente primeiro), 404 `matricula_nao_encontrada` - todos os filtros opcionais |
+| 🔒 GET | `/api/courses/{courseId}/notes?from=&to=&q=&tag=&dailyId=` | `ListNotesUseCase` (Fase 29; `dailyId` na Fase 57) | 200 (`NoteDto[]`, mais recente primeiro), 404 `matricula_nao_encontrada`, 404 `daily_nao_encontrada` (so com `dailyId`) - todos os filtros opcionais; `dailyId` de um reforco inclui as notas do dia base |
 | 🔒 GET | `/api/courses/{courseId}/notes/tags` | `ListNoteTagsUseCase` (Fase 29) | 200 (`string[]`, tags distintas ja usadas pelo usuario neste curso) - autocomplete do campo de tags |
 | 🔒 POST | `/api/study-assistant/ask` | `AskStudyAssistantUseCase` (Fase 32, `History` na Fase 33) | 200 (`{answer}`), 400 `pergunta_obrigatoria`/`pergunta_muito_longa`, 502/503 (Groq) - sem `dailyId`/`weeklyId` na rota nem filtro por posse: `Context` vem pronto do frontend (o que ja esta na tela), nao busca nada por Id. `History` (opcional) e o transcript local do chat, clampado no servidor (ver secao "Suporte Rapido de IA" abaixo) |
 

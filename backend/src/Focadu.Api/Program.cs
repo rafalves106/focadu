@@ -713,11 +713,11 @@ api.MapDelete("/notes/{noteId}", async (ClaimsPrincipal principal, string noteId
 // Filtros opcionais na query string (from/to/q/tag) - binding automatico do minimal API, sem
 // RouteParsing (DateOnly/string ja implementam TryParse/sao string direto).
 api.MapGet("/courses/{courseId}/notes", async (
-        ClaimsPrincipal principal, string courseId, DateOnly? from, DateOnly? to, string? q, string? tag,
+        ClaimsPrincipal principal, string courseId, DateOnly? from, DateOnly? to, string? q, string? tag, Guid? dailyId,
         ListNotesUseCase useCase, CancellationToken ct) =>
     {
         var id = RouteParsing.RequireGuid(courseId, "courseId");
-        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, from, to, q, tag, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, from, to, q, tag, dailyId, ct));
     })
     .RequireAuthorization()
     .WithName("ListNotes");

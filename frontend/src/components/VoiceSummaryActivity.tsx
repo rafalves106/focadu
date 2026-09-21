@@ -259,7 +259,7 @@ export function VoiceSummaryActivity({
           )}
           {(state === 'idle' || state === 'permission_denied') && weekly && (
             <button type="button" onClick={() => setShowNotes(true)} className="text-xs text-muted hover:text-primary">
-              📓 Ver minhas anotações de hoje
+              {daily.isReinforcement ? '📓 Ver as anotações do dia base' : '📓 Ver minhas anotações de hoje'}
             </button>
           )}
         </div>
@@ -325,7 +325,14 @@ export function VoiceSummaryActivity({
         />
       )}
 
-      {showNotes && weekly && <DailyNotesModal courseId={weekly.courseId} date={daily.date} onClose={() => setShowNotes(false)} />}
+      {showNotes && weekly && (
+        <DailyNotesModal
+          courseId={weekly.courseId}
+          dailyId={daily.id}
+          isReinforcement={daily.isReinforcement}
+          onClose={() => setShowNotes(false)}
+        />
+      )}
     </SessionLayout>
   );
 }

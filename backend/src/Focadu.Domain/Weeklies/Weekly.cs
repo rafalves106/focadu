@@ -274,6 +274,15 @@ public class Weekly : Entity
     }
 
     /// <summary>
+    /// Fase 57: a Daily "base" (de origem) de uma Daily de reforco desta Weekly - a que gerou o
+    /// reforco, ou seja, a que tem <see cref="Daily.ReinforcementDailyId"/> apontando pra ele. O
+    /// reforco sempre nasce na mesma Weekly da origem (ver CreateDailyReinforcement). Null quando
+    /// <paramref name="reinforcementDailyId"/> nao e um reforco desta Weekly.
+    /// </summary>
+    public Daily? FindReinforcementSource(Guid reinforcementDailyId) =>
+        _dailies.FirstOrDefault(d => d.ReinforcementDailyId == reinforcementDailyId);
+
+    /// <summary>
     /// Avalia o que pode ser feito com uma Daily desta Weekly, dado "hoje" e se ela e a
     /// "isNextInSequence" (a Daily nao-reforco de menor DayNumber ainda nao concluida em TODA a
     /// matricula - calculado fora daqui, ver DailySequencing na Application, ja que uma Weekly

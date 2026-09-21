@@ -10,6 +10,9 @@ namespace Focadu.Application.Notes;
 /// nota). Note não guarda CourseId (ver Note.cs) - resolve os DailyId da Enrollment do usuario
 /// pra esse Course (mesmo grafo já usado por GetCourseDetailUseCase) e filtra Notes por esse
 /// conjunto, em vez de fazer join no banco - volume por curso é pequeno (dezenas de Dailies).
+///
+/// Fase 57: `dailyId` opcional restringe as notas a uma sessao (a Daily + o dia base dela, se for
+/// reforco - ver NoteDailyScope) em vez do recorte por data que "Suas anotacoes de hoje" usava.
 /// </summary>
 public class ListNotesUseCase
 {
@@ -26,7 +29,7 @@ public class ListNotesUseCase
 
     public async Task<IReadOnlyCollection<NoteDto>> ExecuteAsync(
         Guid userId, Guid courseId, DateOnly? from, DateOnly? to, string? searchText, string? tag,
-        CancellationToken cancellationToken = default)
+        Guid? dailyId = null, CancellationToken cancellationToken = default)
     {
         var enrollment = await _enrollmentRepository.GetByUserAndCourseAsync(userId, courseId, cancellationToken)
             ?? throw new NotFoundException("matricula_nao_encontrada", "Usuario nao esta matriculado neste curso.");
@@ -37,6 +40,12 @@ public class ListNotesUseCase
         var notes = await _noteRepository.ListByUserAndDailyIdsAsync(userId, dailyContext.Keys.ToList(), cancellationToken);
 
         var query = notes.AsEnumerable();
+
+        if (dailyId is { } scopedDailyId)
+        {
+            var scope = NoteDailyScope.Resolve(weeklies, scopedDailyId);
+            query = query.Where(n => scope.Contains(n.DailyId));
+        }
 
         if (from is { } fromDate)
             query = query.Where(n => dailyContext[n.DailyId].Date >= fromDate);
