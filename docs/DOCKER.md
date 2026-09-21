@@ -15,8 +15,8 @@ Os dois precisam estar clonados lado a lado no host, com `secret/` sendo literal
 `focadu-secret` dentro da pasta `secret/` do checkout de `focadu`:
 
 ```
-C:\Servidor\focadu\           <- clone de rafalves106/focadu, branch main
-C:\Servidor\focadu\secret\    <- clone de rafalves106/focadu-secret, branch main
+/Users/falves/Dev/Servidor/focadu/          <- clone de rafalves106/focadu, branch main
+/Users/falves/Dev/Servidor/focadu/secret/   <- clone de rafalves106/focadu-secret, branch main
 ```
 
 Note que `secret/` é sempre a branch `main` de `focadu-secret` (ver
@@ -100,38 +100,49 @@ normalmente; só o provisionamento automático de repositório na matrícula fic
 Dois repositórios, dois workflows, convergindo no mesmo host:
 
 **`focadu/.github/workflows/ci.yml`** — build+test do backend (.NET) e lint+build do frontend
-(Node), em todo push/PR pra `main`/`develop`.
+(Node), em todo push/PR pra `main`.
 
 **`focadu/.github/workflows/deploy.yml`** — dispara via `workflow_run` assim que o CI acima
 termina com sucesso (só em push, nunca em PR) **na branch `main`** — produção é o único ambiente
-de deploy; um push em `develop` roda o CI, mas não dispara deploy. O workflow
+de deploy. O workflow
 atualiza o código (`git reset --hard`) tanto no checkout do repo quanto no `secret/`, sobe a stack
 (`docker compose up -d --build`), roda o seed (idempotente) e valida com um healthcheck HTTP no
 frontend.
+
+> **Atenção:** o `git reset --hard` roda no próprio diretório de trabalho
+> (`/Users/falves/Dev/Servidor/focadu`), que neste Mac é o checkout de produção *e* onde se
+> desenvolve. Edição não commitada em arquivo versionado é **descartada** no deploy: commite (ou
+> faça stash) antes de dar push na `main`. O mesmo vale para o `secret/` no push do `focadu-secret`.
 
 **`focadu-secret/.github/workflows/deploy.yml`** (no OUTRO repositório) — dispara em push na
 branch `main` de `focadu-secret`. Atualiza o `secret/` do checkout de produção e reinicia +
 reseeda o backend — sem rebuild de imagem, já que `secret/` é bind mount.
 
-### Registrando o runner self-hosted (fazer quando a máquina Windows + Docker Desktop estiver pronta)
+### Runners self-hosted (macOS)
 
-Mesmo runner físico (`falveshub-server`) atende os dois repositórios — precisa ser registrado
-**em cada um** separadamente:
+O host de produção é este Mac (Apple Silicon). O GitHub não compartilha runner entre repositórios de
+conta pessoal, então há **um runner por repositório**, todos na mesma máquina, em
+`/Users/falves/actions-runners/<repo>/`. Para o Focadu são dois, `falveshub-server-focadu` e
+`falveshub-server-focadu-secret`, ambos com as labels `self-hosted`, `macOS`, `ARM64` e
+`falveshub-server` (o `runs-on` dos workflows é `[self-hosted, macOS, falveshub-server]`).
 
-Em cada repositório (`rafalves106/focadu` e `rafalves106/focadu-secret`):
+Cada runner roda como serviço `launchd` (`actions.runner.rafalves106-<repo>.falveshub-server-<repo>`,
+plist em `~/Library/LaunchAgents`). Por ser um LaunchAgent do usuário, ele só sobe com a sessão do
+usuário aberta.
 
-1. GitHub → **Settings → Actions → Runners → New self-hosted runner**.
-2. Escolher **Windows**, seguir os comandos de download/configuração que o GitHub mostra na tela
-   (roda `config.cmd` com o token gerado ali).
-3. Quando perguntado pelas **labels**, adicionar exatamente estas três (nessa ordem não importa,
-   mas os três nomes precisam bater com o `runs-on` dos workflows): `self-hosted`, `Windows`,
-   `falveshub-server`.
-4. Instalar como serviço Windows (opção oferecida no fim do `config.cmd`) pra sobreviver a
-   reinício da máquina, em vez de rodar `run.cmd` numa janela aberta.
+Para registrar um runner novo, em cada repositório (`rafalves106/focadu` e
+`rafalves106/focadu-secret`):
+
+1. GitHub → **Settings → Actions → Runners → New self-hosted runner**, escolher **macOS / ARM64** e
+   seguir os comandos de download que o GitHub mostra, dentro de `/Users/falves/actions-runners/<repo>/`.
+2. Configurar com `./config.sh --url https://github.com/rafalves106/<repo> --token <token>
+   --labels falveshub-server --name falveshub-server-<repo>`. As labels `self-hosted`, `macOS` e
+   `ARM64` o GitHub adiciona sozinho; só `falveshub-server` é nossa e precisa bater com o `runs-on`.
+3. Instalar como serviço: `./svc.sh install && ./svc.sh start`.
 
 ### Antes do primeiro deploy automático
 
-- Criar o diretório `C:\Servidor\focadu` no host, com o clone de `focadu` (branch `main`) +
+- Criar o diretório `/Users/falves/Dev/Servidor/focadu` no host, com o clone de `focadu` (branch `main`) +
   `secret/` clonado dentro.
 - Criar o `.env` (nunca commitado) com os valores reais.
 - Rodar `docker compose up -d --build` manualmente uma primeira vez, pra validar que a stack

@@ -84,9 +84,15 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 52 — Código inline (crase) no renderizador de Texto Cru** (21/09/2026).
+Última fase concluída: **Fase 53 — Remove a branch develop e corrige as docs do host (macOS)** (21/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Sem `develop` e docs do host corrigidas (Fase 53)**: a branch `develop` foi apagada nos repos
+  `focadu` e `focadu-secret` (nada exclusivo nelas) e saiu do `ci.yml`, que agora roda só em `main`.
+  As docs (`DOCKER.md`, `ARQUITETURA.md`, `.env.example`) passaram a descrever o host real — este Mac,
+  runners macOS em `/Users/falves/actions-runners/<repo>/`, pasta `/Users/falves/Dev/Servidor/focadu` —
+  em vez de Windows. `DOCKER.md` ganhou o aviso de que o deploy faz `git reset --hard` no próprio
+  diretório de trabalho (edição não commitada é perdida) — ver `docs/fase-53/`.
 - **Código inline (crase) no Texto Cru (Fase 52)**: mesma família da Fase 51 — o `MarkdownBlock`
   mostrava as crases literais (`client_secret` aparecia com elas). `renderInline` agora renderiza
   código inline como `<code>` monoespaçado (o miolo é sempre texto puro, então `*`/`**` de dentro de
@@ -99,14 +105,14 @@ Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` corr
   tela. `renderInline` agora renderiza `*itálico*`, itálico dentro de negrito e `***negrito+itálico***`,
   com regra mais restrita que o CommonMark (o texto tem muito `*` que não é ênfase: `{{7*7}}`,
   `"Resource": "*"`, `*.exemplo.com`). Vale também pro Caderninho de Anotações — ver `docs/fase-51/`.
-- **Sem homologação (Fases 49 e 50)**: o ambiente `focadu-hml` (branch `develop`) foi
+- **Sem homologação (Fases 49, 50 e 53)**: o ambiente `focadu-hml` (branch `develop`) foi
   descontinuado em 17/09/2026. A Fase 49 tirou o mapeamento de `develop` do `deploy.yml`; a
   Fase 50 removeu o que sobrava: `docker-compose.homolog.yml` e as instruções, portas e
   variáveis de homologação em `docs/DOCKER.md`, `.env.example` e `docs/ARQUITETURA.md`.
-  Produção é o único ambiente. A branch remota `develop` ainda existe (o `ci.yml` roda testes
-  nela, sem deploy) — removê-la é decisão à parte. Os `docs/fase-N/` antigos que citam
-  homologação são histórico imutável e não foram editados — ver `docs/fase-49/` e
-  `docs/fase-50/`.
+  Produção é o único ambiente. A Fase 53 apagou a branch remota `develop` (nos repos `focadu` e
+  `focadu-secret`) e a tirou do `ci.yml`. Os `docs/fase-N/` antigos que citam
+  homologação são histórico imutável e não foram editados — ver `docs/fase-49/`,
+  `docs/fase-50/` e `docs/fase-53/`.
 - **Guarda de idioma nas analogias (Fase 48, bug real visto ao vivo)**: logo após o deploy da Fase
   47 o modelo devolveu as analogias do dia 5 em inglês, e o cache nunca é reavaliado. Agora
   `GroqAnalogyGenerationService` rejeita resposta com cara de inglês (nada é gravado, a leitura abre
@@ -188,8 +194,8 @@ Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` corr
   automaticamente no boot da Api (antes só manual via `dotnet ef database update`). Dois
   workflows do GitHub Actions (`focadu/.github/workflows/deploy.yml` e
   `focadu-secret/.github/workflows/deploy.yml`) automatizam o deploy em runner self-hosted
-  próprio (`falveshub-server`) — guia prático completo em `docs/DOCKER.md`. Runner ainda não
-  registrado (depende da máquina Windows + Docker Desktop de destino ficar pronta).
+  próprio (`falveshub-server`) — guia prático completo em `docs/DOCKER.md`. Runners macOS já
+  registrados: o deploy automático roda neste Mac.
 - **Avaliação de Resumo Falado corrige a transcrição do Whisper antes de avaliar (Fase 39, bug
   real relatado ao vivo)**: erro de reconhecimento de fala (termo técnico deturpado foneticamente)
   não derruba mais a nota injustamente — a IA corrige o que é claramente ruído de transcrição

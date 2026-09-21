@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 52 - Codigo inline (crase) no renderizador de Texto Cru**.
+> Ultima fase que atualizou este documento: **Fase 53 - Remove a branch develop e corrige as docs do host (macOS)**.
 
 ## Visao geral do projeto
 
@@ -2116,20 +2116,19 @@ resumo-implementacao-fase-40.md` pra mais detalhe.
 
 **CI/CD (dois repositorios, dois gatilhos):**
 - `focadu/.github/workflows/ci.yml`: build+test do backend (.NET) e lint+build do frontend
-  (Node), em push/PR pra `main`/`develop`.
+  (Node), em push/PR pra `main`.
 - `focadu/.github/workflows/deploy.yml`: dispara via `workflow_run` apos o CI passar (so em push,
-  nunca em PR) **so na branch `main`** (producao e o unico ambiente de deploy - push em
-  `develop` ainda roda o CI, sem deploy), `git reset --hard` no path do codigo E no `secret/`,
+  nunca em PR) **so na branch `main`** (producao e o unico ambiente de deploy), `git reset --hard` no path do
+  codigo E no `secret/` (o mesmo diretorio onde se desenvolve: edicao nao commitada e perdida),
   `docker compose up -d --build`, roda o seed (idempotente, seguro toda vez), healthcheck HTTP no
   frontend.
 - `focadu-secret/.github/workflows/deploy.yml` (repo separado, so branch `main`): `git reset
   --hard` no `secret/` do checkout de producao, restart + seed do backend (sem rebuild de imagem,
   ja que `secret/` e bind mount).
-- Runner: `[self-hosted, Windows, falveshub-server]`, mesmo runner fisico registrado nos dois
-  repositorios (registro em si e passo manual, feito quando a maquina Windows estiver pronta - ver
-  `docs/DOCKER.md`).
-- Convencao de pasta no host: `C:\Servidor\focadu` (producao, branch `main`), com `secret\` dentro
-  como clone de `focadu-secret`.
+- Runner: `[self-hosted, macOS, falveshub-server]` (ARM64), um por repositorio, todos neste Mac em
+  `/Users/falves/actions-runners/<repo>/` como servico launchd - ver `docs/DOCKER.md`.
+- Convencao de pasta no host: `/Users/falves/Dev/Servidor/focadu` (producao, branch `main`), com
+  `secret/` dentro como clone de `focadu-secret`.
 
 **Fuso horario do container (Fase 43, bug real relatado ao vivo):** o container do backend roda
 o relogio do SO em UTC por padrao - sem nenhuma variavel `TZ` setada, `DateTime.Now` (usado por
