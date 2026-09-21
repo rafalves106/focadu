@@ -84,9 +84,15 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 51 — Itálico no renderizador de Texto Cru** (21/09/2026).
+Última fase concluída: **Fase 52 — Código inline (crase) no renderizador de Texto Cru** (21/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Código inline (crase) no Texto Cru (Fase 52)**: mesma família da Fase 51 — o `MarkdownBlock`
+  mostrava as crases literais (`client_secret` aparecia com elas). `renderInline` agora renderiza
+  código inline como `<code>` monoespaçado (o miolo é sempre texto puro, então `*`/`**` de dentro de
+  crase nunca viram itálico/negrito), a crase dupla (a forma Markdown de escrever uma crase literal,
+  Dia 18) e os títulos `###`/`####` passam por `renderInline` (4 títulos dos dias 21 e 22 têm código).
+  Vale também pro Caderninho — ver `docs/fase-52/`.
 - **Itálico no Texto Cru (Fase 51, bug real visto ao vivo)**: a reescrita pedagógica das 60 leituras
   (agente `editor-pedagogico-websec`) passou a usar `*sigla*` em 317 trechos (antes: 7), mas o
   `MarkdownBlock` só renderizava `**negrito**` e `[link](url)` — os asteriscos apareciam literais na

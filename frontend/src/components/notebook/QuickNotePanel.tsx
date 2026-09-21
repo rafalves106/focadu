@@ -56,7 +56,7 @@ export function QuickNotePanel({ dailyId, courseId }: { dailyId: string; courseI
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder="Anote um insight, dúvida ou resumo desta aula (markdown: **negrito**, *itálico*, - lista, [link](url))..."
+        placeholder="Anote um insight, dúvida ou resumo desta aula (markdown: **negrito**, *itálico*, `código`, - lista, [link](url))..."
         rows={5}
         className="w-full resize-none rounded-xl border border-stroke bg-base p-3 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
       />

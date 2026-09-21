@@ -2,11 +2,11 @@ import type { ReactNode } from 'react';
 import { splitFences } from '../../lib/markdown';
 import { DiagramBlock } from './DiagramBlock';
 
-// Inline: "**negrito**", "*italico*" e "[texto](url)" - unica sintaxe inline suportada (Fase 29,
-// Caderninho de Anotacoes: o aluno escreve negrito/link de verdade nas notas, ver secret/rascunhos/
-// caderninho-de-anotacoes.md). O italico entrou na Fase 51: a leitura reescrita pelo agente
-// editor-pedagogico-websec passou a usar "*sigla*" em centenas de trechos e o asterisco aparecia
-// literal na tela.
+// Inline: "**negrito**", "*italico*", "`codigo`" e "[texto](url)" - unica sintaxe inline suportada
+// (Fase 29, Caderninho de Anotacoes: o aluno escreve negrito/link de verdade nas notas, ver
+// secret/rascunhos/caderninho-de-anotacoes.md). O italico entrou na Fase 51: a leitura reescrita
+// pelo agente editor-pedagogico-websec passou a usar "*sigla*" em centenas de trechos e o asterisco
+// aparecia literal na tela.
 //
 // O italico e mais restrito que o CommonMark de proposito: o texto curado tem muito "*" que NAO e
 // enfase (wildcard "*.exemplo.com", "SELECT *", "{{7*7}}", "Resource": "*"). Por isso o "*" de
@@ -17,8 +17,13 @@ import { DiagramBlock } from './DiagramBlock';
 // O "**" de fechamento do negrito nao pode ser seguido de outro "*" (`(?!\*)`): sem isso,
 // "***termo***" (negrito+italico) fecharia o negrito nos 2 primeiros "*" e sobraria um "*" solto.
 // Assim ele fecha no ultimo par e o miolo "*termo*" cai na recursao de renderInline.
+//
+// Codigo inline "`x`" (Fase 52): o texto curado usa crase pra identificadores (`client_secret`,
+// `{{7*7}}`) e ela aparecia literal. O miolo do codigo e texto puro, nunca reprocessado: e isso que
+// mantem "*" e "**" de dentro de crase (wildcard, SELECT *, **kwargs) fora do italico/negrito.
+// Crase dupla ("`` ` ``", o jeito de escrever uma crase literal, Dia 18) tambem e codigo.
 const INLINE_PATTERN =
-  /\*\*(.+?)\*\*(?!\*)|\[([^\]]+)\]\(([^)\s]+)\)|\*(?![\s*])([^*`\n]*?[^\s*`])\*(?![\w*])/g;
+  /\*\*(.+?)\*\*(?!\*)|\[([^\]]+)\]\(([^)\s]+)\)|\*(?![\s*])([^*`\n]*?[^\s*`])\*(?![\w*])|``((?:[^`\n]|`(?!`))+?)``|`([^`\n]+)`/g;
 
 function renderInline(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
@@ -28,12 +33,18 @@ function renderInline(text: string): ReactNode[] {
   for (const match of text.matchAll(INLINE_PATTERN)) {
     if (match.index > lastIndex) nodes.push(text.slice(lastIndex, match.index));
 
-    const [, boldText, linkText, linkUrl, italicText] = match;
+    const [, boldText, linkText, linkUrl, italicText, doubleCodeText, codeText] = match;
     if (boldText !== undefined) {
       // Recursivo: "**Terminacao TLS (*TLS Offloading*):**" tem italico dentro do negrito.
       nodes.push(<strong key={key++}>{renderInline(boldText)}</strong>);
     } else if (italicText !== undefined) {
       nodes.push(<em key={key++}>{italicText}</em>);
+    } else if (doubleCodeText !== undefined || codeText !== undefined) {
+      nodes.push(
+        <code key={key++} className="rounded border border-stroke bg-base px-1 font-mono text-[0.85em] text-primary">
+          {doubleCodeText !== undefined ? doubleCodeText.trim() : codeText}
+        </code>,
+      );
     } else {
       nodes.push(
         <a key={key++} href={linkUrl} target="_blank" rel="noreferrer" className="text-accent underline">
@@ -51,9 +62,9 @@ function renderInline(text: string): ReactNode[] {
 
 /**
  * Renderiza um bloco de Texto Cru (markdown minimo - titulos "###"/"####", listas "- item", e
- * negrito/italico/link inline dentro de paragrafos/itens, ver renderInline acima). Sem lib de markdown
- * (nenhuma no projeto) - so `#### Titulo` e `- item` viravam texto cru na tela (ver bug reportado
- * ao vivo), o resto ja era paragrafo simples de verdade.
+ * negrito/italico/codigo/link inline dentro de titulos/paragrafos/itens, ver renderInline acima).
+ * Sem lib de markdown (nenhuma no projeto) - so `#### Titulo` e `- item` viravam texto cru na tela
+ * (ver bug reportado ao vivo), o resto ja era paragrafo simples de verdade.
  *
  * Fase 30: blocos cercados ("```") sao isolados ANTES do parser linha-a-linha (splitFences, ver
  * lib/markdown.ts - fence e multi-linha, nao da pra tratar no loop de baixo). "```diagrama" vira
@@ -116,7 +127,7 @@ export function MarkdownBlock({ text }: { text: string }) {
         flushList();
         blocks.push(
           <h3 key={blocks.length} className="text-lg font-semibold text-primary">
-            {subsection[1]}
+            {renderInline(subsection[1])}
           </h3>,
         );
         continue;
@@ -127,7 +138,7 @@ export function MarkdownBlock({ text }: { text: string }) {
         flushList();
         blocks.push(
           <h2 key={blocks.length} className="text-xl font-bold text-primary">
-            {title[1]}
+            {renderInline(title[1])}
           </h2>,
         );
         continue;
