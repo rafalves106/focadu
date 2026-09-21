@@ -60,11 +60,31 @@ function renderInline(text: string): ReactNode[] {
   return nodes;
 }
 
+// Item de lista com 1 nivel de aninhamento: e o que o texto curado usa (bullets indentados sob um
+// bullet - Dias 57/59, projeto da Semana 8 - ou sob um item numerado - Dia 3). Nivel 3+ nao existe no
+// conteudo e cai no mesmo nivel do 2 (o recuo so decide "e filho do ultimo item", nao a profundidade).
+interface ListItem {
+  text: string;
+  children: string[];
+}
+
+interface OpenList {
+  ordered: boolean;
+  start: number;
+  items: ListItem[];
+}
+
+// Recuo de 2+ espacos (ou tab) marca um sub-item - so os bullets "- " aninham, numerado indentado
+// continua item de topo.
+const INDENTED = /^(?: {2,}|\t)/;
+
 /**
- * Renderiza um bloco de Texto Cru (markdown minimo - titulos "###"/"####", listas "- item", e
- * negrito/italico/codigo/link inline dentro de titulos/paragrafos/itens, ver renderInline acima).
- * Sem lib de markdown (nenhuma no projeto) - so `#### Titulo` e `- item` viravam texto cru na tela
- * (ver bug reportado ao vivo), o resto ja era paragrafo simples de verdade.
+ * Renderiza um bloco de Texto Cru (markdown minimo - titulos "###"/"####", listas "- item" e
+ * "1. item" (com sub-bullets indentados), e negrito/italico/codigo/link inline dentro de
+ * titulos/paragrafos/itens, ver renderInline acima). Sem lib de markdown (nenhuma no projeto) - so
+ * `#### Titulo` e `- item` viravam texto cru na tela (ver bug reportado ao vivo), o resto ja era
+ * paragrafo simples de verdade. A lista numerada e o aninhamento entraram com o Projeto Semanal (Fase
+ * 58): as especificacoes dos 12 projetos usam os dois, e as leituras tambem (28 dias com "1."/"2.").
  *
  * Fase 30: blocos cercados ("```") sao isolados ANTES do parser linha-a-linha (splitFences, ver
  * lib/markdown.ts - fence e multi-linha, nao da pra tratar no loop de baixo). "```diagrama" vira
@@ -74,27 +94,60 @@ function renderInline(text: string): ReactNode[] {
  * deteccao de fence, ex: a requisicao HTTP crua do Dia 1).
  *
  * Compartilhado entre ReadingActivity (leitura da atividade), ContentPreviewModal (revisao via
- * sidebar, Fase 23) e o Caderninho de Anotacoes (Fase 29, notebook/) - mesmo Texto Cru, agora 3
- * lugares que precisam mostra-lo formatado (e, por extensao, os 3 ganham diagrama/bloco de codigo
- * de graca caso um aluno cole essa sintaxe numa nota pessoal - efeito esperado do componente
- * compartilhado, nao um caso especial).
+ * sidebar, Fase 23), o Caderninho de Anotacoes (Fase 29, notebook/) e a especificacao do Projeto
+ * Semanal (WeeklyProjectPage, Fase 58) - mesmo Texto Cru, agora 4 lugares que precisam mostra-lo
+ * formatado (e, por extensao, os 3 primeiros ganham diagrama/bloco de codigo de graca caso um aluno
+ * cole essa sintaxe numa nota pessoal - efeito esperado do componente compartilhado, nao um caso
+ * especial).
  */
 export function MarkdownBlock({ text }: { text: string }) {
   const blocks: ReactNode[] = [];
-  let listItems: string[] = [];
+  let list: OpenList | null = null;
 
   function flushList() {
-    if (listItems.length === 0) return;
+    if (!list) return;
+    const items = list.items.map((item, i) => (
+      <li key={i} className="text-sm leading-[1.5] text-secondary">
+        {renderInline(item.text)}
+        {item.children.length > 0 && (
+          <ul className="ml-4 mt-1.5 list-[circle] space-y-1">
+            {item.children.map((child, j) => (
+              <li key={j}>{renderInline(child)}</li>
+            ))}
+          </ul>
+        )}
+      </li>
+    ));
     blocks.push(
-      <ul key={blocks.length} className="ml-4 list-disc space-y-1.5">
-        {listItems.map((item, i) => (
-          <li key={i} className="text-sm leading-[1.5] text-secondary">
-            {renderInline(item)}
-          </li>
-        ))}
-      </ul>,
+      list.ordered ? (
+        <ol key={blocks.length} start={list.start} className="ml-5 list-decimal space-y-1.5">
+          {items}
+        </ol>
+      ) : (
+        <ul key={blocks.length} className="ml-4 list-disc space-y-1.5">
+          {items}
+        </ul>
+      ),
     );
-    listItems = [];
+    list = null;
+  }
+
+  // Acrescenta um item de topo, abrindo lista nova se nao ha uma aberta ou se a aberta e de outro
+  // tipo (bullet <-> numerada). `start` so vale pro 1o item: "<ol start>" numera o resto sozinho, e
+  // uma lista que a linha em branco quebrou retoma do numero que o texto escreveu (ex: "2.").
+  function addListItem(ordered: boolean, start: number, text: string) {
+    if (list && list.ordered !== ordered) flushList();
+    list ??= { ordered, start, items: [] };
+    list.items.push({ text, children: [] });
+  }
+
+  // Bullet indentado vira filho do ultimo item da lista aberta (bullet ou numerada). Sem lista
+  // aberta devolve false e o chamador o trata como item de topo, em vez de descartar o texto.
+  function addNestedItem(text: string): boolean {
+    const parent = list?.items.at(-1);
+    if (!parent) return false;
+    parent.children.push(text);
+    return true;
   }
 
   for (const segment of splitFences(text)) {
@@ -146,7 +199,13 @@ export function MarkdownBlock({ text }: { text: string }) {
 
       const bullet = line.match(/^-\s+(.+)/);
       if (bullet) {
-        listItems.push(bullet[1]);
+        if (!INDENTED.test(rawLine) || !addNestedItem(bullet[1])) addListItem(false, 1, bullet[1]);
+        continue;
+      }
+
+      const numbered = line.match(/^(\d+)\.\s+(.+)/);
+      if (numbered) {
+        addListItem(true, Number(numbered[1]), numbered[2]);
         continue;
       }
 

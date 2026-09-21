@@ -5,6 +5,7 @@ import { useApiResource } from '../api/useApiResource';
 import { WeeklyProjectStatus } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
+import { MarkdownBlock } from '../components/activities/MarkdownBlock';
 import { SessionTopBar, QuickQuestionOrb } from '../components/SessionShell';
 import { setStudyAssistantContext } from '../lib/studyAssistantContext';
 
@@ -111,9 +112,11 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
             <span className={`rounded-md px-3 py-1.5 text-xs font-semibold ${badge.className}`}>{badge.label}</span>
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-4">
             <h1 className="text-[28px] font-bold text-primary">Projeto da Semana {weekly.number}</h1>
-            <p className="whitespace-pre-line text-[15px] leading-relaxed text-secondary">{project.specText}</p>
+            {/* SpecText e Markdown curado (titulos "###", listas, negrito/codigo inline) - antes ia num
+                <p whitespace-pre-line> e a sintaxe aparecia crua na tela. Mesmo renderizador das leituras. */}
+            <MarkdownBlock text={project.specText} />
           </div>
 
           <div className="h-px bg-stroke" />

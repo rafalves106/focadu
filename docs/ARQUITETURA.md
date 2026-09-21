@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 57 - Reforco puxa as anotacoes do dia base dele**.
+> Ultima fase que atualizou este documento: **Fase 58 - Projeto Semanal renderiza Markdown (lista numerada e sub-bullets no MarkdownBlock)**.
 
 ## Visao geral do projeto
 
@@ -875,7 +875,8 @@ caminho ja existe via `Daily -> Weekly -> Enrollment -> Course` (mesmo principio
 `MarkdownBlock.tsx` no frontend, estendido nesta fase pra suportar `**negrito**`/`[texto](url)`
 inline, antes so tinha `###`/`####`/`- item`; `*italico*` entrou na Fase 51, com regra mais
 restrita que o CommonMark - ver a Fase 51; codigo inline em crase e formatacao inline nos titulos
-entraram na Fase 52); `Tags` e `List<string>` mapeado como `text[]` nativo
+entraram na Fase 52; lista numerada `1.` e sub-bullets indentados entraram na Fase 58, quando a
+especificacao do Projeto Semanal passou a usar o mesmo `MarkdownBlock`); `Tags` e `List<string>` mapeado como `text[]` nativo
 do Postgres, mesmo padrao de `User.Interests` (sem tabela associativa - tags sao livres, sem
 taxonomia pre-definida). Limites (`Focadu.Domain.Policies.NotePolicy`): `MaxContentLength` =
 20.000 chars, `MaxTagCount` = 10, `MaxTagLength` = 40; tags sao trim + dedupe case-insensitive
@@ -2579,7 +2580,9 @@ frontend/
                                    `data.catalog` direto (Fase 25: `catalogOverride`/`busyItemId`/
                                    `actionError`/`runAction` saíram - so existiam pra alimentar a
                                    aba Customizacao, que virou "em breve", ver CustomizationTab.tsx)
-      WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7)
+      WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7; a especificacao
+                                   renderiza via MarkdownBlock desde a Fase 58, antes era
+                                   texto corrido com a sintaxe crua)
       AdminContentPage.tsx       <- /admin/conteudo (autoria de CuratedContent, Fase 6) - navega
                                    com WeeklyTemplateId desde a Fase 13b (getCourseCurriculum/
                                    getWeeklyTemplate, sem exigir matricula)

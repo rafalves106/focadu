@@ -84,9 +84,16 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 57 — Reforço puxa as anotações do dia base dele** (21/09/2026).
+Última fase concluída: **Fase 58 — Projeto Semanal renderiza Markdown** (21/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Projeto Semanal renderiza Markdown (Fase 58, pedido do dono: 1º item de uma rodada de correções
+  visuais)**: a especificação do projeto era um `<p whitespace-pre-line>`, então `###`, `- item`,
+  `**negrito**` e crases apareciam crus, como texto corrido. Agora passa pelo `MarkdownBlock`, que ganhou
+  **lista numerada** (`1.`) e **sub-bullets indentados** — os 12 projetos usam os dois, e 28 dias de leitura
+  também (melhoram junto). Regressão conferida contra o componente antigo sobre todo o conteúdo curado (0
+  mudanças fora das sintaxes novas) e tela real das 12 semanas em Chrome. Ver `docs/fase-58/`, que também
+  lista o que ficou aberto (espaçamento dos títulos, título do projeto descartado no seed, padding em celular).
 - **Reforço puxa as anotações do dia base (Fase 57, bug real visto ao vivo)**: no Resumo Falado de uma
   sessão de reforço o painel "Suas anotações de hoje" aparecia vazio — ele buscava por data da Daily, e o
   reforço é outra Daily (com a data do dia em que foi gerado); as notas ficam presas à Daily de origem.
