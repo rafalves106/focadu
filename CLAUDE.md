@@ -84,9 +84,14 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 55 — Reforço fora da cota diária e projeto pendente bloqueia todas as semanas seguintes** (21/09/2026).
+Última fase concluída: **Fase 56 — Botão de sessão de reforço visível enquanto ela não for concluída** (21/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Botão de sessão de reforço sempre visível (Fase 56, pedido do dono)**: o único caminho até um reforço
+  era o link da tela de conclusão da Daily de origem, que aparece uma vez só — se o aluno saísse dali ou o
+  clique falhasse, perdia o acesso. Agora `GET /api/today` devolve `DailyStateDto.PendingReinforcementDailyId`
+  (reforço ainda não concluído) e o front mostra o botão no dashboard e nos avisos de "Hoje" bloqueado, até o
+  reforço ser concluído. Conferido em navegador real (Playwright) contra ambiente descartável. Ver `docs/fase-56/`.
 - **Reforço fora da cota e bloqueio de todas as semanas seguintes (Fase 55, duas decisões do dono)**:
   a conclusão de um reforço não gasta mais a cota de "1 Daily por dia" (só Dailies originais contam) —
   senão fazer o reforço antes da Daily do dia adiaria a Daily para amanhã. E "se existe um projeto

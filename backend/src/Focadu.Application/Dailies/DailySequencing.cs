@@ -31,6 +31,22 @@ internal static class DailySequencing
         FindNext(weeklies)?.Id == dailyId;
 
     /// <summary>
+    /// Fase 56 (pedido do dono, 21/09/2026): a Daily de REFORCO ainda nao concluida da matricula,
+    /// se houver - o cliente mostra um botao pra ela enquanto existir. Ate aqui o unico caminho
+    /// ate um reforco era o link da tela de conclusao da Daily de origem, que aparece uma vez so
+    /// (nem a trilha nem a semana listam reforcos): se o aluno saisse dali, ou tropecasse num erro
+    /// no clique, perdia o acesso. Pendente = qualquer Status diferente de Completed (Locked,
+    /// Available, InProgress). A que esta em andamento vem primeiro (e a que "/hoje" retoma); depois
+    /// a da Weekly mais antiga, e nela a de menor DayNumber.
+    /// </summary>
+    public static Daily? FindPendingReinforcement(IEnumerable<Weekly> weeklies) =>
+        weeklies
+            .OrderBy(w => w.Number)
+            .SelectMany(w => w.Dailies.Where(d => d.IsReinforcement && d.Status != DailyStatus.Completed).OrderBy(d => d.DayNumber))
+            .OrderBy(d => d.Status == DailyStatus.InProgress ? 0 : 1) // OrderBy do LINQ e estavel: preserva a ordem por Weekly/DayNumber acima
+            .FirstOrDefault();
+
+    /// <summary>
     /// Fase 54: as Dailies de todas as OUTRAS Weeklies da matricula - o que Weekly.
     /// EvaluateDailyAccess precisa pra aplicar "1 Daily por dia" e "1 em andamento por vez" na
     /// matricula inteira (uma Weekly sozinha so enxerga as proprias Dailies; bug real,

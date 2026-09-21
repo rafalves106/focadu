@@ -17,6 +17,7 @@ import { ReadingActivity } from '../components/ReadingActivity';
 import { VideoActivity } from '../components/VideoActivity';
 import { CompletionSummary } from '../components/CompletionSummary';
 import { ReinforcementIntroScreen } from '../components/ReinforcementIntroScreen';
+import { PendingReinforcementCard } from '../components/PendingReinforcementCard';
 import { setDailyPenalty } from '../lib/dailyPenaltyContext';
 
 // "Pino" do passo atual - so identifica QUAL atividade mostrar, nunca guarda uma copia dos dados
@@ -55,7 +56,7 @@ function resolveStep(daily: DailyStateDto, replayBaseline: ReplayBaseline): Step
  * erro generica em vez de avisar que a sessao do dia ja tinha acabado (bug real, corrigido junto
  * do backend em 2026-09-14).
  */
-function DailySessionBlockedNotice() {
+function DailySessionBlockedNotice({ pendingReinforcementDailyId }: { pendingReinforcementDailyId: string | null }) {
   const navigate = useNavigate();
 
   return (
@@ -63,8 +64,23 @@ function DailySessionBlockedNotice() {
       icon={<img src={checkIcon} alt="" className="h-12 w-auto" />}
       title="Sessão de hoje já concluída"
       description="Você já concluiu uma sessão hoje (inclusive se foi recuperando um dia atrasado) - o limite é 1 por dia. Volte amanhã para continuar."
+      extra={<PendingReinforcementSlot dailyId={pendingReinforcementDailyId} />}
       primaryAction={{ label: 'Voltar ao início', onClick: () => navigate('/start') }}
     />
+  );
+}
+
+/**
+ * Fase 56: botao de reforco dentro dos avisos de "Hoje" bloqueado - e exatamente onde o aluno cai
+ * depois de concluir a Daily do dia (cota gasta / semana esperando o projeto), e o reforco gerado por
+ * ela e a unica coisa que ele ainda pode fazer ali. Reforco nao consome nem e barrado pela cota diaria.
+ */
+function PendingReinforcementSlot({ dailyId }: { dailyId: string | null }) {
+  if (!dailyId) return null;
+  return (
+    <div className="w-full max-w-lg">
+      <PendingReinforcementCard dailyId={dailyId} />
+    </div>
   );
 }
 
@@ -75,7 +91,7 @@ function DailySessionBlockedNotice() {
  * projeto (bug real, 21/09/2026). Diferente de `DailySessionBlockedNotice`, "volte amanha" nao
  * resolve aqui - o que destrava e fechar a semana, entao o CTA leva pra ela.
  */
-function WeekClosurePendingNotice({ weeklyId }: { weeklyId: string }) {
+function WeekClosurePendingNotice({ weeklyId, pendingReinforcementDailyId }: { weeklyId: string; pendingReinforcementDailyId: string | null }) {
   const navigate = useNavigate();
 
   return (
@@ -83,6 +99,7 @@ function WeekClosurePendingNotice({ weeklyId }: { weeklyId: string }) {
       icon={<img src={checkIcon} alt="" className="h-12 w-auto" />}
       title="Semana concluída - falta o projeto"
       description="Você terminou todas as sessões desta semana. Envie o projeto semanal (e valide a publicação, quando pedida) para liberar a próxima semana."
+      extra={<PendingReinforcementSlot dailyId={pendingReinforcementDailyId} />}
       primaryAction={{ label: 'Ir para a semana', onClick: () => navigate(`/start?weekly=${weeklyId}`) }}
       secondaryAction={{ label: 'Voltar ao início', onClick: () => navigate('/start') }}
     />
@@ -312,8 +329,14 @@ export function TodayPage() {
   if (error?.status === 409) return <DailyRefusedNotice error={error} />;
   if (error) return <ApiErrorScreen error={error} onRetry={() => setAttempt((n) => n + 1)} />;
   if (!daily) return null;
-  if (daily.accessMode === DailyAccessMode.Blocked) return <DailySessionBlockedNotice />;
-  if (daily.accessMode === DailyAccessMode.WeekPendingClosure) return <WeekClosurePendingNotice weeklyId={daily.weeklyId} />;
+  if (daily.accessMode === DailyAccessMode.Blocked) {
+    return <DailySessionBlockedNotice pendingReinforcementDailyId={daily.pendingReinforcementDailyId} />;
+  }
+  if (daily.accessMode === DailyAccessMode.WeekPendingClosure) {
+    return (
+      <WeekClosurePendingNotice weeklyId={daily.weeklyId} pendingReinforcementDailyId={daily.pendingReinforcementDailyId} />
+    );
+  }
   if (!step) return null;
   if (completion) return <CompletionSummary result={completion} />;
   if (daily.isReinforcement && !reinforcementIntroDismissed) {

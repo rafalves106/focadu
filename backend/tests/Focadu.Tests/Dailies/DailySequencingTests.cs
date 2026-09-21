@@ -224,6 +224,69 @@ public class DailySequencingTests
         Assert.Null(DailySequencing.FindPendingClosureBefore(new[] { week1, week2, week3 }, week3));
     }
 
+    // Fase 56 (pedido do dono, 21/09/2026): botao de sessao de reforco visivel enquanto ela nao for
+    // concluida - o unico caminho ate o reforco era o link da tela de conclusao, que aparece uma
+    // vez so. FindPendingReinforcement e o que o servidor usa pra dizer "ha um reforco pendente".
+
+    [Fact]
+    public void FindPendingReinforcement_ReturnsNull_WhenThereIsNoReinforcement()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        DailyFixtures.NewDaily(weekly, 1, DailyFixtures.Today);
+
+        Assert.Null(DailySequencing.FindPendingReinforcement(new[] { weekly }));
+    }
+
+    [Fact]
+    public void FindPendingReinforcement_ReturnsTheReinforcement_WhileItIsNotCompleted()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var today = DailyFixtures.Today;
+        var weakDaily = DailyFixtures.NewWeakDaily(weekly, 1, today);
+        var reinforcement = weekly.CreateDailyReinforcement(weakDaily.Id, today);
+        weakDaily.Complete();
+
+        // Locked (nunca aberto) e InProgress (aberto e nao terminado) contam como pendente.
+        Assert.Equal(reinforcement.Id, DailySequencing.FindPendingReinforcement(new[] { weekly })?.Id);
+        reinforcement.Start();
+        Assert.Equal(reinforcement.Id, DailySequencing.FindPendingReinforcement(new[] { weekly })?.Id);
+    }
+
+    [Fact]
+    public void FindPendingReinforcement_ReturnsNull_OnceTheReinforcementIsCompleted()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var today = DailyFixtures.Today;
+        var weakDaily = DailyFixtures.NewWeakDaily(weekly, 1, today);
+        var reinforcement = weekly.CreateDailyReinforcement(weakDaily.Id, today);
+        weakDaily.Complete();
+        reinforcement.Start();
+        reinforcement.Complete();
+
+        Assert.Null(DailySequencing.FindPendingReinforcement(new[] { weekly }));
+    }
+
+    [Fact]
+    public void FindPendingReinforcement_LooksAcrossWeeklies_AndPrefersTheOneInProgress()
+    {
+        var week1 = DailyFixtures.NewWeekly(1);
+        var week2 = DailyFixtures.NewWeekly(2);
+        var today = DailyFixtures.Today;
+        var weak1 = DailyFixtures.NewWeakDaily(week1, 5, today);
+        var reinforcement1 = week1.CreateDailyReinforcement(weak1.Id, today);
+        weak1.Complete();
+        var weak2 = DailyFixtures.NewWeakDaily(week2, 6, today);
+        var reinforcement2 = week2.CreateDailyReinforcement(weak2.Id, today);
+        weak2.Complete();
+
+        // Nenhum aberto: a da semana mais antiga.
+        Assert.Equal(reinforcement1.Id, DailySequencing.FindPendingReinforcement(new[] { week2, week1 })?.Id);
+
+        // Um em andamento: esse vem primeiro (e o que "Hoje" tambem retoma).
+        reinforcement2.Start();
+        Assert.Equal(reinforcement2.Id, DailySequencing.FindPendingReinforcement(new[] { week2, week1 })?.Id);
+    }
+
     /// <summary>Weekly com 1 Daily ja concluida (todas as originais feitas) e o projeto/publicacao no ponto pedido - "fechar" a semana = projeto avaliado + publicacao validada.</summary>
     private static Weekly ClosableWeek(int number, bool projectEvaluated, bool published)
     {

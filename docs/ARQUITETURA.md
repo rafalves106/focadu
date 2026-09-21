@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 55 - Reforco fora da cota diaria e projeto pendente bloqueia TODAS as semanas seguintes**.
+> Ultima fase que atualizou este documento: **Fase 56 - Botao de sessao de reforco visivel enquanto ela nao for concluida**.
 
 ## Visao geral do projeto
 
@@ -246,7 +246,8 @@ tests/
     Dailies/DailySequencingTests.cs <- FindNext/FindInProgress/IsNext cruzando Weeklies (Fase 38b) -
                                        Weekly.GetDailyByDate (Fase 5) removido, sequencia
                                        substitui data; + DailiesOfOtherWeeklies/FindPendingClosureBefore
-                                       (Fase 54; regra transitiva na Fase 55)
+                                       (Fase 54; regra transitiva na Fase 55), + FindPendingReinforcement
+                                       (Fase 56)
     Weeklies/WeeklyTests.cs         <- + IsModuleComplete/RequiresPublicationToUnlock (Fase 11), +
                                        InitializeProject idempotencia (Fase 13), + acesso por
                                        isNextInSequence no lugar de Date (Fase 38b), +
@@ -1042,6 +1043,20 @@ DailyPenaltyThreshold`). Ao acumular `WeeklyWeakDaysThreshold` dias fracos ainda
 um `WeeklyReinforcement` anterior, `Weekly.TriggerWeeklyReinforcement` cria o registro
 correspondente.
 
+**Como o aluno chega ate um reforco (Fase 56).** Ate a Fase 55 o unico caminho era o link "Ir para a
+sessao de reforco" da `CompletionSummary` (tela de conclusao da Daily de origem), que aparece **uma
+vez so** - nem a trilha nem a semana listam reforcos (ambas filtram `IsReinforcement`). Se o aluno
+saisse dali, ou o clique falhasse (foi o caso da Fase 54), perdia o acesso. Agora
+`DailySequencing.FindPendingReinforcement` acha a Daily de reforco **nao concluida** da matricula
+(Status diferente de `Completed`; a `InProgress` primeiro, depois a da Weekly mais antiga) e
+`GetTodayUseCase` devolve o id em `DailyStateDto.PendingReinforcementDailyId` - **so em
+`GET /api/today`**, em qualquer `AccessMode` (inclusive `Blocked` e `WeekPendingClosure`); `null`
+nos demais endpoints e quando nao ha reforco pendente. O frontend mostra o botao
+(`PendingReinforcementCard`) no `StartDashboard`, acima do card de hoje, e dentro dos avisos de
+"Hoje" bloqueado da `TodayPage` (cota diaria gasta e semana esperando o projeto). Some sozinho
+quando a Daily de reforco e concluida. O texto vira "Continuar a sessao de reforco" quando o proprio
+alvo de hoje e o reforco em andamento (`daily.id === pendingReinforcementDailyId`). Sem endpoint novo.
+
 ### Publicacao publica e bloqueio de modulo (Fase 11)
 
 Implementa a filosofia central do produto (Documento Mestre, Secao 2.3 - "prova de evolucao
@@ -1207,7 +1222,8 @@ Os dois usam `Weekly.EvaluateDailyAccess` internamente e devolvem o **mesmo form
 Daily passada - quem diferencia "tela de estudo imersiva" de "resumo/gabarito" e o campo
 `AccessMode` no corpo da resposta (`Start`/`Resume`/`Replay` = editavel; `ReadOnly` = so
 consulta; `Blocked` = cota diaria ja gasta, `WeekPendingClosure` (Fase 54) = semana concluida
-faltando projeto/publicacao - os dois so vem de `/today`, sao "nada a rodar, so avisar"), nao um
+faltando projeto/publicacao - os dois so vem de `/today`, sao "nada a rodar, so avisar"; e
+`PendingReinforcementDailyId` (Fase 56), tambem so de `/today`, e o id do reforco ainda nao concluido), nao um
 shape de resposta diferente. Isso vale tambem para a resposta de
 `POST .../start` - ela retorna `DailyStateDto` direto, para o cliente sempre ter o estado
 atualizado sem precisar de uma segunda chamada. `POST .../complete` retorna um shape diferente

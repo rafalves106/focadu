@@ -8,6 +8,11 @@ namespace Focadu.Application.Dailies;
 /// e usado nos dois casos - quem decide como renderizar (editavel vs. so leitura) e o frontend,
 /// olhando para AccessMode. PenaltyThreshold (Fase 15) e sempre EvaluationPolicy.
 /// DailyPenaltyThreshold - exposto pro frontend nunca hardcodar o valor (PenaltyGauge).
+///
+/// PendingReinforcementDailyId (Fase 56): id da Daily de reforco ainda nao concluida da matricula,
+/// preenchido so por GET /api/today (GetTodayUseCase) - null em qualquer outro lugar e quando nao
+/// ha reforco pendente. Existe pra o cliente manter um botao "Ir para a sessao de reforco"
+/// visivel ate ela ser concluida (ver DailySequencing.FindPendingReinforcement).
 /// </summary>
 public record DailyStateDto(
     Guid Id,
@@ -19,7 +24,8 @@ public record DailyStateDto(
     int PenaltyPoints,
     int PenaltyThreshold,
     DailyAccessMode AccessMode,
-    IReadOnlyCollection<DailyActivityDto> Activities);
+    IReadOnlyCollection<DailyActivityDto> Activities,
+    Guid? PendingReinforcementDailyId = null);
 
 public record DailyActivityDto(
     Guid Id,

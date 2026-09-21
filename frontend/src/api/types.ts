@@ -140,6 +140,8 @@ export interface DailyStateDto {
   penaltyThreshold: number;
   accessMode: DailyAccessMode;
   activities: DailyActivityDto[];
+  /** Fase 56: id da Daily de reforco ainda nao concluida da matricula - so vem preenchido em GET /api/today (null nos demais e quando nao ha reforco pendente). Alimenta o botao "Ir para a sessao de reforco" (`PendingReinforcementCard`). */
+  pendingReinforcementDailyId: string | null;
 }
 
 export interface SubmitActivityResponseResult {

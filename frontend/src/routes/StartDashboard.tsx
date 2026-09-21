@@ -23,6 +23,7 @@ import { StreakLostModal } from '../components/gamification/StreakLostModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
 import { ProgressBar } from '../components/ProgressBar';
+import { PendingReinforcementCard } from '../components/PendingReinforcementCard';
 import { WeeklyProjectCard } from '../components/WeeklyProjectCard';
 import { WeeklyReinforcementBadge } from '../components/WeeklyReinforcementBadge';
 import { EmptyStateStartPage } from './EmptyStateStartPage';
@@ -124,6 +125,16 @@ export function StartDashboard() {
         <Link to={`/start?course=${course?.id ?? ''}&weekly=${weekly.id}`} className="self-start">
           <WeeklyReinforcementBadge />
         </Link>
+      )}
+
+      {/* Fase 56: botao de reforco visivel ate a sessao ser concluida (vem de GET /api/today). Fica
+          ACIMA do card de hoje de proposito - reforco e o que esta pendente do dia anterior. Quando o
+          proprio alvo de hoje e o reforco em andamento (daily.id === pendente), o texto vira "Continuar". */}
+      {daily.pendingReinforcementDailyId && (
+        <PendingReinforcementCard
+          dailyId={daily.pendingReinforcementDailyId}
+          resume={daily.id === daily.pendingReinforcementDailyId}
+        />
       )}
 
       <TodayCard daily={daily} weekly={weekly} weeksTotal={weeks.length} weeksCompleted={weeksCompleted} />

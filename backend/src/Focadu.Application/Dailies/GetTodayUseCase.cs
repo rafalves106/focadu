@@ -59,6 +59,10 @@ public class GetTodayUseCase
         var weekly = allWeeklies.First(w => w.Id == target.WeeklyId);
         var today = _clock.Today();
 
+        // Fase 56: vai em toda resposta deste atalho, seja qual for o modo de acesso - o botao de
+        // reforco precisa aparecer tambem quando "Hoje" esta Blocked / WeekPendingClosure.
+        var pendingReinforcementId = DailySequencing.FindPendingReinforcement(allWeeklies)?.Id;
+
         // Fase 54 (bug real, 21/09/2026): terminar a ultima Daily da Semana 1 fazia "/hoje" cair
         // direto na 1a Daily da Semana 2, sem o projeto da Semana 1 - que e o que vem depois. Se a
         // Weekly anterior (qualquer uma - Fase 55) ainda nao fechou (projeto nao avaliado / publicacao nao validada), nao ha
@@ -69,7 +73,8 @@ public class GetTodayUseCase
         if (pendingClosure is not null)
         {
             var lastOriginalDaily = pendingClosure.Dailies.Where(d => !d.IsReinforcement).MaxBy(d => d.DayNumber)!;
-            return DailyStateMapper.ToDto(lastOriginalDaily, DailyAccessMode.WeekPendingClosure);
+            return DailyStateMapper.ToDto(lastOriginalDaily, DailyAccessMode.WeekPendingClosure)
+                with { PendingReinforcementDailyId = pendingReinforcementId };
         }
 
         DailyAccessMode accessMode;
@@ -90,6 +95,6 @@ public class GetTodayUseCase
             accessMode = DailyAccessMode.Blocked;
         }
 
-        return DailyStateMapper.ToDto(target, accessMode);
+        return DailyStateMapper.ToDto(target, accessMode) with { PendingReinforcementDailyId = pendingReinforcementId };
     }
 }
