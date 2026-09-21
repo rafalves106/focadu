@@ -84,9 +84,15 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 50 — Remove os restos da homologação (focadu-hml)** (21/09/2026).
+Última fase concluída: **Fase 51 — Itálico no renderizador de Texto Cru** (21/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Itálico no Texto Cru (Fase 51, bug real visto ao vivo)**: a reescrita pedagógica das 60 leituras
+  (agente `editor-pedagogico-websec`) passou a usar `*sigla*` em 317 trechos (antes: 7), mas o
+  `MarkdownBlock` só renderizava `**negrito**` e `[link](url)` — os asteriscos apareciam literais na
+  tela. `renderInline` agora renderiza `*itálico*`, itálico dentro de negrito e `***negrito+itálico***`,
+  com regra mais restrita que o CommonMark (o texto tem muito `*` que não é ênfase: `{{7*7}}`,
+  `"Resource": "*"`, `*.exemplo.com`). Vale também pro Caderninho de Anotações — ver `docs/fase-51/`.
 - **Sem homologação (Fases 49 e 50)**: o ambiente `focadu-hml` (branch `develop`) foi
   descontinuado em 17/09/2026. A Fase 49 tirou o mapeamento de `develop` do `deploy.yml`; a
   Fase 50 removeu o que sobrava: `docker-compose.homolog.yml` e as instruções, portas e

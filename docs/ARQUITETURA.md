@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 50 - Remove os restos da homologacao (focadu-hml)**.
+> Ultima fase que atualizou este documento: **Fase 51 - Italico no renderizador de Texto Cru**.
 
 ## Visao geral do projeto
 
@@ -868,7 +868,8 @@ em `secret/rascunhos/caderninho-de-anotacoes.md` antes desta fase. `Note` e aggr
 caminho ja existe via `Daily -> Weekly -> Enrollment -> Course` (mesmo principio de `Referral`/
 `Enrollment`, sem navegacao de volta). `Content` e markdown livre (negrito/lista/link - ver
 `MarkdownBlock.tsx` no frontend, estendido nesta fase pra suportar `**negrito**`/`[texto](url)`
-inline, antes so tinha `###`/`####`/`- item`); `Tags` e `List<string>` mapeado como `text[]` nativo
+inline, antes so tinha `###`/`####`/`- item`; `*italico*` entrou na Fase 51, com regra mais
+restrita que o CommonMark - ver a Fase 51); `Tags` e `List<string>` mapeado como `text[]` nativo
 do Postgres, mesmo padrao de `User.Interests` (sem tabela associativa - tags sao livres, sem
 taxonomia pre-definida). Limites (`Focadu.Domain.Policies.NotePolicy`): `MaxContentLength` =
 20.000 chars, `MaxTagCount` = 10, `MaxTagLength` = 40; tags sao trim + dedupe case-insensitive

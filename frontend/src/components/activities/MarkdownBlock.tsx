@@ -2,11 +2,23 @@ import type { ReactNode } from 'react';
 import { splitFences } from '../../lib/markdown';
 import { DiagramBlock } from './DiagramBlock';
 
-// Inline: "**negrito**" e "[texto](url)" - unica sintaxe inline suportada (Fase 29, Caderninho de
-// Anotacoes: o aluno escreve negrito/link de verdade nas notas, ver secret/rascunhos/caderninho-
-// de-anotacoes.md). A curadoria (Texto Cru) nunca usou essa sintaxe ate aqui, entao isso nao muda
-// nada pro conteudo existente - so passa a reconhecer os 2 padroes se aparecerem.
-const INLINE_PATTERN = /\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)\s]+)\)/g;
+// Inline: "**negrito**", "*italico*" e "[texto](url)" - unica sintaxe inline suportada (Fase 29,
+// Caderninho de Anotacoes: o aluno escreve negrito/link de verdade nas notas, ver secret/rascunhos/
+// caderninho-de-anotacoes.md). O italico entrou na Fase 51: a leitura reescrita pelo agente
+// editor-pedagogico-websec passou a usar "*sigla*" em centenas de trechos e o asterisco aparecia
+// literal na tela.
+//
+// O italico e mais restrito que o CommonMark de proposito: o texto curado tem muito "*" que NAO e
+// enfase (wildcard "*.exemplo.com", "SELECT *", "{{7*7}}", "Resource": "*"). Por isso o "*" de
+// abertura nao pode ser seguido de espaco, o miolo nao pode ter crase (trecho de codigo) nem outro
+// "*", e o "*" de fechamento nao pode ser colado numa letra/digito. Sem lookbehind de proposito:
+// Safari < 16.4 nao parseia o regex e o bundle inteiro cairia.
+//
+// O "**" de fechamento do negrito nao pode ser seguido de outro "*" (`(?!\*)`): sem isso,
+// "***termo***" (negrito+italico) fecharia o negrito nos 2 primeiros "*" e sobraria um "*" solto.
+// Assim ele fecha no ultimo par e o miolo "*termo*" cai na recursao de renderInline.
+const INLINE_PATTERN =
+  /\*\*(.+?)\*\*(?!\*)|\[([^\]]+)\]\(([^)\s]+)\)|\*(?![\s*])([^*`\n]*?[^\s*`])\*(?![\w*])/g;
 
 function renderInline(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
@@ -16,9 +28,12 @@ function renderInline(text: string): ReactNode[] {
   for (const match of text.matchAll(INLINE_PATTERN)) {
     if (match.index > lastIndex) nodes.push(text.slice(lastIndex, match.index));
 
-    const [, boldText, linkText, linkUrl] = match;
+    const [, boldText, linkText, linkUrl, italicText] = match;
     if (boldText !== undefined) {
-      nodes.push(<strong key={key++}>{boldText}</strong>);
+      // Recursivo: "**Terminacao TLS (*TLS Offloading*):**" tem italico dentro do negrito.
+      nodes.push(<strong key={key++}>{renderInline(boldText)}</strong>);
+    } else if (italicText !== undefined) {
+      nodes.push(<em key={key++}>{italicText}</em>);
     } else {
       nodes.push(
         <a key={key++} href={linkUrl} target="_blank" rel="noreferrer" className="text-accent underline">
@@ -36,7 +51,7 @@ function renderInline(text: string): ReactNode[] {
 
 /**
  * Renderiza um bloco de Texto Cru (markdown minimo - titulos "###"/"####", listas "- item", e
- * negrito/link inline dentro de paragrafos/itens, ver renderInline acima). Sem lib de markdown
+ * negrito/italico/link inline dentro de paragrafos/itens, ver renderInline acima). Sem lib de markdown
  * (nenhuma no projeto) - so `#### Titulo` e `- item` viravam texto cru na tela (ver bug reportado
  * ao vivo), o resto ja era paragrafo simples de verdade.
  *
