@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 47 - Analogia personalizada mais realista (prompt do Groq)**.
+> Ultima fase que atualizou este documento: **Fase 48 - Guarda de idioma nas analogias personalizadas**.
 
 ## Visao geral do projeto
 
@@ -724,6 +724,15 @@ do Groq antes de adotar (ver `docs/fase-47/`). So vale pras analogias geradas da
 cache `PersonalizedAnalogy` nao e reavaliado - pra regenerar uma leitura ja vista, apagar a linha
 dela em `PersonalizedAnalogies` (as secoes, owned em `PersonalizedAnalogySections`, vao junto); sem
 endpoint pra isso.
+
+**Fase 48: guarda de idioma.** Logo apos o deploy da Fase 47 o modelo devolveu as 5 analogias do
+dia 5 em INGLES (ja registrado na Fase 38b como comportamento ocasional de `openai/gpt-oss-120b`);
+como o cache nunca e reavaliado, ficaria pra sempre. `GroqAnalogyGenerationService.ParseAnalogies`
+agora rejeita a resposta se qualquer analogia parecer ingles (`LooksEnglish`: 3+ palavras funcionais
+so do ingles E mais que as do portugues) com `ExternalServiceException("analogias_ia_idioma_invalido")`
+- mesmo tratamento de JSON/contagem invalidos: nada e gravado, a leitura abre sem analogias dessa vez
+e a proxima abertura tenta de novo. A mensagem do aluno tambem termina reforçando "em portugues do
+Brasil". Sem retry automatico (uma 2a chamada custa ~3k tokens do limite gratuito de 8k/min do Groq).
 
 **Fase 27: personalizacao estendida pra avaliacao de voz + rascunho de LinkedIn.** A Fase 21 so
 cobria Leitura - `secret/MESTRE.md` secao 12 ainda listava "nenhum outro prompt de IA consome o

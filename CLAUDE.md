@@ -84,9 +84,14 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 47 — Analogia personalizada mais realista (prompt do Groq)** (21/09/2026).
+Última fase concluída: **Fase 48 — Guarda de idioma nas analogias personalizadas** (21/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Guarda de idioma nas analogias (Fase 48, bug real visto ao vivo)**: logo após o deploy da Fase
+  47 o modelo devolveu as analogias do dia 5 em inglês, e o cache nunca é reavaliado. Agora
+  `GroqAnalogyGenerationService` rejeita resposta com cara de inglês (nada é gravado, a leitura abre
+  sem analogias e a próxima abertura tenta de novo). Só entra em produção com o deploy do backend —
+  ver `docs/fase-48/`.
 - **Analogia "Pra você" sem contexto forçado (Fase 47)**: o interesse/hobby do aluno deixou de ser
   o eixo obrigatório da analogia gerada pela IA — agora só entra quando reproduz o mecanismo da
   seção elemento por elemento; senão, cenário universal do cotidiano (correio, portaria, chaves…).

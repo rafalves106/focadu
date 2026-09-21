@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
 
@@ -132,11 +133,12 @@ public class GroqAnalogyGenerationService : IAnalogyGenerationService
             notes +
             $"Seções do texto (na ordem):\n\n{sections}" +
             $"Escreva uma analogia para cada uma das {request.Sections.Count} seções acima, nessa ordem. " +
-            "Em cada seção, prefira um cenário universal do cotidiano, a menos que um interesse reproduza o mecanismo fielmente.";
+            "Em cada seção, prefira um cenário universal do cotidiano, a menos que um interesse reproduza o mecanismo fielmente. " +
+            "Escreva todas as analogias em português do Brasil.";
     }
 
     /// <summary>Nunca inventa/completa analogias faltando se a IA responder fora do formato ou com a quantidade errada - ExternalServiceException, mesma decisao de GroqContentEvaluationService.</summary>
-    private static IReadOnlyList<string> ParseAnalogies(string? rawContent, int expectedCount)
+    internal static IReadOnlyList<string> ParseAnalogies(string? rawContent, int expectedCount)
     {
         if (string.IsNullOrWhiteSpace(rawContent))
         {
@@ -162,7 +164,36 @@ public class GroqAnalogyGenerationService : IAnalogyGenerationService
                 $"O servico de geracao de analogias retornou uma quantidade inesperada (esperava {expectedCount}).");
         }
 
+        // Fase 48: o modelo as vezes ignora "responda em portugues" e devolve tudo em ingles (visto ao
+        // vivo no dia 5, e ja registrado na Fase 38b). Como PersonalizedAnalogy e gravado uma vez e nunca
+        // reavaliado, uma resposta em ingles ficaria pra sempre - entao e rejeitada aqui: nada e gravado,
+        // a leitura abre sem analogias dessa vez (GetCuratedContentUseCase captura a excecao) e a proxima
+        // abertura tenta de novo.
+        if (parsed.Analogies.Any(LooksEnglish))
+        {
+            throw new ExternalServiceException(
+                "analogias_ia_idioma_invalido",
+                "O servico de geracao de analogias respondeu em ingles - descartado, nada foi gravado em cache.");
+        }
+
         return parsed.Analogies;
+    }
+
+    // Palavras funcionais que so existem em ingles. Deliberadamente sem "a", "as", "in", "on", "it", "an"
+    // (existem em portugues ou aparecem em termos tecnicos) - termos como "man-in-the-middle" contam no
+    // maximo 1, e o detector so dispara com 3 ou mais E mais que as palavras funcionais do portugues.
+    private static readonly Regex EnglishFunctionWords = new(
+        @"\b(the|and|is|are|of|to|with|that|which|from|when|where|only|every|each|any|into|its|like|just|not)\b",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex PortugueseFunctionWords = new(
+        @"\b(de|que|o|os|e|do|da|dos|das|em|um|uma|para|com|não|por|se|na|no|ao|é)\b",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    internal static bool LooksEnglish(string text)
+    {
+        var english = EnglishFunctionWords.Matches(text).Count;
+        return english >= 3 && english > PortugueseFunctionWords.Matches(text).Count;
     }
 
     private record GroqAnalogiesPayload(List<string>? Analogies);
