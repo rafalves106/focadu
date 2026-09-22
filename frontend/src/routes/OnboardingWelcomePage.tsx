@@ -32,7 +32,7 @@ export function OnboardingWelcomePage() {
   async function handleSkip() {
     setSkipping(true);
     try {
-      await api.completeProfile([], null);
+      await api.completeProfile([], null, []);
       navigate('/selecionar-curso');
     } finally {
       setSkipping(false);

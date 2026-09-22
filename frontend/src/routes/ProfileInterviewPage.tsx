@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
+import { PROJECT_LANGUAGE_NAMES, ProjectLanguage } from '../api/types';
 import { InterestChip } from '../components/onboarding/InterestChip';
 import { OnboardingStepper } from '../components/onboarding/OnboardingStepper';
 import { useAuth } from '../contexts/useAuth';
@@ -11,6 +12,12 @@ import { useAuth } from '../contexts/useAuth';
 const INTEREST_OPTIONS = [
   'Cinema', 'Séries', 'Games', 'Música', 'Esportes', 'Anime', 'Livros', 'Culinária', 'Viagens', 'Artes', 'Natureza', 'Tecnologia',
 ];
+
+// Fase 59 (piloto Semana 1): linguagens do Projeto Semanal - lista fechada, diferente de
+// INTEREST_OPTIONS (que e livre/nao-exaustiva). Opcional aqui, igual aos interesses ("fica a
+// vontade pra pular") - a WeeklyProjectPage e quem exige a escolha, na hora que o projeto de fato
+// precisa dela (decisao do dono).
+const LANGUAGE_OPTIONS = [ProjectLanguage.Python, ProjectLanguage.JavaScript];
 
 /**
  * `/onboarding/perfil` - passo 2/3 (Fase 13b). Sem node Figma proprio validado nesta fase (so
@@ -24,11 +31,12 @@ const INTEREST_OPTIONS = [
  * seguir pra Selecao de Curso.
  */
 export function ProfileInterviewPage() {
-  const { user } = useAuth();
+  const { user, setCurrentUser } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isEditing = searchParams.get('edit') !== null;
   const [interests, setInterests] = useState<string[]>(user?.interests ?? []);
+  const [languages, setLanguages] = useState<ProjectLanguage[]>(user?.preferredLanguages ?? []);
   const [notes, setNotes] = useState(user?.additionalProfileNotes ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,11 +48,15 @@ export function ProfileInterviewPage() {
     setInterests((current) => (current.includes(interest) ? current.filter((i) => i !== interest) : [...current, interest]));
   }
 
+  function toggleLanguage(language: ProjectLanguage) {
+    setLanguages((current) => (current.includes(language) ? current.filter((l) => l !== language) : [...current, language]));
+  }
+
   async function handleSubmit() {
     setSaving(true);
     setError(null);
     try {
-      await api.completeProfile(interests, notes.trim() || null);
+      setCurrentUser(await api.completeProfile(interests, notes.trim() || null, languages));
       navigate(isEditing ? '/perfil' : '/selecionar-curso');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Não foi possível salvar seu perfil.');
@@ -74,6 +86,27 @@ export function ProfileInterviewPage() {
           {INTEREST_OPTIONS.map((interest) => (
             <InterestChip key={interest} label={interest} selected={interests.includes(interest)} onToggle={() => toggleInterest(interest)} />
           ))}
+        </div>
+
+        {/* Fase 59 (piloto Semana 1): so os Projetos Semanais ja curados por linguagem usam isso -
+            marcar aqui nao afeta o resto do curso. Pode deixar sem marcar nenhuma agora; a tela do
+            projeto avisa e pede pra voltar aqui quando isso passar a importar de verdade. */}
+        <div>
+          <p className="text-sm font-semibold text-primary">Linguagem dos Projetos Semanais</p>
+          <p className="mt-1 text-sm leading-relaxed text-secondary">
+            Alguns Projetos Semanais têm repositório pronto e referências próprias por linguagem. Marque em qual (ou quais) você
+            topa fazê-los - dá pra mudar depois, mas a escolha feita para um projeto específico não volta atrás.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {LANGUAGE_OPTIONS.map((language) => (
+              <InterestChip
+                key={language}
+                label={PROJECT_LANGUAGE_NAMES[language]}
+                selected={languages.includes(language)}
+                onToggle={() => toggleLanguage(language)}
+              />
+            ))}
+          </div>
         </div>
 
         <label className="flex flex-col gap-1.5">

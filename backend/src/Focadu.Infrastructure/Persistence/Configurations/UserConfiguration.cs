@@ -20,6 +20,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         // (Npgsql mapeia List<string> <-> text[] direto, sem precisar de tabela associativa - nao
         // e dado relacional de verdade, so uma lista curta de tags escolhidas pelo usuario).
         builder.Property(u => u.Interests).HasColumnType("text[]").IsRequired();
+
+        // Fase 59: linguagens do Projeto Semanal marcadas na Entrevista de Perfil - mesmo array
+        // nativo do Postgres, guardando o NOME de cada linguagem ('Python', 'JavaScript') e nao o
+        // numero do enum: legivel no SQL e imune a reordenacao do enum.
+        builder.PrimitiveCollection(u => u.PreferredLanguages).ElementType().HasConversion<string>();
+        builder.Property(u => u.PreferredLanguages).HasColumnType("text[]").IsRequired();
         builder.Property(u => u.AdditionalProfileNotes).HasMaxLength(2000);
         builder.Property(u => u.ProfileCompletedAt);
 

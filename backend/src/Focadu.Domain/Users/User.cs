@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Focadu.Domain.Common;
+using Focadu.Domain.Enums;
 using Focadu.Domain.Exceptions;
 
 namespace Focadu.Domain.Users;
@@ -26,6 +27,15 @@ public class User : Entity
 
     /// <summary>Hobbies/interesses/referencias culturais (Fase 13, Entrevista de Perfil - Documento Mestre Secao 2.2). Fase 21: usado em prompt de IA - ver GetCuratedContentUseCase/IAnalogyGenerationService (gera analogia personalizada pra leituras).</summary>
     public IReadOnlyCollection<string> Interests => _interests.AsReadOnly();
+
+    private readonly List<ProjectLanguage> _preferredLanguages = new();
+
+    /// <summary>
+    /// Linguagens em que o aluno topa realizar os Projetos Semanais (Fase 59), marcadas na
+    /// Entrevista de Perfil. Vazio = ainda nao escolheu - a tela do projeto avisa e nao mostra o
+    /// projeto ate ele marcar ao menos uma (em semana com variantes de linguagem).
+    /// </summary>
+    public IReadOnlyCollection<ProjectLanguage> PreferredLanguages => _preferredLanguages.AsReadOnly();
 
     public string? AdditionalProfileNotes { get; private set; }
 
@@ -70,11 +80,26 @@ public class User : Entity
     /// chamado de novo no futuro (ex: editar interesses) - sempre substitui a lista inteira, nunca
     /// mescla, pra nao acumular entradas obsoletas silenciosamente.
     /// </summary>
-    public void CompleteProfile(IEnumerable<string> interests, string? additionalNotes)
+    public void CompleteProfile(IEnumerable<string> interests, string? additionalNotes, IEnumerable<ProjectLanguage>? preferredLanguages = null)
     {
+        // Valida antes de mexer em qualquer campo: linguagem invalida nao pode deixar o perfil
+        // meio atualizado.
+        var languages = preferredLanguages?.Distinct().OrderBy(l => l).ToList();
+        if (languages is not null && languages.Any(l => !Enum.IsDefined(l)))
+            throw new DomainException("Linguagem invalida.", "linguagem_invalida");
+
         _interests.Clear();
         _interests.AddRange(interests.Select(i => i.Trim()).Where(i => i.Length > 0).Distinct());
         AdditionalProfileNotes = string.IsNullOrWhiteSpace(additionalNotes) ? null : additionalNotes.Trim();
+
+        // Nulo = "nao mexeu nesse campo" (cliente antigo que ainda nao manda linguagens nao apaga o
+        // que o aluno ja marcou); lista vazia limpa. Interesses seguem substituindo sempre.
+        if (languages is not null)
+        {
+            _preferredLanguages.Clear();
+            _preferredLanguages.AddRange(languages);
+        }
+
         ProfileCompletedAt = DateTime.UtcNow;
     }
 

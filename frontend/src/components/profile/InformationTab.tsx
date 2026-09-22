@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useApiResource } from '../../api/useApiResource';
-import { CourseStatus, type GamificationSummaryDto, type UserDto } from '../../api/types';
+import { CourseStatus, PROJECT_LANGUAGE_NAMES, type GamificationSummaryDto, type UserDto } from '../../api/types';
 import { Centered } from '../Layout';
 
 /**
@@ -47,6 +47,28 @@ export function InformationTab({ user, gamification }: { user: UserDto; gamifica
           </div>
         )}
         {user.additionalProfileNotes && <p className="text-sm text-secondary">{user.additionalProfileNotes}</p>}
+      </div>
+
+      {/* Fase 59 (piloto Semana 1): mesma tela de edicao dos interesses acima, so que pra
+          linguagem dos Projetos Semanais - ver ProfileInterviewPage. */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-stroke bg-surface p-6">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Linguagem dos Projetos Semanais</p>
+          <Link to="/onboarding/perfil?edit=1" className="text-sm font-semibold text-accent hover:underline">
+            Editar →
+          </Link>
+        </div>
+        {user.preferredLanguages.length === 0 ? (
+          <p className="text-sm text-secondary">Nenhuma linguagem marcada ainda.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {user.preferredLanguages.map((language) => (
+              <span key={language} className="rounded-full border border-accent bg-accent/10 px-4 py-2 text-sm font-medium text-primary">
+                {PROJECT_LANGUAGE_NAMES[language]}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading && <Centered text="Carregando estatísticas..." />}

@@ -1,7 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { api, setSessionExpiredHandler } from '../api/client';
 import type { LoginRequest, RegisterRequest, UserDto } from '../api/types';
 import { SessionExpiredModal } from '../components/auth/SessionExpiredModal';
+import { LanguagePreferenceModal } from '../components/onboarding/LanguagePreferenceModal';
 import { AuthContext } from './authContextObject';
 
 /**
@@ -26,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const { pathname } = useLocation();
 
   useEffect(() => {
     api
@@ -67,10 +70,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Usuario que ja concluiu o onboarding antes da Fase 59 nunca passou pela escolha de linguagem -
+  // modal global (mesmo esquema do SessionExpiredModal) ate marcar ao menos uma. Fora do proprio
+  // onboarding/edicao de perfil, que ja tem o seletor na tela.
+  const needsLanguagePreference =
+    !!user && !!user.profileCompletedAt && user.preferredLanguages.length === 0 && !pathname.startsWith('/onboarding');
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, setCurrentUser: setUser }}>
       {children}
       {sessionExpired && <SessionExpiredModal onClose={() => setSessionExpired(false)} />}
+      {!sessionExpired && needsLanguagePreference && <LanguagePreferenceModal user={user} onSaved={setUser} />}
     </AuthContext.Provider>
   );
 }

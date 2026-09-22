@@ -73,7 +73,10 @@ public class EvaluateWeeklyProjectUseCase
         if (project.Status != WeeklyProjectStatus.Submitted)
             throw new DomainException("Só é possível avaliar um projeto que foi submetido.");
 
-        if (weekly.Template.ForgejoTemplateSlug is not { } templateSlug)
+        // Fase 59: com a linguagem ja escolhida, o repositorio do aluno e o fork do modelo DAQUELA
+        // linguagem (nome proprio); projeto sem linguagem (semana sem variantes, ou fork unico de
+        // antes da Fase 59) segue com o slug unico de sempre.
+        if (weekly.Template.ResolveForgejoTemplateSlug(project.Language) is not { } templateSlug)
         {
             throw new ValidationException(
                 "projeto_sem_repositorio_forgejo",
@@ -104,8 +107,6 @@ public class EvaluateWeeklyProjectUseCase
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new WeeklyProjectDto(
-            project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty, project.Status, !weekly.AreDailiesComplete(),
-            project.SubmissionUrl, project.Score, project.Feedback, forgejoAccount.AccessToken, forgejoAccount.ForgejoUsername);
+        return WeeklyProjectDtoMapper.Build(weekly, project, forgejoAccount);
     }
 }

@@ -1,3 +1,7 @@
 namespace Focadu.Api.Contracts;
 
-public record CompleteProfileRequest(string[]? Interests, string? AdditionalNotes);
+/// <summary>
+/// PreferredLanguages (Fase 59): nomes das linguagens do Projeto Semanal ("Python", "JavaScript",
+/// sem diferenciar maiuscula). Nulo = nao mexe no que o aluno ja marcou; lista vazia limpa.
+/// </summary>
+public record CompleteProfileRequest(string[]? Interests, string? AdditionalNotes, string[]? PreferredLanguages = null);

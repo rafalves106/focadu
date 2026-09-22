@@ -63,9 +63,7 @@ public class SubmitWeeklyProjectUseCase
             // automatica que nao rolou desta vez. Devolve o estado atual (sem Score/Feedback) em
             // vez de propagar - o frontend ja trata "AGUARDANDO AVALIAÇÃO" normalmente.
             var account = await _userForgejoAccountRepository.GetByUserIdAsync(userId, cancellationToken);
-            return new WeeklyProjectDto(
-                project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty, project.Status, !weekly.AreDailiesComplete(),
-                project.SubmissionUrl, project.Score, project.Feedback, account?.AccessToken, account?.ForgejoUsername);
+            return WeeklyProjectDtoMapper.Build(weekly, project, account);
         }
     }
 }

@@ -13,13 +13,16 @@ public class GetWeeklyDetailUseCase
     private readonly IWeeklyRepository _weeklyRepository;
     private readonly IMonthlyRepository _monthlyRepository;
     private readonly IUserForgejoAccountRepository _userForgejoAccountRepository;
+    private readonly IUserRepository _userRepository;
 
     public GetWeeklyDetailUseCase(
-        IWeeklyRepository weeklyRepository, IMonthlyRepository monthlyRepository, IUserForgejoAccountRepository userForgejoAccountRepository)
+        IWeeklyRepository weeklyRepository, IMonthlyRepository monthlyRepository, IUserForgejoAccountRepository userForgejoAccountRepository,
+        IUserRepository userRepository)
     {
         _weeklyRepository = weeklyRepository;
         _monthlyRepository = monthlyRepository;
         _userForgejoAccountRepository = userForgejoAccountRepository;
+        _userRepository = userRepository;
     }
 
     public async Task<WeeklyDetailDto> ExecuteAsync(Guid userId, Guid weeklyId, CancellationToken cancellationToken = default)
@@ -69,10 +72,11 @@ public class GetWeeklyDetailUseCase
             // So busca a conta Forgejo quando ha projeto - evita 1 lookup extra em Weeklies sem
             // projeto (nao deveria existir na pratica, mas o campo e nullable no dominio).
             var forgejoAccount = await _userForgejoAccountRepository.GetByUserIdAsync(userId, cancellationToken);
-            projectDto = new WeeklyProjectDto(
-                project.Id, weekly.Template.WeeklyProjectSpecText ?? string.Empty,
-                project.Status, !weekly.AreDailiesComplete(), project.SubmissionUrl,
-                project.Score, project.Feedback, forgejoAccount?.AccessToken, forgejoAccount?.ForgejoUsername);
+
+            // Fase 59: as linguagens marcadas no perfil decidem se o aluno ja pode escolher a do
+            // projeto (semana com variantes) - ver WeeklyProjectDtoMapper.
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            projectDto = WeeklyProjectDtoMapper.Build(weekly, project, forgejoAccount, user?.PreferredLanguages);
         }
 
         var reinforcementDtos = weekly.Reinforcements

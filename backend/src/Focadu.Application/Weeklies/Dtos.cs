@@ -39,8 +39,31 @@ public record DailyOverviewDto(
     int CompletedActivities,
     int PassedActivities);
 
+/// <summary>
+/// Fase 59: em que ponto da escolha de linguagem o aluno esta num Projeto Semanal. Estado derivado
+/// (nunca gravado) - ver WeeklyProjectDtoMapper.
+/// </summary>
+public enum ProjectLanguageStep
+{
+    /// <summary>Semana sem variantes de linguagem, ou projeto que ja tinha andado antes da Fase 59 - tudo como sempre foi.</summary>
+    None = 0,
+
+    /// <summary>Semana com variantes, projeto pendente e o aluno nao marcou no perfil nenhuma das linguagens que a semana oferece - a tela avisa e nao mostra o projeto.</summary>
+    NeedsPreference = 1,
+
+    /// <summary>O aluno marcou ao menos uma linguagem que a semana oferece e ainda nao escolheu: escolhe (com confirmacao) e so entao o projeto e disponibilizado.</summary>
+    NeedsChoice = 2,
+
+    /// <summary>Linguagem ja escolhida - definitiva; o projeto (spec, repositorio e referencias) esta disponivel.</summary>
+    Chosen = 3
+}
+
+/// <summary>Fase 59: link de referencia (biblioteca/documentacao) da linguagem escolhida - registro estruturado (com Id) pro aviso futuro de "link fora do ar" apontar pra um link especifico.</summary>
+public record ProjectReferenceDto(Guid Id, ProjectLanguage? Language, string Title, string Url, string Documents, DateTime? LastVerifiedAt);
+
 public record WeeklyProjectDto(
     Guid Id,
+    /// <summary>Vazio enquanto o projeto nao foi disponibilizado (LanguageStep NeedsPreference/NeedsChoice) - o projeto so aparece depois da escolha da linguagem (Fase 59).</summary>
     string SpecText,
     WeeklyProjectStatus Status,
     /// <summary>Fase 38: true quando as Dailies originais da Weekly ainda nao foram todas concluidas - Weekly.SubmitProject() recusa o envio enquanto isso for verdade (ver Weekly.AreDailiesComplete). So faz sentido junto de Status=Pending; uma vez Submitted/Evaluated, sempre false.</summary>
@@ -52,4 +75,14 @@ public record WeeklyProjectDto(
     /// <summary>Token de acesso do aluno no Forgejo interno (UserForgejoAccount.AccessToken) - so populado quando ha SubmissionUrl (repositorio ja provisionado). Frontend usa pra montar as instrucoes de `git clone`/`git push`, mesmo espirito de "codigo pra copiar" do ReferralCard.</summary>
     string? ForgejoAccessToken,
     /// <summary>Username do aluno no Forgejo (UserForgejoAccount.ForgejoUsername) - junto do token acima, e o que o `git clone` HTTP pede quando autentica.</summary>
-    string? ForgejoUsername);
+    string? ForgejoUsername,
+    /// <summary>Fase 59: ver ProjectLanguageStep.</summary>
+    ProjectLanguageStep LanguageStep,
+    /// <summary>Fase 59: linguagem escolhida (definitiva). Nulo ate a escolha - e sempre nulo com LanguageStep None.</summary>
+    ProjectLanguage? Language,
+    /// <summary>Fase 59: todas as linguagens que a semana oferece (uma por repositorio-template). Vazio com LanguageStep None. A tela usa isso no aviso de "marque uma linguagem no perfil".</summary>
+    IReadOnlyCollection<ProjectLanguage> SupportedLanguages,
+    /// <summary>Fase 59: so com LanguageStep NeedsChoice - as linguagens da semana que o aluno marcou no perfil, entre as quais ele escolhe agora. Vazio nos outros estados.</summary>
+    IReadOnlyCollection<ProjectLanguage> ChoosableLanguages,
+    /// <summary>Fase 59: so com LanguageStep Chosen - as referencias da linguagem escolhida, mais as comuns a todas, na ordem da curadoria.</summary>
+    IReadOnlyCollection<ProjectReferenceDto> References);

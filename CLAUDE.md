@@ -84,9 +84,22 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 58 — Projeto Semanal renderiza Markdown** (21/09/2026).
+Última fase concluída: **Fase 59 — Linguagem do Projeto Semanal (piloto Semana 1)** (22/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Linguagem do Projeto Semanal, piloto Semana 1: Python/JavaScript (Fase 59, pedido do dono, logo
+  após a Fase 58)**: o aluno marca no perfil quais linguagens topa usar nos Projetos Semanais e, quando
+  o projeto de uma semana já curada por linguagem é desbloqueado, escolhe **de forma definitiva** (sem
+  troca depois, confirmação em 2 passos) em qual vai realizá-lo — só então ganha o repositório-modelo
+  (fork só do esqueleto, a implementação é do aluno) e as referências (bibliotecas/documentação) curadas
+  manualmente pra ela. `WeeklyTemplate` ganhou variantes de linguagem e referências; semana sem elas
+  segue 100% como antes desta fase. Conferido ponta a ponta contra Postgres+Forgejo descartáveis (fork
+  real, avaliação por IA lendo o repositório certo) e visualmente no Chrome. Só a Semana 1 está curada
+  (2 repositórios-modelo + 10 referências, cada link conferido); as outras 11 semanas ficam pendentes.
+  Ver `docs/fase-59/`, inclusive 2 incidentes de teste já resolvidos com o dono (migration aplicada por
+  engano em produção — sem dano real, decidido deixar como está; e uma chamada real à API do Groq,
+  gratuita, sem problema) e o que falta pra Semana 1 valer em produção (publicar os repositórios-modelo
+  no Forgejo real + aplicar `secret/curadoria/patches/2026-09-21-semana-1-linguagens.sql`).
 - **Projeto Semanal renderiza Markdown (Fase 58, pedido do dono: 1º item de uma rodada de correções
   visuais)**: a especificação do projeto era um `<p whitespace-pre-line>`, então `###`, `- item`,
   `**negrito**` e crases apareciam crus, como texto corrido. Agora passa pelo `MarkdownBlock`, que ganhou

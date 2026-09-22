@@ -13,6 +13,10 @@ export interface AuthContextValue {
   login: (data: LoginRequest) => Promise<UserDto>;
   register: (data: RegisterRequest) => Promise<UserDto>;
   logout: () => Promise<void>;
+  // Troca o `user` em memoria pelo UserDto que uma escrita no perfil acabou de devolver (ex: PUT
+  // /users/me/profile) - sem isso o contexto so e lido no boot e a tela seguinte mostra o perfil
+  // antigo como se nada tivesse sido salvo (e um 2o salvamento ainda sobrescreve com o estado velho).
+  setCurrentUser: (user: UserDto) => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

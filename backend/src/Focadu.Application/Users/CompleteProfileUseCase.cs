@@ -1,4 +1,5 @@
 using Focadu.Application.Exceptions;
+using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
 
 namespace Focadu.Application.Users;
@@ -22,15 +23,20 @@ public class CompleteProfileUseCase
         _unitOfWork = unitOfWork;
     }
 
+    /// <param name="preferredLanguages">
+    /// Fase 59: linguagens do Projeto Semanal. Nulo = nao mexe no que o aluno ja marcou (cliente que
+    /// ainda nao manda o campo); lista vazia limpa - ver User.CompleteProfile.
+    /// </param>
     public async Task<UserDto> ExecuteAsync(
-        Guid userId, IEnumerable<string> interests, string? additionalNotes, CancellationToken cancellationToken = default)
+        Guid userId, IEnumerable<string> interests, string? additionalNotes, IEnumerable<ProjectLanguage>? preferredLanguages = null,
+        CancellationToken cancellationToken = default)
     {
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken)
             ?? throw new NotFoundException("usuario_nao_encontrado", "Usuario nao encontrado.");
 
-        user.CompleteProfile(interests, additionalNotes);
+        user.CompleteProfile(interests, additionalNotes, preferredLanguages);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new UserDto(user.Id, user.Email, user.DisplayName, user.ProfileCompletedAt, user.Interests, user.AdditionalProfileNotes);
+        return UserDto.From(user);
     }
 }

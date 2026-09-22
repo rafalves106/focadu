@@ -31,6 +31,10 @@ public class ApiExceptionHandler : IExceptionHandler
         ["modulo_bloqueado_por_publicacao"] = StatusCodes.Status409Conflict,
         ["projeto_semana_anterior_pendente"] = StatusCodes.Status409Conflict,
         ["projeto_semana_bloqueado"] = StatusCodes.Status409Conflict,
+        // Escolha da linguagem do projeto (Fase 59) - estado do projeto, nao entrada invalida.
+        ["linguagem_ja_escolhida"] = StatusCodes.Status409Conflict,
+        ["projeto_nao_pendente"] = StatusCodes.Status409Conflict,
+        ["semana_sem_variantes_de_linguagem"] = StatusCodes.Status409Conflict,
         ["publicacao_ja_validada"] = StatusCodes.Status409Conflict,
         ["credenciais_invalidas"] = StatusCodes.Status401Unauthorized,
         // Redefinicao de senha (Fase 41) - link invalido/expirado e culpa da entrada do usuario, nao 401 (nao ha sessao envolvida aqui).

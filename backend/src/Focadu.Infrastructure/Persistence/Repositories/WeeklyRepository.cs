@@ -24,6 +24,8 @@ public class WeeklyRepository : IWeeklyRepository
     private IQueryable<Weekly> FullGraph() =>
         _context.Weeklies
             .Include(w => w.Template).ThenInclude(t => t.CuratedContents)
+            .Include(w => w.Template).ThenInclude(t => t.LanguageVariants)
+            .Include(w => w.Template).ThenInclude(t => t.References)
             .Include(w => w.Dailies).ThenInclude(d => d.Template).ThenInclude(t => t.Activities).ThenInclude(a => a.QuizOptions)
             .Include(w => w.Dailies).ThenInclude(d => d.Template).ThenInclude(t => t.Activities).ThenInclude(a => a.WordMatchPairs)
             .Include(w => w.Dailies).ThenInclude(d => d.Template).ThenInclude(t => t.Activities).ThenInclude(a => a.RoleplayNodes).ThenInclude(n => n.Options)

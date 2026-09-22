@@ -26,6 +26,16 @@ public class WeeklyTemplate : Entity
     /// <summary>Nome do repositorio-template no Forgejo interno (ex: "template-web-security-semana-1"), mantido pela curadoria - EnrollUserInCourseUseCase da fork disso pra cada aluno matriculado. Nulo ate a curadoria configurar; sem isso, a Weekly nao recebe repositorio (ver "repositorios-gerenciados-projeto-semanal.md").</summary>
     public string? ForgejoTemplateSlug { get; private set; }
 
+    private readonly List<WeeklyTemplateLanguage> _languageVariants = new();
+
+    /// <summary>Fase 59: variantes de linguagem do projeto (1 repositorio-template por linguagem). Vazio = semana como antes da Fase 59, sem escolha de linguagem.</summary>
+    public IReadOnlyCollection<WeeklyTemplateLanguage> LanguageVariants => _languageVariants.AsReadOnly();
+
+    private readonly List<WeeklyTemplateReference> _references = new();
+
+    /// <summary>Fase 59: links de referencia do projeto (bibliotecas/documentacao), curados na mao. Ver ReferencesFor pra lista de uma linguagem.</summary>
+    public IReadOnlyCollection<WeeklyTemplateReference> References => _references.AsReadOnly();
+
     private readonly List<DailyTemplate> _dailyTemplates = new();
     public IReadOnlyCollection<DailyTemplate> DailyTemplates => _dailyTemplates.AsReadOnly();
 
@@ -88,4 +98,57 @@ public class WeeklyTemplate : Entity
 
         ForgejoTemplateSlug = slug;
     }
+
+    /// <summary>
+    /// Verdadeiro quando a semana ja foi curada com repositorio-template por linguagem (Fase 59) -
+    /// so nessas semanas o aluno escolhe a linguagem e o projeto so aparece depois da escolha. Nas
+    /// demais (piloto: tudo menos a Semana 1) nada muda.
+    /// </summary>
+    public bool HasLanguageVariants => _languageVariants.Count > 0;
+
+    /// <summary>Adiciona a variante de uma linguagem (uma por linguagem, e cada slug so numa variante).</summary>
+    public WeeklyTemplateLanguage AddLanguageVariant(ProjectLanguage language, string forgejoTemplateSlug)
+    {
+        if (_languageVariants.Any(v => v.Language == language))
+            throw new DomainException("Esta WeeklyTemplate ja tem uma variante para essa linguagem.");
+        if (_languageVariants.Any(v => string.Equals(v.ForgejoTemplateSlug, forgejoTemplateSlug?.Trim(), StringComparison.Ordinal)))
+            throw new DomainException("Este repositorio-template ja e usado por outra variante desta WeeklyTemplate.");
+
+        var variant = new WeeklyTemplateLanguage(Id, language, forgejoTemplateSlug!);
+        _languageVariants.Add(variant);
+        return variant;
+    }
+
+    public WeeklyTemplateLanguage? FindLanguageVariant(ProjectLanguage language) =>
+        _languageVariants.FirstOrDefault(v => v.Language == language);
+
+    /// <summary>
+    /// Adiciona um link de referencia. `language` nulo vale pra todas as linguagens; uma linguagem
+    /// so e aceita se a semana tem a variante dela (referencia sem repositorio-modelo ficaria
+    /// solta, sem nunca ser exibida).
+    /// </summary>
+    public WeeklyTemplateReference AddReference(
+        ProjectLanguage? language, string title, string url, string documents, DateTime? lastVerifiedAt = null)
+    {
+        if (language is { } l && FindLanguageVariant(l) is null)
+            throw new DomainException("Nao ha variante dessa linguagem nesta WeeklyTemplate - adicione a variante antes das referencias dela.");
+
+        var reference = new WeeklyTemplateReference(Id, language, title, url, documents, _references.Count, lastVerifiedAt);
+        _references.Add(reference);
+        return reference;
+    }
+
+    /// <summary>Referencias exibidas pra quem escolheu `language`: as dela mais as comuns (Language nulo), na ordem da curadoria.</summary>
+    public IReadOnlyList<WeeklyTemplateReference> ReferencesFor(ProjectLanguage language) =>
+        _references.Where(r => r.Language is null || r.Language == language).OrderBy(r => r.Position).ToList();
+
+    /// <summary>
+    /// Repositorio-template a forkar/avaliar pra esta semana. Com variantes e uma linguagem ja
+    /// escolhida, e o slug da linguagem; sem variantes - ou projeto que nasceu antes da Fase 59, sem
+    /// linguagem - e o slug unico de sempre (ForgejoTemplateSlug, pode ser nulo).
+    /// </summary>
+    public string? ResolveForgejoTemplateSlug(ProjectLanguage? chosenLanguage) =>
+        chosenLanguage is { } language && FindLanguageVariant(language) is { } variant
+            ? variant.ForgejoTemplateSlug
+            : ForgejoTemplateSlug;
 }

@@ -22,6 +22,14 @@ public class WeeklyProject : Entity
     /// <summary>Comentário livre do avaliador sobre o projeto (Fase 16) - só armazenado, sem uso em cálculo nenhum.</summary>
     public string? Feedback { get; private set; }
 
+    /// <summary>
+    /// Linguagem que o aluno escolheu pra realizar este projeto (Fase 59). Nula ate a escolha - e
+    /// pra sempre nula em semana sem variantes de linguagem, e em projeto que ja nasceu antes da
+    /// Fase 59 (fork unico, sem linguagem). Definitiva: e o repositorio da linguagem que a
+    /// plataforma disponibiliza, e a avaliacao le esse repositorio.
+    /// </summary>
+    public ProjectLanguage? Language { get; private set; }
+
     private WeeklyProject()
     {
     }
@@ -48,6 +56,27 @@ public class WeeklyProject : Entity
             throw new DomainException("Este projeto ja tem um repositorio anexado.");
 
         SubmissionUrl = url;
+    }
+
+    /// <summary>
+    /// Fixa a linguagem do projeto e o repositorio dela (Fase 59) - so uma vez, com o projeto
+    /// Pending. Substitui SubmissionUrl de proposito: um projeto sem linguagem que ja tinha fork
+    /// (o fork unico de antes da Fase 59) passa a usar o repositorio da linguagem escolhida. Nunca
+    /// troca depois de escolhida.
+    /// </summary>
+    public void ChooseLanguage(ProjectLanguage language, string repositoryUrl)
+    {
+        if (!Enum.IsDefined(language))
+            throw new DomainException("Linguagem invalida.", "linguagem_invalida");
+        if (Language is not null)
+            throw new DomainException("A linguagem deste projeto ja foi escolhida e nao pode ser trocada.", "linguagem_ja_escolhida");
+        if (Status != WeeklyProjectStatus.Pending)
+            throw new DomainException("So e possivel escolher a linguagem de um projeto ainda pendente.", "projeto_nao_pendente");
+        if (string.IsNullOrWhiteSpace(repositoryUrl))
+            throw new DomainException("URL do repositorio e obrigatoria.");
+
+        Language = language;
+        SubmissionUrl = repositoryUrl;
     }
 
     public void Submit(string submissionUrl)

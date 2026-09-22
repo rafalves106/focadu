@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 58 - Projeto Semanal renderiza Markdown (lista numerada e sub-bullets no MarkdownBlock)**.
+> Ultima fase que atualizou este documento: **Fase 59 - Linguagem do Projeto Semanal (piloto Semana 1: Python/JavaScript)**.
 
 ## Visao geral do projeto
 
@@ -1968,25 +1968,88 @@ so token por aluno, reusado por todos os repositorios que sao dele no Forgejo - 
 do aluno - login no Forgejo em si nao e usado, so o access token, exibido na tela do Projeto
 Semanal).
 
-**`WeeklyTemplate.ForgejoTemplateSlug`** (novo campo, nullable) - nome do repositorio-template no
+**`WeeklyTemplate.ForgejoTemplateSlug`** (campo legado, nullable) - nome do repositorio-template no
 Forgejo (dono: `focadu-admin`), mantido pela curadoria (mesmo espirito de `secret/curadoria/`) -
 sem isso preenchido, aquela semana simplesmente nao recebe repositorio (nao bloqueia a matricula).
-**Ainda so a Semana 1 do curso piloto tem isso configurado** (`template-web-security-semana-1`,
-criado manualmente pra validar o mecanismo) - as outras 11 semanas ficam pendentes.
+Semana sem variante de linguagem (ver abaixo) continua usando esse campo direto, exatamente como
+antes da Fase 59.
 
 **`EnrollUserInCourseUseCase`** - dentro do mesmo loop que ja cria `Weekly`/`WeeklyProject` pra
 cada `WeeklyTemplate` (eager, na matricula - decisao confirmada com o Falves, nao lazy no primeiro
-acesso a tela), se a semana tem `ForgejoTemplateSlug`, garante a `UserForgejoAccount` (lazy, uma
-vez so por matricula) e da fork do template, anexando a URL via `WeeklyProject.AttachRepository`
-(metodo novo - so seta `SubmissionUrl`, mantem `Status = Pending`, diferente de `Submit`). Falha
-do Forgejo (fora do ar, etc) **nunca derruba a matricula** - mesmo espirito "bonus, nunca core" ja
-usado em `SubmitWeeklyProjectUseCase` pra falha de avaliacao automatica; o projeto so fica sem
+acesso a tela): semana **sem** variante de linguagem (`!HasLanguageVariants`) da fork na hora,
+como sempre foi - garante a `UserForgejoAccount` (lazy, uma vez so por matricula) e anexa a URL via
+`WeeklyProject.AttachRepository` (so seta `SubmissionUrl`, mantem `Status = Pending`, diferente de
+`Submit`). Semana **com** variante nao da fork nenhum aqui desde a Fase 59 - o fork passou pra
+escolha da linguagem (`ChooseWeeklyProjectLanguageUseCase`, abaixo). Falha do Forgejo (fora do ar,
+etc) **nunca derruba a matricula** - mesmo espirito "bonus, nunca core" ja usado em
+`SubmitWeeklyProjectUseCase` pra falha de avaliacao automatica; o projeto so fica sem
 `SubmissionUrl`.
 
-**`EvaluateWeeklyProjectUseCase`** parou de depender de `IGitHubService`/`GitHubUrlParser` (que
-continuam existindo, intocados, so pro fluxo de prova publica de modulo abaixo) - resolve
-owner/repo direto (`ForgejoUsername` do aluno + `ForgejoTemplateSlug` da semana), sem parsear a
-`SubmissionUrl`.
+### Linguagem do Projeto Semanal (Fase 59, piloto Semana 1: Python/JavaScript)
+
+Pedido do Falves, logo apos a Fase 58 - ver `secret/rascunhos/linguagem-preferida-e-referencias-do-
+projeto.md` pro raciocinio completo. O aluno marca no perfil quais linguagens topa usar nos
+Projetos Semanais e, quando o projeto de uma semana ja curada por linguagem e desbloqueado, escolhe
+(de forma **definitiva**, sem troca depois) em qual delas vai realiza-lo - so entao ganha o
+repositorio-modelo (fork daquela linguagem, so o esqueleto - a implementacao e do aluno) e as
+referencias (bibliotecas/documentacao) curadas pra ela. Piloto so na Semana 1; as outras 11 seguem
+com o comportamento de sempre ate serem curadas.
+
+**`ProjectLanguage`** (`Focadu.Domain.Enums`) - lista fechada, `Python`/`JavaScript`. Nomes que a
+Api e o `projeto.json` esperam sao os proprios nomes do enum (case-insensitive), resolvidos por
+`ProjectLanguages.TryParse` (`Focadu.Application.Weeklies`, compartilhado entre a Api e o
+`CuratedProjectImporter`).
+
+**`WeeklyTemplate.LanguageVariants`** (`WeeklyTemplateLanguage`, novo) - 1 repositorio-modelo
+(`ForgejoTemplateSlug`) por linguagem daquela semana. `HasLanguageVariants` decide se a semana
+entrou no piloto; `ResolveForgejoTemplateSlug(language)` devolve o slug certo (o da variante
+quando ha linguagem escolhida, senao o `ForgejoTemplateSlug` legado).
+
+**`EvaluateWeeklyProjectUseCase`** parou de depender de `IGitHubService`/`GitHubUrlParser` desde a
+Fase 46 (que continuam existindo, intocados, so pro fluxo de prova publica de modulo abaixo) -
+resolve owner/repo direto (`ForgejoUsername` do aluno + o slug de `ResolveForgejoTemplateSlug`,
+desde a Fase 59 - antes era `ForgejoTemplateSlug` direto), sem parsear a `SubmissionUrl`.
+
+**`WeeklyTemplate.References`** (`WeeklyTemplateReference`, novo) - links de referencia (biblioteca/
+documentacao), curadoria manual e estatica (cada link conferido contra a documentacao oficial antes
+de entrar - nunca gerado por IA, decisao do dono). `Language` nulo = comum a todas as linguagens da
+semana (ex: uma RFC); `ReferencesFor(language)` devolve as da linguagem + as comuns, na ordem da
+curadoria (`Position`). Registro estruturado (com `Id` e `LastVerifiedAt`) de proposito, nao texto
+dentro do `SpecText` - e o que um futuro aviso de "link fora do ar" (painel de gestao, ainda nao
+implementado) vai precisar pra apontar pra um link especifico.
+
+**`WeeklyProject.Language`** - nulo ate a escolha, gravada uma unica vez (`ChooseLanguage`, so com
+`Status = Pending`) junto da URL do fork daquela linguagem (substitui um eventual `SubmissionUrl`
+de fork legado). `Weekly.EnsureProjectLanguageCanBeChosen`/`ChooseProjectLanguage` repetem a mesma
+trava de `SubmitProject` - so depois que `AreDailiesComplete()` (decisao do dono: a escolha so
+acontece com o projeto ja desbloqueado, igual ao envio).
+
+**`ChooseWeeklyProjectLanguageUseCase`** (`POST /weeklies/{id}/project/language`) - valida tudo
+(semana com a variante, linguagem marcada no `User.PreferredLanguages`, projeto desbloqueado e
+ainda sem linguagem) ANTES de chamar o Forgejo; so grava a escolha depois do fork dar certo, pra
+uma falha no meio poder ser tentada de novo sem ficar "meio escolhida". `ForgejoService.
+ForkTemplateAsync` ganhou tratamento de 409 (fork ja existe) reaproveitando o repositorio existente
+em vez de falhar - cobre exatamente esse caso de retry. 2ª tentativa depois da escolha (mesma
+linguagem ou outra) sempre 409 `linguagem_ja_escolhida`.
+
+**`WeeklyProjectDtoMapper`** (`Focadu.Application.Weeklies`, novo - substitui a montagem manual do
+DTO que existia em 3 casos de uso) - calcula `ProjectLanguageStep` (`None` = semana sem variante,
+comportamento de sempre; `NeedsPreference` = tem variante mas o aluno nao marcou nenhuma linguagem
+compativel no perfil; `NeedsChoice` = marcou, falta escolher; `Chosen` = escolhida) e so libera
+`SpecText`/`SubmissionUrl`/credenciais/`References` depois de `Chosen` (ou em `None`, que nunca foi
+gated) - "o projeto so e disponibilizado depois da escolha da linguagem" (decisao do dono).
+
+**`User.PreferredLanguages`** - marcado na Entrevista de Perfil (`ProfileInterviewPage`, chip igual
+ao de interesses), opcional (como os interesses - quem nao marca so ve o aviso na hora de abrir o
+projeto de uma semana com variante). `CompleteProfileUseCase` trata a lista nula como "nao mexe"
+(edicao de interesses continua funcionando sem reenviar linguagem) e vazia como "limpa".
+
+**Frontend (`WeeklyProjectPage.tsx`)** - os 3 estados novos aparecem no lugar da especificacao,
+antes dela ser liberada: aviso pra marcar linguagem no perfil, seletor com **confirmacao em 2
+passos** (decisao do dono - a escolha e irreversivel, sem desfazer pelo aluno), e o card de
+referencias (so quando ja escolhida). O bloqueio de Dailies (`isLocked`) esconde esses 3 estados
+inteiros, nao so o botao de envio - semana com variante ainda bloqueada mostra so o cadeado, igual
+a antes desta fase.
 
 **Publicacao no GitHub pessoal do aluno (portfolio) e manual, fora do produto** - decisao
 confirmada com o Falves: o aluno adiciona um segundo `git remote` local e da `git push` com as
@@ -2582,7 +2645,9 @@ frontend/
                                    aba Customizacao, que virou "em breve", ver CustomizationTab.tsx)
       WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7; a especificacao
                                    renderiza via MarkdownBlock desde a Fase 58, antes era
-                                   texto corrido com a sintaxe crua)
+                                   texto corrido com a sintaxe crua; escolha de linguagem
+                                   com confirmacao em 2 passos desde a Fase 59, piloto
+                                   Semana 1)
       AdminContentPage.tsx       <- /admin/conteudo (autoria de CuratedContent, Fase 6) - navega
                                    com WeeklyTemplateId desde a Fase 13b (getCourseCurriculum/
                                    getWeeklyTemplate, sem exigir matricula)

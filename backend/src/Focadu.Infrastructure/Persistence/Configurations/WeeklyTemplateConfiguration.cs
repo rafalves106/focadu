@@ -29,6 +29,17 @@ public class WeeklyTemplateConfiguration : IEntityTypeConfiguration<WeeklyTempla
             .HasForeignKey(c => c.WeeklyTemplateId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Fase 59: variantes de linguagem e referencias do projeto.
+        builder.HasMany(w => w.LanguageVariants)
+            .WithOne()
+            .HasForeignKey(l => l.WeeklyTemplateId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(w => w.References)
+            .WithOne()
+            .HasForeignKey(r => r.WeeklyTemplateId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasIndex(w => new { w.MonthlyId, w.Number }).IsUnique();
     }
 }

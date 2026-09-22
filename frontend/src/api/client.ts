@@ -1,5 +1,6 @@
 import {
   COSMETIC_SLOT_NAMES,
+  PROJECT_LANGUAGE_NAMES,
   PUBLICATION_PLATFORM_NAMES,
   type ApiErrorBody,
   type AiProviderStatusDto,
@@ -20,6 +21,7 @@ import {
   type MarketplaceCatalogDto,
   type ModulePublicationDto,
   type NoteDto,
+  type ProjectLanguage,
   type PublicationPlatform,
   type RankingResultDto,
   type RankingScope,
@@ -182,6 +184,15 @@ export const api = {
       body: JSON.stringify({ submissionUrl }),
       timeoutMs: WEEKLY_PROJECT_SUBMIT_TIMEOUT_MS,
     }),
+  // Fase 59 (piloto Semana 1): escolha definitiva da linguagem do projeto - so quando
+  // WeeklyProjectDto.languageStep e NeedsChoice. Faz o fork de verdade no Forgejo antes de
+  // responder, por isso o timeout mais alto (mesma familia do submit acima).
+  chooseWeeklyProjectLanguage: (weeklyId: string, language: ProjectLanguage) =>
+    request<WeeklyProjectDto>(`/api/weeklies/${weeklyId}/project/language`, {
+      method: 'POST',
+      body: JSON.stringify({ language: PROJECT_LANGUAGE_NAMES[language] }),
+      timeoutMs: WEEKLY_PROJECT_SUBMIT_TIMEOUT_MS,
+    }),
   // Publicacao publica do modulo (Fase 11) - prova de aprendizado exigida ao completar uma Weekly.
   getPublicationStatus: (weeklyId: string) => request<ModulePublicationDto>(`/api/weeklies/${weeklyId}/publication/status`),
   generateLinkedInDraft: (weeklyId: string) =>
@@ -208,9 +219,15 @@ export const api = {
   // skipAuthRedirect: 401 aqui e o caminho ESPERADO "ninguem logado ainda" (ver AuthContext.tsx),
   // nunca sessao expirada de verdade - nao deve disparar o modal global.
   getCurrentUser: () => request<UserDto>('/api/auth/me', { skipAuthRedirect: true }),
-  // Onboarding (Fase 13b) - Entrevista de Perfil + Selecao de Curso.
-  completeProfile: (interests: string[], additionalNotes: string | null) =>
-    request<UserDto>('/api/users/me/profile', { method: 'PUT', body: JSON.stringify({ interests, additionalNotes }) }),
+  // Onboarding (Fase 13b) - Entrevista de Perfil + Selecao de Curso. preferredLanguages (Fase 59):
+  // sempre mandado por inteiro (substitui a lista, mesmo principio de interests) - o unico chamador
+  // (ProfileInterviewPage) sempre sabe a selecao atual, nunca precisa do "nulo = nao mexe" que o
+  // backend aceita pra outros clientes futuros.
+  completeProfile: (interests: string[], additionalNotes: string | null, preferredLanguages: ProjectLanguage[]) =>
+    request<UserDto>('/api/users/me/profile', {
+      method: 'PUT',
+      body: JSON.stringify({ interests, additionalNotes, preferredLanguages: preferredLanguages.map((l) => PROJECT_LANGUAGE_NAMES[l]) }),
+    }),
   getAvailableCourses: () => request<AvailableCourseDto[]>('/api/courses/available'),
   getMyEnrollments: () => request<EnrollmentDto[]>('/api/enrollments/me'),
   createEnrollment: (courseId: string) =>

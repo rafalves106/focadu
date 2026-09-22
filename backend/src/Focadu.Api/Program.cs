@@ -289,7 +289,9 @@ api.MapGet("/auth/me", async (ClaimsPrincipal principal, GetCurrentUserUseCase u
 // PUT (nao POST): idempotente - concluir a Entrevista de Perfil de novo so substitui a lista de
 // interesses inteira, nunca acumula (ver User.CompleteProfile).
 api.MapPut("/users/me/profile", async (ClaimsPrincipal principal, CompleteProfileRequest? request, CompleteProfileUseCase useCase, CancellationToken ct) =>
-        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), request?.Interests ?? [], request?.AdditionalNotes, ct)))
+        Results.Ok(await useCase.ExecuteAsync(
+            CurrentUserId(principal), request?.Interests ?? [], request?.AdditionalNotes,
+            ProjectLanguageParsing.RequireAll(request?.PreferredLanguages), ct)))
     .RequireAuthorization()
     .WithName("CompleteProfile");
 
@@ -532,6 +534,17 @@ api.MapPost("/weeklies/{weeklyId}/project/submit", async (ClaimsPrincipal princi
     })
     .RequireAuthorization()
     .WithName("SubmitWeeklyProject");
+
+// Escolha da linguagem do projeto (Fase 59, piloto da Semana 1) - so em semana com variantes de
+// linguagem; faz o fork do repositorio-modelo da linguagem escolhida e disponibiliza o projeto.
+// Definitiva: uma 2a chamada devolve 409 (linguagem_ja_escolhida), nunca troca.
+api.MapPost("/weeklies/{weeklyId}/project/language", async (ClaimsPrincipal principal, string weeklyId, ChooseProjectLanguageRequest? request, ChooseWeeklyProjectLanguageUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ProjectLanguageParsing.Require(request?.Language), ct));
+    })
+    .RequireAuthorization()
+    .WithName("ChooseWeeklyProjectLanguage");
 
 // Avaliacao do projeto (Fase 11) - WeeklyProject.Evaluate() existia no dominio desde a Fase 1 sem
 // endpoint (gap documentado na Fase 7); precisou ganhar um porque Weekly.IsModuleComplete() exige

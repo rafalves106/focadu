@@ -129,6 +129,48 @@ public class Weekly : Entity
         return _project;
     }
 
+    /// <summary>
+    /// Falha (DomainException) se o aluno nao pode escolher agora a linguagem do projeto (Fase 59):
+    /// semana sem variantes de linguagem, projeto ainda bloqueado (mesma regra de SubmitProject -
+    /// so com as Dailies originais concluidas, decisao do dono), projeto que nao esta mais Pending
+    /// ou que ja tem linguagem. Separado de ChooseProjectLanguage porque o caso de uso precisa
+    /// checar isso ANTES de chamar o Forgejo (o fork e o passo caro e externo) - a escolha em si
+    /// so e gravada depois que o fork deu certo, com a URL dele.
+    /// </summary>
+    public void EnsureProjectLanguageCanBeChosen()
+    {
+        if (_project is null)
+            throw new DomainException("Esta Weekly nao tem projeto definido.", "projeto_nao_encontrado");
+
+        if (!Template.HasLanguageVariants)
+            throw new DomainException("Esta semana nao tem escolha de linguagem no projeto.", "semana_sem_variantes_de_linguagem");
+
+        if (_project.Language is not null)
+            throw new DomainException("A linguagem deste projeto ja foi escolhida e nao pode ser trocada.", "linguagem_ja_escolhida");
+
+        if (_project.Status != WeeklyProjectStatus.Pending)
+            throw new DomainException("So e possivel escolher a linguagem de um projeto ainda pendente.", "projeto_nao_pendente");
+
+        if (!AreDailiesComplete())
+        {
+            throw new DomainException(
+                "Termine todas as dailies desta semana antes de escolher a linguagem do projeto.",
+                "projeto_semana_bloqueado");
+        }
+    }
+
+    /// <summary>Grava a linguagem escolhida e o repositorio dela (Fase 59) - repete as checagens de EnsureProjectLanguageCanBeChosen, que o caso de uso ja chamou antes do fork.</summary>
+    public WeeklyProject ChooseProjectLanguage(ProjectLanguage language, string repositoryUrl)
+    {
+        EnsureProjectLanguageCanBeChosen();
+
+        if (Template.FindLanguageVariant(language) is null)
+            throw new DomainException("Esta semana nao tem o projeto nessa linguagem.", "linguagem_indisponivel");
+
+        _project!.ChooseLanguage(language, repositoryUrl);
+        return _project;
+    }
+
     /// <summary>Verdadeiro quando o modulo esta completo mas ainda nao tem uma publicacao Validated - trava o proximo modulo (ver StartOrResumeDailyUseCase).</summary>
     public bool RequiresPublicationToUnlock() =>
         IsModuleComplete() && _publication?.Status != PublicationStatus.Validated;

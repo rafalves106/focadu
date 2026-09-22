@@ -134,8 +134,24 @@ public class ForgejoService : IForgejoService
         // configurada nesta instancia (ver EnsureConfigured/AdminToken). body: new {} (nao null) -
         // ponytail confirmado ao vivo (18/09/2026): sem Content-Type/corpo nenhum, o Forgejo
         // recusa com 422 "Empty Content-Type", mesmo o corpo sendo opcional na pratica.
-        var response = await SendAsync(
-            HttpMethod.Post, $"repos/{ForgejoAdminUsername}/{templateSlug}/forks", cancellationToken, body: new { }, sudoAs: asUsername);
+        HttpResponseMessage response;
+        try
+        {
+            response = await SendAsync(
+                HttpMethod.Post, $"repos/{ForgejoAdminUsername}/{templateSlug}/forks", cancellationToken, body: new { }, sudoAs: asUsername);
+        }
+        catch (ExternalServiceException ex) when (ex.Code == "forgejo_falhou" && ex.Message.Contains("(409)"))
+        {
+            // Fase 59: o aluno ja tem um fork deste modelo - uma tentativa anterior de escolher a
+            // linguagem criou o fork e falhou antes de gravar a escolha. Como a escolha e
+            // irreversivel e precisa poder ser refeita, reaproveita o fork que ja existe em vez de
+            // falhar pra sempre. So chega aqui um repositorio do proprio aluno com o nome do modelo:
+            // o aluno nao cria repositorio (max_repo_creation = 0), so recebe fork.
+            var existing = await GetOptionalAsync($"repos/{asUsername}/{templateSlug}", cancellationToken) ?? throw ex;
+            var existingRepo = await existing.Content.ReadFromJsonAsync<ForgejoRepoPayload>(JsonOptions, cancellationToken);
+            return existingRepo?.CloneUrl ?? existingRepo?.HtmlUrl ?? throw ex;
+        }
+
         var repo = await response.Content.ReadFromJsonAsync<ForgejoRepoPayload>(JsonOptions, cancellationToken)
             ?? throw new ExternalServiceException("forgejo_resposta_invalida", "O Forgejo nao retornou os dados do fork criado.");
         return repo.CloneUrl ?? repo.HtmlUrl ?? throw new ExternalServiceException(

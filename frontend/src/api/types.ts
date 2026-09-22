@@ -40,6 +40,23 @@ export const CURATED_CONTENT_TYPE_NAMES = ['Reading', 'Video'] as const;
 export const WeeklyProjectStatus = { Pending: 0, Submitted: 1, Evaluated: 2 } as const;
 export type WeeklyProjectStatus = (typeof WeeklyProjectStatus)[keyof typeof WeeklyProjectStatus];
 
+// Fase 59 (piloto Semana 1): linguagem do Projeto Semanal - lista fechada (curadoria mantem
+// repositorio-modelo + referencias por linguagem, ver secret/rascunhos/linguagem-preferida-e-
+// referencias-do-projeto.md). O mesmo nome serve de rotulo (Python/JavaScript nao precisam de
+// traducao) e de valor que a Api espera no campo "language" dos requests.
+export const ProjectLanguage = { Python: 1, JavaScript: 2 } as const;
+export type ProjectLanguage = (typeof ProjectLanguage)[keyof typeof ProjectLanguage];
+export const PROJECT_LANGUAGE_NAMES: Record<ProjectLanguage, string> = {
+  [ProjectLanguage.Python]: 'Python',
+  [ProjectLanguage.JavaScript]: 'JavaScript',
+};
+
+// Em que ponto da escolha de linguagem o aluno esta num Projeto Semanal (Fase 59) - ver
+// WeeklyProjectDto abaixo. Semana sem variantes de linguagem (fora do piloto) e sempre None, igual
+// sempre foi antes desta fase.
+export const ProjectLanguageStep = { None: 0, NeedsPreference: 1, NeedsChoice: 2, Chosen: 3 } as const;
+export type ProjectLanguageStep = (typeof ProjectLanguageStep)[keyof typeof ProjectLanguageStep];
+
 export const PublicationPlatform = { LinkedIn: 1, GitHub: 2 } as const;
 export type PublicationPlatform = (typeof PublicationPlatform)[keyof typeof PublicationPlatform];
 // Nomes que a Api espera no campo `platform` do request de submissao (case-insensitive, ver
@@ -296,8 +313,20 @@ export interface CuratedContentDto {
   personalizedAnalogies?: string[];
 }
 
+/** Fase 59: link de referencia (biblioteca/documentacao) da linguagem escolhida - curadoria manual, cada um conferido na mão. */
+export interface ProjectReferenceDto {
+  id: string;
+  /** Nulo = comum a todas as linguagens da semana (ex: uma RFC). */
+  language: ProjectLanguage | null;
+  title: string;
+  url: string;
+  documents: string;
+  lastVerifiedAt: string | null;
+}
+
 export interface WeeklyProjectDto {
   id: string;
+  /** Fase 59: vazio enquanto o projeto nao foi disponibilizado (languageStep NeedsPreference/NeedsChoice) - o texto so vem depois que o aluno escolhe a linguagem. */
   specText: string;
   status: WeeklyProjectStatus;
   /** Fase 38: true enquanto as Dailies originais da semana nao estiverem todas concluidas - Weekly.SubmitProject recusa o envio nesse estado. So faz sentido junto de Status Pending; uma vez Submitted/Evaluated, sempre false. */
@@ -310,6 +339,16 @@ export interface WeeklyProjectDto {
   forgejoAccessToken: string | null;
   /** Username do aluno no Forgejo - junto do token acima, é o que o `git clone` HTTP pede ao autenticar. */
   forgejoUsername: string | null;
+  /** Fase 59 (piloto Semana 1): ver ProjectLanguageStep. */
+  languageStep: ProjectLanguageStep;
+  /** Fase 59: linguagem escolhida (definitiva). Nulo ate a escolha - e sempre nulo com languageStep None. */
+  language: ProjectLanguage | null;
+  /** Fase 59: todas as linguagens que a semana oferece. Vazio com languageStep None (semana fora do piloto). */
+  supportedLanguages: ProjectLanguage[];
+  /** Fase 59: so com languageStep NeedsChoice - as linguagens da semana que o aluno marcou no perfil, entre as quais ele escolhe agora. */
+  choosableLanguages: ProjectLanguage[];
+  /** Fase 59: so com languageStep Chosen - as referencias da linguagem escolhida, mais as comuns a todas. */
+  references: ProjectReferenceDto[];
 }
 
 export interface WeeklyDetailDto {
@@ -477,6 +516,8 @@ export interface UserDto {
   profileCompletedAt: string | null;
   interests: string[];
   additionalProfileNotes: string | null;
+  /** Fase 59: linguagens que o aluno topa usar nos Projetos Semanais, marcadas na Entrevista de Perfil. Vazio ate ele marcar. */
+  preferredLanguages: ProjectLanguage[];
 }
 
 // referralCode (Fase 17): opcional - codigo invalido/de ninguem so e ignorado no backend, nunca bloqueia o registro.

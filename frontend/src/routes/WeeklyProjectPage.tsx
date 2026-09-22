@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
-import { WeeklyProjectStatus } from '../api/types';
+import { PROJECT_LANGUAGE_NAMES, ProjectLanguage, ProjectLanguageStep, WeeklyProjectStatus, type ProjectReferenceDto } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { MarkdownBlock } from '../components/activities/MarkdownBlock';
@@ -39,12 +39,20 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [tokenCopied, setTokenCopied] = useState(false);
+  // Fase 59 (piloto Semana 1): escolha da linguagem, em 2 passos (decisao do dono - a escolha e
+  // definitiva, sem troca pelo proprio aluno depois). pendingLanguage nulo = passo 1 (escolher
+  // uma das choosableLanguages); preenchido = passo 2 (confirmar ou cancelar).
+  const [pendingLanguage, setPendingLanguage] = useState<ProjectLanguage | null>(null);
+  const [choosingLanguage, setChoosingLanguage] = useState(false);
+  const [chooseLanguageError, setChooseLanguageError] = useState<string | null>(null);
 
   // Fase 32: SessionLayout faz isso sozinho via `assistantContext` (ver SessionShell.tsx) - esta
   // tela nao usa SessionLayout (so SessionTopBar + QuickQuestionOrb soltos), entao alimenta o
-  // Suporte Rapido de IA com a especificacao do projeto direto aqui.
+  // Suporte Rapido de IA com a especificacao do projeto direto aqui. Fase 59: specText vem vazio
+  // enquanto o projeto nao foi disponibilizado (aluno ainda precisa marcar/escolher linguagem) -
+  // sem contexto nenhum nesse caso, em vez de mandar uma string vazia pro assistente.
   useEffect(() => {
-    if (!weekly?.project) return;
+    if (!weekly?.project?.specText) return;
     setStudyAssistantContext(
       `Projeto da Semana ${weekly.number}: ${weekly.title}\n\nEspecificação do projeto:\n${weekly.project.specText}`,
     );
@@ -63,6 +71,10 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   const project = weekly.project;
   const badge = project.isLocked ? LOCKED_BADGE : STATUS_BADGE[project.status];
   const canSubmit = project.status !== WeeklyProjectStatus.Evaluated && !project.isLocked;
+  // Fase 59: None (semana fora do piloto) e Chosen sao os 2 estados em que o projeto de fato foi
+  // disponibilizado - specText/submissionUrl so vem preenchido neles (ver WeeklyProjectDtoMapper
+  // no backend). NeedsPreference/NeedsChoice mostram um card no lugar da especificacao, abaixo.
+  const released = project.languageStep === ProjectLanguageStep.Chosen || project.languageStep === ProjectLanguageStep.None;
 
   // Repositorio de Projeto Semanal e provisionado pela Focadu (fork no Forgejo interno, ver
   // secret/rascunhos/repositorios-gerenciados-projeto-semanal.md) - o aluno nao digita mais URL
@@ -80,6 +92,23 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
     }
   }
 
+  // Fase 59: confirmar de verdade faz o fork no Forgejo (pode demorar um pouco) e so entao
+  // disponibiliza o projeto - reload() pelo mesmo motivo de handleSubmit, o DTO inteiro muda
+  // de estado (languageStep, specText, submissionUrl, references...) e nao vale a pena replicar
+  // esse refetch aqui.
+  async function handleConfirmLanguage() {
+    if (pendingLanguage === null) return;
+    setChoosingLanguage(true);
+    setChooseLanguageError(null);
+    try {
+      await api.chooseWeeklyProjectLanguage(weeklyId, pendingLanguage);
+      window.location.reload();
+    } catch (err) {
+      setChooseLanguageError(err instanceof ApiError ? err.message : 'Não foi possível confirmar a linguagem. Tente de novo.');
+      setChoosingLanguage(false);
+    }
+  }
+
   async function handleCopyToken(token: string) {
     try {
       await navigator.clipboard.writeText(token);
@@ -91,8 +120,8 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   }
 
   return (
-    <div className="min-h-screen bg-base p-10">
-      <div className="mx-auto flex max-w-[1360px] flex-col gap-8">
+    <div className="min-h-screen bg-base px-6 pt-5 pb-6">
+      <div className="mx-auto flex max-w-[1600px] flex-col gap-5">
         <SessionTopBar
           eyebrow={
             <Link to={backTo} className="hover:text-secondary">
@@ -104,118 +133,295 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
           tone="project"
         />
 
-        <div className="mx-auto flex w-full max-w-[1000px] flex-col gap-6 rounded-[20px] border-[1.5px] border-project bg-surface p-10">
-          <div className="flex items-center justify-between">
-            <span className="rounded-full border border-project bg-project/10 px-3 py-1.5 text-[11px] font-semibold tracking-[0.5px] text-project">
-              CHEFE DE FASE 👾
-            </span>
-            <span className={`rounded-md px-3 py-1.5 text-xs font-semibold ${badge.className}`}>{badge.label}</span>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <h1 className="text-[28px] font-bold text-primary">Projeto da Semana {weekly.number}</h1>
-            {/* SpecText e Markdown curado (titulos "###", listas, negrito/codigo inline) - antes ia num
-                <p whitespace-pre-line> e a sintaxe aparecia crua na tela. Mesmo renderizador das leituras. */}
-            <MarkdownBlock text={project.specText} />
-          </div>
-
-          <div className="h-px bg-stroke" />
-
-          {/* Fase 27b: Score/Feedback existem no dominio desde a Fase 16 mas nunca apareciam aqui -
-              nada disparava a avaliacao pela UI antes desta fase (ver SubmitWeeklyProjectUseCase).
-              Estilo proprio (nao FeedbackPanel, usado pelas 5 atividades da Daily) porque projeto
-              nao tem conceito de passed/reprovado - uma vez avaliado, nao ha reenvio (WeeklyProject.
-              Submit bloqueia depois de Evaluated), so a nota fica registrada. */}
-          {project.status === WeeklyProjectStatus.Evaluated && (
-            <div className="flex flex-col gap-3 rounded-xl border border-project/40 bg-surface-alt p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted">Avaliação</p>
-                <p className="text-2xl font-bold text-project">
-                  {project.score}
-                  <span className="text-sm font-medium text-muted">/100</span>
-                </p>
-              </div>
-              {project.feedback && <p className="text-sm text-secondary">{project.feedback}</p>}
-            </div>
+        {/* Mesmo layout de 3 colunas das telas da Daily (SessionLayout): repositorio/credenciais a
+            esquerda e referencias a direita, so depois do projeto disponibilizado - antes disso o
+            cartao central fica sozinho, como sempre foi. */}
+        <div className="flex items-stretch gap-8">
+          {released && project.submissionUrl && (
+            <RepositoryPanel
+              submissionUrl={project.submissionUrl}
+              username={project.forgejoUsername}
+              accessToken={project.forgejoAccessToken}
+              tokenCopied={tokenCopied}
+              onCopyToken={handleCopyToken}
+            />
           )}
 
-          {project.submissionUrl && (
-            <div className="flex flex-col gap-3 rounded-xl border border-stroke bg-surface-alt p-5">
-              <div className="flex flex-col gap-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted">Seu repositório</p>
-                <a href={project.submissionUrl} target="_blank" rel="noreferrer" className="w-fit text-sm text-accent hover:underline">
-                  {project.submissionUrl}
-                </a>
-              </div>
-              {/* Fase de integração com Forgejo interno: repositório já vem pronto (fork do
-                  template da semana) - o aluno só precisa clonar e trabalhar, usando o token
-                  abaixo como senha do git (ver "Credencial git" em secret/rascunhos/
-                  repositorios-gerenciados-projeto-semanal.md). */}
-              {project.forgejoAccessToken && project.forgejoUsername && (
-                <div className="flex flex-col gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-                    Credenciais do git — usuário <span className="text-primary">{project.forgejoUsername}</span>, use o token abaixo
-                    como senha
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 truncate rounded-lg bg-base px-3 py-2 text-sm text-primary">{project.forgejoAccessToken}</code>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyToken(project.forgejoAccessToken!)}
-                      className="shrink-0 rounded-lg bg-accent px-3 py-2 text-xs font-bold text-base"
-                    >
-                      {tokenCopied ? 'COPIADO ✓' : 'COPIAR'}
-                    </button>
-                  </div>
-                  <code className="whitespace-pre-wrap break-all rounded-lg bg-base px-3 py-2 text-xs text-secondary">
-                    git clone {project.submissionUrl}
-                  </code>
-                  <p className="text-xs text-muted">
-                    O git vai pedir usuário e senha na hora do clone/push - use o usuário e o token acima.
-                  </p>
-                </div>
+          <div className="mx-auto flex w-full min-w-0 max-w-[1000px] flex-col gap-6 rounded-[20px] border-[1.5px] border-project bg-surface p-10">
+            <div className="flex items-center justify-between">
+              <span className="rounded-full border border-project bg-project/10 px-3 py-1.5 text-[11px] font-semibold tracking-[0.5px] text-project">
+                CHEFE DE FASE 👾
+              </span>
+              <span className={`rounded-md px-3 py-1.5 text-xs font-semibold ${badge.className}`}>{badge.label}</span>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <h1 className="text-[28px] font-bold text-primary">Projeto da Semana {weekly.number}</h1>
+
+              {/* Fase 38: trava tudo abaixo enquanto a Weekly ainda tem Daily original nao concluida
+                  (Weekly.AreDailiesComplete) - inclusive a escolha de linguagem (Fase 59): "so depois
+                  de desbloqueado" (decisao do dono), pra nao mostrar um seletor que o backend so
+                  aceitaria depois. */}
+              {project.isLocked ? (
+                <p className="rounded-xl border border-stroke bg-surface-alt px-4 py-3 text-sm text-secondary">
+                  🔒 Termine todas as dailies desta semana para desbloquear o projeto.
+                </p>
+              ) : project.languageStep === ProjectLanguageStep.NeedsPreference ? (
+                <LanguagePreferenceNeeded />
+              ) : project.languageStep === ProjectLanguageStep.NeedsChoice ? (
+                <LanguagePicker
+                  choosableLanguages={project.choosableLanguages}
+                  pendingLanguage={pendingLanguage}
+                  onPick={setPendingLanguage}
+                  onCancel={() => {
+                    setPendingLanguage(null);
+                    setChooseLanguageError(null);
+                  }}
+                  onConfirm={handleConfirmLanguage}
+                  submitting={choosingLanguage}
+                  error={chooseLanguageError}
+                />
+              ) : (
+                // SpecText e Markdown curado (titulos "###", listas, negrito/codigo inline) - antes ia
+                // num <p whitespace-pre-line> e a sintaxe aparecia crua na tela. Mesmo renderizador das
+                // leituras.
+                <MarkdownBlock text={project.specText} />
               )}
             </div>
-          )}
 
-          {!project.submissionUrl && (
-            <p className="rounded-xl border border-alert/40 bg-surface-alt px-4 py-3 text-sm text-alert">
-              Seu repositório ainda não foi provisionado - tente recarregar a página em alguns instantes.
-            </p>
-          )}
+            {released && (
+              <>
+                <div className="h-px bg-stroke" />
 
-          {/* Fase 38: so aparece enquanto IsLocked - a Weekly ainda tem Daily original nao
-              concluida (Weekly.AreDailiesComplete), o backend recusaria o envio de qualquer
-              forma (SubmitWeeklyProjectUseCase -> Weekly.SubmitProject -> "projeto_semana_bloqueado"). */}
-          {project.isLocked && (
-            <p className="rounded-xl border border-stroke bg-surface-alt px-4 py-3 text-sm text-secondary">
-              🔒 Termine todas as dailies desta semana para desbloquear o envio do projeto.
-            </p>
-          )}
+                {/* Fase 27b: Score/Feedback existem no dominio desde a Fase 16 mas nunca apareciam
+                    aqui - nada disparava a avaliacao pela UI antes desta fase (ver
+                    SubmitWeeklyProjectUseCase). Estilo proprio (nao FeedbackPanel, usado pelas 5
+                    atividades da Daily) porque projeto nao tem conceito de passed/reprovado - uma vez
+                    avaliado, nao ha reenvio (WeeklyProject.Submit bloqueia depois de Evaluated), so a
+                    nota fica registrada. */}
+                {project.status === WeeklyProjectStatus.Evaluated && (
+                  <div className="flex flex-col gap-3 rounded-xl border border-project/40 bg-surface-alt p-5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted">Avaliação</p>
+                      <p className="text-2xl font-bold text-project">
+                        {project.score}
+                        <span className="text-sm font-medium text-muted">/100</span>
+                      </p>
+                    </div>
+                    {project.feedback && <p className="text-sm text-secondary">{project.feedback}</p>}
+                  </div>
+                )}
 
-          {canSubmit && project.submissionUrl && (
-            <div className="flex flex-col gap-3">
-              {/* Repositorio gerenciado no Forgejo interno e avaliado automaticamente ao entregar
-                  (ver EvaluateWeeklyProjectUseCase) - nao ha mais URL pra colar, so confirmar que
-                  o trabalho no repositorio ja provisionado esta pronto. */}
-              <p className="text-xs text-muted">Terminou de commitar seu código? Entregue para receber nota automática.</p>
+                {!project.submissionUrl && (
+                  <p className="rounded-xl border border-alert/40 bg-surface-alt px-4 py-3 text-sm text-alert">
+                    Seu repositório ainda não foi provisionado - tente recarregar a página em alguns instantes.
+                  </p>
+                )}
+              </>
+            )}
 
-              {submitError && <p className="text-sm text-alert">{submitError}</p>}
+            {canSubmit && project.submissionUrl && (
+              <div className="flex flex-col gap-3">
+                {/* Repositorio gerenciado no Forgejo interno e avaliado automaticamente ao entregar
+                    (ver EvaluateWeeklyProjectUseCase) - nao ha mais URL pra colar, so confirmar que
+                    o trabalho no repositorio ja provisionado esta pronto. */}
+                <p className="text-xs text-muted">Terminou de commitar seu código? Entregue para receber nota automática.</p>
 
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="self-end rounded-xl bg-project px-8 py-4 text-sm font-bold text-base disabled:opacity-40"
-              >
-                {submitting ? 'ENVIANDO...' : 'ENTREGAR PROJETO'}
-              </button>
-            </div>
+                {submitError && <p className="text-sm text-alert">{submitError}</p>}
+
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="self-end rounded-xl bg-project px-8 py-4 text-sm font-bold text-base disabled:opacity-40"
+                >
+                  {submitting ? 'ENVIANDO...' : 'ENTREGAR PROJETO'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {released && project.references.length > 0 && (
+            <ReferencesPanel
+              references={project.references}
+              languageName={project.language !== null ? PROJECT_LANGUAGE_NAMES[project.language] : null}
+            />
           )}
         </div>
       </div>
 
       <QuickQuestionOrb />
+    </div>
+  );
+}
+
+/**
+ * Coluna esquerda: repositorio gerenciado no Forgejo interno (fork do template da semana) - o
+ * aluno so clona e trabalha, usando o token como senha do git (ver "Credencial git" em
+ * secret/rascunhos/repositorios-gerenciados-projeto-semanal.md). Mesmo cartao de 280px do
+ * MaterialSidebar da Daily.
+ */
+function RepositoryPanel({
+  submissionUrl,
+  username,
+  accessToken,
+  tokenCopied,
+  onCopyToken,
+}: {
+  submissionUrl: string;
+  username: string | null;
+  accessToken: string | null;
+  tokenCopied: boolean;
+  onCopyToken: (token: string) => void;
+}) {
+  return (
+    <aside className="flex w-[280px] shrink-0 flex-col gap-4 self-start rounded-2xl border border-stroke bg-surface p-5">
+      <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-muted">Seu repositório</p>
+      <a href={submissionUrl} target="_blank" rel="noreferrer" className="break-all text-[13px] text-accent hover:underline">
+        {submissionUrl}
+      </a>
+
+      {accessToken && username && (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <p className="text-[10px] font-medium uppercase tracking-[1px] text-secondary">Usuário do git</p>
+            <code className="break-all rounded-lg bg-base px-3 py-2 text-xs text-primary">{username}</code>
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-[10px] font-medium uppercase tracking-[1px] text-secondary">Token (use como senha)</p>
+            <code className="break-all rounded-lg bg-base px-3 py-2 text-xs text-primary">{accessToken}</code>
+            <button
+              type="button"
+              onClick={() => onCopyToken(accessToken)}
+              className="rounded-lg bg-accent px-3 py-2 text-xs font-bold text-base"
+            >
+              {tokenCopied ? 'COPIADO ✓' : 'COPIAR TOKEN'}
+            </button>
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-[10px] font-medium uppercase tracking-[1px] text-secondary">Clonar</p>
+            <code className="whitespace-pre-wrap break-all rounded-lg bg-base px-3 py-2 text-xs text-secondary">
+              git clone {submissionUrl}
+            </code>
+          </div>
+          <p className="text-xs text-muted">O git vai pedir usuário e senha na hora do clone/push - use o usuário e o token acima.</p>
+        </div>
+      )}
+    </aside>
+  );
+}
+
+/**
+ * Coluna direita (Fase 59): links de referencia (biblioteca/documentacao) da linguagem escolhida +
+ * os comuns a todas, curados manualmente - so vem preenchido com languageStep Chosen.
+ */
+function ReferencesPanel({ references, languageName }: { references: ProjectReferenceDto[]; languageName: string | null }) {
+  return (
+    <aside className="flex w-[280px] shrink-0 flex-col gap-4 self-start rounded-2xl border border-stroke bg-surface p-5">
+      <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-muted">
+        Referências{languageName && ` (${languageName})`}
+      </p>
+      <div className="flex flex-col gap-2">
+        {references.map((reference) => (
+          <a
+            key={reference.id}
+            href={reference.url}
+            target="_blank"
+            rel="noreferrer"
+            className="flex flex-col gap-1 rounded-[10px] border border-transparent bg-surface-alt p-3 hover:border-stroke"
+          >
+            <span className="text-[13px] font-semibold text-accent">{reference.title}</span>
+            <span className="text-xs text-secondary">{reference.documents}</span>
+          </a>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+/** Fase 59: semana com variantes de linguagem, mas o aluno ainda nao marcou nenhuma delas no perfil - so isso, ate ele marcar. */
+function LanguagePreferenceNeeded() {
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-alert/40 bg-surface-alt px-4 py-3">
+      <p className="text-sm text-secondary">
+        Esse projeto tem repositório-modelo e referências próprias por linguagem, mas você ainda não marcou nenhuma linguagem
+        no seu perfil.
+      </p>
+      <Link to="/onboarding/perfil?edit=1" className="w-fit text-sm font-semibold text-accent hover:underline">
+        Marcar no meu perfil →
+      </Link>
+    </div>
+  );
+}
+
+/**
+ * Fase 59: escolha da linguagem em 2 passos - `pendingLanguage` nulo mostra os botoes de escolha
+ * (passo 1); preenchido mostra a confirmacao (passo 2), unico jeito de chegar em `onConfirm`.
+ * Decisao do dono: a escolha e definitiva, sem troca pelo proprio aluno depois - por isso o passo
+ * de confirmacao existe, pra reduzir clique errado.
+ */
+function LanguagePicker({
+  choosableLanguages,
+  pendingLanguage,
+  onPick,
+  onCancel,
+  onConfirm,
+  submitting,
+  error,
+}: {
+  choosableLanguages: ProjectLanguage[];
+  pendingLanguage: ProjectLanguage | null;
+  onPick: (language: ProjectLanguage) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+  submitting: boolean;
+  error: string | null;
+}) {
+  return (
+    <div className="flex flex-col gap-4 rounded-xl border border-project/40 bg-surface-alt p-5">
+      <div className="flex flex-col gap-1">
+        <p className="text-sm font-semibold text-primary">Escolha a linguagem deste projeto</p>
+        <p className="text-sm text-secondary">
+          Esse projeto tem repositório-modelo e referências próprias por linguagem. Depois de confirmar, não dá mais pra
+          trocar.
+        </p>
+      </div>
+
+      {pendingLanguage === null ? (
+        <div className="flex flex-wrap gap-3">
+          {choosableLanguages.map((language) => (
+            <button
+              key={language}
+              type="button"
+              onClick={() => onPick(language)}
+              className="rounded-xl border border-project bg-surface px-6 py-3 text-sm font-bold text-primary hover:bg-project/10"
+            >
+              {PROJECT_LANGUAGE_NAMES[language]}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 rounded-xl border border-alert/40 bg-base p-4">
+          <p className="text-sm text-primary">
+            Confirma <strong>{PROJECT_LANGUAGE_NAMES[pendingLanguage]}</strong> pra este projeto? Depois de confirmar, não dá
+            mais pra trocar de linguagem aqui.
+          </p>
+          {error && <p className="text-sm text-alert">{error}</p>}
+          <div className="flex items-center justify-end gap-3">
+            <button type="button" onClick={onCancel} disabled={submitting} className="text-sm text-secondary hover:text-primary disabled:opacity-40">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={submitting}
+              className="rounded-xl bg-project px-6 py-3 text-sm font-bold text-base disabled:opacity-40"
+            >
+              {submitting ? 'CONFIRMANDO...' : `CONFIRMAR ${PROJECT_LANGUAGE_NAMES[pendingLanguage].toUpperCase()}`}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
