@@ -12,12 +12,19 @@ public interface IForgejoService
 {
     /// <summary>
     /// Cria a conta do aluno no Forgejo, com criacao de repositorio desabilitada pra ele ("so a
-    /// Focadu cria repositorio", ver rascunho) e um access token novo. NAO e idempotente/nao
+    /// Focadu cria repositorio", ver rascunho). Sem token (Fase 60) - esse sai so em
+    /// RegenerateAccessTokenAsync, quando o aluno pede. NAO e idempotente/nao
     /// verifica se ja existe - quem chama (EnrollUserInCourseUseCase) so invoca isso depois de
     /// checar UserForgejoAccountRepository e nao achar nada (mesma divisao de responsabilidade de
     /// IGitHubService: o port so fala HTTP, a Application decide quando chamar).
     /// </summary>
-    Task<ForgejoAccountInfo> CreateUserAccountAsync(string username, string email, CancellationToken cancellationToken = default);
+    Task CreateUserAccountAsync(string username, string email, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fase 60: gera um access token novo pra conta `username` e revoga o anterior (mesmo nome) -
+    /// devolve o valor, que o Forgejo nunca mostra de novo. Quem chama nao persiste o valor.
+    /// </summary>
+    Task<string> RegenerateAccessTokenAsync(string username, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Fork de `templateSlug` (repositorio-template mantido pela curadoria, dono da conta
@@ -29,6 +36,3 @@ public interface IForgejoService
     /// <summary>Mesma forma que IGitHubService.GetContentSnapshotAsync - conteudo do repositorio formatado pronto pro prompt de avaliacao por IA (EvaluateWeeklyProjectUseCase).</summary>
     Task<string> GetContentSnapshotAsync(string owner, string repo, CancellationToken cancellationToken = default);
 }
-
-/// <summary>`Username`/`AccessToken` de uma conta recem-criada no Forgejo - o Forgejo so devolve o valor do token na criacao (nunca de novo depois), por isso CreateUserAccountAsync precisa ser chamado no maximo uma vez por usuario, com o resultado persistido em UserForgejoAccount.</summary>
-public record ForgejoAccountInfo(string Username, string AccessToken);

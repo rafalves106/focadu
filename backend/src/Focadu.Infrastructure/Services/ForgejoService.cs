@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -53,54 +54,74 @@ public class ForgejoService : IForgejoService
         _options = options;
     }
 
-    public async Task<ForgejoAccountInfo> CreateUserAccountAsync(string username, string email, CancellationToken cancellationToken = default)
+    public async Task CreateUserAccountAsync(string username, string email, CancellationToken cancellationToken = default)
     {
         // POST /admin/users - cria com senha aleatoria (o aluno nunca loga com ela: acesso e so
         // via token, ver "Credencial git" no rascunho) e must_change_password=false (senao a conta
-        // fica travada esperando um troca de senha que nunca vai acontecer).
-        var randomPassword = Convert.ToBase64String(Guid.NewGuid().ToByteArray()) + "Aa1!";
+        // fica travada esperando um troca de senha que nunca vai acontecer). Fase 60: a senha e
+        // descartada aqui mesmo - RegenerateAccessTokenAsync redefine outra quando precisa.
         await SendAsync(
             HttpMethod.Post, "admin/users", cancellationToken,
-            new { username, email, password = randomPassword, must_change_password = false });
+            new { username, email, password = NewRandomPassword(), must_change_password = false });
 
         // "So a Focadu cria repositorio" (ver rascunho) - desabilita criacao de repo pra essa
         // conta. Endpoint separado (PATCH /admin/users/{username}) porque POST /admin/users nao
         // aceita max_repo_creation na criacao.
         await SendAsync(HttpMethod.Patch, $"admin/users/{username}", cancellationToken, new { max_repo_creation = 0 });
-
-        // POST /users/{username}/tokens - ponytail confirmado ao vivo (18/09/2026): esse endpoint
-        // especifico do Forgejo/Gitea RECUSA autenticacao via API token (mesmo com Sudo), 401
-        // "auth required" - so aceita Basic Auth de verdade (por design: um token nao pode gerar
-        // outro token). Como a Focadu acabou de definir a senha aleatoria do aluno agora mesmo (2
-        // chamadas acima), autentica como o proprio aluno via Basic Auth com essa senha - nao
-        // precisa do admin/Sudo pra isso, so pras 2 chamadas anteriores (criar conta + travar
-        // criacao de repo).
-        var token = await GenerateUserTokenAsync(username, randomPassword, cancellationToken);
-
-        return new ForgejoAccountInfo(username, token);
     }
 
-    /// <summary>Basic Auth dedicado (ver comentario acima) - unico lugar deste service que nao usa o token administrativo do Authorization header padrao do HttpClient.</summary>
-    private async Task<string> GenerateUserTokenAsync(string username, string password, CancellationToken cancellationToken)
+    public async Task<string> RegenerateAccessTokenAsync(string username, CancellationToken cancellationToken = default)
     {
-        // Request novo a cada tentativa (dentro do lambda) - um HttpRequestMessage so pode ser
-        // enviado uma vez, um retry reaproveitando a mesma instancia lançaria
-        // InvalidOperationException na 2a tentativa (mesmo cuidado de SendOnceAsync abaixo).
-        HttpResponseMessage response;
+        // Endpoints /users/{username}/tokens RECUSAM autenticacao via API token (mesmo com Sudo),
+        // 401 "auth required" - so aceitam Basic Auth de verdade (por design: um token nao pode
+        // gerar outro token; confirmado ao vivo em 18/09/2026). A Focadu nao guarda a senha do
+        // aluno, entao redefine uma aleatoria nova via admin e usa ela so nas 2 chamadas abaixo
+        // (confirmado ao vivo no Forgejo 9, 22/09/2026: PATCH so com password funciona).
+        var password = NewRandomPassword();
+        await SendAsync(HttpMethod.Patch, $"admin/users/{username}", cancellationToken, new { password, must_change_password = false });
+
+        // Mesmo nome pra todo token - o Forgejo recusa nome repetido (400), entao apaga o anterior
+        // antes, e isso ja e a revogacao dele. 404 = aluno ainda sem token, nada a revogar.
+        await SendAsUserAsync(HttpMethod.Delete, $"users/{username}/tokens/{TokenName}", username, password, body: null, allowNotFound: true, cancellationToken);
+
+        using var response = await SendAsUserAsync(
+            HttpMethod.Post, $"users/{username}/tokens", username, password,
+            new { name = TokenName, scopes = new[] { "write:repository" } }, allowNotFound: false, cancellationToken);
+
+        var payload = await response!.Content.ReadFromJsonAsync<ForgejoTokenPayload>(JsonOptions, cancellationToken)
+            ?? throw new ExternalServiceException("forgejo_resposta_invalida", "O Forgejo nao retornou o token gerado.");
+        return payload.Sha1 ?? throw new ExternalServiceException(
+            "forgejo_resposta_invalida", "O Forgejo nao retornou o valor do token gerado.");
+    }
+
+    private const string TokenName = "focadu-projeto-semanal";
+
+    private static string NewRandomPassword() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)) + "Aa1!";
+
+    /// <summary>Basic Auth como o proprio aluno (ver RegenerateAccessTokenAsync) - unico caminho deste service que nao usa o token administrativo do Authorization header padrao do HttpClient. Com `allowNotFound`, 404 devolve nulo em vez de erro.</summary>
+    private async Task<HttpResponseMessage?> SendAsUserAsync(
+        HttpMethod method, string path, string username, string password, object? body, bool allowNotFound, CancellationToken cancellationToken)
+    {
+        EnsureConfigured();
+
         try
         {
-            response = await HttpRetry.RunAsync(
+            return await HttpRetry.RunAsync(
                 async () =>
                 {
-                    using var request = new HttpRequestMessage(HttpMethod.Post, $"users/{username}/tokens")
-                    {
-                        Content = JsonContent.Create(
-                            new { name = "focadu-projeto-semanal", scopes = new[] { "write:repository" } }, options: JsonOptions),
-                    };
+                    // Request novo a cada tentativa - um HttpRequestMessage so pode ser enviado uma
+                    // vez (mesmo cuidado de SendOnceAsync).
+                    using var request = new HttpRequestMessage(method, path);
+                    if (body is not null) request.Content = JsonContent.Create(body, options: JsonOptions);
                     request.Headers.Authorization = new AuthenticationHeaderValue(
-                        "Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}:{password}")));
+                        "Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}")));
 
                     var r = await _httpClient.SendAsync(request, cancellationToken);
+                    if (allowNotFound && r.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        r.Dispose();
+                        return null;
+                    }
                     await HttpRetry.EnsureSuccessAsync(r, cancellationToken);
                     return r;
                 },
@@ -119,11 +140,6 @@ public class ForgejoService : IForgejoService
         {
             throw new ExternalServiceException("forgejo_falhou", $"O Forgejo respondeu com erro ({(int)ex.StatusCode}): {ex.Body}");
         }
-
-        var payload = await response.Content.ReadFromJsonAsync<ForgejoTokenPayload>(JsonOptions, cancellationToken)
-            ?? throw new ExternalServiceException("forgejo_resposta_invalida", "O Forgejo nao retornou o token gerado.");
-        return payload.Sha1 ?? throw new ExternalServiceException(
-            "forgejo_resposta_invalida", "O Forgejo nao retornou o valor do token gerado.");
     }
 
     public async Task<string> ForkTemplateAsync(string templateSlug, string asUsername, CancellationToken cancellationToken = default)

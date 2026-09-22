@@ -41,7 +41,7 @@ internal static class WeeklyProjectDtoMapper
             released ? project.SubmissionUrl : null,
             project.Score,
             project.Feedback,
-            released ? forgejoAccount?.AccessToken : null,
+            released ? forgejoAccount?.TokenLastEight : null,
             released ? forgejoAccount?.ForgejoUsername : null,
             step,
             project.Language,

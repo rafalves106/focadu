@@ -27,8 +27,8 @@ public class ForgejoAccountProvisioner
 
     /// <summary>
     /// Devolve a conta existente ou cria uma nova no Forgejo e a adiciona ao repositorio (quem
-    /// chama e quem faz o SaveChanges). O Forgejo so entrega o valor do token na criacao, entao
-    /// quem chama tem que persistir a conta antes de qualquer passo que possa falhar.
+    /// chama e quem faz o SaveChanges) - persistir antes de qualquer passo que possa falhar, senao
+    /// a proxima tentativa tenta criar a mesma conta de novo no Forgejo.
     /// </summary>
     public async Task<UserForgejoAccount> GetOrCreateAsync(Guid userId, CancellationToken cancellationToken)
     {
@@ -36,9 +36,10 @@ public class ForgejoAccountProvisioner
         if (existing is not null) return existing;
 
         var slug = userId.ToString("N");
-        var info = await _forgejoService.CreateUserAccountAsync($"aluno-{slug}", $"{slug}@focadu.internal", cancellationToken);
+        var username = $"aluno-{slug}";
+        await _forgejoService.CreateUserAccountAsync(username, $"{slug}@focadu.internal", cancellationToken);
 
-        var account = new UserForgejoAccount(userId, info.Username, info.AccessToken);
+        var account = new UserForgejoAccount(userId, username);
         await _userForgejoAccountRepository.AddAsync(account, cancellationToken);
         return account;
     }

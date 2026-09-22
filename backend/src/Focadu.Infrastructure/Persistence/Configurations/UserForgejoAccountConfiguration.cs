@@ -14,7 +14,8 @@ public class UserForgejoAccountConfiguration : IEntityTypeConfiguration<UserForg
 
         builder.Property(a => a.UserId).IsRequired();
         builder.Property(a => a.ForgejoUsername).IsRequired();
-        builder.Property(a => a.AccessToken).IsRequired();
+        // Fase 60: so o final do token - o valor inteiro nunca e persistido.
+        builder.Property(a => a.TokenLastEight).HasMaxLength(8);
 
         // Referencia "fraca" (sem navegacao de volta em User) - mesmo padrao de UserGemBalance.
         builder.HasOne<User>().WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Cascade);

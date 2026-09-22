@@ -84,9 +84,14 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 59 — Linguagem do Projeto Semanal (piloto Semana 1)** (22/09/2026).
+Última fase concluída: **Fase 60 — Token do Forgejo gerado sob demanda** (22/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Token do git do Projeto Semanal fora do banco (Fase 60, pedido do dono)**: o token do Forgejo
+  ficava em texto puro no Postgres e aparecia sempre na tela. Agora o aluno gera sob demanda
+  (`POST /api/users/me/forgejo-token`), vê uma única vez e a Focadu guarda só os 8 últimos
+  caracteres; gerar outro revoga o anterior. Ponto aberto registrado: os forks de aluno no Forgejo
+  são públicos (clone anônimo funciona) — decidir antes de abrir para outros alunos. Ver `docs/fase-60/`.
 - **Linguagem do Projeto Semanal, piloto Semana 1: Python/JavaScript (Fase 59, pedido do dono, logo
   após a Fase 58)**: o aluno marca no perfil quais linguagens topa usar nos Projetos Semanais e, quando
   o projeto de uma semana já curada por linguagem é desbloqueado, escolhe **de forma definitiva** (sem

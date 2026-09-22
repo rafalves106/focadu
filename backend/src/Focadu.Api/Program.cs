@@ -546,6 +546,13 @@ api.MapPost("/weeklies/{weeklyId}/project/language", async (ClaimsPrincipal prin
     .RequireAuthorization()
     .WithName("ChooseWeeklyProjectLanguage");
 
+// Token do Forgejo (Fase 60) - gera um novo e revoga o anterior; o valor so aparece nesta resposta,
+// a Focadu nao guarda. POST (nao GET): cada chamada muda estado no Forgejo.
+api.MapPost("/users/me/forgejo-token", async (ClaimsPrincipal principal, GenerateForgejoTokenUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
+    .RequireAuthorization()
+    .WithName("GenerateForgejoToken");
+
 // Avaliacao do projeto (Fase 11) - WeeklyProject.Evaluate() existia no dominio desde a Fase 1 sem
 // endpoint (gap documentado na Fase 7); precisou ganhar um porque Weekly.IsModuleComplete() exige
 // Project Evaluated. Sem tela propria - ver EvaluateWeeklyProjectUseCase. POST sem corpo (Fase 21,

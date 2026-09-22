@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
-import { PROJECT_LANGUAGE_NAMES, ProjectLanguage, ProjectLanguageStep, WeeklyProjectStatus, type ProjectReferenceDto } from '../api/types';
+import { PROJECT_LANGUAGE_NAMES, ProjectLanguage, ProjectLanguageStep, WeeklyProjectStatus, type ForgejoTokenDto, type ProjectReferenceDto } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { MarkdownBlock } from '../components/activities/MarkdownBlock';
@@ -38,7 +38,6 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   const { data: weekly, error, loading, retry } = useApiResource(() => api.getWeekly(weeklyId), [weeklyId]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [tokenCopied, setTokenCopied] = useState(false);
   // Fase 59 (piloto Semana 1): escolha da linguagem, em 2 passos (decisao do dono - a escolha e
   // definitiva, sem troca pelo proprio aluno depois). pendingLanguage nulo = passo 1 (escolher
   // uma das choosableLanguages); preenchido = passo 2 (confirmar ou cancelar).
@@ -109,16 +108,6 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
     }
   }
 
-  async function handleCopyToken(token: string) {
-    try {
-      await navigator.clipboard.writeText(token);
-      setTokenCopied(true);
-      setTimeout(() => setTokenCopied(false), 2000);
-    } catch {
-      // Clipboard indisponivel (ex: contexto nao seguro) - sem tratamento especial, so nao copia.
-    }
-  }
-
   return (
     <div className="min-h-screen bg-base px-6 pt-5 pb-6">
       <div className="mx-auto flex max-w-[1600px] flex-col gap-5">
@@ -141,9 +130,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
             <RepositoryPanel
               submissionUrl={project.submissionUrl}
               username={project.forgejoUsername}
-              accessToken={project.forgejoAccessToken}
-              tokenCopied={tokenCopied}
-              onCopyToken={handleCopyToken}
+              tokenLastEight={project.forgejoTokenLastEight}
             />
           )}
 
@@ -256,24 +243,53 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
 }
 
 /**
- * Coluna esquerda: repositorio gerenciado no Forgejo interno (fork do template da semana) - o
- * aluno so clona e trabalha, usando o token como senha do git (ver "Credencial git" em
- * secret/rascunhos/repositorios-gerenciados-projeto-semanal.md). Mesmo cartao de 280px do
- * MaterialSidebar da Daily.
+ * Coluna esquerda: repositorio gerenciado no Forgejo interno (fork do template da semana). Mesmo
+ * cartao de 280px do MaterialSidebar da Daily.
+ *
+ * Fase 60: a Focadu nao guarda mais o token do git (antes ficava em texto puro no banco e aparecia
+ * aqui sempre). O aluno gera sob demanda e ve o valor uma unica vez, nesta tela - so fica em state,
+ * some ao recarregar. Gerar de novo revoga o anterior no Forgejo, por isso a confirmacao quando ja
+ * existe um valendo (`tokenLastEight`).
  */
 function RepositoryPanel({
   submissionUrl,
   username,
-  accessToken,
-  tokenCopied,
-  onCopyToken,
+  tokenLastEight,
 }: {
   submissionUrl: string;
   username: string | null;
-  accessToken: string | null;
-  tokenCopied: boolean;
-  onCopyToken: (token: string) => void;
+  tokenLastEight: string | null;
 }) {
+  const [generated, setGenerated] = useState<ForgejoTokenDto | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const currentLastEight = generated ? generated.accessToken.slice(-8) : tokenLastEight;
+
+  async function handleGenerate() {
+    setGenerating(true);
+    setError(null);
+    try {
+      setGenerated(await api.generateForgejoToken());
+      setConfirming(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Não foi possível gerar o token. Tente de novo.');
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function handleCopy(token: string) {
+    try {
+      await navigator.clipboard.writeText(token);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard indisponivel (ex: contexto nao seguro) - sem tratamento especial, so nao copia.
+    }
+  }
+
   return (
     <aside className="flex w-[280px] shrink-0 flex-col gap-4 self-start rounded-2xl border border-stroke bg-surface p-5">
       <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-muted">Seu repositório</p>
@@ -281,30 +297,86 @@ function RepositoryPanel({
         {submissionUrl}
       </a>
 
-      {accessToken && username && (
+      <div className="flex flex-col gap-1">
+        <p className="text-[10px] font-medium uppercase tracking-[1px] text-secondary">Clonar</p>
+        <code className="whitespace-pre-wrap break-all rounded-lg bg-base px-3 py-2 text-xs text-secondary">
+          git clone {submissionUrl}
+        </code>
+      </div>
+
+      {username && (
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
             <p className="text-[10px] font-medium uppercase tracking-[1px] text-secondary">Usuário do git</p>
             <code className="break-all rounded-lg bg-base px-3 py-2 text-xs text-primary">{username}</code>
           </div>
-          <div className="flex flex-col gap-1">
+
+          <div className="flex flex-col gap-2">
             <p className="text-[10px] font-medium uppercase tracking-[1px] text-secondary">Token (use como senha)</p>
-            <code className="break-all rounded-lg bg-base px-3 py-2 text-xs text-primary">{accessToken}</code>
-            <button
-              type="button"
-              onClick={() => onCopyToken(accessToken)}
-              className="rounded-lg bg-accent px-3 py-2 text-xs font-bold text-base"
-            >
-              {tokenCopied ? 'COPIADO ✓' : 'COPIAR TOKEN'}
-            </button>
+
+            {generated ? (
+              <>
+                <code className="break-all rounded-lg bg-base px-3 py-2 text-xs text-primary">{generated.accessToken}</code>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(generated.accessToken)}
+                  className="rounded-lg bg-accent px-3 py-2 text-xs font-bold text-base"
+                >
+                  {copied ? 'COPIADO ✓' : 'COPIAR TOKEN'}
+                </button>
+                <p className="text-xs text-alert">
+                  Copie agora: por segurança a Focadu não guarda o token, ele não aparece de novo depois que você sair desta tela.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-secondary">
+                  {currentLastEight ? (
+                    <>
+                      Token atual termina em <span className="font-mono text-primary">…{currentLastEight}</span>. Perdeu? Gere outro.
+                    </>
+                  ) : (
+                    'Gere um token para enviar (git push) seu código.'
+                  )}
+                </p>
+                {confirming ? (
+                  <div className="flex flex-col gap-2 rounded-lg border border-alert/40 p-3">
+                    <p className="text-xs text-secondary">O token atual deixa de funcionar. Continuar?</p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleGenerate}
+                        disabled={generating}
+                        className="flex-1 rounded-lg bg-accent px-3 py-2 text-xs font-bold text-base disabled:opacity-50"
+                      >
+                        {generating ? 'GERANDO...' : 'GERAR'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirming(false)}
+                        disabled={generating}
+                        className="flex-1 rounded-lg border border-stroke px-3 py-2 text-xs font-bold text-secondary"
+                      >
+                        CANCELAR
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={currentLastEight ? () => setConfirming(true) : handleGenerate}
+                    disabled={generating}
+                    className="rounded-lg bg-accent px-3 py-2 text-xs font-bold text-base disabled:opacity-50"
+                  >
+                    {generating ? 'GERANDO...' : currentLastEight ? 'GERAR NOVO TOKEN' : 'GERAR TOKEN'}
+                  </button>
+                )}
+              </>
+            )}
+            {error && <p className="text-xs text-alert">{error}</p>}
           </div>
-          <div className="flex flex-col gap-1">
-            <p className="text-[10px] font-medium uppercase tracking-[1px] text-secondary">Clonar</p>
-            <code className="whitespace-pre-wrap break-all rounded-lg bg-base px-3 py-2 text-xs text-secondary">
-              git clone {submissionUrl}
-            </code>
-          </div>
-          <p className="text-xs text-muted">O git vai pedir usuário e senha na hora do clone/push - use o usuário e o token acima.</p>
+
+          <p className="text-xs text-muted">O git vai pedir usuário e senha na hora do push - use o usuário e o token acima.</p>
         </div>
       )}
     </aside>

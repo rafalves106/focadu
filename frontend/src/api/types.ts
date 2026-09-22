@@ -335,8 +335,8 @@ export interface WeeklyProjectDto {
   /** Fase 16: nota (0-100) da avaliação, preenchida junto com Status Evaluated. Nulo até então. */
   score: number | null;
   feedback: string | null;
-  /** Token de acesso do aluno no Forgejo interno - só populado quando há submissionUrl (repositório já provisionado). Usar como senha do git ao clonar/pushar. */
-  forgejoAccessToken: string | null;
+  /** Fase 60: últimos 8 caracteres do token do Forgejo valendo - o valor inteiro só vem uma vez, em api.generateForgejoToken. Nulo até o aluno gerar o 1o. */
+  forgejoTokenLastEight: string | null;
   /** Username do aluno no Forgejo - junto do token acima, é o que o `git clone` HTTP pede ao autenticar. */
   forgejoUsername: string | null;
   /** Fase 59 (piloto Semana 1): ver ProjectLanguageStep. */
@@ -349,6 +349,13 @@ export interface WeeklyProjectDto {
   choosableLanguages: ProjectLanguage[];
   /** Fase 59: so com languageStep Chosen - as referencias da linguagem escolhida, mais as comuns a todas. */
   references: ProjectReferenceDto[];
+}
+
+/** Fase 60: resposta de POST /api/users/me/forgejo-token - único momento em que o token inteiro aparece (a Focadu não guarda). */
+export interface ForgejoTokenDto {
+  forgejoUsername: string;
+  accessToken: string;
+  generatedAt: string;
 }
 
 export interface WeeklyDetailDto {

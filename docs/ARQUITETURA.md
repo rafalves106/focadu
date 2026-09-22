@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 59 - Linguagem do Projeto Semanal (piloto Semana 1: Python/JavaScript)**.
+> Ultima fase que atualizou este documento: **Fase 60 - Token do Forgejo gerado sob demanda (a Focadu nao guarda mais o token)**.
 
 ## Visao geral do projeto
 
@@ -1193,6 +1193,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 POST | `/api/curated-content` | `CreateCuratedContentUseCase` (Fase 4) | 201, 400/404 - Fase 13: campo `weeklyTemplateId` (era `weeklyId`) |
 | 🔒 PUT | `/api/curated-content/{id}` | `UpdateCuratedContentUseCase` (Fase 4) | 200, 400/404 |
 | 🔒 POST | `/api/weeklies/{weeklyId}/project/submit` | `SubmitWeeklyProjectUseCase` (Fase 7) | 200, 400/404 - `WeeklyProject.Submit` existia desde a Fase 1, so faltava endpoint |
+| 🔒 POST | `/api/users/me/forgejo-token` | `GenerateForgejoTokenUseCase` (Fase 60) | 200 `ForgejoTokenDto` - gera token novo do Forgejo e revoga o anterior; unico lugar onde o token inteiro aparece (nao e persistido). 404 `conta_git_inexistente` sem conta no Forgejo |
 | 🔒 POST | `/api/weeklies/{weeklyId}/project/evaluate` | `EvaluateWeeklyProjectUseCase` (Fase 11) | 200, 400/404 - `WeeklyProject.Evaluate` existia desde a Fase 1, so faltava endpoint (so backend, sem tela propria). Fase 16: virou PUT com corpo `{score, feedback}` obrigatorio. Fase 21: voltou a ser POST sem corpo - nota/feedback agora vem da IA (GitHub + Groq, ver secao acima). Fase 27b: `SubmitWeeklyProjectUseCase` passou a chamar isso sozinho (composicao) logo apos o submit - nenhum chamador HTTP direto novo, o endpoint continua existindo do mesmo jeito |
 | 🔒 GET | `/api/courses/{courseId}/ranking?scope=` | `GetCourseRankingUseCase` (Fase 16) | 200 (`RankingResultDto`) - `scope` = `weekly`\|`monthly`\|`course`, default `course` se omitido. Fase 18: `RankingEntryDto` ganhou `EquippedNameColor` (Name do cosmetico equipado, nao hex - ver secao abaixo) |
 | 🔒 GET | `/api/users/me/badges` | `GetUserBadgesUseCase` (Fase 17) | 200 (`UserBadgesDto`, 5 badges calculados sob demanda) |
@@ -1945,12 +1946,15 @@ completo por tras da decisao.
 
 - `CreateUserAccountAsync` - cria a conta do aluno via API administrativa (`POST /admin/users`),
   desabilita criacao de repositorio pra ela (`PATCH .../max_repo_creation=0` - "so a Focadu cria
-  repositorio", nunca vira um GitHub generico dentro da Focadu) e gera um access token.
-  **Ponytail confirmado ao vivo**: `POST /users/{username}/tokens` recusa autenticacao via API
-  token (mesmo com header `Sudo`) - so aceita Basic Auth de verdade (Gitea/Forgejo bloqueiam de
-  proposito "um token gerar outro token"). Resolvido autenticando como o proprio aluno, com a
-  senha aleatoria que a Focadu acabou de definir pra ele nas 2 chamadas anteriores - unico lugar
-  deste service que nao usa o token administrativo padrao.
+  repositorio", nunca vira um GitHub generico dentro da Focadu). Desde a Fase 60 nao gera token.
+- `RegenerateAccessTokenAsync` (Fase 60) - gera o token do aluno sob demanda e revoga o anterior.
+  **Ponytail confirmado ao vivo**: `/users/{username}/tokens` recusa autenticacao via API token
+  (mesmo com header `Sudo`) - so aceita Basic Auth de verdade (Gitea/Forgejo bloqueiam de
+  proposito "um token gerar outro token"). Como a Focadu descarta a senha aleatoria do aluno,
+  redefine outra via admin (`PATCH /admin/users/{u}` so com `password`), apaga o token anterior
+  pelo nome fixo `focadu-projeto-semanal` (404 = nao havia; nome repetido daria 400) e cria outro,
+  as 2 ultimas chamadas com Basic Auth como o aluno - unico caminho deste service que nao usa o
+  token administrativo padrao.
 - `ForkTemplateAsync` - fork de um repositorio-template (dono: conta administrativa
   `focadu-admin`) pra dentro da conta do aluno, via impersonacao administrativa (header `Sudo`) -
   o template nunca e alterado. **Confirmado ao vivo**: `max_repo_creation: 0` bloqueia o aluno de
@@ -1962,11 +1966,23 @@ completo por tras da decisao.
   filtro por extensao/limite de tamanho), reaproveitado por `EvaluateWeeklyProjectUseCase`.
 
 **`UserForgejoAccount`** (`Focadu.Domain.GitHosting`, novo namespace) - 1:1 com `User`, lazy
-(mesmo principio de `UserGemBalance`/`UserStreak`, Fase 14): `ForgejoUsername`/`AccessToken`. Um
-so token por aluno, reusado por todos os repositorios que sao dele no Forgejo - nao 1 token por
-`WeeklyProject`. Username/email derivados deterministicamente do `User.Id` (nunca do email real
-do aluno - login no Forgejo em si nao e usado, so o access token, exibido na tela do Projeto
-Semanal).
+(mesmo principio de `UserGemBalance`/`UserStreak`, Fase 14): `ForgejoUsername` + `TokenLastEight`/
+`TokenGeneratedAt`. Um so token por aluno, reusado por todos os repositorios que sao dele no
+Forgejo - nao 1 token por `WeeklyProject`. Username/email derivados deterministicamente do
+`User.Id` (nunca do email real do aluno - login no Forgejo em si nao e usado, so o access token).
+
+**Token nunca persistido (Fase 60).** Ate a Fase 59 a coluna `AccessToken` guardava o token em
+texto puro e a tela o mostrava sempre. Agora o aluno gera sob demanda (`POST /api/users/me/forgejo-
+token`, `GenerateForgejoTokenUseCase` -> `ForgejoTokenDto {forgejoUsername, accessToken,
+generatedAt}`, 404 `conta_git_inexistente` sem conta no Forgejo), ve o valor uma unica vez e a
+Focadu guarda so os 8 ultimos caracteres (`RegisterGeneratedToken`), que `WeeklyProjectDto.
+ForgejoTokenLastEight` expoe pra tela dizer qual token esta valendo. Gerar outro revoga o anterior.
+A migration `RemoveStoredForgejoToken` copiou o final dos tokens existentes antes de apagar a
+coluna - eles continuam valendo no Forgejo.
+
+**Forks publicos (ponto aberto, Fase 60).** O fork herda a visibilidade do template (publico) e o
+codigo nunca define `private`: clone anonimo funciona, push exige o token. Decidir antes de abrir o
+Forgejo pra outros alunos.
 
 **`WeeklyTemplate.ForgejoTemplateSlug`** (campo legado, nullable) - nome do repositorio-template no
 Forgejo (dono: `focadu-admin`), mantido pela curadoria (mesmo espirito de `secret/curadoria/`) -

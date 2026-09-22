@@ -72,9 +72,9 @@ public record WeeklyProjectDto(
     /// <summary>Fase 16: nota (0-100) da avaliacao, preenchida junto com Status=Evaluated. Nulo ate entao.</summary>
     int? Score,
     string? Feedback,
-    /// <summary>Token de acesso do aluno no Forgejo interno (UserForgejoAccount.AccessToken) - so populado quando ha SubmissionUrl (repositorio ja provisionado). Frontend usa pra montar as instrucoes de `git clone`/`git push`, mesmo espirito de "codigo pra copiar" do ReferralCard.</summary>
-    string? ForgejoAccessToken,
-    /// <summary>Username do aluno no Forgejo (UserForgejoAccount.ForgejoUsername) - junto do token acima, e o que o `git clone` HTTP pede quando autentica.</summary>
+    /// <summary>Fase 60: ultimos 8 caracteres do token do Forgejo valendo (o valor inteiro nunca sai daqui - so de GenerateForgejoTokenUseCase, uma vez). Nulo ate o aluno gerar o 1o.</summary>
+    string? ForgejoTokenLastEight,
+    /// <summary>Username do aluno no Forgejo (UserForgejoAccount.ForgejoUsername) - junto do token, e o que o `git push` HTTP pede quando autentica.</summary>
     string? ForgejoUsername,
     /// <summary>Fase 59: ver ProjectLanguageStep.</summary>
     ProjectLanguageStep LanguageStep,
