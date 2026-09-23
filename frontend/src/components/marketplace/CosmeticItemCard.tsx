@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { CosmeticSlot, type CosmeticItemDto } from '../../api/types';
 import { RARITY_STYLE } from '../../lib/cosmeticStyle';
-import gemIcon from '../../assets/icons/gem.png';
+import gemIcon from '../../assets/pixel/gema.png';
 
 const SLOT_LABEL: Record<CosmeticSlot, string> = {
   [CosmeticSlot.AvatarFrame]: 'Moldura',
@@ -71,7 +71,7 @@ export function CosmeticItemCard({
           disabled={busy}
           className="flex items-center justify-center gap-1.5 rounded-xl bg-surface-alt py-2.5 text-sm font-bold text-primary hover:bg-accent/10 disabled:opacity-50"
         >
-          <img src={gemIcon} alt="" className="size-3.5" aria-hidden="true" />
+          <img src={gemIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
           {item.priceGems}
         </button>
       ) : (

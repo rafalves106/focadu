@@ -1,19 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
-import { PROJECT_LANGUAGE_NAMES, ProjectLanguage, ProjectLanguageStep, WeeklyProjectStatus, type ForgejoTokenDto, type ProjectReferenceDto } from '../api/types';
+import { DailyStatus, PROJECT_LANGUAGE_NAMES, ProjectLanguage, ProjectLanguageStep, WeeklyProjectStatus, type ForgejoTokenDto, type ProjectReferenceDto, type WeeklyDetailDto } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { MarkdownBlock } from '../components/activities/MarkdownBlock';
 import { ProgressBar } from '../components/ProgressBar';
 import { ScrollArea } from '../components/ScrollArea';
 import { StudyAssistantPanel } from '../components/assistant/StudyAssistantPanel';
-import backArrow from '../assets/project/back-arrow.svg';
-import terminalIcon from '../assets/project/terminal-icon.png';
+import backArrow from '../assets/pixel/voltar.png';
+import terminalIcon from '../assets/pixel/terminal.png';
 import { CardLabel } from '../components/CardLabel';
 import { QuickNotePanel } from '../components/notebook/QuickNotePanel';
 import { setStudyAssistantContext } from '../lib/studyAssistantContext';
+import lockIcon from '../assets/pixel/cadeado-bloqueado.png';
+import { DialogueBox } from '../components/DialogueBox';
+import { PixelConfirmDialog } from '../components/PixelConfirmDialog';
+import { buildFocadaLines } from '../lib/focadaLines';
 
 const STATUS_BADGE: Record<number, { label: string; className: string }> = {
   [WeeklyProjectStatus.Pending]: { label: 'PENDENTE', className: 'bg-surface-alt text-alert' },
@@ -24,14 +28,17 @@ const STATUS_BADGE: Record<number, { label: string; className: string }> = {
 // Fase 38: mesma prioridade de WeeklyProjectCard - IsLocked vence Status (so coexiste com Pending).
 const LOCKED_BADGE = { label: 'BLOQUEADO', className: 'bg-surface-alt text-muted' };
 
-// Progresso do topo e derivado do Status (sem campo de deadline no dominio - WeeklyProject so tem
-// SpecText/Status/SubmissionUrl, ver Focadu.Domain.Weeklies.WeeklyProject) - nao ha "% concluido"
-// real alem disso.
-const STATUS_PROGRESS: Record<number, number> = {
-  [WeeklyProjectStatus.Pending]: 1 / 3,
-  [WeeklyProjectStatus.Submitted]: 2 / 3,
-  [WeeklyProjectStatus.Evaluated]: 1,
-};
+// Progresso do topo = progresso da SEMANA (pedido do dono, 23/09/2026): mesma conta da
+// WeeklyDetailPage (dias originais concluidos, sem reforco) com o projeto como ultima etapa -
+// sem ele a barra estaria sempre cheia aqui, ja que o projeto so desbloqueia com os dias feitos.
+// Projeto conta ao ser entregue (Submitted ja e "a parte do aluno feita"; a avaliacao e automatica).
+// Antes era derivada so do Status (33/67/100%), parada em 33% o trabalho inteiro.
+function weekProgress(weekly: WeeklyDetailDto): { done: number; total: number } {
+  const days = weekly.dailies.filter((d) => !d.isReinforcement);
+  const daysDone = days.filter((d) => d.status === DailyStatus.Completed).length;
+  const projectDone = weekly.project !== null && weekly.project.status !== WeeklyProjectStatus.Pending;
+  return { done: daysDone + (projectDone ? 1 : 0), total: days.length + (weekly.project ? 1 : 0) };
+}
 
 /**
  * Projeto semanal (design Figma "projeto-semanal", Fase 7) - WeeklyProject existe no dominio desde
@@ -44,6 +51,8 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   const { data: weekly, error, loading, retry } = useApiResource(() => api.getWeekly(weeklyId), [weeklyId]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Fase 64: entrega passa por confirmacao (a avaliacao roda na hora e nao aceita reenvio depois).
+  const [confirmingSubmit, setConfirmingSubmit] = useState(false);
   // Fase 59 (piloto Semana 1): escolha da linguagem, em 2 passos (decisao do dono - a escolha e
   // definitiva, sem troca pelo proprio aluno depois). pendingLanguage nulo = passo 1 (escolher
   // uma das choosableLanguages); preenchido = passo 2 (confirmar ou cancelar).
@@ -64,11 +73,15 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
     return () => setStudyAssistantContext(null);
   }, [weekly]);
 
+  // Fase 64: falas da Focada (briefing da curadoria + fala do estado atual do projeto).
+  const focadaLines = useMemo(() => (weekly?.project ? buildFocadaLines(weekly.project) : []), [weekly]);
+
   if (loading) return <Centered text="Carregando projeto..." />;
   if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
   if (!weekly) return null;
 
   const backTo = `/start?course=${courseId ?? ''}&weekly=${weeklyId}`;
+  const progress = weekProgress(weekly);
   if (!weekly.project) {
     return <Centered text="Esta semana ainda não tem projeto definido." />;
   }
@@ -80,6 +93,11 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   // disponibilizado - specText/submissionUrl so vem preenchido neles (ver WeeklyProjectDtoMapper
   // no backend). NeedsPreference/NeedsChoice mostram um card no lugar da especificacao, abaixo.
   const released = project.languageStep === ProjectLanguageStep.Chosen || project.languageStep === ProjectLanguageStep.None;
+  // Fase 64: com briefing curado, a Focada fala o tempo todo no centro da tela. A especificacao so sai
+  // da tela quando o repositorio ja veio de um template por linguagem (Chosen) - e ali, no README.md,
+  // que ela mora agora; semana sem template (ou sem briefing) segue com o cartao de especificacao.
+  const showDialogue = released && !project.isLocked && focadaLines.length > 0;
+  const specInReadme = showDialogue && project.languageStep === ProjectLanguageStep.Chosen;
 
   // Repositorio de Projeto Semanal e provisionado pela Focadu (fork no Forgejo interno, ver
   // secret/rascunhos/repositorios-gerenciados-projeto-semanal.md) - o aluno nao digita mais URL
@@ -120,19 +138,30 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   // normal empilhado, com rolagem da pagina - ver docs/fase-61.
   return (
     <div className="flex flex-col gap-6 bg-base px-4 pt-6 pb-8 lg:h-[calc(100dvh-var(--nav-height))] lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12">
-      {/* Topo: "voltar" a esquerda e a barra de progresso CENTRALIZADA (250px), como no Figma. */}
-      <div className="flex shrink-0 flex-col gap-3 lg:grid lg:grid-cols-[1fr_minmax(0,250px)_1fr] lg:items-center lg:gap-4">
-        <Link
-          to={backTo}
-          className="flex min-w-0 items-center gap-2 text-sm font-medium uppercase tracking-[1.6px] text-secondary hover:text-primary"
-        >
-          <img src={backArrow} alt="" width={17} height={7.36} className="shrink-0" />
-          <span className="truncate">Voltar para {weekly.theme ?? weekly.title}</span>
-        </Link>
-        <div role="progressbar" aria-label={`Projeto Semanal — Semana ${weekly.number}`} aria-valuenow={Math.round(STATUS_PROGRESS[project.status] * 100)} aria-valuemin={0} aria-valuemax={100}>
-          <ProgressBar progress={STATUS_PROGRESS[project.status]} tone="project" heightClass="h-2" />
+      {/* Topo: "voltar" a esquerda e a barra de progresso CENTRALIZADA (250px), como no Figma. Fase 64
+          (pedido do dono): some com o dialogo da Focada - a tela fica so com as 3 colunas; volta-se pelo
+          menu (Trilhas) ou pelo navegador. */}
+      {!showDialogue && (
+        <div className="flex shrink-0 flex-col gap-3 lg:grid lg:grid-cols-[1fr_minmax(0,250px)_1fr] lg:items-center lg:gap-4">
+          <Link
+            to={backTo}
+            className="flex min-w-0 items-center gap-2 text-sm font-medium uppercase tracking-[1.6px] text-secondary hover:text-primary"
+          >
+            <img src={backArrow} alt="" width={16} height={16} className="size-4 shrink-0 pixelated" />
+            <span className="truncate">Voltar para {weekly.theme ?? weekly.title}</span>
+          </Link>
+          <div
+            role="progressbar"
+            aria-label={`Progresso da Semana ${weekly.number}: ${progress.done} de ${progress.total} etapas`}
+            aria-valuenow={progress.done}
+            aria-valuemin={0}
+            aria-valuemax={progress.total}
+            title={`${progress.done} de ${progress.total} etapas da semana (dias + projeto)`}
+          >
+            <ProgressBar progress={progress.total ? progress.done / progress.total : 0} tone="project" heightClass="h-2" />
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex min-h-0 flex-1 flex-col gap-8 lg:flex-row">
         {/* Coluna esquerda (Fase 63): repositorio em cima (altura do conteudo) e referencias ocupando
@@ -157,27 +186,41 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
 
         {/* Centro: especificacao rola por dentro; a entrega fica fixa no rodape do cartao, sempre
             visivel, sem precisar rolar ate o fim da especificacao. */}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-2xl border-[1.5px] border-project bg-surface">
-          <ScrollArea className="min-h-0 flex-1" contentClassName="flex flex-col gap-6 px-[18px] pt-4 pb-6 lg:pb-10">
-            <CardLabel>Desafio semanal</CardLabel>
-            <div className="flex flex-col gap-6 lg:px-[22px]">
-              <div className="flex items-center justify-between">
-                <span className="rounded-full border border-project bg-project/10 px-3 py-1.5 text-[11px] font-semibold tracking-[0.5px] text-project">
-                  CHEFE DE FASE 👾
-                </span>
-                <span className={`rounded-md px-3 py-1.5 text-xs font-semibold ${badge.className}`}>{badge.label}</span>
-              </div>
+        {/* Fase 64 (pedido do dono): com o dialogo da Focada o centro deixa de ser cartao - sem borda ambar,
+            sem fundo, sem rotulo "Desafio semanal" e sem o recuo interno; o dialogo alinha no topo com os
+            cartoes laterais e usa a largura toda da coluna. */}
+        <div
+          className={`flex min-h-0 min-w-0 flex-1 flex-col ${showDialogue ? '' : 'rounded-2xl border-[1.5px] border-project bg-surface'}`}
+        >
+          <ScrollArea
+            className="min-h-0 flex-1"
+            // pr-3: respiro pra barra fina do ScrollArea nao passar por cima da borda das caixas de dialogo.
+            contentClassName={showDialogue ? 'flex flex-col gap-6 pr-3 pb-6 lg:pb-10' : 'flex flex-col gap-6 px-[18px] pt-4 pb-6 lg:pb-10'}
+          >
+            {!showDialogue && <CardLabel>Desafio semanal</CardLabel>}
+            <div className={`flex flex-col gap-6 ${showDialogue ? '' : 'lg:px-[22px]'}`}>
+              {/* Fase 64 (pedido do dono): com o dialogo da Focada, sem as tags "CHEFE DE FASE"/status e sem
+                  o titulo visivel - a Focada ja diz o que e e em que pe esta. O titulo fica pra leitor de tela. */}
+              {!showDialogue && (
+                <div className="flex items-center justify-between">
+                  <span className="rounded-full border border-project bg-project/10 px-3 py-1.5 text-[11px] font-semibold tracking-[0.5px] text-project">
+                    CHEFE DE FASE 👾
+                  </span>
+                  <span className={`rounded-md px-3 py-1.5 text-xs font-semibold ${badge.className}`}>{badge.label}</span>
+                </div>
+              )}
 
               <div className="flex flex-col gap-4">
-                <h1 className="text-[28px] font-bold text-primary">Projeto da Semana {weekly.number}</h1>
+                <h1 className={showDialogue ? 'sr-only' : 'text-[28px] font-bold text-primary'}>Projeto da Semana {weekly.number}</h1>
 
                 {/* Fase 38: trava tudo abaixo enquanto a Weekly ainda tem Daily original nao concluida
                     (Weekly.AreDailiesComplete) - inclusive a escolha de linguagem (Fase 59): "so depois
                     de desbloqueado" (decisao do dono), pra nao mostrar um seletor que o backend so
                     aceitaria depois. */}
                 {project.isLocked ? (
-                  <p className="rounded-xl border border-stroke bg-surface-alt px-4 py-3 text-sm text-secondary">
-                    🔒 Termine todas as dailies desta semana para desbloquear o projeto.
+                  <p className="flex items-center gap-2 rounded-xl border border-stroke bg-surface-alt px-4 py-3 text-sm text-secondary">
+                    <img src={lockIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
+                    Termine todas as dailies desta semana para desbloquear o projeto.
                   </p>
                 ) : project.languageStep === ProjectLanguageStep.NeedsPreference ? (
                   <LanguagePreferenceNeeded />
@@ -198,13 +241,30 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
                   // SpecText e Markdown curado (titulos "###", listas, negrito/codigo inline) - antes ia
                   // num <p whitespace-pre-line> e a sintaxe aparecia crua na tela. Mesmo renderizador das
                   // leituras.
-                  <MarkdownBlock text={project.specText} />
+                  <>
+                    {showDialogue && (
+                      <DialogueBox
+                        key={`${project.id}:${focadaLines.length}`}
+                        projectId={project.id}
+                        lines={focadaLines}
+                        readmeUrl={specInReadme ? project.submissionUrl : null}
+                        // Fase 64: entregar vira resposta do agente no dialogo, no lugar do botao do rodape.
+                        choices={
+                          canSubmit && project.submissionUrl
+                            ? [{ label: submitting ? 'Enviando...' : 'Entregar projeto. Já commitei tudo.', onSelect: () => setConfirmingSubmit(true), disabled: submitting }]
+                            : []
+                        }
+                        choicesNote={submitError}
+                      />
+                    )}
+                    {!specInReadme && <MarkdownBlock text={project.specText} />}
+                  </>
                 )}
               </div>
 
               {released && (
                 <>
-                  <div className="h-px bg-stroke" />
+                  {!showDialogue && <div className="h-px bg-stroke" />}
 
                   {/* Fase 27b: Score/Feedback existem no dominio desde a Fase 16 mas nunca apareciam
                       aqui - nada disparava a avaliacao pela UI antes desta fase (ver
@@ -235,7 +295,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
             </div>
           </ScrollArea>
 
-          {canSubmit && project.submissionUrl && (
+          {canSubmit && project.submissionUrl && !showDialogue && (
             <div className="flex shrink-0 flex-col gap-3 border-t border-stroke px-6 py-5 lg:px-10">
               {/* Repositorio gerenciado no Forgejo interno e avaliado automaticamente ao entregar
                   (ver EvaluateWeeklyProjectUseCase) - nao ha mais URL pra colar, so confirmar que
@@ -246,7 +306,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
 
               <button
                 type="button"
-                onClick={handleSubmit}
+                onClick={() => setConfirmingSubmit(true)}
                 disabled={submitting}
                 className="self-end rounded-xl bg-project px-8 py-4 text-sm font-bold text-base disabled:opacity-40"
               >
@@ -263,12 +323,29 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
           <StudyAssistantPanel tall className="h-[480px] lg:h-auto lg:min-h-0 lg:flex-1" />
         </div>
       </div>
+
+      <PixelConfirmDialog
+        open={confirmingSubmit}
+        message="Tem certeza, agente? A avaliação vai ler o que está no seu repositório agora, e depois dela não dá para entregar de novo."
+        cancelLabel="Não, ainda vou mexer."
+        confirmLabel="Sim, entregar agora."
+        onCancel={() => setConfirmingSubmit(false)}
+        onConfirm={() => {
+          setConfirmingSubmit(false);
+          void handleSubmit();
+        }}
+      />
     </div>
   );
 }
 
 /**
- * Cartao "REPOSITORIO" (Fase 63, Figma node 178:132): icone de terminal + caixa com o `git clone`,
+ * Tipografia (Fase 64, ajuste de UX sobre o Figma): mono so pra codigo/credencial (11px) e
+ * rotulos (10px, `CardLabel`); texto corrido (ajuda/avisos) em Inter 12px - os 8px do Figma ficavam
+ * abaixo do minimo legivel. Aviso do token em alert/80 (a 50% nao tinha contraste no fundo escuro).
+ *
+ * Cartao "REPOSITORIO" (Fase 63, Figma node 178:132): icone de terminal + caixa com o link do
+ * repositorio (so a URL - o comando inteiro fica no botao de copiar, pedido do dono),
  * botao que copia o comando, e as credenciais do git (usuario e token) com icone de copiar.
  *
  * Fase 60: a Focadu nao guarda o token do git. O Figma desenha o estado "token recem-gerado"
@@ -321,28 +398,28 @@ function RepositoryPanel({
       <CardLabel>Repositório</CardLabel>
 
       <div className="mt-3 flex items-center gap-[7px]">
-        <img src={terminalIcon} alt="" width={40} height={40} className="size-10 shrink-0" />
+        <img src={terminalIcon} alt="" width={48} height={48} className="size-12 shrink-0 pixelated" />
         <a
           href={submissionUrl}
           target="_blank"
           rel="noreferrer"
-          title={cloneCommand}
-          className="min-w-0 flex-1 rounded-lg border border-dashed border-stroke px-2 py-[7px] font-mono text-[8px] leading-snug text-secondary hover:text-primary"
+          title={submissionUrl}
+          className="min-w-0 flex-1 rounded-lg border border-dashed border-stroke px-2 py-[7px] font-mono text-[11px] leading-snug text-secondary hover:text-primary"
         >
           {/* line-clamp num span proprio: no <a> com padding, a 3a linha vazava no padding de baixo. */}
-          <span className="line-clamp-2 break-all">{cloneCommand}</span>
+          <span className="line-clamp-2 break-all">{submissionUrl}</span>
         </a>
       </div>
 
       <button
         type="button"
         onClick={() => handleCopy('clone', cloneCommand)}
-        className="mt-[9px] h-[30px] rounded-lg bg-accent font-mono text-[10px] font-semibold uppercase tracking-[1px] text-stroke"
+        className="mt-[9px] h-8 rounded-lg bg-accent font-mono text-[11px] font-semibold uppercase tracking-[1px] text-stroke"
       >
         {copied === 'clone' ? 'Copiado ✓' : 'Copiar comando git clone'}
       </button>
 
-      <p className="mt-2.5 font-mono text-[8px] leading-snug text-secondary">
+      <p className="mt-2.5 text-xs leading-relaxed text-secondary">
         O git vai pedir usuário e senha na hora do push - utilize as credenciais abaixo.
       </p>
 
@@ -350,7 +427,7 @@ function RepositoryPanel({
         <>
           <p className="mt-6 pl-[9px] font-mono text-[10px] font-semibold uppercase tracking-[1px] text-secondary">Usuário do git</p>
           <div className="mt-2 flex min-h-9 items-center gap-2 rounded-lg border border-stroke py-1.5 pl-[9px] pr-2">
-            <code className="min-w-0 flex-1 break-all font-mono text-[10px] text-secondary">{username}</code>
+            <code className="min-w-0 flex-1 break-all font-mono text-[11px] text-secondary">{username}</code>
             <CopyIconButton label="Copiar usuário do git" copied={copied === 'username'} onClick={() => handleCopy('username', username)} />
           </div>
 
@@ -359,18 +436,18 @@ function RepositoryPanel({
           </p>
           {generated ? (
             <>
-              <div className="mt-2 flex min-h-9 items-center gap-2 rounded-lg border border-dashed border-alert/50 py-1.5 pl-[9px] pr-2">
-                <code className="min-w-0 flex-1 break-all font-mono text-[10px] text-secondary">{generated.accessToken}</code>
+              <div className="mt-2 flex min-h-9 items-center gap-2 rounded-lg border border-dashed border-alert/60 py-1.5 pl-[9px] pr-2">
+                <code className="min-w-0 flex-1 break-all font-mono text-[11px] text-secondary">{generated.accessToken}</code>
                 <CopyIconButton label="Copiar token" copied={copied === 'token'} onClick={() => handleCopy('token', generated.accessToken)} />
               </div>
-              <p className="mt-2 pl-[9px] font-mono text-[8px] leading-snug text-alert/50">
+              <p className="mt-2 pl-[9px] text-xs leading-relaxed text-alert/80">
                 Copie agora: por segurança a Focadu não guarda o token, ele não aparece de novo depois que você sair desta tela.
               </p>
             </>
           ) : (
             <>
               <div className="mt-2 flex min-h-9 items-center gap-2 rounded-lg border border-stroke py-1.5 pl-[9px] pr-2">
-                <code className="min-w-0 flex-1 font-mono text-[10px] text-muted">
+                <code className="min-w-0 flex-1 font-mono text-[11px] text-muted">
                   {currentLastEight ? `…${currentLastEight}` : 'nenhum token gerado'}
                 </code>
                 {!confirming && (
@@ -378,7 +455,7 @@ function RepositoryPanel({
                     type="button"
                     onClick={currentLastEight ? () => setConfirming(true) : handleGenerate}
                     disabled={generating}
-                    className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-[1px] text-accent hover:underline disabled:opacity-50"
+                    className="shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[1px] text-accent hover:underline disabled:opacity-50"
                   >
                     {generating ? 'Gerando...' : 'Gerar'}
                   </button>
@@ -386,13 +463,13 @@ function RepositoryPanel({
               </div>
               {confirming && (
                 <div className="mt-2 flex flex-col gap-2 pl-[9px]">
-                  <p className="font-mono text-[8px] leading-snug text-secondary">O token atual deixa de funcionar. Gerar outro?</p>
+                  <p className="text-xs leading-relaxed text-secondary">O token atual deixa de funcionar. Gerar outro?</p>
                   <div className="flex gap-3">
                     <button
                       type="button"
                       onClick={handleGenerate}
                       disabled={generating}
-                      className="font-mono text-[10px] font-semibold uppercase tracking-[1px] text-accent hover:underline disabled:opacity-50"
+                      className="font-mono text-[11px] font-semibold uppercase tracking-[1px] text-accent hover:underline disabled:opacity-50"
                     >
                       {generating ? 'Gerando...' : 'Gerar'}
                     </button>
@@ -400,7 +477,7 @@ function RepositoryPanel({
                       type="button"
                       onClick={() => setConfirming(false)}
                       disabled={generating}
-                      className="font-mono text-[10px] font-semibold uppercase tracking-[1px] text-secondary hover:underline"
+                      className="font-mono text-[11px] font-semibold uppercase tracking-[1px] text-secondary hover:underline"
                     >
                       Cancelar
                     </button>
@@ -409,7 +486,7 @@ function RepositoryPanel({
               )}
             </>
           )}
-          {error && <p className="mt-2 pl-[9px] font-mono text-[8px] text-alert">{error}</p>}
+          {error && <p className="mt-2 pl-[9px] text-xs text-alert">{error}</p>}
         </>
       )}
     </ScrollArea>

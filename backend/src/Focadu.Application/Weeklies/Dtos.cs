@@ -85,4 +85,8 @@ public record WeeklyProjectDto(
     /// <summary>Fase 59: so com LanguageStep NeedsChoice - as linguagens da semana que o aluno marcou no perfil, entre as quais ele escolhe agora. Vazio nos outros estados.</summary>
     IReadOnlyCollection<ProjectLanguage> ChoosableLanguages,
     /// <summary>Fase 59: so com LanguageStep Chosen - as referencias da linguagem escolhida, mais as comuns a todas, na ordem da curadoria.</summary>
-    IReadOnlyCollection<ProjectReferenceDto> References);
+    IReadOnlyCollection<ProjectReferenceDto> References,
+    /// <summary>Fase 64: falas do briefing da Focada (WeeklyTemplate.WeeklyProjectBriefing). Vazio na semana sem briefing curado ou enquanto o projeto nao foi disponibilizado (mesma regra do SpecText).</summary>
+    IReadOnlyList<string> Briefing,
+    /// <summary>Fase 64: falas de estado que esta semana sobrescreve (chave -> texto); o frontend completa com as padrao. Vazio pelas mesmas regras de Briefing.</summary>
+    IReadOnlyDictionary<string, string> StateLines);

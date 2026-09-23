@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RECORDING_LIMIT_OPTIONS, getRecordingLimitMinutes, setRecordingLimitMinutes } from '../lib/settings';
+import {
+  RECORDING_LIMIT_OPTIONS,
+  getRecordingLimitMinutes,
+  getUiSoundEnabled,
+  getUiSoundVolume,
+  setRecordingLimitMinutes,
+  setUiSoundEnabled,
+  setUiSoundVolume,
+} from '../lib/settings';
+import { playAdvance } from '../lib/uiSound';
 
 /** Trilho verde/cinza estatico (Fase 7) - visual apenas, ver nota de escopo no topo do arquivo. */
 function Toggle({ on }: { on: boolean }) {
@@ -11,7 +20,7 @@ function Toggle({ on }: { on: boolean }) {
   );
 }
 
-/** Selo "em breve" (2026-08-28) - marca Aparencia/Som/Notificacoes como placeholder ate existir tema claro/engine de som/notificacao de verdade por tras. */
+/** Selo "em breve" (2026-08-28) - marca Aparencia/Notificacoes como placeholder ate existir tema claro/notificacao de verdade por tras (Som virou real na Fase 64). */
 function ComingSoonBadge() {
   return <span className="rounded-full bg-surface-alt px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted">Em breve</span>;
 }
@@ -53,6 +62,22 @@ export function SettingsMenu({
   const navigate = useNavigate();
   const [recordingLimit, setRecordingLimit] = useState(() => getRecordingLimitMinutes());
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [uiSoundEnabled, setUiSoundEnabledState] = useState(() => getUiSoundEnabled());
+  const [uiSoundVolume, setUiSoundVolumeState] = useState(() => getUiSoundVolume());
+
+  // Fase 64: "Som" deixou de ser placeholder - liga/desliga e volume dos sons da interface (hoje, os
+  // do dialogo da Focada no Projeto Semanal). Toca um som de amostra ao mudar, pra ouvir o volume.
+  function handleUiSoundToggle() {
+    const next = !uiSoundEnabled;
+    setUiSoundEnabled(next);
+    setUiSoundEnabledState(next);
+    if (next) playAdvance();
+  }
+
+  function handleUiSoundVolumeChange(volume: number) {
+    setUiSoundVolume(volume);
+    setUiSoundVolumeState(volume);
+  }
 
   if (!open) return null;
 
@@ -102,12 +127,29 @@ export function SettingsMenu({
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-primary">Som</p>
-                <ComingSoonBadge />
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-primary">Sons da interface</p>
+                <button type="button" role="switch" aria-checked={uiSoundEnabled} aria-label="Sons da interface" onClick={handleUiSoundToggle}>
+                  <Toggle on={uiSoundEnabled} />
+                </button>
               </div>
-              <Toggle on />
+              {uiSoundEnabled && (
+                <label className="flex items-center justify-between gap-4 text-xs text-secondary">
+                  Volume
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={uiSoundVolume}
+                    onChange={(e) => handleUiSoundVolumeChange(Number(e.target.value))}
+                    onPointerUp={() => playAdvance()}
+                    onKeyUp={() => playAdvance()}
+                    className="w-40 accent-accent"
+                  />
+                </label>
+              )}
             </div>
 
             <div className="flex items-center justify-between">

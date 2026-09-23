@@ -5,6 +5,7 @@ import { PageShell } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { EmptyStateError } from '../components/errors/EmptyStateError';
 import { isMonthlyComplete } from '../lib/certifications';
+import lockIcon from '../assets/pixel/cadeado-bloqueado.png';
 
 /**
  * Tela dedicada de certificações (Fase 45) - matriz módulo × certificação completa do curso,
@@ -71,7 +72,7 @@ function ModuleRow({ monthly, certCodes }: { monthly: MonthlyOverviewDto; certCo
         <p className="font-bold text-primary">
           Módulo {monthly.number}: {monthly.title}
         </p>
-        {!unlocked && <p className="mt-1 text-xs font-semibold text-project">🔒 Ainda não estudado</p>}
+        {!unlocked && <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-project"><img src={lockIcon} alt="" className="size-4 pixelated" aria-hidden="true" />Ainda não estudado</p>}
       </td>
       {certCodes.map((code) => {
         const coverage = coverageByCode.get(code);

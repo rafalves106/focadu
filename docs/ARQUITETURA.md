@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 63 - Projeto Semanal com o layout ajustado do Figma + anotacao presa ao projeto**.
+> Ultima fase que atualizou este documento: **Fase 64 - Identidade pixel art + dialogo da Focada no Projeto Semanal**.
 
 ## Visao geral do projeto
 
@@ -289,7 +289,7 @@ usuario). A partir da Fase 13, isso virou dois grafos separados, casados por Id:
 TEMPLATE (curriculo, admin-authored - seed / futuramente /admin/conteudo, muda raramente)
 Course (Draft/Active/Archived, Description)
 └── Monthly (Number, Title)
-    └── WeeklyTemplate (Number, Title, Theme, WeeklyProjectSpecText)
+    └── WeeklyTemplate (Number, Title, Theme, WeeklyProjectSpecText, WeeklyProjectBriefing, WeeklyProjectStateLines)
         ├── DailyTemplate (DayNumber)                 [WeeklyTemplateId NULL = sintetico, ver reforco abaixo]
         │   └── DailyActivity (Type, OrderIndex, AnswerMode, Prompt?, ContentId?, ExpectedAnswer?)
         │       ├── QuizOption (Text, IsCorrect)                  [Quiz, Cloze/MultipleChoice]
@@ -2116,6 +2116,58 @@ ainda nao construido - o gancho natural seria o webhook de push do Forgejo dispa
 pipeline de `GetContentSnapshotAsync` + avaliacao por IA), repositorio-template pras outras 11
 semanas do curso piloto, wiring da curadoria pra gerar isso automaticamente.
 
+### Dialogo da Focada no Projeto Semanal (Fase 64)
+
+Origem: `secret/rascunhos/projeto-semanal-dialogo-de-jogo.md` (decisoes do dono, 23/09/2026) e
+`secret/rascunhos/mascote-focada.md` (a personagem). A **Focada** - foca de camiseta preta com a mira
+do logo, mascote/mentora da marca - fala o tempo todo no centro da tela do Projeto Semanal, numa
+caixa de dialogo pixel art. So texto, sem voz.
+
+**Dominio:** `WeeklyTemplate.WeeklyProjectBriefing` (`string[]`, coluna `text[]`) - as falas do
+briefing, escritas a mao pela curadoria (`"briefing"` no `projeto.json`, voz em
+`secret/curadoria/GUIA-DE-VOZ-FOCADA.md`); `WeeklyTemplate.WeeklyProjectStateLines`
+(`Dictionary<string,string>`, coluna `jsonb`) - falas de estado que a semana sobrescreve
+(`"falasDeEstado"`, chaves fixas em `WeeklyTemplate.StateLineKeys`: `repositorio`, `entregue`,
+`avaliadoAlta`, `avaliadoBaixa`). `SetProjectBriefing` e 1x so (igual `SetProjectSpec`), recusa fala
+vazia, chave desconhecida e fala com mais de `MaxDialogueLineLength` (200) caracteres. Migration
+`ProjectBriefing` (so adiciona as 2 colunas, com default vazio).
+
+**Api:** `WeeklyProjectDto.Briefing`/`StateLines` - vazios enquanto o projeto nao foi disponibilizado
+(mesma regra do `SpecText`, `WeeklyProjectDtoMapper`).
+
+**Frontend:** `components/DialogueBox.tsx` + `lib/focadaLines.ts`. Falas = briefing (retrato neutro)
++ a fala do estado atual: repositorio pronto / entregue (neutra) / avaliado com nota >= 70
+(`FOCADA_HIGH_SCORE`, retrato comemorando) ou < 70 (acolhedora). As falas de estado padrao, iguais em
+toda semana, moram em `DEFAULT_STATE_LINES`; `{nota}` vira a nota. Cada fala e digitada so na 1a vez
+(`localStorage` `focadu:focada-vistas:<projectId>`); abre na 1a fala nao vista ou na ultima;
+clique/Enter/espaco avanca ou completa; "Pular" vai pra ultima; terminada a ultima fala, a caixa vira
+a conversa inteira em lista (anteriores em cinza, atual em destaque, retrato fixo no topo);
+`prefers-reduced-motion` nunca digita; regiao `aria-live` com a fala inteira. Respostas do agente
+(`choices`) numa caixa espelhada a direita ("VOCE", seta ◀ a direita), so depois da Focada terminar:
+"Entregar projeto" mora ali no lugar do botao ambar do rodape e passa por `PixelConfirmDialog`
+(cena de dialogo em pixel art: foco comeca em "Nao, ainda vou mexer", ESC/clique fora cancelam, um
+cursor de selecao so - o mouse move o foco, setas trocam). Com o dialogo ativo, a tela fica so com as
+3 colunas: sem "voltar", barra de progresso, tags "CHEFE DE FASE"/status, titulo visivel (fica
+`sr-only`), borda, fundo e rotulo do cartao central. Semana sem briefing mantem o layout anterior. Fontes VT323 (fala) e Silkscreen (rotulos) - tokens
+`--font-pixel`/`--font-pixel-label`, so nessa tela por enquanto. Caixa: `@utility pixel-box`
+(contorno 4px + filete interno + cantos mordidos via `clip-path`). Sons sintetizados na hora com Web
+Audio (`lib/uiSound.ts`, sem arquivo de audio), obedecendo "Sons da interface" nas Configuracoes
+(liga/desliga + volume, `lib/settings.ts`; o bipe do Pomodoro NAO obedece, e alarme).
+
+**Onde fica a especificacao:** com briefing e linguagem ja escolhida (`LanguageStep` Chosen), o
+cartao de especificacao sai da tela - o enunciado completo mora no `README.md` do repositorio do
+aluno (link "Abrir README.md" no dialogo). Sem briefing, ou em semana sem template por linguagem, o
+cartao continua como antes. O `SpecText` segue como **fonte unica**: avaliacao por IA, resumo do
+commit de modulo e Suporte Rapido continuam lendo dele. O README do repositorio-modelo e **gerado**
+a partir dele: `secret/curadoria/scripts/gerar_readme_modelo.py` troca o marcador `{{ENUNCIADO}}` do
+`modelos/<linguagem>/README.base.md`. Fork ja existente fica com o README antigo (aceito pelo dono).
+
+**Producao:** o seed nao reprocessa semana ja existente - o briefing da Semana 1 foi aplicado por
+`secret/curadoria/patches/2026-09-23-semana-1-briefing-focada.sql` (idempotente) em 23/09/2026, e o
+`README.md` dos 2 repositorios-modelo da Semana 1 no Forgejo foi atualizado pela API de conteudo
+(`publicar_modelo_forgejo.py` so cria, nao sobrescreve). O fork do dono (unico aluno, projeto ainda
+nao comecado) foi apagado e a escolha de linguagem zerada, pra nascer do modelo novo.
+
 ## Autenticacao (Fase 12)
 
 A partir desta fase o app deixa de ser mono-usuario hardcoded - `User` (email/senha/nome) e
@@ -3127,6 +3179,28 @@ o cursor de seta padrao apesar de clicaveis. Regra global em `index.css`
 (`button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer }`, dentro de `@layer
 base`) resolve pro app inteiro de uma vez - nenhum componente precisou de `cursor-pointer`
 manual. `:not(:disabled)` preserva o cursor default nos botoes desabilitados (`disabled:opacity-40`).
+
+### Identidade pixel art (Fase 64)
+
+Fonte da verdade: Figma "Focadu — Pixel Art" (`iNwXFcYXDajxkkhmyEr1gd`) - paleta fechada
+("Pixel palette", 11 cores dos tokens + tons de contorno), guia de 7 regras (grade 16/32, contorno
+colorido nunca preto, luz de cima-esquerda, max. 3 tons por material, glifo de UI em 1 tom...),
+componentes `sprite/*`, pagina "Logo", "Focada — esboço" e o kit `textbox/focada`.
+
+- **Sprites:** `frontend/src/assets/pixel/*.png`, 16x16 (1x), sempre com `className="... pixelated"`
+  (`@utility pixelated` = `image-rendering: pixelated`) e so em tamanhos multiplos de 16px. Trocaram
+  os PNGs antigos (`assets/icons`, `reading/play-*`, `project/*`, apagados) e os emojis de bloqueio
+  (🔒), certificacao (🛡️), conquistas do perfil (🎓🤝👑) e medalhas do ranking (🥈🥉). `StatusBadge`
+  troca `✅`/`🔒`/`🛡️` sozinho (`ICON_OVERRIDES`).
+- **Logo:** wordmark pixel FOCADU em que o "O" e uma mira de autofoco com cursor verde
+  (`assets/pixel/logo-wordmark.png`, 35x7) - no centro do `GlobalNav` no lugar do antigo "START".
+  Favicon (`public/favicon.svg` + `favicon-32.png` + `apple-touch-icon.png`) = o simbolo sobre fundo
+  `#0a0a0a`.
+- **Menu:** os 5 itens do `GlobalNav` viraram sprites (calendario, mapa, loja | podio, squad), com
+  o nome em `sr-only` + tooltip; esquerda = modo solo (Hoje/Trilhas/Loja), direita = multiplayer
+  (Ranking/Squad).
+- **Cursor do mouse:** mira aberta no padrao e travada em tudo que e clicavel
+  (`public/cursor/mira(-travada)(@2x).png`, so com `pointer: fine`, campos de texto mantem o I).
 
 ## Fora de escopo ate agora
 

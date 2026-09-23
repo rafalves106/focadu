@@ -47,7 +47,9 @@ internal static class WeeklyProjectDtoMapper
             project.Language,
             supported,
             choosable,
-            references);
+            references,
+            released ? template.WeeklyProjectBriefing : [],
+            released ? template.WeeklyProjectStateLines : new Dictionary<string, string>());
     }
 
     /// <summary>

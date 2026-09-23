@@ -84,9 +84,19 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 63 — Projeto Semanal com layout ajustado + anotação do projeto** (22/09/2026).
+Última fase concluída: **Fase 64 — Identidade pixel art + diálogo da Focada no Projeto Semanal** (23/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Identidade pixel art + Focada (Fase 64, combo pedido pelo dono)**: linha editorial no Figma
+  "Focadu — Pixel Art" (paleta fechada, guia de regras, sprites 16×16) aplicada no app — ícones e
+  emojis viraram sprites (`assets/pixel/`, sempre `pixelated` e em múltiplos de 16px), logo FOCADU
+  com a mira de foco no "O" no centro do menu, favicon, menu em sprites (solo à esquerda,
+  multiplayer à direita) e cursor de mira. No Projeto Semanal, a **Focada** (foca mascote/mentora)
+  fala o tempo todo num diálogo pixel art: briefing escrito pela curadoria (`"briefing"` no
+  `projeto.json`, voz em `secret/curadoria/GUIA-DE-VOZ-FOCADA.md`) + fala do estado do projeto; o
+  enunciado completo foi pro `README.md` do repositório, gerado do `specText` (que segue fonte única
+  da IA). Em produção falta aplicar o patch do briefing da Semana 1 e republicar os modelos com o
+  README novo. Ver `docs/fase-64/`.
 - **Projeto Semanal, 2ª versão do layout + anotação do projeto (Fase 63)**: repositório (copiar
   `git clone`/usuário/token) e referências à esquerda, anotação rápida e chat à direita. A anotação
   feita ali fica presa ao **projeto** (`Note.WeeklyProjectId`, pedido do dono), não a uma Daily, e

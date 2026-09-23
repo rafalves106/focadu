@@ -81,10 +81,14 @@ export function QuickNotePanel({
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder="Anote um insight, dúvida ou resumo desta aula (markdown: **negrito**, *itálico*, `código`, - lista, [link](url))..."
+        placeholder={
+          fill
+            ? 'Anote um insight ou dúvida do projeto (aceita markdown)...'
+            : 'Anote um insight, dúvida ou resumo desta aula (markdown: **negrito**, *itálico*, `código`, - lista, [link](url))...'
+        }
         rows={fill ? 2 : 5}
         className={`w-full resize-none rounded-xl border border-stroke bg-base p-3 text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent ${
-          fill ? 'min-h-0 flex-1 text-xs' : 'text-sm'
+          fill ? 'min-h-0 flex-1 text-[13px]' : 'text-sm'
         }`}
       />
 
@@ -93,7 +97,7 @@ export function QuickNotePanel({
         value={tagsInput}
         onChange={(e) => setTagsInput(e.target.value)}
         placeholder="Tags (separadas por vírgula)"
-        className="w-full rounded-xl border border-stroke bg-base px-3 py-2 text-xs text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+        className={`w-full rounded-xl border border-stroke bg-base px-3 py-2 text-primary ${fill ? 'text-[13px]' : 'text-xs'} placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent`}
       />
       {/* Autocomplete nativo do navegador com as tags que o proprio aluno ja usou neste Course
           (ListNoteTagsUseCase) - evita duplicata tipo "insight" vs "insights", sem lib nova. */}
@@ -109,7 +113,11 @@ export function QuickNotePanel({
         type="button"
         onClick={handleSave}
         disabled={!content.trim() || saving}
-        className="rounded-xl bg-accent py-2.5 text-sm font-bold tracking-wide text-base disabled:opacity-50"
+        className={
+          fill
+            ? 'h-8 rounded-lg bg-accent font-mono text-[11px] font-semibold uppercase tracking-[1px] text-stroke disabled:opacity-50'
+            : 'rounded-xl bg-accent py-2.5 text-sm font-bold tracking-wide text-base disabled:opacity-50'
+        }
       >
         {saved ? 'SALVO ✓' : saving ? 'SALVANDO...' : 'SALVAR'}
       </button>

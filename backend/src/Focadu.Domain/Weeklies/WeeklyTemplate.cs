@@ -23,6 +23,27 @@ public class WeeklyTemplate : Entity
     /// <summary>Especificacao do projeto pratico da semana (era `WeeklyProject.SpecText`) - curriculo, igual pra todo mundo, so muda de "definido" pra "definido" uma vez via seed/autoria.</summary>
     public string? WeeklyProjectSpecText { get; private set; }
 
+    /// <summary>
+    /// Fase 64: falas do briefing do Projeto Semanal, ditas pela Focada (mascote/mentora) no dialogo
+    /// fixo da tela do projeto - escritas a mao pela curadoria (voz de missao), nunca geradas do
+    /// SpecText. Vazio = semana sem briefing (a tela mostra so o cartao de especificacao, como antes).
+    /// Mesmo espirito de SetProjectSpec: definido uma vez so, via seed.
+    /// </summary>
+    public string[] WeeklyProjectBriefing { get; private set; } = [];
+
+    /// <summary>
+    /// Fase 64: falas de estado da Focada que ESTA semana sobrescreve (chave em StateLineKeys ->
+    /// texto). As falas padrao, iguais em toda semana, moram no frontend; so as sobrescritas pela
+    /// curadoria vem daqui. Vazio = usa todas as padrao.
+    /// </summary>
+    public Dictionary<string, string> WeeklyProjectStateLines { get; private set; } = new();
+
+    /// <summary>Fase 64: tamanho maximo de uma fala (cabe na caixa de dialogo sem rolar).</summary>
+    public const int MaxDialogueLineLength = 200;
+
+    /// <summary>Fase 64: estados do projeto que tem fala propria (repositorio pronto, entregue, avaliado com nota alta/baixa).</summary>
+    public static readonly IReadOnlyList<string> StateLineKeys = ["repositorio", "entregue", "avaliadoAlta", "avaliadoBaixa"];
+
     /// <summary>Nome do repositorio-template no Forgejo interno (ex: "template-web-security-semana-1"), mantido pela curadoria - EnrollUserInCourseUseCase da fork disso pra cada aluno matriculado. Nulo ate a curadoria configurar; sem isso, a Weekly nao recebe repositorio (ver "repositorios-gerenciados-projeto-semanal.md").</summary>
     public string? ForgejoTemplateSlug { get; private set; }
 
@@ -86,6 +107,31 @@ public class WeeklyTemplate : Entity
             throw new DomainException("Esta WeeklyTemplate ja tem uma especificacao de projeto definida.");
 
         WeeklyProjectSpecText = specText;
+    }
+
+    /// <summary>Fase 64: define o briefing da Focada (e as falas de estado sobrescritas, se houver) - uma vez so, igual SetProjectSpec.</summary>
+    public void SetProjectBriefing(IReadOnlyList<string> lines, IReadOnlyDictionary<string, string>? stateLines = null)
+    {
+        if (lines.Count == 0 || lines.Any(string.IsNullOrWhiteSpace))
+            throw new DomainException("O briefing precisa de ao menos uma fala, e nenhuma fala pode ser vazia.");
+        if (WeeklyProjectBriefing.Length > 0)
+            throw new DomainException("Esta WeeklyTemplate ja tem um briefing definido.");
+
+        var allLines = lines.Concat(stateLines?.Values ?? []).ToList();
+        var tooLong = allLines.FirstOrDefault(l => l.Length > MaxDialogueLineLength);
+        if (tooLong is not null)
+            throw new DomainException($"Fala com mais de {MaxDialogueLineLength} caracteres: \"{tooLong[..40]}...\"", "fala_longa_demais");
+
+        foreach (var (key, text) in stateLines ?? new Dictionary<string, string>())
+        {
+            if (!StateLineKeys.Contains(key))
+                throw new DomainException($"Estado de fala desconhecido: '{key}'. Validos: {string.Join(", ", StateLineKeys)}.", "estado_de_fala_invalido");
+            if (string.IsNullOrWhiteSpace(text))
+                throw new DomainException($"A fala do estado '{key}' esta vazia.");
+        }
+
+        WeeklyProjectBriefing = lines.ToArray();
+        WeeklyProjectStateLines = new Dictionary<string, string>(stateLines ?? new Dictionary<string, string>());
     }
 
     /// <summary>Define o repositorio-template no Forgejo pra esta semana (uma vez so - curriculo nao muda depois de publicado, mesmo espirito de SetProjectSpec).</summary>

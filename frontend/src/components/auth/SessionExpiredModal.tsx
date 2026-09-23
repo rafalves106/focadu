@@ -1,4 +1,5 @@
 import { LoginForm } from './LoginForm';
+import lockIcon from '../../assets/pixel/cadeado-bloqueado.png';
 
 /**
  * "Erro - Sessao Expirada" (Fase 10, node Figma 13-978, nunca construida - ver
@@ -30,7 +31,7 @@ export function SessionExpiredModal({ onClose }: { onClose: () => void }) {
             className="flex size-14 items-center justify-center rounded-full border-2 border-alert bg-alert/10 text-2xl"
             aria-hidden="true"
           >
-            🔒
+            <img src={lockIcon} alt="" className="size-8 pixelated" />
           </span>
           <h1 className="text-xl font-bold text-primary">Sessão Expirada</h1>
           <p className="text-sm text-secondary">

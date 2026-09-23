@@ -964,8 +964,20 @@ namespace Focadu.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.PrimitiveCollection<string[]>("WeeklyProjectBriefing")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasDefaultValueSql("'{}'::text[]");
+
                     b.Property<string>("WeeklyProjectSpecText")
                         .HasColumnType("text");
+
+                    b.Property<string>("WeeklyProjectStateLines")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
 
                     b.HasKey("Id");
 

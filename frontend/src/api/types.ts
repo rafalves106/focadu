@@ -349,7 +349,14 @@ export interface WeeklyProjectDto {
   choosableLanguages: ProjectLanguage[];
   /** Fase 59: so com languageStep Chosen - as referencias da linguagem escolhida, mais as comuns a todas. */
   references: ProjectReferenceDto[];
+  /** Fase 64: falas do briefing da Focada, escritas pela curadoria. Vazio na semana sem briefing ou antes do projeto ser disponibilizado. */
+  briefing: string[];
+  /** Fase 64: falas de estado que esta semana sobrescreve (ver lib/focadaLines.ts pras chaves e as padrao). */
+  stateLines: Partial<Record<FocadaStateKey, string>>;
 }
+
+/** Fase 64: estados do projeto com fala propria da Focada (espelha WeeklyTemplate.StateLineKeys no backend). */
+export type FocadaStateKey = 'repositorio' | 'entregue' | 'avaliadoAlta' | 'avaliadoBaixa';
 
 /** Fase 60: resposta de POST /api/users/me/forgejo-token - único momento em que o token inteiro aparece (a Focadu não guarda). */
 export interface ForgejoTokenDto {

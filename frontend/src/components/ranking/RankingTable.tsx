@@ -1,14 +1,16 @@
 import type { ReactNode } from 'react';
 import type { RankingEntryDto } from '../../api/types';
 import { nameColorClass } from '../../lib/cosmeticStyle';
-import medalGoldIcon from '../../assets/icons/medal-gold.png';
+import medalGoldIcon from '../../assets/pixel/medalha-ouro.png';
+import medalSilverIcon from '../../assets/pixel/medalha-prata.png';
+import medalBronzeIcon from '../../assets/pixel/medalha-bronze.png';
 
-// So o 1o lugar tem PNG pixel art proprio (pedido do Falves) - 2o/3o continuam emoji ate ter as
-// versoes prata/bronze (decisao explicita, nao esquecimento).
+// Medalhas pixel art do podio (pedido do Falves) - ouro/prata/bronze em assets/pixel; bronze usa
+// ambar escuro + contorno vermelho da paleta fechada, sem cor nova.
 const MEDAL: Record<number, ReactNode> = {
-  1: <img src={medalGoldIcon} alt="" className="inline-block h-6 w-auto" />,
-  2: '🥈',
-  3: '🥉',
+  1: <img src={medalGoldIcon} alt="" className="inline-block size-8 pixelated" />,
+  2: <img src={medalSilverIcon} alt="" className="inline-block size-8 pixelated" />,
+  3: <img src={medalBronzeIcon} alt="" className="inline-block size-8 pixelated" />,
 };
 
 /** Lista dos primeiros colocados de um ranking (Fase 16) - destaca `highlightUserId` (o próprio usuário) quando ele aparece no top N. */

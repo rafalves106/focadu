@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import type { CompleteDailyResult } from '../api/types';
-import checkIcon from '../assets/icons/check.png';
-import trophyIcon from '../assets/icons/trophy.png';
-import gemIcon from '../assets/icons/gem.png';
+import checkIcon from '../assets/pixel/check.png';
+import trophyIcon from '../assets/pixel/trofeu.png';
+import gemIcon from '../assets/pixel/gema.png';
 
 /**
  * Tela pos-conclusao de POST .../complete. Reforco diario/semanal, quando existe, ja foi
@@ -29,7 +29,7 @@ export function CompletionSummary({ result }: { result: CompleteDailyResult }) {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-4 p-6 text-center">
-      <img src={checkIcon} alt="" className="h-12 w-auto" />
+      <img src={checkIcon} alt="" className="size-12 pixelated" />
       <h1 className="text-2xl font-semibold text-primary">Sessão concluída!</h1>
 
       {/* Discreto de proposito - texto pequeno, sem popup/confete (minimalismo do produto, ver
@@ -39,11 +39,11 @@ export function CompletionSummary({ result }: { result: CompleteDailyResult }) {
       {result.gemsEarned > 0 &&
         (result.wasReinforcementBonus ? (
           <p className="flex items-center gap-1 text-sm font-semibold text-accent">
-            🎯 Bônus de Superação: +{result.gemsEarned} <img src={gemIcon} alt="" className="size-3.5" />
+            🎯 Bônus de Superação: +{result.gemsEarned} <img src={gemIcon} alt="" className="size-4 pixelated" />
           </p>
         ) : (
           <p className="flex items-center gap-1 text-sm font-semibold text-primary">
-            +{result.gemsEarned} <img src={gemIcon} alt="" className="size-3.5" />
+            +{result.gemsEarned} <img src={gemIcon} alt="" className="size-4 pixelated" />
           </p>
         ))}
 
@@ -56,7 +56,7 @@ export function CompletionSummary({ result }: { result: CompleteDailyResult }) {
             </p>
             {mastered && (
               <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-                <img src={trophyIcon} alt="" className="size-4" />
+                <img src={trophyIcon} alt="" className="size-4 pixelated" />
                 Conceito Dominado
               </p>
             )}

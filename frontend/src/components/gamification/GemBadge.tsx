@@ -1,4 +1,4 @@
-import gemIcon from '../../assets/icons/gem.png';
+import gemIcon from '../../assets/pixel/gema.png';
 
 /**
  * Badge de saldo de Gems (Fase 14) - icone + contador, mesmo padrao pill de StatusBadge (Fase 8).
@@ -8,7 +8,7 @@ import gemIcon from '../../assets/icons/gem.png';
 export function GemBadge({ totalGems }: { totalGems: number }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-alt px-2.5 py-1 text-xs font-semibold text-primary">
-      <img src={gemIcon} alt="" className="size-3.5" aria-hidden="true" />
+      <img src={gemIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
       {totalGems}
     </span>
   );

@@ -1,8 +1,8 @@
 import type { CuratedContentDto } from '../api/types';
 import { extractYouTubeId } from '../lib/youtube';
 import dotMedium from '../assets/reading/dot-medium.svg';
-import playThumbnail from '../assets/reading/play-thumbnail.svg';
-import playThumbnailActive from '../assets/reading/play-thumbnail-active.svg';
+import playThumbnail from '../assets/pixel/play-inativo.png';
+import playThumbnailActive from '../assets/pixel/play-ativo.png';
 import checkIcon from '../assets/reading/check-icon.svg';
 
 const GROUP_LABEL: Record<number, string> = { 0: 'LEITURA', 1: 'VÍDEO' };
@@ -97,7 +97,7 @@ export function MaterialSidebar({
                           />
                         )}
                         {videoId && <div className="absolute inset-0 bg-base/35" />}
-                        <img src={isActive ? playThumbnailActive : playThumbnail} alt="" className="relative size-8" />
+                        <img src={isActive ? playThumbnailActive : playThumbnail} alt="" className="relative size-8 pixelated" />
                       </div>
                       <p className="truncate px-3 pb-3 text-xs font-medium text-primary">{item.title}</p>
                     </button>

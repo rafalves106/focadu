@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../../api/client';
-import fireIcon from '../../assets/icons/fire.png';
+import fireIcon from '../../assets/pixel/chama-streak.png';
 import { StreakIndicator } from './StreakIndicator';
 
 /**
@@ -46,7 +46,7 @@ export function StreakLostModal({ longestStreak, onClose }: { longestStreak: num
         aria-label="Streak perdido"
       >
         <span className="flex size-14 items-center justify-center rounded-full border-2 border-alert bg-alert/10" aria-hidden="true">
-          <img src={fireIcon} alt="" className="size-7" />
+          <img src={fireIcon} alt="" className="size-8 pixelated" />
         </span>
 
         <div className="flex flex-col gap-2">

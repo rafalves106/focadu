@@ -77,7 +77,7 @@ export function StudyAssistantPanel({ tall = false, className = '' }: { tall?: b
           // nao encolhe abaixo da sua largura minima intrinseca (~20 colunas default do navegador),
           // que nao cabe nos 280px do card (mais estreito que o painel flutuante de 340px de onde
           // este composer foi copiado) - o excesso empurrava o botao pra fora da borda arredondada.
-          className="max-h-20 min-w-0 flex-1 resize-none rounded-xl border border-stroke bg-base px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+          className={`max-h-20 min-w-0 flex-1 resize-none rounded-xl border border-stroke bg-base px-3 py-2 text-primary ${tall ? 'text-[13px]' : 'text-sm'} placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent`}
         />
         <button
           type="button"

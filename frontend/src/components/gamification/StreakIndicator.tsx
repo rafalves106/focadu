@@ -1,4 +1,4 @@
-import fireIcon from '../../assets/icons/fire.png';
+import fireIcon from '../../assets/pixel/chama-streak.png';
 
 /**
  * Indicador de streak atual (Fase 14) - "🔥 STREAK DE N DIAS", mesmo padrao pill de GemBadge/
@@ -16,7 +16,7 @@ export function StreakIndicator({ currentStreak }: { currentStreak: number }) {
 
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${tone}`}>
-      <img src={fireIcon} alt="" className="size-3.5" aria-hidden="true" />
+      <img src={fireIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
       STREAK DE {currentStreak} {currentStreak === 1 ? 'DIA' : 'DIAS'}
     </span>
   );

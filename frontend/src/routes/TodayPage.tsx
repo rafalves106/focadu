@@ -8,7 +8,7 @@ import { classifyApiError, type ApiFailure } from '../lib/apiError';
 import { ActivityScreen, Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { ErrorLayout } from '../components/errors/ErrorLayout';
-import checkIcon from '../assets/icons/check.png';
+import checkIcon from '../assets/pixel/check.png';
 import { QuizActivity } from '../components/QuizActivity';
 import { WordMatchActivity } from '../components/WordMatchActivity';
 import { ClozeFreeTextActivity } from '../components/ClozeFreeTextActivity';
@@ -20,6 +20,7 @@ import { CompletionSummary } from '../components/CompletionSummary';
 import { ReinforcementIntroScreen } from '../components/ReinforcementIntroScreen';
 import { PendingReinforcementCard } from '../components/PendingReinforcementCard';
 import { setDailyPenalty } from '../lib/dailyPenaltyContext';
+import lockIcon from '../assets/pixel/cadeado-bloqueado.png';
 
 // "Pino" do passo atual - so identifica QUAL atividade mostrar, nunca guarda uma copia dos dados
 // (que vem sempre fresca de `daily.activities`) - so avancamos quando o usuario clica
@@ -62,7 +63,7 @@ function DailySessionBlockedNotice({ pendingReinforcementDailyId }: { pendingRei
 
   return (
     <ErrorLayout
-      icon={<img src={checkIcon} alt="" className="h-12 w-auto" />}
+      icon={<img src={checkIcon} alt="" className="size-12 pixelated" />}
       title="Sessão de hoje já concluída"
       description="Você já concluiu uma sessão hoje (inclusive se foi recuperando um dia atrasado) - o limite é 1 por dia. Volte amanhã para continuar."
       extra={<PendingReinforcementSlot dailyId={pendingReinforcementDailyId} />}
@@ -110,7 +111,7 @@ function WeekClosurePendingNotice({ weeklyId, pendingReinforcementDailyId }: { w
 
   return (
     <ErrorLayout
-      icon={<img src={checkIcon} alt="" className="h-12 w-auto" />}
+      icon={<img src={checkIcon} alt="" className="size-12 pixelated" />}
       title={projectPending || !weekly ? 'Semana concluída - falta o projeto' : 'Semana concluída - falta a publicação'}
       description={
         projectPending
@@ -149,7 +150,7 @@ function DailyRefusedNotice({ error }: { error: ApiFailure }) {
 
   return (
     <ErrorLayout
-      icon="🔒"
+      icon={<img src={lockIcon} alt="" className="size-12 pixelated" />}
       title="Não dá para abrir essa sessão agora"
       description={(error.code && DAILY_REFUSAL_COPY[error.code]) ?? error.message}
       primaryAction={{ label: 'Voltar ao início', onClick: () => navigate('/start') }}

@@ -10,8 +10,9 @@ import { NotebookTab } from '../components/notebook/NotebookTab';
 import { CertificationsTab } from '../components/certifications/CertificationsTab';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
 import { ProgressBar } from '../components/ProgressBar';
-import trophyIcon from '../assets/icons/trophy.png';
-import checkIcon from '../assets/icons/check.png';
+import trophyIcon from '../assets/pixel/trofeu.png';
+import checkIcon from '../assets/pixel/check.png';
+import lockIcon from '../assets/pixel/cadeado-bloqueado.png';
 
 const VALID_TABS: CourseDetailTab[] = ['conteudo', 'caderninho', 'certificacoes'];
 
@@ -125,7 +126,7 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
           to={`/start?course=${courseId}&ranking=1`}
           className="flex items-center justify-center gap-1.5 rounded-xl border border-surface-alt py-3 text-center text-sm font-bold tracking-wide text-secondary hover:border-accent hover:text-primary"
         >
-          <img src={trophyIcon} alt="" className="h-4 w-auto" aria-hidden="true" />
+          <img src={trophyIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
           VER RANKING
         </Link>
         {/* Fase 17: sem lar definitivo ainda (fica pra aba "Conquistas" do Perfil, Fase 18) - por
@@ -180,9 +181,9 @@ function WeekSummaryCard({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           {isComplete && !isLocked ? (
-            <img src={checkIcon} alt="" className="size-4" aria-hidden="true" />
+            <img src={checkIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
           ) : isLocked ? (
-            <span aria-hidden="true">🔒</span>
+            <img src={lockIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
           ) : null}
           <p className="font-bold text-primary">
             Semana {weekly.number}: {weekly.theme ?? weekly.title}

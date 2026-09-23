@@ -10,6 +10,7 @@ import {
   type ModulePublicationDto,
 } from '../../api/types';
 import { classifyApiError, type ApiFailure } from '../../lib/apiError';
+import shieldIcon from '../../assets/pixel/escudo.png';
 
 const LINKEDIN_MAX_CHARS = 3000;
 
@@ -554,7 +555,9 @@ function SuccessStep({
 
       {moduleCertifications.length > 0 && (
         <div className="flex w-full flex-col gap-2 rounded-lg border border-surface-alt bg-base p-4 text-left">
-          <p className="text-[11px] font-bold uppercase text-muted">🛡️ Você avançou em direção a</p>
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase text-muted">
+            <img src={shieldIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
+            Você avançou em direção a</p>
           <div className="flex flex-wrap gap-2">
             {moduleCertifications.map((cert) => (
               <span

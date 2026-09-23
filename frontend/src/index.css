@@ -2,11 +2,14 @@
    ficar todas no topo do arquivo, antes de qualquer outra regra - Tailwind expande a propria
    import em conteudo real).
    - Archivo/Fira Code (Fase 18, Login/Registro node 19:8): display/corpo + acentos "terminal".
+   - VT323 + Silkscreen (Fase 64, dialogo da Focada no Projeto Semanal): fontes pixel escolhidas
+     por teste com texto real (Figma "Focadu — Pixel Art", pagina "Textbox — teste de fontes") -
+     VT323 nas falas, Silkscreen (so caixa-alta) no nome e nos botoes. Por enquanto so nessa tela.
    - Inter (Fase 19, Sessao Diaria): fonte de UI usada em todo o restante do Figma (Quiz/Cloze/
      Roleplay/etc, ver docs/fase-19) - virou --font-sans, o padrao do app inteiro (nao so das 8
      telas desta fase; nenhuma outra tela tinha um --font-sans proprio antes, so o default do
      navegador - Inter e so uma troca de fonte, nao de layout/cor, risco baixo pro resto do app). */
-@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Silkscreen&family=VT323&display=swap");
 @import "tailwindcss";
 
 /*
@@ -39,6 +42,8 @@
   --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Fira Code", ui-monospace, "SFMono-Regular", monospace;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-pixel: "VT323", ui-monospace, monospace;
+  --font-pixel-label: "Silkscreen", ui-monospace, monospace;
 }
 
 body {
@@ -57,6 +62,43 @@ body {
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
+  }
+}
+
+/*
+ * Cursor pixel art (mesma mira do logo, public/cursor/): "mira" aberta no padrao e "mira-travada"
+ * (colchetes fechados = lock-on) em tudo que e clicavel. Hotspot 8 8 = o ponto verde do centro.
+ * So com mouse (`pointer: fine`); campos de texto mantem o I do sistema. Cada declaracao repete a
+ * anterior com uma sintaxe mais nova - o navegador fica com a ultima que entende (url simples ->
+ * -webkit-image-set no Safari/Chrome antigo -> image-set padrao, que da o 2x nitido em retina).
+ * Por ultimo sempre um cursor nativo de reserva (auto/pointer) caso a imagem nao carregue.
+ */
+@media (pointer: fine) {
+  @layer base {
+    html {
+      cursor: url("/cursor/mira.png") 8 8, auto;
+      cursor: -webkit-image-set(url("/cursor/mira.png") 1x, url("/cursor/mira@2x.png") 2x) 8 8, auto;
+      cursor: image-set(url("/cursor/mira.png") 1x, url("/cursor/mira@2x.png") 2x) 8 8, auto;
+    }
+
+    a[href],
+    button:not(:disabled),
+    [role="button"]:not(:disabled),
+    select,
+    summary,
+    label[for],
+    input[type="checkbox"],
+    input[type="radio"] {
+      cursor: url("/cursor/mira-travada.png") 8 8, pointer;
+      cursor: -webkit-image-set(url("/cursor/mira-travada.png") 1x, url("/cursor/mira-travada@2x.png") 2x) 8 8, pointer;
+      cursor: image-set(url("/cursor/mira-travada.png") 1x, url("/cursor/mira-travada@2x.png") 2x) 8 8, pointer;
+    }
+
+    input:not([type="checkbox"], [type="radio"], [type="range"], [type="button"], [type="submit"]),
+    textarea,
+    [contenteditable="true"] {
+      cursor: text;
+    }
   }
 }
 
@@ -79,4 +121,26 @@ body {
   :root {
     --nav-height: 73px;
   }
+}
+
+/* Sprites pixel art 16x16 (assets/pixel, fonte: Figma "Focadu — Pixel Art"): sem suavizacao ao
+   escalar. Usar sempre em tamanhos multiplos de 16px (size-4, size-8, size-12), senao os pixels
+   ficam desiguais. */
+@utility pixelated {
+  image-rendering: pixelated;
+}
+
+/*
+ * Caixa de dialogo pixel art (Fase 64, kit "textbox" do Figma "Focadu — Pixel Art"): contorno de 4px
+ * em metal/base (#9a9a9a), filete interno de 4px em metal/contorno (#2a2a2a) e cantos "mordidos" de
+ * 1 pixel (4px) via clip-path - so CSS, estica pra qualquer largura sem 9-slice de imagem.
+ */
+@utility pixel-box {
+  border: 4px solid #9a9a9a;
+  box-shadow: inset 0 0 0 4px #2a2a2a;
+  clip-path: polygon(
+    4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px),
+    calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
+    0 calc(100% - 4px), 0 4px, 4px 4px
+  );
 }

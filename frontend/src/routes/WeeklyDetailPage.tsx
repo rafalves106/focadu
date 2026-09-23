@@ -11,6 +11,8 @@ import { ProgressBar } from '../components/ProgressBar';
 import { WeeklyProjectCard } from '../components/WeeklyProjectCard';
 import { WeeklyReinforcementBadge } from '../components/WeeklyReinforcementBadge';
 import { PublicationModal } from '../components/publication/PublicationModal';
+import lockIcon from '../assets/pixel/cadeado-bloqueado.png';
+import shieldIcon from '../assets/pixel/escudo.png';
 
 /**
  * Visao Semanal (Fase 8, design Figma "visao-semanal") - os dias da semana em lista + card do
@@ -82,7 +84,9 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
       {weekly.requiresPublicationToUnlock && (
         <div className="flex flex-col items-start gap-3 rounded-2xl border border-project/40 bg-project/10 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="font-semibold text-primary">🔒 Publique sua conclusão para liberar a próxima semana</p>
+            <p className="flex items-center gap-2 font-semibold text-primary">
+              <img src={lockIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
+              Publique sua conclusão para liberar a próxima semana</p>
             <p className="text-sm text-secondary">
               Você completou os dias e o projeto desta semana. Publique uma prova no LinkedIn ou GitHub para continuar.
             </p>
@@ -99,7 +103,9 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
 
       {weekly.moduleCertifications.length > 0 && (
         <div className="flex flex-col gap-2 rounded-2xl border border-surface-alt bg-surface p-5">
-          <p className="text-sm font-semibold text-primary">🛡️ Este módulo te aproxima de:</p>
+          <p className="flex items-center gap-2 text-sm font-semibold text-primary">
+            <img src={shieldIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
+            Este módulo te aproxima de:</p>
           <div className="flex flex-wrap gap-2">
             {weekly.moduleCertifications.map((cert) => (
               <StatusBadge

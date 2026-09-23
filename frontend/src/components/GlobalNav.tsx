@@ -3,7 +3,12 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { CourseStatus } from '../api/types';
-import mapIcon from '../assets/header/map-white-version.png';
+import logoWordmark from '../assets/pixel/logo-wordmark.png';
+import navHoje from '../assets/pixel/nav-hoje.png';
+import navTrilhas from '../assets/pixel/nav-trilhas.png';
+import navRanking from '../assets/pixel/nav-ranking.png';
+import navSquad from '../assets/pixel/nav-squad.png';
+import navLoja from '../assets/pixel/nav-loja.png';
 import { UserMenu } from './UserMenu';
 import { PenaltyHeaderBadge } from './gamification/PenaltyHeaderBadge';
 import { PomodoroHeaderBadge } from './pomodoro/PomodoroHeaderBadge';
@@ -36,6 +41,13 @@ import { PomodoroHeaderBadge } from './pomodoro/PomodoroHeaderBadge';
  * status da IA - os dois ultimos sairam da barra porque o Figma nao os tem (decisao do dono: mover,
  * nao remover). Altura via `--nav-height` (index.css), que as telas sem rolagem externa descontam.
  *
+ * Itens em pixel art (pedido do dono, "mais proximo da gamificacao"): cada texto virou um sprite
+ * 16x16 do Figma "Focadu — Pixel Art" (calendario, mapa do tesouro, podio, squad, barraca da loja).
+ * O nome continua no DOM (`sr-only` + `title` = tooltip no hover) pra leitor de tela e pra quem
+ * ainda nao decorou os icones; no menu suspenso do mobile vai icone + texto. 2x (32px) e 3x (48px)
+ * no desktop largo, sempre escala inteira. Agrupados por modo de jogo (decisao do dono): esquerda =
+ * solo (Hoje/Trilhas/Loja), direita = multiplayer (Ranking/Squad), com o logo no meio dividindo.
+ *
  * `PomodoroHeaderBadge` (Fase 36, ver secret/rascunhos/timer-pomodoro-sessao.md) - versao compacta
  * do timer Pomodoro da sessao (`PomodoroWidget`, ver useMaterialSidebar.tsx), sincronizada via
  * `lib/pomodoroTimer` (store modulo-level). So aparece depois que o aluno da play pela 1a vez -
@@ -56,9 +68,9 @@ export function GlobalNav() {
       <div className="flex h-[calc(var(--nav-height)-1px)] items-center justify-between gap-2 px-4 xl:px-16">
         {/* Desktop (md+): grupo esquerdo. */}
         <div className="hidden flex-1 items-center gap-1 md:flex xl:gap-4">
-          <NavItem to="/hoje">Hoje</NavItem>
-          <NavItem to={trilhaHref}>Trilhas</NavItem>
-          <NavItem to={rankingHref}>Ranking</NavItem>
+          <NavItem to="/hoje" icon={navHoje} label="Hoje" />
+          <NavItem to={trilhaHref} icon={navTrilhas} label="Trilhas" />
+          <NavItem to="/loja" icon={navLoja} label="Loja" />
         </div>
 
         {/* Mobile (abaixo de md): hamburguer no lugar dos 2 grupos de texto. */}
@@ -76,8 +88,8 @@ export function GlobalNav() {
 
         {/* Desktop (md+): grupo direito. */}
         <div className="hidden flex-1 items-center justify-end gap-1 md:flex xl:gap-4">
-          <NavItem to="/perfil?tab=squad">Squad</NavItem>
-          <NavItem to="/loja">Loja</NavItem>
+          <NavItem to={rankingHref} icon={navRanking} label="Ranking" />
+          <NavItem to="/perfil?tab=squad" icon={navSquad} label="Squad" />
           <div className="ml-2 flex shrink-0 items-center gap-2 xl:ml-4">
             <PenaltyHeaderBadge />
             <PomodoroHeaderBadge />
@@ -96,20 +108,20 @@ export function GlobalNav() {
       {/* Mobile: menu suspenso com todos os itens em lista - fecha sozinho ao navegar. */}
       {mobileMenuOpen && (
         <div className="flex flex-col gap-1 border-t border-surface-alt p-2 md:hidden">
-          <MobileNavItem to="/hoje" onNavigate={closeMobileMenu}>
+          <MobileNavItem to="/hoje" icon={navHoje} onNavigate={closeMobileMenu}>
             Hoje
           </MobileNavItem>
-          <MobileNavItem to={trilhaHref} onNavigate={closeMobileMenu}>
+          <MobileNavItem to={trilhaHref} icon={navTrilhas} onNavigate={closeMobileMenu}>
             Trilhas
           </MobileNavItem>
-          <MobileNavItem to={rankingHref} onNavigate={closeMobileMenu}>
+          <MobileNavItem to="/loja" icon={navLoja} onNavigate={closeMobileMenu}>
+            Loja
+          </MobileNavItem>
+          <MobileNavItem to={rankingHref} icon={navRanking} onNavigate={closeMobileMenu}>
             Ranking
           </MobileNavItem>
-          <MobileNavItem to="/perfil?tab=squad" onNavigate={closeMobileMenu}>
+          <MobileNavItem to="/perfil?tab=squad" icon={navSquad} onNavigate={closeMobileMenu}>
             Squad
-          </MobileNavItem>
-          <MobileNavItem to="/loja" onNavigate={closeMobileMenu}>
-            Loja
           </MobileNavItem>
         </div>
       )}
@@ -117,45 +129,48 @@ export function GlobalNav() {
   );
 }
 
-function NavItem({ to, children }: { to: string; children: ReactNode }) {
+function NavItem({ to, icon, label }: { to: string; icon: string; label: string }) {
   return (
-    <Link to={to} className="rounded-lg px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary xl:text-[16px]">
-      {children}
+    <Link
+      to={to}
+      title={label}
+      className="rounded-lg p-1.5 opacity-80 transition hover:scale-110 hover:opacity-100 focus-visible:opacity-100"
+    >
+      <img src={icon} alt="" className="size-8 pixelated xl:size-12" aria-hidden="true" />
+      <span className="sr-only">{label}</span>
     </Link>
   );
 }
 
-function MobileNavItem({ to, onNavigate, children }: { to: string; onNavigate: () => void; children: ReactNode }) {
+function MobileNavItem({ to, icon, onNavigate, children }: { to: string; icon: string; onNavigate: () => void; children: ReactNode }) {
   return (
     <Link
       to={to}
       onClick={onNavigate}
-      className="rounded-lg px-3 py-2.5 text-sm font-medium text-secondary hover:bg-surface-alt hover:text-primary"
+      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-secondary hover:bg-surface-alt hover:text-primary"
     >
+      <img src={icon} alt="" className="size-8 pixelated" aria-hidden="true" />
       {children}
     </Link>
   );
 }
 
 /**
- * Botao central - "onde o player volta pro mapa" (pedido do Falves). Emoji placeholder trocado
- * pelo PNG pixel art proprio (ver docs/fase-25) - so a versao branca (`map-white-version.png`) e
- * usada aqui, porque o app nao tem modo claro e o fundo do header (`bg-surface`) e sempre escuro;
- * `map-black-version.png` fica em assets/header sem uso por enquanto, pra quando precisar dela em
- * outro lugar. A imagem (269x64, fundo transparente) ja desenha o proprio frame/borda em pixel
- * art - sem caixa/borda extra por cima como o placeholder de emoji tinha (ficaria uma moldura
- * dobrada); so o hover (`hover:scale-105`, mesmo padrao do botao flutuante de
- * StudyAssistantWidget) sinaliza que e clicavel.
+ * Botao central - volta pro inicio (/start). Era o PNG "START" (map-white-version.png, fase 25);
+ * agora e o wordmark pixel art do Focadu (Figma "Focadu — Pixel Art", pagina Logo: o "O" e uma mira
+ * de foco com cursor verde dentro). PNG 1x (35x7, fundo transparente) escalado so em inteiros com
+ * `pixelated`: 4x (28px) e 6x (42px) no desktop largo - escala quebrada deixaria os pixels desiguais.
+ * So o hover (`hover:scale-105`, mesmo padrao do StudyAssistantWidget) sinaliza que e clicavel.
  */
 function MapButton() {
   return (
     <Link
       to="/start"
-      aria-label="Voltar para o mapa"
-      title="Voltar para o mapa"
+      aria-label="Focadu - voltar para o início"
+      title="Voltar para o início"
       className="flex shrink-0 items-center justify-center transition-transform hover:scale-105"
     >
-      <img src={mapIcon} alt="Voltar para o mapa" className="h-8 w-auto xl:h-[43px]" />
+      <img src={logoWordmark} alt="Focadu" className="h-7 w-auto pixelated xl:h-[42px]" />
     </Link>
   );
 }

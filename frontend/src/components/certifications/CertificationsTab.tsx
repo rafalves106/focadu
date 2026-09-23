@@ -2,6 +2,7 @@ import type { MonthlyOverviewDto } from '../../api/types';
 import { StatusBadge } from '../StatusBadge';
 import { isMonthlyComplete } from '../../lib/certifications';
 import { EmptyStateError } from '../errors/EmptyStateError';
+import lockIcon from '../../assets/pixel/cadeado-bloqueado.png';
 
 /**
  * Fase 45: informativo de certificações de mercado que o currículo já cobre (curadoria estática,
@@ -44,7 +45,7 @@ function ModuleCertificationCard({ monthly }: { monthly: MonthlyOverviewDto }) {
         <p className="font-bold text-primary">
           Módulo {monthly.number}: {monthly.title}
         </p>
-        {!unlocked && <span className="text-sm font-semibold text-project">🔒 Ainda não estudado</span>}
+        {!unlocked && <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-project"><img src={lockIcon} alt="" className="size-4 pixelated" aria-hidden="true" />Ainda não estudado</span>}
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">

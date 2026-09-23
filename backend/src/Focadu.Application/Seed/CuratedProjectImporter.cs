@@ -19,6 +19,13 @@ namespace Focadu.Application.Seed;
 /// - "references": [{ "language": "python" | omitido, "title", "url", "documents", "verifiedAt":
 ///   "2026-09-21" }] - links de referencia; sem "language" valem pra todas as linguagens. A ordem
 ///   do arquivo e a ordem de exibicao.
+///
+/// Fase 64 (dialogo da Focada no Projeto Semanal), tambem opcionais:
+/// - "briefing": ["fala 1", "fala 2", ...] - o briefing de missao, escrito a mao (max. 200
+///   caracteres por fala), vira WeeklyTemplate.SetProjectBriefing.
+/// - "falasDeEstado": { "repositorio" | "entregue" | "avaliadoAlta" | "avaliadoBaixa": "texto" } -
+///   so as falas de estado que esta semana sobrescreve; o resto usa as padrao do frontend. Exige
+///   "briefing" junto.
 /// </summary>
 public static class CuratedProjectImporter
 {
@@ -34,6 +41,11 @@ public static class CuratedProjectImporter
             ?? throw new InvalidOperationException("Conteudo de projeto curado vazio ou invalido.");
 
         weeklyTemplate.SetProjectSpec(project.SpecText);
+
+        if (project.Briefing is { Count: > 0 })
+            weeklyTemplate.SetProjectBriefing(project.Briefing, project.FalasDeEstado);
+        else if (project.FalasDeEstado is { Count: > 0 })
+            throw new DomainException("projeto.json com \"falasDeEstado\" mas sem \"briefing\".", "briefing_ausente");
 
         foreach (var variant in project.Languages ?? [])
             weeklyTemplate.AddLanguageVariant(ParseLanguage(variant.Language), variant.ForgejoTemplateSlug);
@@ -56,7 +68,8 @@ public static class CuratedProjectImporter
 
     private record CuratedProjectJson(
         int WeekNumber, string Title, string SpecText,
-        List<CuratedLanguageJson>? Languages, List<CuratedReferenceJson>? References);
+        List<CuratedLanguageJson>? Languages, List<CuratedReferenceJson>? References,
+        List<string>? Briefing, Dictionary<string, string>? FalasDeEstado);
 
     private record CuratedLanguageJson(string Language, string ForgejoTemplateSlug);
 
