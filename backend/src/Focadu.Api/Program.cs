@@ -643,9 +643,13 @@ api.MapGet("/dailies/{dailyId}", async (ClaimsPrincipal principal, string dailyI
     .WithName("GetDailyState");
 
 // Atalho "/hoje": resolve a Daily de hoje pra Enrollment do usuario logado (Fase 13 - nao mais
-// "1 Course Active" global, ver GetTodayUseCase).
-api.MapGet("/today", async (ClaimsPrincipal principal, GetTodayUseCase useCase, CancellationToken ct) =>
-        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
+// "1 Course Active" global, ver GetTodayUseCase). `?courseId=` (opcional, tela de start com varios
+// cursos): a matricula daquele curso.
+api.MapGet("/today", async (ClaimsPrincipal principal, string? courseId, GetTodayUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(
+            CurrentUserId(principal),
+            courseId is null ? null : RouteParsing.RequireGuid(courseId, "courseId"),
+            ct)))
     .RequireAuthorization()
     .WithName("GetToday");
 

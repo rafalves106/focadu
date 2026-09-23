@@ -36,21 +36,36 @@ public class GetTodayUseCase
         _clock = clock;
     }
 
-    public async Task<DailyStateDto> ExecuteAsync(Guid userId, CancellationToken cancellationToken = default)
+    /// <param name="courseId">
+    /// Tela de start com varios cursos (23/09/2026): escolhe a matricula daquele curso - a cota de
+    /// "1 Daily por dia" ja e por matricula (decisao do dono: por curso). Sem ele, comportamento de
+    /// sempre (exatamente 1 matricula, senao 409).
+    /// </param>
+    public async Task<DailyStateDto> ExecuteAsync(Guid userId, Guid? courseId = null, CancellationToken cancellationToken = default)
     {
         var enrollments = await _enrollmentRepository.GetByUserIdAsync(userId, cancellationToken);
 
         if (enrollments.Count == 0)
             throw new NotFoundException("nenhuma_matricula_ativa", "Usuario nao esta matriculado em nenhum curso.");
 
-        if (enrollments.Count > 1)
+        Domain.Enrollments.Enrollment enrollment;
+        if (courseId is { } id)
+        {
+            enrollment = enrollments.FirstOrDefault(e => e.CourseId == id)
+                ?? throw new NotFoundException("matricula_nao_encontrada", "Usuario nao esta matriculado neste curso.");
+        }
+        else if (enrollments.Count > 1)
         {
             throw new ConflictException(
                 "multiplas_matriculas_ativas",
-                "Mais de uma matricula ativa encontrada; use /api/weeklies/{weeklyId} para escolher qual.");
+                "Mais de uma matricula ativa encontrada; informe ?courseId= para escolher qual.");
+        }
+        else
+        {
+            enrollment = enrollments.First();
         }
 
-        var allWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(enrollments.First().Id, cancellationToken);
+        var allWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken);
 
         var target = DailySequencing.FindInProgress(allWeeklies) ?? DailySequencing.FindNext(allWeeklies);
         if (target is null)

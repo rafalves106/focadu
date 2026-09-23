@@ -66,6 +66,8 @@ function prefersReducedMotion() {
  * - Sons sintetizados (lib/uiSound.ts), obedecem "Sons da interface" nas Configuracoes. Sem voz.
  * - `stacked` (Fase 65, mapa da trilha): retrato em cima da caixa em vez de ao lado - pra coluna
  *   estreita a esquerda do mapa.
+ * - `compact` (tela de start, 23/09/2026): retrato 64px e fala menor - a caixa divide o centro da tela
+ *   com a missao do dia e o caminho da semana e precisa caber sem rolar.
  */
 export function DialogueBox({
   projectId,
@@ -74,9 +76,11 @@ export function DialogueBox({
   choices = [],
   choicesNote = null,
   stacked = false,
+  compact = false,
 }: {
   projectId: string;
   stacked?: boolean;
+  compact?: boolean;
   lines: FocadaLine[];
   readmeUrl: string | null;
   choices?: DialogueChoice[];
@@ -159,7 +163,7 @@ export function DialogueBox({
           conversa rola dentro do cartao (ScrollArea do WeeklyProjectPage). */}
       <div className={stacked ? 'flex flex-col items-start gap-4' : `flex gap-4 ${finished ? 'items-start' : 'items-end'}`}>
         <div className={`pixel-box hidden shrink-0 bg-surface p-2 sm:block ${finished && !stacked ? 'sticky top-0' : ''}`}>
-          <img src={PORTRAITS[current.expression]} alt="" className="size-24 pixelated" aria-hidden="true" />
+          <img src={PORTRAITS[current.expression]} alt="" className={`${compact ? 'size-16' : 'size-24'} pixelated`} aria-hidden="true" />
         </div>
 
         <div
@@ -168,7 +172,7 @@ export function DialogueBox({
           tabIndex={finished ? undefined : 0}
           onClick={finished ? undefined : advance}
           onKeyDown={finished ? undefined : onKeyDown}
-          className={`pixel-box flex min-w-0 flex-1 flex-col gap-3 bg-base ${stacked ? 'w-full px-5' : 'px-6'} pt-5 pb-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${
+          className={`pixel-box flex min-w-0 flex-1 flex-col bg-base ${stacked ? 'w-full px-5' : 'px-6'} ${compact ? 'gap-2 pt-4 pb-3' : 'gap-3 pt-5 pb-4'} focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${
             finished ? '' : 'cursor-pointer'
           }`}
         >
@@ -187,7 +191,7 @@ export function DialogueBox({
               {lines.map((line, i) => (
                 <p
                   key={i}
-                  className={`font-pixel text-[22px] leading-snug lg:text-2xl ${i === lines.length - 1 ? 'text-primary' : 'text-secondary'}`}
+                  className={`font-pixel ${compact ? 'text-xl' : 'text-[22px] lg:text-2xl'} leading-snug ${i === lines.length - 1 ? 'text-primary' : 'text-secondary'}`}
                 >
                   {line.text}
                 </p>
@@ -195,7 +199,7 @@ export function DialogueBox({
             </div>
           ) : (
             // Texto inteiro invisivel reserva a altura final - a caixa nao "pula" enquanto digita.
-            <p className="relative font-pixel text-[22px] leading-snug text-primary lg:text-2xl">
+            <p className={`relative font-pixel leading-snug text-primary ${compact ? 'text-xl' : 'text-[22px] lg:text-2xl'}`}>
               <span className="invisible">{current.text}</span>
               <span className="absolute inset-0" aria-hidden="true">
                 {current.text.slice(0, shown)}
@@ -206,7 +210,8 @@ export function DialogueBox({
             {current.text}
           </p>
 
-          <div className="flex min-h-6 items-center gap-4 font-pixel-label text-[11px]">
+          {/* compact: o rodape so aparece quando tem o que mostrar (link/Pular) - sem ele a caixa cabe no centro do start. */}
+          <div className={`flex min-h-6 items-center gap-4 font-pixel-label text-[11px] ${compact && !readmeUrl && isLast ? 'hidden' : ''}`}>
             {readmeUrl && (
               <a
                 href={readmeUrl}

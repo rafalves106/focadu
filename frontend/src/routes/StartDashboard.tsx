@@ -1,304 +1,159 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { api } from '../api/client';
+import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { api, ApiError } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { useAuth } from '../contexts/useAuth';
-import {
-  ActivityStatus,
-  CourseStatus,
-  DailyAccessMode,
-  DailyStatus,
-  ACTIVITY_TYPE_LABEL,
-  type CourseDetailDto,
-  type DailyStateDto,
-  type GamificationSummaryDto,
-  type WeeklyDetailDto,
-} from '../api/types';
+import { CourseStatus, type CourseDetailDto, type DailyStateDto, type GamificationSummaryDto, type WeeklyDetailDto } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
-import { CourseCarousel } from '../components/CourseCarousel';
-import { GemBadge } from '../components/gamification/GemBadge';
-import { StreakIndicator } from '../components/gamification/StreakIndicator';
 import { StreakLostModal } from '../components/gamification/StreakLostModal';
-import { StatusBadge } from '../components/StatusBadge';
-import { dailyStatusBadgeProps } from '../lib/statusBadge';
-import { ProgressBar } from '../components/ProgressBar';
-import { PendingReinforcementCard } from '../components/PendingReinforcementCard';
-import { WeeklyProjectCard } from '../components/WeeklyProjectCard';
-import { WeeklyReinforcementBadge } from '../components/WeeklyReinforcementBadge';
+import { ScrollArea } from '../components/ScrollArea';
+import { DialogueBox } from '../components/DialogueBox';
+import { CourseSlots } from '../components/start/CourseSlots';
+import { AgentCard } from '../components/start/AgentCard';
+import { DailyMissionCard } from '../components/start/DailyMissionCard';
+import { WeekPathCard } from '../components/start/WeekPathCard';
 import { EmptyStateStartPage } from './EmptyStateStartPage';
-import { isMonthlyComplete } from '../lib/certifications';
+import { findCourseMap } from '../lib/courseMaps';
+import { buildFocadaMapLine } from '../lib/focadaMapLines';
+import { studiedToday } from '../lib/startScreen';
 
-interface DashboardData {
-  daily: DailyStateDto;
-  weekly: WeeklyDetailDto;
-  course: CourseDetailDto | null;
-  /** Fase 38c: todos os cursos matriculados (nao so o ativo) - alimenta o CourseCarousel. */
-  allCourses: CourseDetailDto[];
+interface HubData {
+  /** Todos os cursos matriculados, com o detalhe (progresso, semanas, dias). */
+  courses: CourseDetailDto[];
   gamification: GamificationSummaryDto;
 }
 
+interface SelectedData {
+  courseId: string;
+  /** null = curso sem Daily pendente (concluido) - GET /api/today devolve daily_hoje_nao_encontrada. */
+  daily: DailyStateDto | null;
+  weekly: WeeklyDetailDto | null;
+}
+
 /**
- * Hub de entrada (Fase 8, design Figma "dashboard-start") - substitui a antiga lista de cursos:
- * como so existe 1 Course Active nesta fase (mesma premissa de GET /api/today, ver
- * docs/ARQUITETURA.md), a tela vai direto pro "hoje" em vez de fazer o usuario escolher um curso
- * de uma lista de 1 item so. O cabecalho global (logo/nav) ja vem de App.tsx - nao duplicado aqui.
+ * Hub de entrada (`/start` sem params). Historico: Fase 8 (hub de cards), Fase 14 (gemas/streak
+ * reais), Fase 10 retomada (StreakLostModal), Fase 38c (carrossel de cursos), Fase 45 (certificacoes),
+ * Fase 56 (reforco pendente).
  *
- * Fase 14: Gems/Streak do mockup do Figma ganharam dado real (GemBadge/StreakIndicator no header,
- * via GET /api/users/me/gamification) - XP/Level/badges de conquista continuam de fora (nao
- * existem no dominio ainda, ver docs/fase-14).
- *
- * Fase 10 (retomada): "Erro - Streak Perdido" (node Figma 13-1040, nunca construida) dispara aqui,
- * no load, quando gamification.streakJustBroken vem true - StreakLostModal chama
- * api.acknowledgeStreakBreak ao fechar, pra nao repetir na proxima visita.
- *
- * Fase 20 (fidelidade revisada): "Olá, Falves" do mockup virou saudacao com o nome real
- * (useAuth().user.displayName - so nao era usado aqui ainda). "INDIE DEV" + foto de usuario no
- * header global nao sao tocados aqui (fora do escopo desta tela, ver App.tsx/HeaderUserBadge). O
- * grid "Seus Cursos" (1 ativo + 2 "bloqueados, libera no nivel X") do Figma continua fora - nao ha
- * sistema de nivel/desbloqueio (mesma exclusao de XP/Level de sempre).
- *
- * Fase 38c: o label de texto puro acima do nome ("WEB SECURITY", um <p> discreto) virou
- * CourseCarousel - card visual arrastavel por curso matriculado (so 1 na pratica, ver doc do
- * componente). O rodape "Melhor streak"/"Gems" em texto simples saiu - duplicava informacao que
- * ja aparece no header (GemBadge/StreakIndicator, mesmos dados) desde a Fase 14; ter as duas
- * versoes juntas na tela (pixel art em cima, texto embaixo) foi reportado como redundante.
+ * Redesign de 23/09/2026 (Figma "Focadu — Pixel Art", pagina "Start — redesign proposto", node
+ * 55:4502, aprovado pelo dono): 3 colunas como a trilha e o Projeto Semanal, pixel art.
+ * - Esquerda, global: cursos como "save slots" (escolher um troca o centro e a direita, guardado em
+ *   `?curso=`) e o cartao do agente (gemas, streak e a semana do streak).
+ * - Centro, do curso escolhido: a Missao do dia (unica acao principal), "Rumo ao
+ *   castelo" (a semana atual como pedaco do mapa, com o Projeto Semanal de BOSS) e a fala da Focada
+ *   (as falas aprovadas do mapa, no lugar do "Ola, fulano").
+ * A coluna direita do desenho (missoes extras, numeros, certificacoes, atalhos) saiu a pedido do
+ * dono - o resto ja esta na trilha, e a tela nao deve rolar. Pelo mesmo motivo saiu o HUD do curso no
+ * topo do centro (repetia o slot escolhido: nome e %) - o nome foi pra linha de contexto da missao. O reforco pendente (Fase 56: sempre
+ * alcancavel) ficou no selo do caminho da semana, que leva direto a sessao, e na fala da Focada.
+ * A Daily do curso escolhido vem de GET /api/today?courseId= - a cota de 1 Daily por dia e por curso.
+ * Conquistas e a versao de celular ficaram pra depois (decisao do dono); abaixo de `lg` as colunas so
+ * empilham.
  */
 export function StartDashboard() {
   const { user } = useAuth();
-  const { data, error, loading, retry } = useApiResource<DashboardData>(
-    () =>
-      api.getToday().then(async (daily) => {
-        const [weekly, courses, gamification] = await Promise.all([
-          api.getWeekly(daily.weeklyId),
-          api.getCourses(),
-          api.getGamification(),
-        ]);
-        // Fase 38c: busca o detalhe de TODOS os cursos matriculados (nao so o ativo) - precisa do
-        // CourseProgressDto de cada um pra alimentar o CourseCarousel. N+1 aceitavel (poucos
-        // cursos por usuario nesta fase, ver docs/ARQUITETURA.md).
-        const allCourses = await Promise.all(courses.map((c) => api.getCourse(c.id)));
-        const activeSummary = courses.find((c) => c.status === CourseStatus.Active) ?? courses[0] ?? null;
-        const course = allCourses.find((c) => c.id === activeSummary?.id) ?? allCourses[0] ?? null;
-        return { daily, weekly, course, allCourses, gamification };
-      }),
-    [],
-  );
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const hub = useApiResource<HubData>(async () => {
+    const [summaries, gamification] = await Promise.all([api.getCourses(), api.getGamification()]);
+    // Detalhe de todos os cursos (N+1 aceitavel - poucos cursos por usuario, ver docs/ARQUITETURA.md).
+    const courses = await Promise.all(summaries.map((c) => api.getCourse(c.id)));
+    return { courses, gamification };
+  }, []);
+
+  const courses = useMemo(() => hub.data?.courses ?? [], [hub.data]);
+  const requestedId = searchParams.get('curso');
+  const selectedCourse =
+    courses.find((c) => c.id === requestedId) ?? courses.find((c) => c.status === CourseStatus.Active) ?? courses[0] ?? null;
+  const selectedId = selectedCourse?.id ?? null;
+
+  const selected = useApiResource<SelectedData | null>(async () => {
+    if (!selectedId) return null;
+    try {
+      const daily = await api.getToday(selectedId);
+      const weekly = await api.getWeekly(daily.weeklyId);
+      return { courseId: selectedId, daily, weekly };
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'daily_hoje_nao_encontrada') return { courseId: selectedId, daily: null, weekly: null };
+      throw err;
+    }
+  }, [selectedId]);
+
+  const monthTitles = useMemo(() => {
+    const regions = selectedCourse ? findCourseMap(selectedCourse.name) : null;
+    return new Map([...(regions?.values() ?? [])].map((r) => [r.monthlyNumber, r.titulo]));
+  }, [selectedCourse]);
+  const focadaLine = useMemo(() => (selectedCourse ? buildFocadaMapLine(selectedCourse, monthTitles) : null), [selectedCourse, monthTitles]);
 
   // Derivado direto do fetch (nao um effect) - so precisa "lembrar" um dismiss local pra nao
   // reaparecer no mesmo carregamento depois que StreakLostModal ja chamou acknowledgeStreakBreak.
   const [dismissed, setDismissed] = useState(false);
-  const streakLostVisible = !dismissed && !!data?.gamification.streakJustBroken;
 
-  if (loading) return <Centered text="Carregando..." />;
-  // Guarda de seguranca (Fase 13b) - usuario logado, perfil completo, mas sem nenhuma matricula
-  // ainda (ver docs/fase-13a, "Consequencia direta"). SplashPage ja evita a maioria desses casos
-  // via resolveLandingPath, mas /start continua acessivel direto pela URL/back-button.
-  if (error?.code === 'nenhuma_matricula_ativa') return <EmptyStateStartPage />;
-  if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
-  if (!data) return null;
+  if (hub.loading) return <Centered text="Carregando..." />;
+  if (hub.error) return <ApiErrorScreen error={hub.error} onRetry={hub.retry} />;
+  if (!hub.data) return null;
+  // Guarda de seguranca (Fase 13b) - perfil completo mas sem matricula (SplashPage evita a maioria
+  // desses casos, mas /start continua acessivel direto pela URL/back-button).
+  if (!selectedCourse) return <EmptyStateStartPage />;
 
-  const { daily, weekly, course, allCourses, gamification } = data;
-  const weeks = course?.monthlies.flatMap((m) => m.weeklies) ?? [];
-  const weeksCompleted = weeks.filter((w) => w.totalDailies > 0 && w.completedDailies === w.totalDailies).length;
+  const { gamification } = hub.data;
+  const todayDone = studiedToday(courses);
+  // Dados do "hoje" so valem se forem do curso escolhido (na troca de slot, o anterior fica ate chegar o novo).
+  const current = selected.data?.courseId === selectedCourse.id ? selected.data : null;
+  const currentWeekId = current?.weekly?.id;
+  const currentWeek = currentWeekId
+    ? (selectedCourse.monthlies.flatMap((m) => m.weeklies).find((w) => w.id === currentWeekId) ?? null)
+    : null;
+
+  function selectCourse(courseId: string) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('curso', courseId);
+        return next;
+      },
+      { replace: true },
+    );
+  }
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6 p-8">
-      {streakLostVisible && (
+    <div className="flex flex-col gap-6 bg-base px-4 pt-6 pb-8 lg:h-[calc(100dvh-var(--nav-height))] lg:flex-row lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12 lg:[@media(max-height:820px)]:py-6">
+      {!dismissed && gamification.streakJustBroken && (
         <StreakLostModal longestStreak={gamification.longestStreak} onClose={() => setDismissed(true)} />
       )}
 
-      <CourseCarousel courses={allCourses} activeCourseId={course?.id ?? null} />
+      <ScrollArea className="w-full shrink-0 lg:min-h-0 lg:w-[272px]" contentClassName="flex flex-col gap-5 lg:pr-3">
+        <CourseSlots courses={courses} selectedId={selectedCourse.id} onSelect={selectCourse} />
+        <AgentCard displayName={user?.displayName ?? 'agente'} gamification={gamification} todayDone={todayDone} />
+      </ScrollArea>
 
-      <div className="flex items-start justify-between gap-4">
-        <h1 className="text-3xl font-bold text-primary">Olá, {user?.displayName ?? 'operador'} 👋</h1>
-        <div className="flex items-center gap-2">
-          {/* Fase 17: clicavel de proposito - "faz sentido clicar nele pra ir direto a loja". */}
-          <Link to="/loja">
-            <GemBadge totalGems={gamification.totalGems} />
-          </Link>
-          <StreakIndicator currentStreak={gamification.currentStreak} />
-        </div>
-      </div>
-
-      {weekly.hasPendingWeeklyReinforcement && (
-        <Link to={`/start?course=${course?.id ?? ''}&weekly=${weekly.id}`} className="self-start">
-          <WeeklyReinforcementBadge />
-        </Link>
-      )}
-
-      {/* Fase 56: botao de reforco visivel ate a sessao ser concluida (vem de GET /api/today). Fica
-          ACIMA do card de hoje de proposito - reforco e o que esta pendente do dia anterior. Quando o
-          proprio alvo de hoje e o reforco em andamento (daily.id === pendente), o texto vira "Continuar". */}
-      {daily.pendingReinforcementDailyId && (
-        <PendingReinforcementCard
-          dailyId={daily.pendingReinforcementDailyId}
-          resume={daily.id === daily.pendingReinforcementDailyId}
-        />
-      )}
-
-      <TodayCard daily={daily} weekly={weekly} weeksTotal={weeks.length} weeksCompleted={weeksCompleted} />
-
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <WeeklyProjectCard project={weekly.project} weeklyId={weekly.id} courseId={course?.id ?? null} />
-        <CourseExplorerLink courseId={course?.id ?? null} weeksTotal={weeks.length} weeksCompleted={weeksCompleted} />
-        <CertificationsSummaryCard course={course} className="md:col-span-2" />
-      </div>
-    </div>
-  );
-}
-
-function TodayCard({
-  daily,
-  weekly,
-  weeksTotal,
-  weeksCompleted,
-}: {
-  daily: DailyStateDto;
-  weekly: WeeklyDetailDto;
-  weeksTotal: number;
-  weeksCompleted: number;
-}) {
-  const totalDailies = weekly.dailies.filter((d) => !d.isReinforcement).length;
-  const nextActivity = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex).find((a) => a.status !== ActivityStatus.Completed);
-  // Fase 38a: accessMode.Blocked vence Status - sem isso o badge mostrava "Não iniciado" (o
-  // default de dailyStatusBadgeProps pra Status Locked/Available) bem ao lado do aviso "você já
-  // concluiu uma sessão hoje" logo abaixo, se contradizendo (bug reportado ao vivo, 14/09/2026).
-  //
-  // Fase 54: WeekPendingClosure = todas as Dailies da semana feitas, falta fechar a semana
-  // (projeto, depois publicacao) pra liberar a proxima - "/hoje" devolve a ultima Daily da Weekly
-  // que ainda nao fechou, entao `weekly` aqui ja e ela (e o card do projeto logo abaixo tambem).
-  const closurePending = daily.accessMode === DailyAccessMode.WeekPendingClosure;
-  const sessionBlocked = closurePending || daily.accessMode === DailyAccessMode.Blocked;
-  const badge = closurePending
-    ? { icon: '🔒', label: weekly.requiresPublicationToUnlock ? 'PUBLICAÇÃO PENDENTE' : 'PROJETO PENDENTE', tone: 'alert' as const }
-    : daily.accessMode === DailyAccessMode.Blocked
-      ? { icon: '🔒', label: 'BLOQUEADO ATÉ AMANHÃ', tone: 'alert' as const }
-      : dailyStatusBadgeProps(daily.status);
-  // Fora de closurePending, "Semana X" e a primeira ainda nao completa (weeksCompleted + 1); em
-  // closurePending a semana em foco ja tem todas as Dailies feitas, entao contar +1 mostraria
-  // "Semana 2" ao lado de "Dia 5 de 5" da Semana 1.
-  const currentWeekNumber = closurePending
-    ? weekly.number
-    : weeksCompleted + 1 <= weeksTotal
-      ? weeksCompleted + 1
-      : weeksTotal;
-
-  return (
-    <div className="flex flex-col gap-5 rounded-[20px] border-[1.5px] border-accent bg-surface p-8">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[1.5px] text-accent">Curso Ativo</p>
-          <h2 className="mt-1 text-2xl font-bold text-primary">{weekly.theme ?? weekly.title}</h2>
-          <p className="mt-1 text-sm text-secondary">
-            Dia {daily.dayNumber} de {totalDailies}
-          </p>
-        </div>
-        <StatusBadge {...badge} />
-      </div>
-
-      {/* Fase 20 (Figma "Course Card Active"): "Semana X de Y ... Z% completo", real
-          (weeksCompleted/weeksTotal, ja calculado pelo chamador). */}
-      {weeksTotal > 0 && (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between text-[13px]">
-            <span className="text-secondary">
-              Semana {currentWeekNumber} de {weeksTotal}
-            </span>
-            <span className="font-semibold text-accent">{Math.round((100 * weeksCompleted) / weeksTotal)}% completo</span>
+      <ScrollArea className="min-h-0 min-w-0 flex-1" contentClassName="flex flex-col gap-5 lg:pr-3">
+        {/* Sem HUD visivel no centro (o slot escolhido ja mostra nome e %) - o titulo da pagina fica pro leitor de tela. */}
+        <h1 className="sr-only">Início: {selectedCourse.name}</h1>
+        {selected.error && !current ? (
+          <ApiErrorScreen error={selected.error} onRetry={selected.retry} />
+        ) : !current ? (
+          <div className="pixel-box flex h-40 shrink-0 items-center justify-center bg-base">
+            <p className="font-pixel text-xl text-secondary">Carregando o curso...</p>
           </div>
-          <ProgressBar progress={weeksTotal ? weeksCompleted / weeksTotal : 0} />
-        </div>
-      )}
-
-      {nextActivity && !sessionBlocked && (
-        <p className="text-sm text-secondary">
-          Próximo: <span className="font-semibold text-primary">{ACTIVITY_TYPE_LABEL[nextActivity.type]}</span>
-        </p>
-      )}
-
-      {/* DailyAccessMode.Blocked (Fase 37b): usuario ja gastou a unica conclusao permitida hoje
-          (mesmo que retomando um atraso de outro dia - ver Weekly.EvaluateDailyAccess) - a Daily
-          de hoje existe mas ainda nao pode ser iniciada, entao nada aqui deve convidar a clicar
-          "COMEÇAR HOJE" (isso so voltaria a mostrar esse mesmo aviso em /hoje). */}
-      {closurePending ? (
-        <div className="flex flex-col items-start gap-3">
-          <p className="text-sm text-secondary">
-            {weekly.requiresPublicationToUnlock
-              ? 'Você concluiu todas as sessões desta semana. Falta validar a publicação para liberar a próxima semana.'
-              : 'Você concluiu todas as sessões desta semana. Envie o projeto semanal para liberar a próxima semana.'}
-          </p>
-          <Link to={`/start?weekly=${weekly.id}`} className="rounded-xl bg-accent px-6 py-3 text-sm font-bold tracking-wide text-base">
-            VER A SEMANA
-          </Link>
-        </div>
-      ) : daily.accessMode === DailyAccessMode.Blocked ? (
-        <p className="text-sm text-secondary">Você já concluiu uma sessão hoje - volte amanhã para continuar.</p>
-      ) : (
-        <Link to="/hoje" className="self-start rounded-xl bg-accent px-6 py-3 text-sm font-bold tracking-wide text-base">
-          {daily.status === DailyStatus.Completed ? 'REVISAR HOJE' : 'COMEÇAR HOJE'}
-        </Link>
-      )}
+        ) : (
+          <>
+            <DailyMissionCard
+              course={selectedCourse}
+              daily={current.daily}
+              weekly={current.weekly}
+              studiedToday={todayDone}
+              currentStreak={gamification.currentStreak}
+            />
+            {currentWeek && <WeekPathCard week={currentWeek} courseId={selectedCourse.id} />}
+          </>
+        )}
+        {focadaLine && (
+          <DialogueBox key={selectedCourse.id} projectId={`start-${selectedCourse.id}`} lines={[focadaLine]} readmeUrl={null} compact />
+        )}
+      </ScrollArea>
     </div>
   );
 }
 
-function CourseExplorerLink({
-  courseId,
-  weeksTotal,
-  weeksCompleted,
-}: {
-  courseId: string | null;
-  weeksTotal: number;
-  weeksCompleted: number;
-}) {
-  return (
-    <div className="flex flex-col justify-between gap-4 rounded-2xl border border-stroke bg-surface p-6">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Trilha Completa</p>
-        <p className="mt-1 text-sm text-secondary">
-          {weeksCompleted} de {weeksTotal} semana(s) completa(s)
-        </p>
-      </div>
-      {courseId && (
-        <Link to={`/start?course=${courseId}`} className="self-start text-sm font-semibold text-accent hover:underline">
-          Explorar Curso Completo →
-        </Link>
-      )}
-    </div>
-  );
-}
-
-/**
- * Fase 45: resumo de quantas certificações de mercado o curso ativo já cobre/está cobrindo,
- * informativo (a Focadu não emite certificação nenhuma). Reaproveita CourseDetailDto já carregado
- * por StartDashboard - sem endpoint novo.
- */
-function CertificationsSummaryCard({ course, className = '' }: { course: CourseDetailDto | null; className?: string }) {
-  const monthlies = course?.monthlies ?? [];
-  const allCertCodes = new Set(monthlies.flatMap((m) => m.certifications.map((c) => c.certificationCode)));
-  const unlockedCertCodes = new Set(
-    monthlies.filter(isMonthlyComplete).flatMap((m) => m.certifications.map((c) => c.certificationCode)),
-  );
-
-  if (allCertCodes.size === 0) return null;
-
-  return (
-    <div className={`flex flex-col justify-between gap-4 rounded-2xl border border-stroke bg-surface p-6 ${className}`}>
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Certificações de Mercado</p>
-        <p className="mt-1 text-sm text-secondary">
-          Você já avançou em {unlockedCertCodes.size} de {allCertCodes.size} certificação(ões) mapeada(s) neste curso
-        </p>
-      </div>
-      {course && (
-        <Link
-          to={`/start?course=${course.id}&certifications=1`}
-          className="self-start text-sm font-semibold text-accent hover:underline"
-        >
-          Ver Certificações →
-        </Link>
-      )}
-    </div>
-  );
-}

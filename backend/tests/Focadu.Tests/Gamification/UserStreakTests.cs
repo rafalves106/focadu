@@ -93,10 +93,11 @@ public class UserStreakTests
         streak.RegisterCompletion(Monday);
 
         // Terca (dia util) passou sem nenhuma nova conclusao - uma leitura na quarta ja deve
-        // reportar 0, mesmo sem nenhuma escrita nova ter acontecido (CurrentStreak persistido
-        // continua 1 internamente ate a proxima RegisterCompletion).
+        // reportar 0, mesmo sem nenhuma conclusao nova; e zera o valor persistido junto (ver o
+        // teste do aviso repetido abaixo).
         Assert.Equal(0, streak.CurrentStreakAsOf(Wednesday));
-        Assert.Equal(1, streak.CurrentStreak);
+        Assert.Equal(0, streak.CurrentStreak);
+        Assert.Equal(1, streak.LongestStreak);
     }
 
     [Fact]
@@ -152,6 +153,39 @@ public class UserStreakTests
 
         streak.RegisterCompletion(Wednesday);
 
+        Assert.Null(streak.BrokenAt);
+    }
+
+    [Fact]
+    public void AcknowledgeBreak_DoesNotComeBack_OnLaterReads()
+    {
+        // Bug real (23/09/2026): depois de fechar o aviso, a proxima leitura remarcava BrokenAt e o
+        // "Streak Perdido" voltava a cada abertura da tela de start.
+        var streak = new UserStreak(Guid.NewGuid());
+        streak.RegisterCompletion(Monday);
+        streak.CurrentStreakAsOf(Wednesday);
+
+        streak.AcknowledgeBreak();
+
+        Assert.Equal(0, streak.CurrentStreakAsOf(Wednesday));
+        Assert.Null(streak.BrokenAt);
+        Assert.Equal(0, streak.CurrentStreakAsOf(Friday));
+        Assert.Null(streak.BrokenAt);
+    }
+
+    [Fact]
+    public void RegisterCompletion_AfterAcknowledgedBreak_StartsAtOne()
+    {
+        var streak = new UserStreak(Guid.NewGuid());
+        streak.RegisterCompletion(Monday);
+        streak.RegisterCompletion(Tuesday);
+        streak.CurrentStreakAsOf(Friday);
+        streak.AcknowledgeBreak();
+
+        streak.RegisterCompletion(NextMonday);
+
+        Assert.Equal(1, streak.CurrentStreak);
+        Assert.Equal(2, streak.LongestStreak);
         Assert.Null(streak.BrokenAt);
     }
 

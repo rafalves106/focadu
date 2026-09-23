@@ -11,9 +11,8 @@ namespace Focadu.Domain.Gamification;
 /// datas na hora do acesso, ver Weekly.EvaluateDailyAccess). Aqui, a quebra e resolvida em 2
 /// pontos: (a) na proxima RegisterCompletion, que reinicia a contagem em vez de incrementar se
 /// detectar que ja tinha quebrado; (b) em qualquer LEITURA via CurrentStreakAsOf(today), que
-/// nunca precisa esperar uma escrita futura pra reportar 0 corretamente - o campo persistido
-/// (CurrentStreak) pode ficar "desatualizado" (nao reescrito) ate a proxima conclusao real, mas
-/// nenhuma leitura enxerga esse valor stale.
+/// nunca precisa esperar uma escrita futura pra reportar 0 corretamente - e a 1a leitura que
+/// observa a quebra ja zera o campo persistido (CurrentStreak), junto com a marca BrokenAt.
 ///
 /// ponytail: a janela de tolerancia usa "1 dia util" como proxy pro calendario real do curriculo
 /// (fins de semana nao quebram), nao uma consulta real as Dailies agendadas do usuario - um hiato
@@ -73,14 +72,23 @@ public class UserStreak : Entity
     /// Streak "ao vivo": aplica a quebra por inatividade silenciosa antes de expor o valor, sem
     /// precisar de uma escrita real pra refletir isso (ver nota de design acima). Efeito colateral:
     /// na 1a leitura que observa uma quebra ainda nao registrada (CurrentStreak persistido > 0),
-    /// marca <see cref="BrokenAt"/> - e assim que o endpoint de gamificacao sabe que precisa expor
-    /// a tela "Streak Perdido" (Fase 10) uma vez, sem repeti-la em leituras seguintes.
+    /// marca <see cref="BrokenAt"/> e zera o CurrentStreak persistido - e assim que o endpoint de
+    /// gamificacao sabe que precisa expor a tela "Streak Perdido" (Fase 10) uma vez so.
+    ///
+    /// Zerar aqui e o que garante o "uma vez so" (bug real, 23/09/2026): antes o CurrentStreak
+    /// ficava com o valor antigo ate a proxima conclusao, e depois de <see cref="AcknowledgeBreak"/>
+    /// limpar BrokenAt, a leitura seguinte via "quebrou + CurrentStreak > 0 + BrokenAt nulo" de novo
+    /// e remarcava - o aviso voltava a cada abertura da tela de start.
     /// </summary>
     public int CurrentStreakAsOf(DateOnly today)
     {
         if (!HasBrokenAsOf(today)) return CurrentStreak;
 
-        if (CurrentStreak > 0 && BrokenAt is null) BrokenAt = today;
+        if (CurrentStreak > 0)
+        {
+            BrokenAt ??= today;
+            CurrentStreak = 0;
+        }
         return 0;
     }
 

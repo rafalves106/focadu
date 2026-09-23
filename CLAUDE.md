@@ -56,7 +56,7 @@ focadu/
 | `docs/ARQUITETURA.md` | **Fonte da verdade técnica.** Retrato sempre atual do estado do projeto (schema, endpoints, decisões, pendências). É grande (~200KB) — busque a seção relevante em vez de ler tudo; o cabeçalho tem a linha "Última fase que atualizou este documento", que é a forma mais barata de saber em que fase o projeto está. | Toda fase, editado em cima do que existe, nunca recriado do zero. |
 | `docs/CONVENCOES.md` | A própria convenção de documentação/fechamento de fase descrita abaixo. | Só se a convenção em si mudar. |
 | `docs/fase-N/resumo-implementacao-fase-N.md` | Histórico imutável de cada fase (o que foi feito, decisões, dúvidas em aberto). | Escrito uma vez ao fechar a fase N, nunca editado depois. |
-| `secret/MESTRE.md` | Filosofia de produto e regras de negócio ("o porquê"), em repo próprio e ignorado. Não duplica o nível de detalhe técnico do `ARQUITETURA.md`. | Esporadicamente, quando produto/filosofia muda. |
+| `secret/MESTRE.md` | Princípios de decisão, filosofia de produto e regras de negócio ("o porquê"), em repo próprio e ignorado. Não duplica o nível de detalhe técnico do `ARQUITETURA.md`. | Quando o escopo de produto muda (passo 4 do fechamento de fase). |
 | `secret/curadoria/`, `secret/rascunhos/` | Conteúdo didático curado e ideias não decididas ainda. Geridos pelas skills `curar-conteudo` e `registrar-rascunho` já em `.claude/skills/`. | Via as skills acima. |
 
 ## Regra de fechamento de fase (obrigatória — não pedir autorização, é o próprio fechamento)
@@ -69,7 +69,9 @@ Ao final de **toda fase de implementação**:
    incluindo a linha do cabeçalho "Última fase que atualizou este documento".
 3. Se a fase mudou o resumo de alto nível do produto (não só detalhe técnico), atualizar a seção
    "Estado atual" deste arquivo (abaixo) com a fase/data mais recente.
-4. Commitar tudo isso (código + os dois/três docs acima) num único commit descritivo — sem pedir
+4. Se a fase mudou **escopo de produto**, atualizar `secret/MESTRE.md` (commit + push próprios no
+   `focadu-secret`) e marcar como implementado o rascunho que a originou, se houver.
+5. Commitar tudo isso (código + os dois/três docs acima) num único commit descritivo — sem pedir
    confirmação separada, isso faz parte do fechamento da fase, não é uma ação avulsa.
 
 ## Skills do projeto já configuradas
@@ -84,9 +86,15 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 65 — Mapa da trilha em pixel art** (23/09/2026).
+Última fase concluída: **Fase 66 — Tela de start em pixel art com vários cursos** (23/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Tela de start redesenhada (Fase 66, pedido do dono)**: desenho no Figma ("Start — redesign
+  proposto") e implementação em pixel art, 2 colunas, sem rolagem vertical. À esquerda, os cursos
+  como "save slots" (o escolhido troca o centro) e o cartão do agente (gemas, streak da semana); no
+  centro, a missão do dia do curso escolhido (etapas em cadeia, recompensa, um botão), o caminho da
+  semana até o castelo do projeto e a fala da Focada. `GET /api/today` ganhou `?courseId=` (a cota
+  diária é por curso). O que já está na trilha saiu da tela. Ver `docs/fase-66/`.
 - **Mapa da trilha em pixel art (Fase 65, pedido do dono)**: a tela do curso (`/start?course=`) virou
   um mapa-mundi — uma região desenhada por mês (arte e posições geradas por script em
   `secret/curadoria/scripts/mapa/`, mesma fonte do Figma), dias como pontos, Projeto Semanal como

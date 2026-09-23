@@ -147,7 +147,9 @@ export interface StudyAssistantHistoryItem {
 }
 
 export const api = {
-  getToday: () => request<DailyStateDto>('/api/today'),
+  // courseId (tela de start com varios cursos): a Daily de hoje daquela matricula - a cota diaria e por curso.
+  getToday: (courseId?: string) =>
+    request<DailyStateDto>(courseId ? `/api/today?courseId=${encodeURIComponent(courseId)}` : '/api/today'),
   getCourses: () => request<CourseSummaryDto[]>('/api/courses'),
   getCourse: (courseId: string) => request<CourseDetailDto>(`/api/courses/${courseId}`),
   // Ranking (Fase 16) - Score de Estudo, por Course.

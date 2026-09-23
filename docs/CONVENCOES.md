@@ -51,7 +51,13 @@ concluido), o Claude Code deve, sem que o Falves precise pedir de novo:
    a secao "Estado atual" de `CLAUDE.md` (raiz do repositorio) com a fase/data mais recente e,
    se fizer sentido, os marcos de destaque - mesma logica do `ARQUITETURA.md`: editar em cima do
    que existe, nao reescrever a secao inteira.
-4. Commitar todas as mudancas da fase (`git add` + `git commit`), com uma mensagem descritiva
+4. Perguntar: **a fase mudou escopo de produto** (regra de negocio, experiencia do aluno,
+   gamificacao, algo que um rascunho de `secret/rascunhos/` decidiu)? Se sim, atualizar
+   `secret/MESTRE.md` (repo `focadu-secret`, commit proprio, com `git push` - o deploy do `focadu`
+   faz `reset --hard` em `secret/` e apaga commit local nao empurrado) e, se a fase implementou um
+   rascunho, marca-lo como implementado com o numero da fase. Decidido em 23/09/2026, depois de uma
+   reconciliacao que achou o MESTRE parado na Fase 29 com o projeto na 66.
+5. Commitar todas as mudancas da fase (`git add` + `git commit`), com uma mensagem descritiva
    que identifique a fase e resuma o que foi feito - inclusive os passos acima, que fazem
    parte do mesmo commit de fechamento. Sem esse passo, uma fase pode ficar "concluida" no chat
    mas ausente do historico do Git, que e o unico registro persistente entre sessoes.

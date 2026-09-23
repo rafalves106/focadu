@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 65 - Mapa da trilha em pixel art (tela do curso)**.
+> Ultima fase que atualizou este documento: **Fase 66 - Tela de start em pixel art com varios cursos**.
 
 ## Visao geral do projeto
 
@@ -456,8 +456,10 @@ evento, nao presenca - sem job/cron no projeto (mesmo principio ja usado pra `Da
 resolvido sob demanda comparando datas no momento do acesso). Resolvido em 2 pontos:
 `RegisterCompletion` reinicia a contagem (em vez de incrementar) se detectar que ja tinha
 quebrado antes desta conclusao; `CurrentStreakAsOf(today)` (usado em toda LEITURA) nunca precisa
-esperar uma escrita futura pra reportar `0` - o campo persistido pode ficar "desatualizado" ate a
-proxima conclusao real, mas nenhuma leitura enxerga esse valor stale.
+esperar uma escrita futura pra reportar `0`. A 1a leitura que observa a quebra marca `BrokenAt` e
+**zera o `CurrentStreak` persistido** (desde 23/09/2026 - antes o valor antigo ficava ate a proxima
+conclusao, e depois do `acknowledge-broken` a leitura seguinte remarcava a quebra: o aviso "Streak
+Perdido" voltava a cada abertura da tela de start).
 
 **ponytail**: a janela de tolerancia usa "1 dia util" (segunda-sexta) como proxy pro calendario
 real do curriculo - fins de semana nao quebram, mas um hiato legitimo maior que 1 dia util
@@ -1070,8 +1072,10 @@ saisse dali, ou o clique falhasse (foi o caso da Fase 54), perdia o acesso. Agor
 `GetTodayUseCase` devolve o id em `DailyStateDto.PendingReinforcementDailyId` - **so em
 `GET /api/today`**, em qualquer `AccessMode` (inclusive `Blocked` e `WeekPendingClosure`); `null`
 nos demais endpoints e quando nao ha reforco pendente. O frontend mostra o botao
-(`PendingReinforcementCard`) no `StartDashboard`, acima do card de hoje, e dentro dos avisos de
-"Hoje" bloqueado da `TodayPage` (cota diaria gasta e semana esperando o projeto). Some sozinho
+(`PendingReinforcementCard`) dentro dos avisos de
+"Hoje" bloqueado da `TodayPage` (cota diaria gasta e semana esperando o projeto); no
+`StartDashboard`, desde a Fase 66, o acesso e o selo de reforco no caminho da semana (link direto pra
+sessao) e a fala da Focada - o cartao saiu com a coluna de missoes extras. Some sozinho
 quando a Daily de reforco e concluida. O texto vira "Continuar a sessao de reforco" quando o proprio
 alvo de hoje e o reforco em andamento (`daily.id === pendingReinforcementDailyId`). Sem endpoint novo.
 
@@ -1194,7 +1198,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 GET | `/api/weeklies/{weeklyId}` | `GetWeeklyDetailUseCase` | 200, 404 se nao existe/nao e do usuario - Fase 15: `WeeklyDetailDto` ganhou `HasPendingWeeklyReinforcement`. Fase 29: ganhou `CourseId` (resolvido via `IMonthlyRepository.GetByIdAsync(weekly.MonthlyId)` - Weekly/instancia nao guarda CourseId direto, so Monthly/template). Fase 39: `DailyOverviewDto` ganhou `Title` (titulo do `CuratedContent` da atividade de Leitura do dia, Video como fallback; nulo se nenhum dos dois existir) - Daily nao tem titulo proprio, so usado por `WeeklyDetailPage` |
 | 🔒 GET | `/api/weekly-templates/{id}` | `GetWeeklyTemplateDetailUseCase` (Fase 13b) | 200, 404 - WeeklyTemplate (curriculo), sem exigir matricula; so `/admin/conteudo` usa isso |
 | 🔒 GET | `/api/dailies/{dailyId}` | `GetDailyStateUseCase` | 200, 404/400/409 (ver abaixo) |
-| 🔒 GET | `/api/today` | `GetTodayUseCase` | 200, 404/409 (ver "GET /api/today" abaixo) |
+| 🔒 GET | `/api/today?courseId=` | `GetTodayUseCase` | 200, 404/409 (ver "GET /api/today" abaixo); `courseId` opcional desde a Fase 66 |
 | 🔒 POST | `/api/dailies/{dailyId}/start` | `StartOrResumeDailyUseCase` | 200 |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses` | `SubmitActivityResponseUseCase` | 201 (cria uma nova `ActivityResponse`) |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/audio` | `SubmitVoiceSummaryResponseUseCase` (Fase 5) | 201, `multipart/form-data`, so pra `VoiceSummary` |
@@ -1274,7 +1278,12 @@ desambiguar) - mesmo tratamento defensivo de antes, so que escopado por usuario 
 Isso e seguro pro cenario atual (so 1 Enrollment por usuario, ja que so existe 1 Course), mas
 para de funcionar sozinho se um usuario puder se matricular em varios cursos ativos ao mesmo
 tempo sem um jeito de escolher "qual curso agora" - mesma limitacao que a versao antiga tinha,
-so que agora por usuario em vez de global.
+so que agora por usuario em vez de global. **Fase 66:** `?courseId=` (opcional) escolhe a matricula
+daquele curso - e o que a tela de start usa pra mostrar a Daily do curso selecionado (404
+`matricula_nao_encontrada` se o usuario nao esta matriculado nele). Sem o parametro, tudo igual
+(1 matricula, senao 409). A cota de "1 Daily por dia" ja era por matricula, ou seja por curso -
+confirmado pelo dono como a regra certa. `TodayPage` sem `?daily=` (e o "Hoje" do menu) ainda chama
+sem `courseId`, entao com 2+ matriculas continua caindo no 409.
 
 **Bug real, corrigido em 3 rodadas (13, 14 e 15/09/2026) - a resolucao de "a Daily de hoje" foi
 toda repensada.**
@@ -1632,7 +1641,8 @@ precisavam devolver o campo.
 fetch novo em 3 dos 4):
 - 3a aba "Certificações" em `CourseDetailPage` (`CertificationsTab`) - **removida na Fase 65**: a
   tela do curso virou o mapa da trilha e o atalho "Certificações" abre a tela dedicada abaixo.
-- Card resumo novo em `StartDashboard` (`CertificationsSummaryCard`).
+- Card resumo em `StartDashboard` (`CertificationsSummaryCard`) - **removido na Fase 66** (a tela de
+  start nao repete o que ja esta na trilha).
 - Bloco sempre visivel em `WeeklyDetailPage` + reforco no `SuccessStep` do `PublicationModal`
   (momento da prova publica de fim de `Weekly`) - usando `weekly.moduleCertifications`.
 - Tela dedicada com a matriz completa modulo x certificacao (`CertificationsPage`, novo em
@@ -2229,6 +2239,32 @@ estudando" e os atalhos Ver ranking, Conquistas, Caderninho, Certificacoes). As 
 (`/start?course=&certifications=1`); `?tab=caderninho`/`?tab=certificacoes` (links antigos) caem nessas
 telas (`StartPage`). `CourseDetailTabs` e `CertificationsTab` foram removidos.
 
+### Tela de start em pixel art com varios cursos (Fase 66)
+
+Desenho no Figma "Focadu — Pixel Art", pagina "Start — redesign proposto" (node `55:4502`); a coluna
+direita do desenho saiu na implementacao (pedido do dono). `/start` sem params (`StartDashboard`), a
+partir de `lg`, ocupa a altura da tela **sem rolagem** (conferido de 1280x720 a 1920x1080; margem
+vertical menor com `max-height: 820px`), 2 colunas:
+
+- **Esquerda, global:** `CourseSlots` - um "save slot" por curso matriculado (nome, barra de 10
+  blocos, %, "Semana X · Dia Y" ou "Concluido" com coroa); o escolhido fica em `?curso=` (padrao: o 1o
+  `Active`) e troca o centro. "+ Explorar cursos" leva a `/selecionar-curso`. `AgentCard`: gemas (abre a
+  loja), streak, recorde e a semana do streak em 7 quadrados - derivada so do `currentStreak` (os N dias
+  terminando hoje, se ja estudou hoje em algum curso, ou ontem), sem historico no backend.
+- **Centro, do curso escolhido:** `DailyMissionCard` - a Daily de `GET /api/today?courseId=` com o
+  titulo do material, as atividades em cadeia (feita / atual / por fazer) e a recompensa (+1 gema -
+  `UserGemBalance.DailyGemAmount` - e o streak que sobe, se ainda nao estudou hoje); estados sem sessao
+  no mesmo cartao: cota do curso gasta (`Blocked`), semana esperando o castelo (`WeekPendingClosure`,
+  botao pro projeto ou pra semana) e curso concluido (404 `daily_hoje_nao_encontrada`). `WeekPathCard` -
+  a semana atual com os sprites do mapa (Focada no dia atual, selo de reforco pendente como link pra
+  sessao) e o Projeto Semanal como castelo/BOSS ("abre em N dias", aberto, em avaliacao, concluido).
+  Fala da Focada: as falas aprovadas do mapa (`buildFocadaMapLine`) no `DialogueBox` com a nova opcao
+  `compact` (retrato 64px, sem rodape vazio), chave `start-<courseId>`.
+- **Sairam da tela:** o carrossel de cursos (`CourseCarousel`, apagado), o "Ola, fulano", o
+  cabecalho HUD do curso, os cartoes de projeto, "Trilha completa" e certificacoes, a revisao semanal e
+  o cartao de reforco pendente - tudo ja esta na trilha ou na semana. Conquistas e a versao de celular
+  ficaram pra depois (decisao do dono); abaixo de `lg` as colunas so empilham.
+
 ## Autenticacao (Fase 12)
 
 A partir desta fase o app deixa de ser mono-usuario hardcoded - `User` (email/senha/nome) e
@@ -2763,10 +2799,10 @@ frontend/
                                    um menu suspenso em lista (fecha ao navegar); botao central e
                                    UserMenu (so o avatar) continuam sempre visiveis. Acima
                                    de `md`, layout identico ao original
-      StartDashboard.tsx (Fase 8-24)  <- hub antigo em cards ("Comecar Hoje"/"Projeto"/"Trilha") -
-                                   volta a ter uso na Fase 25 como fallback mobile de `/start` (ver
-                                   `docs/fase-25/resumo-implementacao-fase-25.md`), nao removido por
-                                   decisao tecnica
+      StartDashboard.tsx          <- /start sem params. Fase 66: 2 colunas pixel art, sem rolagem -
+                                   cursos em "save slots" + cartao do agente | missao do dia, rumo ao
+                                   castelo e fala da Focada do curso escolhido (`?curso=`). Pecas em
+                                   components/start/, derivacoes em lib/startScreen.ts
       WeeklyDetailPage.tsx        <- /start?weekly= - dias da semana + projeto + navegacao entre semanas
                                    (Fase 8); banner + trigger do PublicationModal quando
                                    `requiresPublicationToUnlock` (Fase 11); WeeklyReinforcementBadge
@@ -2842,7 +2878,7 @@ frontend/
         OnboardingStepper.tsx             <- "Passo X de 3" + pontinhos, compartilhado pelas 3 telas
       gamification/                 <- Fase 14
         GemBadge.tsx                     <- icone + contador de Gems, mesmo padrao pill de StatusBadge
-        StreakIndicator.tsx               <- "🔥 N dias" - StartDashboard (real) e EmptyStateStartPage (fixo em 0)
+        StreakIndicator.tsx               <- "🔥 N dias" - perfil e EmptyStateStartPage (fixo em 0)
         PenaltyHeaderBadge.tsx             <- Fase 15 (`PenaltyGauge`) / Fase 36 (renomeado e movido
                                    pro GlobalNav) - "conta-giros" de erros da Daily em andamento,
                                    cor por faixa (neutro/amarelo/laranja/vermelho); mesma linguagem
@@ -2973,7 +3009,10 @@ frontend/
                                    montado em SettingsProvider desde a Fase 25 (era TodayPage direto)
       StatusBadge.tsx              <- badge de status generico, so apresentacao (Fase 8)
       ProgressBar.tsx               <- barra de progresso generica, extraida de SessionTopBar (Fase 8)
-      WeeklyProjectCard.tsx          <- card do projeto semanal, usado por StartDashboard e WeeklyDetailPage (Fase 8)
+      WeeklyProjectCard.tsx          <- card do projeto semanal, usado pela WeeklyDetailPage (Fase 8; saiu do StartDashboard na Fase 66)
+      SegmentedBar.tsx               <- barra de progresso pixel art em blocos (Fase 66; a trilha ainda tem a copia local dela)
+      start/                         <- pecas da tela de start (Fase 66): CourseSlots, AgentCard,
+                                   DailyMissionCard, WeekPathCard
       CompletionSummary.tsx       <- pos POST .../complete (reforco diario/semanal, se houver); resumo real +
                                    badge "Conceito Dominado" (aprovacao >= 90%) + "Refazer este dia" desde a Fase 9;
                                    "+N 💎" discreto quando `gemsEarned > 0` (Fase 14 - texto pequeno,
@@ -3008,7 +3047,7 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/selecionar-curso` | `GET /api/courses/available` + `POST /api/enrollments` | `CourseSelectionPage` (Fase 13b) - passo 3/3 |
 | `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7). Fora do shell `<App/>` da Fase 20 ate a 24 (full-bleed); dentro do shell de novo desde a Fase 25 (ganhou `GlobalNav`); contador de erros saiu do HUD fixo e virou badge no proprio `GlobalNav` desde a Fase 36 (`PenaltyHeaderBadge`) |
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco; Fase 8: tambem usada como "reprise" de um dia ja concluido, clicado a partir da Visao Semanal) |
-| `/start` (sem params) | `GET /api/today` + `GET /api/courses` + `GET /api/users/me/gamification` | `StartDashboard` (Fase 8-24, e de volta desktop+celular pos-Fase 26 - `WorldMapPage` da Fase 25 desativado pro lancamento, ver nota em "Frontend" acima) |
+| `/start` (sem params, `?curso=` opcional) | `GET /api/courses` + `GET /api/courses/{id}` (cada curso) + `GET /api/users/me/gamification` + `GET /api/today?courseId=` e `GET /api/weeklies/{id}` do curso escolhido | `StartDashboard` (redesenhada na Fase 66; `WorldMapPage` da Fase 25 segue desativado) |
 | `/start?course=` | `GET /api/courses/{courseId}` | `CourseDetailPage` (Fase 8) - trilha completa do curso; mapa da trilha em pixel art desde a Fase 65 |
 | `/start?course=&caderninho=1` (ou `&tab=caderninho`) | `GET /api/courses/{courseId}/notes` + `.../notes/tags` | `NotebookPage` (Fase 65) - Caderninho em tela propria (antes aba da tela do curso) |
 | `/start?course=&ranking=1` | `GET /api/courses/{courseId}/ranking?scope=` | `RankingPage` (Fase 16) - Score de Estudo, top 10 + posicao do usuario |
@@ -3453,7 +3492,9 @@ componentes `sprite/*`, pagina "Logo", "Focada — esboço" e o kit `textbox/foc
 - **Resolvido na Fase 10 (retomada), nao e mais pendencia:** "Streak Perdido" (o outro dos 4
   designs do Figma da Fase 10) ganhou tela - `UserStreak.BrokenAt`, `streakJustBroken` no
   `GamificationSummaryDto`, `PUT .../streak/acknowledge-broken` e `StreakLostModal` disparado pelo
-  `StartDashboard`. Ver `docs/fase-10/resumo-implementacao-fase-10.md`.
+  `StartDashboard`. Ver `docs/fase-10/resumo-implementacao-fase-10.md`. Desde 23/09/2026 o aviso e a
+  Focada falando, em pixel art (retrato acolhedor + resposta "Bora recomecar hoje", mesmo formato do
+  `PixelConfirmDialog`), e aparece uma vez por quebra (ver `UserStreak` acima).
 - **Testando erros de rede com Playwright: usar o host completo no glob de `page.route()`**
   (ex: `http://localhost:5282/api/**`), nunca so `**/api/**` - o Vite dev server serve os arquivos-
   fonte do frontend por HTTP (`/src/api/client.ts`, `/src/api/types.ts`), um glob generico demais

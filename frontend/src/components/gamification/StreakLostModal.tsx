@@ -1,27 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../../api/client';
+import focadaAcolhedora from '../../assets/pixel/focada-acolhedora.png';
 import fireIcon from '../../assets/pixel/chama-streak.png';
-import { StreakIndicator } from './StreakIndicator';
 
 /**
- * "Erro - Streak Perdido" (Fase 10, node Figma 13-1040, nunca construida - ver
- * docs/fase-10/resumo-implementacao-fase-10.md e docs/fase-14, "Duvidas ou pontos abertos").
- * Streak virou dado real na Fase 14 (`UserStreak`); esta fase retoma a tela dedicada agora que
- * `GamificationSummaryDto.streakJustBroken` existe (Fase 10, retomada - ver
- * `UserStreak.CurrentStreakAsOf`/`BrokenAt`).
+ * "Streak Perdido" (Fase 10 retomada; Focada em pixel art desde 23/09/2026, pedido do dono) - a
+ * Focada anuncia a quebra no mesmo formato do `PixelConfirmDialog`: retrato, fala numa `pixel-box` e
+ * a resposta do agente embaixo. Voz (secret/curadoria/GUIA-DE-VOZ-FOCADA.md): streak perdido e
+ * momento que doi, entao ela acolhe - sem sarcasmo, chama de "agente".
  *
- * Disparada pelo `StartDashboard` no load quando `streakJustBroken` vem true; `onClose` sempre
- * chama `api.acknowledgeStreakBreak()` antes de fechar (clique no botao OU no fundo) - "marcar
- * como visto" pra nao repetir a tela na proxima visita, o mesmo motivo de nao ter um "X"/"depois"
- * separado que so fecha sem reconhecer.
- *
- * Chrome de modal (fixed inset-0 + card), mesmo padrao de PublicationModal (Fase 11) e
- * SessionExpiredModal (Fase 22) - `ErrorLayout` pressupoe `min-h-screen`, incompativel com
- * sobrepor o dashboard que continua vivo por baixo. "Streak Atual" reaproveita `StreakIndicator`
- * tal qual (currentStreak=0, mesmo componente do header) em vez de reinventar o pill.
+ * Disparada pelo `StartDashboard` no load quando `GamificationSummaryDto.streakJustBroken` vem true.
+ * Fechar de qualquer jeito (botao, Esc, clique fora) chama `api.acknowledgeStreakBreak()` - "marcar
+ * como visto". Aparece uma vez por quebra: o backend zera o streak persistido ao marcar a quebra
+ * (`UserStreak.CurrentStreakAsOf`), entao o reconhecimento nao e desfeito na leitura seguinte (bug
+ * real de 23/09/2026: o aviso voltava a cada abertura da tela de start).
  */
 export function StreakLostModal({ longestStreak, onClose }: { longestStreak: number; onClose: () => void }) {
   const [busy, setBusy] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   async function acknowledgeAndClose() {
     if (busy) return;
@@ -36,45 +32,74 @@ export function StreakLostModal({ longestStreak, onClose }: { longestStreak: num
     }
   }
 
+  // Ultima versao do fechamento numa ref: o listener de Esc e registrado uma vez so, ao abrir.
+  const closeRef = useRef(acknowledgeAndClose);
+  useEffect(() => {
+    closeRef.current = acknowledgeAndClose;
+  });
+
+  useEffect(() => {
+    buttonRef.current?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') void closeRef.current();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const days = `${longestStreak} ${longestStreak === 1 ? 'dia' : 'dias'}`;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/70 p-6" onClick={acknowledgeAndClose} role="presentation">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-base/80 p-4 backdrop-blur-sm"
+      onClick={() => void acknowledgeAndClose()}
+      role="presentation"
+    >
       <div
-        className="flex w-[420px] flex-col items-center gap-6 rounded-2xl border border-surface-alt bg-surface p-8 text-center"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
+        role="alertdialog"
         aria-modal="true"
-        aria-label="Streak perdido"
+        aria-labelledby="streak-lost-title"
+        aria-describedby="streak-lost-message"
+        className="flex w-full max-w-2xl flex-col gap-6"
+        onClick={(e) => e.stopPropagation()}
       >
-        <span className="flex size-14 items-center justify-center rounded-full border-2 border-alert bg-alert/10" aria-hidden="true">
-          <img src={fireIcon} alt="" className="size-8 pixelated" />
-        </span>
-
-        <div className="flex flex-col gap-2">
-          <h1 className="text-xl font-bold text-primary">Você Perdeu Seu Streak</h1>
-          <p className="text-sm text-secondary">Sem problema, todo mundo tropeça. O importante é recomeçar hoje.</p>
-        </div>
-
-        <div className="flex w-full items-center justify-center gap-6">
-          <div className="flex flex-col items-center gap-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Melhor Streak</p>
-            <p className="text-lg font-bold text-primary">
-              {longestStreak} {longestStreak === 1 ? 'dia' : 'dias'}
+        <div className="flex items-end gap-4">
+          <div className="pixel-box hidden shrink-0 bg-surface p-2 sm:block">
+            <img src={focadaAcolhedora} alt="" className="size-24 pixelated" aria-hidden="true" />
+          </div>
+          <div className="pixel-box flex min-w-0 flex-1 flex-col gap-3 bg-base px-6 pt-5 pb-5">
+            <div className="flex items-center gap-3">
+              <img src={focadaAcolhedora} alt="" className="size-8 pixelated sm:hidden" aria-hidden="true" />
+              <span className="font-pixel-label text-sm text-accent">Focada</span>
+              <span id="streak-lost-title" className="ml-auto flex items-center gap-1.5 font-pixel-label text-[10px] text-alert">
+                <img src={fireIcon} alt="" className="size-4 pixelated grayscale" aria-hidden="true" />
+                Streak perdido
+              </span>
+            </div>
+            <p id="streak-lost-message" className="font-pixel text-[22px] leading-snug text-primary lg:text-2xl">
+              Seu streak zerou, agente. Acontece com todo mundo. O recorde de {days} continua seu, e hoje é um bom dia pra
+              começar o próximo.
             </p>
           </div>
-          <div className="flex flex-col items-center gap-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Streak Atual</p>
-            <StreakIndicator currentStreak={0} />
-          </div>
         </div>
 
-        <button
-          type="button"
-          disabled={busy}
-          onClick={acknowledgeAndClose}
-          className="w-full rounded-xl bg-accent px-8 py-4 text-sm font-bold tracking-wide text-base disabled:opacity-50"
-        >
-          COMEÇAR NOVO STREAK
-        </button>
+        <div className="flex justify-end">
+          <div role="group" aria-label="Sua resposta" className="pixel-box flex min-w-0 flex-col items-end gap-3 bg-base px-6 pt-4 pb-4 sm:min-w-[55%]">
+            <span className="font-pixel-label text-sm text-project">Você</span>
+            <button
+              ref={buttonRef}
+              type="button"
+              disabled={busy}
+              onClick={() => void acknowledgeAndClose()}
+              className="group flex items-baseline gap-2 text-right font-pixel text-[22px] leading-snug text-primary focus:text-project focus:outline-none disabled:opacity-50 lg:text-2xl"
+            >
+              Bora recomeçar hoje
+              <span className="text-project opacity-0 group-focus:opacity-100" aria-hidden="true">
+                ◀
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
