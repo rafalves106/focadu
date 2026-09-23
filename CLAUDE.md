@@ -84,9 +84,12 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 61 — Projeto Semanal sem rolagem externa + chat integrado** (22/09/2026).
+Última fase concluída: **Fase 62 — Menu global do Figma + menu do usuário** (22/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Menu global do Figma (Fase 62, node 178:143)**: Hoje/Trilhas/Ranking | START | Squad/Loja/@usuário
+  + avatar, 73px no desktop largo. Configurações e o status da IA saíram da barra e foram para o menu
+  que abre no clique do usuário (decisão do dono). Ver `docs/fase-62/`.
 - **Projeto Semanal sem rolagem externa (Fase 61, Figma node 178:132)**: a página cabe na altura da
   tela e só os cartões rolam por dentro, com barra minimalista que aparece ao rolar e some com
   desfoque (`ScrollArea`); barra de progresso centralizada no topo; chat de IA fixo e alto na coluna

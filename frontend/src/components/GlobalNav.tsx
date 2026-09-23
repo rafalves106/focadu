@@ -3,10 +3,8 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { CourseStatus } from '../api/types';
-import { useSettings } from '../contexts/useSettings';
 import mapIcon from '../assets/header/map-white-version.png';
-import { AiStatusBadge } from './AiStatusBadge';
-import { HeaderUserBadge } from './HeaderUserBadge';
+import { UserMenu } from './UserMenu';
 import { PenaltyHeaderBadge } from './gamification/PenaltyHeaderBadge';
 import { PomodoroHeaderBadge } from './pomodoro/PomodoroHeaderBadge';
 
@@ -18,7 +16,7 @@ import { PomodoroHeaderBadge } from './pomodoro/PomodoroHeaderBadge';
  *
  * `courseId` resolvido aqui do mesmo jeito que WorldMapPage/StartDashboard sempre fizeram (1o
  * Course Active, senao o primeiro da lista) - busca propria, mesmo padrao "self-contained" de
- * `HeaderUserBadge` (busca o catalogo so pra si, sem travar o resto do menu se falhar). Se ainda
+ * `UserMenu` (busca o catalogo so pra si, sem travar o resto do menu se falhar). Se ainda
  * nao carregou/nao existe, Trilha/Ranking caem pra `/start` (mapa) em vez de link quebrado.
  *
  * Sem destaque de "item ativo" de proposito - varios itens (Trilha/Ranking) apontam pro mesmo
@@ -29,11 +27,14 @@ import { PomodoroHeaderBadge } from './pomodoro/PomodoroHeaderBadge';
  * Responsivo (Fase 25, adicionado depois de ver o menu quebrado ao vivo num viewport de celular -
  * 7 itens + botao central + badge nao cabem em ~390px): abaixo do breakpoint `md` (768px, mesmo
  * limiar de `useIsMobile`), os 2 grupos de texto viram um botao "☰" que abre um menu suspenso em
- * lista - so o botao central, `AiStatusBadge` e `HeaderUserBadge` continuam sempre visiveis na
+ * lista - so o botao central e o `UserMenu` continuam sempre visiveis na
  * barra. Acima de `md`, layout identico ao original (3 grupos numa linha so).
  *
- * `AiStatusBadge` (Fase 28) - badge persistente de status de IA (hoje so Groq), mesmo padrao
- * "self-contained" de `HeaderUserBadge` descrito acima.
+ * Fase 62 (Figma node 178:143): 73px de altura e texto de 24px no desktop largo (`xl`, >= 1280px -
+ * abaixo disso o tamanho antigo, senao nao cabe), "Trilha do Curso" virou "Trilhas", e o canto
+ * direito virou "@usuario" + avatar (`UserMenu`), que abre o menu com Perfil, Configuracoes e o
+ * status da IA - os dois ultimos sairam da barra porque o Figma nao os tem (decisao do dono: mover,
+ * nao remover). Altura via `--nav-height` (index.css), que as telas sem rolagem externa descontam.
  *
  * `PomodoroHeaderBadge` (Fase 36, ver secret/rascunhos/timer-pomodoro-sessao.md) - versao compacta
  * do timer Pomodoro da sessao (`PomodoroWidget`, ver useMaterialSidebar.tsx), sincronizada via
@@ -41,7 +42,6 @@ import { PomodoroHeaderBadge } from './pomodoro/PomodoroHeaderBadge';
  * nao renderiza nada fora disso, entao encaixa aqui sem `if` proprio, igual `PenaltyHeaderBadge`.
  */
 export function GlobalNav() {
-  const settings = useSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: courses } = useApiResource(() => api.getCourses(), []);
   const activeCourse = courses?.find((c) => c.status === CourseStatus.Active) ?? courses?.[0] ?? null;
@@ -53,11 +53,11 @@ export function GlobalNav() {
 
   return (
     <nav className="sticky top-0 z-30 border-b border-surface-alt bg-surface">
-      <div className="flex h-14 items-center justify-between gap-2 px-4">
+      <div className="flex h-[calc(var(--nav-height)-1px)] items-center justify-between gap-2 px-4 xl:px-16">
         {/* Desktop (md+): grupo esquerdo. */}
-        <div className="hidden flex-1 items-center gap-1 md:flex">
+        <div className="hidden flex-1 items-center gap-1 md:flex xl:gap-4">
           <NavItem to="/hoje">Hoje</NavItem>
-          <NavItem to={trilhaHref}>Trilha do Curso</NavItem>
+          <NavItem to={trilhaHref}>Trilhas</NavItem>
           <NavItem to={rankingHref}>Ranking</NavItem>
         </div>
 
@@ -75,21 +75,13 @@ export function GlobalNav() {
         <MapButton />
 
         {/* Desktop (md+): grupo direito. */}
-        <div className="hidden flex-1 items-center justify-end gap-1 md:flex">
+        <div className="hidden flex-1 items-center justify-end gap-1 md:flex xl:gap-4">
           <NavItem to="/perfil?tab=squad">Squad</NavItem>
           <NavItem to="/loja">Loja</NavItem>
-          <button
-            type="button"
-            onClick={settings.open}
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary"
-          >
-            Configurações
-          </button>
-          <div className="ml-2 flex shrink-0 items-center gap-2">
+          <div className="ml-2 flex shrink-0 items-center gap-2 xl:ml-4">
             <PenaltyHeaderBadge />
             <PomodoroHeaderBadge />
-            <AiStatusBadge />
-            <HeaderUserBadge />
+            <UserMenu />
           </div>
         </div>
 
@@ -97,8 +89,7 @@ export function GlobalNav() {
         <div className="flex shrink-0 items-center gap-2 md:hidden">
           <PenaltyHeaderBadge />
           <PomodoroHeaderBadge />
-          <AiStatusBadge />
-          <HeaderUserBadge />
+          <UserMenu />
         </div>
       </div>
 
@@ -109,7 +100,7 @@ export function GlobalNav() {
             Hoje
           </MobileNavItem>
           <MobileNavItem to={trilhaHref} onNavigate={closeMobileMenu}>
-            Trilha do Curso
+            Trilhas
           </MobileNavItem>
           <MobileNavItem to={rankingHref} onNavigate={closeMobileMenu}>
             Ranking
@@ -120,16 +111,6 @@ export function GlobalNav() {
           <MobileNavItem to="/loja" onNavigate={closeMobileMenu}>
             Loja
           </MobileNavItem>
-          <button
-            type="button"
-            onClick={() => {
-              closeMobileMenu();
-              settings.open();
-            }}
-            className="rounded-lg px-3 py-2.5 text-left text-sm font-medium text-secondary hover:bg-surface-alt hover:text-primary"
-          >
-            Configurações
-          </button>
         </div>
       )}
     </nav>
@@ -138,7 +119,7 @@ export function GlobalNav() {
 
 function NavItem({ to, children }: { to: string; children: ReactNode }) {
   return (
-    <Link to={to} className="rounded-lg px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary">
+    <Link to={to} className="rounded-lg px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary xl:text-[24px]">
       {children}
     </Link>
   );
@@ -174,7 +155,7 @@ function MapButton() {
       title="Voltar para o mapa"
       className="flex shrink-0 items-center justify-center transition-transform hover:scale-105"
     >
-      <img src={mapIcon} alt="Voltar para o mapa" className="h-8 w-auto" />
+      <img src={mapIcon} alt="Voltar para o mapa" className="h-8 w-auto xl:h-[43px]" />
     </Link>
   );
 }

@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 61 - Projeto Semanal sem rolagem externa (layout Figma 178:132) + chat integrado**.
+> Ultima fase que atualizou este documento: **Fase 62 - Menu global do Figma (node 178:143) + menu do usuario**.
 
 ## Visao geral do projeto
 
@@ -1788,9 +1788,10 @@ de projeto, rascunho de LinkedIn, analogia de leitura - todas usam a mesma `Groq
   sempre devolve 200, o proprio "esta fora do ar" e um resultado valido, nao uma excecao.
 - Endpoint atras de `.RequireAuthorization()` (mesmo criterio "app so mostra GlobalNav pra usuario
   logado"), mas sem filtro por usuario - o status do provedor e global, nao por conta.
-- **Frontend:** `AiStatusBadge.tsx` (badge no `GlobalNav`, ver secao Frontend abaixo) faz polling a
-  cada 45s (mesma janela do cache do backend) e mostra um ponto verde/ambar/vermelho/cinza -
-  clicar expande o detalhe por provedor (nome, status, `errorMessage`).
+- **Frontend:** `lib/useAiStatus.ts` faz polling a cada 45s (mesma janela do cache do backend);
+  desde a Fase 62 o detalhe por provedor (`AiStatusDetails`, em `AiStatusBadge.tsx`) fica dentro do
+  menu do usuario (`UserMenu`, no `GlobalNav`) - nao ha mais selo fixo na barra. Com a IA parcial/
+  fora/sem resposta, um ponto colorido aparece no avatar.
 
 ### Suporte Rapido de IA (botao flutuante durante a sessao, Fase 32)
 
@@ -2601,13 +2602,14 @@ frontend/
       lib/useIsMobile.ts (Fase 25)   <- hook - true com viewport < 768px (breakpoint `md`), usado
                                    por StartPage pro fallback mobile em /start
       GlobalNav.tsx (Fase 25)       <- menu global unico (components/) - substitui o antigo <nav> de
-                                   2 links do App.tsx. Itens: Hoje, Trilha do Curso, Ranking (agora
-                                   item proprio, nao so ancorado dentro da Trilha), Squad, Loja,
-                                   Configuracoes (chama useSettings().open - ver
-                                   contexts/SettingsProvider.tsx) + HeaderUserBadge (Fase 18, ja
-                                   existia) + AiStatusBadge (Fase 28 - status de IA, ver secao
-                                   Groq/frontend) + PenaltyHeaderBadge (Fase 36) + PomodoroHeaderBadge
-                                   (Fase 36). Botao central "volta pro mapa" - placeholder (emoji),
+                                   2 links do App.tsx. Fase 62 (Figma node 178:143): Hoje, Trilhas,
+                                   Ranking | botao central | Squad, Loja + PenaltyHeaderBadge +
+                                   PomodoroHeaderBadge (Fase 36) + UserMenu ("@usuario" + avatar;
+                                   abre Meu perfil, Configuracoes e o status da IA - os dois ultimos
+                                   sairam da barra, o Figma nao os tem). 73px de altura e texto 24px
+                                   em `xl` (>= 1280px), tamanho antigo abaixo; altura em
+                                   `--nav-height` (index.css), descontada pelas telas sem rolagem
+                                   externa. Botao central "volta pro mapa" - placeholder (emoji),
                                    sem PNG pixel art de verdade ainda (ver "Fora de escopo").
                                    **PenaltyHeaderBadge** (`gamification/`, Fase 36): contador de
                                    erros da Daily em andamento - substitui o antigo `PenaltyGauge`
@@ -2624,14 +2626,14 @@ frontend/
                                    pausa direto do header).
                                    `courseId` resolvido com busca propria (GET /api/courses, mesmo
                                    fallback Active->primeiro que WorldMapPage/StartDashboard sempre
-                                   usaram) - self-contained, mesmo padrao de HeaderUserBadge. Sem
+                                   usaram) - self-contained, mesmo padrao de UserMenu. Sem
                                    destaque de "item ativo" (NavLink so compara pathname, destacaria
                                    Trilha/Ranking juntos incorretamente - usa Link simples).
                                    Responsivo (Fase 25, descoberto testando o fallback mobile - 7
                                    itens + botao central + badge nao cabiam em ~390px): abaixo do
                                    breakpoint `md`, os 2 grupos de texto viram um botao "☰" que abre
-                                   um menu suspenso em lista (fecha ao navegar); botao central,
-                                   AiStatusBadge e HeaderUserBadge continuam sempre visiveis. Acima
+                                   um menu suspenso em lista (fecha ao navegar); botao central e
+                                   UserMenu (so o avatar) continuam sempre visiveis. Acima
                                    de `md`, layout identico ao original
       StartDashboard.tsx (Fase 8-24)  <- hub antigo em cards ("Comecar Hoje"/"Projeto"/"Trilha") -
                                    volta a ter uso na Fase 25 como fallback mobile de `/start` (ver
@@ -2684,16 +2686,16 @@ frontend/
       EquippedFramePreview.tsx      <- Fase 18 - placeholder de avatar (iniciais do nome + anel
                                    colorido por raridade quando uma Moldura esta equipada, sem
                                    upload/ilustracao real); reaproveitado por ProfileHeader e
-                                   HeaderUserBadge
-      HeaderUserBadge.tsx            <- Fase 18 - nome+moldura equipados no menu global (usado
-                                   dentro de GlobalNav.tsx desde a Fase 25, era direto em App.tsx),
-                                   link pra /perfil; busca o catalogo sozinho, cai pro nome sem
-                                   cor/moldura se ainda nao carregou (nao bloqueia o nav)
-      AiStatusBadge.tsx              <- Fase 28 - badge de status de IA no menu global, ao lado de
-                                   HeaderUserBadge (mesmo padrao self-contained). Ponto verde/ambar/
-                                   vermelho/cinza (GET /api/system/ai-status, polling a cada 45s -
-                                   mesma janela do cache do backend); clique expande painel com o
-                                   detalhe por provedor (nome, status, mensagem de erro)
+                                   UserMenu
+      UserMenu.tsx                   <- Fase 62 (substitui HeaderUserBadge, Fase 18) - "@usuario"
+                                   (DisplayName sem espacos/acentos, minusculo - User nao tem
+                                   username) + avatar com moldura; clique abre Meu perfil,
+                                   Configuracoes e o status da IA; fecha no clique fora/Esc. Cor do
+                                   nome: cosmetico equipado ou verde `accent`. Ponto no avatar
+                                   quando a IA nao esta ok
+      AiStatusBadge.tsx              <- Fase 28 (Fase 62: so o detalhe, `AiStatusDetails`, sem o
+                                   selo) - resumo + nome/status/erro por provedor; estado vem de
+                                   `lib/useAiStatus.ts` (GET /api/system/ai-status, polling 45s)
       auth/
         LoginForm.tsx                <- email + senha (Fase 12); onSuccess recebe o UserDto (Fase 13b)
         RegisterForm.tsx              <- nome + email + senha + confirmacao (Fase 12); onSuccess

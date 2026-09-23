@@ -69,3 +69,14 @@ body {
     display: none;
   }
 }
+
+/* Altura do GlobalNav, borda inclusa (Fase 62, Figma node 178:143: 73px no desktop) - telas sem
+   rolagem externa (ver docs/fase-61) descontam isso do 100dvh; o proprio nav tambem le daqui. */
+:root {
+  --nav-height: 57px;
+}
+@media (width >= 80rem) {
+  :root {
+    --nav-height: 73px;
+  }
+}
