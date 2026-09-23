@@ -1,14 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { useSettings } from '../contexts/useSettings';
-import { ActivityType, AnswerMode, ActivityStatus, DailyAccessMode, WeeklyProjectStatus, type DailyStateDto, type CompleteDailyResult } from '../api/types';
+import { ActivityType, AnswerMode, ActivityStatus, DailyAccessMode, type DailyStateDto, type CompleteDailyResult, type WeeklyDetailDto } from '../api/types';
 import { classifyApiError, type ApiFailure } from '../lib/apiError';
-import { ActivityScreen, Centered } from '../components/Layout';
+import { SessionContext, type SessionContextValue } from '../lib/sessionContext';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
-import { ErrorLayout } from '../components/errors/ErrorLayout';
-import checkIcon from '../assets/pixel/check.png';
 import { QuizActivity } from '../components/QuizActivity';
 import { WordMatchActivity } from '../components/WordMatchActivity';
 import { ClozeFreeTextActivity } from '../components/ClozeFreeTextActivity';
@@ -18,9 +16,13 @@ import { ReadingActivity } from '../components/ReadingActivity';
 import { VideoActivity } from '../components/VideoActivity';
 import { CompletionSummary } from '../components/CompletionSummary';
 import { ReinforcementIntroScreen } from '../components/ReinforcementIntroScreen';
-import { PendingReinforcementCard } from '../components/PendingReinforcementCard';
-import { setDailyPenalty } from '../lib/dailyPenaltyContext';
-import lockIcon from '../assets/pixel/cadeado-bloqueado.png';
+import {
+  BlockedTodayScreen,
+  DailyRefusedScreen,
+  SessionDoneScreen,
+  SessionLoading,
+  WeekClosureScreen,
+} from '../components/session/SessionScreens';
 
 // "Pino" do passo atual - so identifica QUAL atividade mostrar, nunca guarda uma copia dos dados
 // (que vem sempre fresca de `daily.activities`) - so avancamos quando o usuario clica
@@ -47,115 +49,6 @@ function resolveStep(daily: DailyStateDto, replayBaseline: ReplayBaseline): Step
     replayBaseline ? a.responses.length <= (replayBaseline.get(a.id) ?? 0) : a.status !== ActivityStatus.Completed,
   );
   return pending ? { kind: 'activity', activityId: pending.id } : { kind: 'done' };
-}
-
-/**
- * `DailyAccessMode.Blocked` (Fase 37b): a Daily de hoje existe mas nao pode ser iniciada - o
- * usuario ja gastou a unica conclusao permitida hoje, mesmo que tenha sido retomando um atraso de
- * outro dia (ver Weekly.EvaluateDailyAccess, "daily_limite_diario_atingido"). Antes disto, esse
- * estado nem chegava aqui formatado - `GetTodayUseCase` deixava a excecao de dominio estourar
- * como um 409 cru, e tanto "/hoje" quanto o hub "/start" (mesmo caso de uso) mostravam a tela de
- * erro generica em vez de avisar que a sessao do dia ja tinha acabado (bug real, corrigido junto
- * do backend em 2026-09-14).
- */
-function DailySessionBlockedNotice({ pendingReinforcementDailyId }: { pendingReinforcementDailyId: string | null }) {
-  const navigate = useNavigate();
-
-  return (
-    <ErrorLayout
-      icon={<img src={checkIcon} alt="" className="size-12 pixelated" />}
-      title="Sessão de hoje já concluída"
-      description="Você já concluiu uma sessão hoje (inclusive se foi recuperando um dia atrasado) - o limite é 1 por dia. Volte amanhã para continuar."
-      extra={<PendingReinforcementSlot dailyId={pendingReinforcementDailyId} />}
-      primaryAction={{ label: 'Voltar ao início', onClick: () => navigate('/start') }}
-    />
-  );
-}
-
-/**
- * Fase 56: botao de reforco dentro dos avisos de "Hoje" bloqueado - e exatamente onde o aluno cai
- * depois de concluir a Daily do dia (cota gasta / semana esperando o projeto), e o reforco gerado por
- * ela e a unica coisa que ele ainda pode fazer ali. Reforco nao consome nem e barrado pela cota diaria.
- */
-function PendingReinforcementSlot({ dailyId }: { dailyId: string | null }) {
-  if (!dailyId) return null;
-  return (
-    <div className="w-full max-w-lg">
-      <PendingReinforcementCard dailyId={dailyId} />
-    </div>
-  );
-}
-
-/**
- * `DailyAccessMode.WeekPendingClosure` (Fase 54): todas as Dailies da Weekly ja foram concluidas,
- * mas a proxima semana so abre depois do projeto semanal (e da publicacao). Antes disto, terminar
- * a ultima Daily da Semana 1 e clicar em "Hoje" caia direto na 1a Daily da Semana 2, sem o
- * projeto (bug real, 21/09/2026). Diferente de `DailySessionBlockedNotice`, "volte amanha" nao
- * resolve aqui - o que destrava e fechar a semana, entao o CTA leva pra ela.
- */
-function WeekClosurePendingNotice({ weeklyId, pendingReinforcementDailyId }: { weeklyId: string; pendingReinforcementDailyId: string | null }) {
-  const navigate = useNavigate();
-  // Pedido do dono: com o projeto pendente, "Hoje" ja deve levar pro projeto, nao pra um aviso com
-  // botao pra semana. Busca a Weekly pra saber O QUE falta fechar - o projeto (ainda nao avaliado)
-  // ou so a publicacao do modulo; o DailyStateDto nao traz isso. Falha na busca cai no aviso de antes.
-  const { data: weekly, loading } = useApiResource(() => api.getWeekly(weeklyId), [weeklyId]);
-
-  if (loading) return <Centered text="Carregando..." />;
-
-  const projectUrl = weekly ? `/start?course=${weekly.courseId}&weekly=${weeklyId}&project=1` : null;
-  const projectPending = !!weekly?.project && weekly.project.status !== WeeklyProjectStatus.Evaluated;
-
-  // Reforco pendente: fica no aviso, que e o unico lugar desta tela com o botao do reforco (ele nao
-  // gasta a cota do dia, o aluno pode querer faze-lo antes) - mas o CTA principal ja e o projeto.
-  if (projectPending && projectUrl && !pendingReinforcementDailyId) return <Navigate to={projectUrl} replace />;
-
-  return (
-    <ErrorLayout
-      icon={<img src={checkIcon} alt="" className="size-12 pixelated" />}
-      title={projectPending || !weekly ? 'Semana concluída - falta o projeto' : 'Semana concluída - falta a publicação'}
-      description={
-        projectPending
-          ? 'Você terminou todas as sessões desta semana. Envie o projeto semanal para liberar a próxima semana.'
-          : weekly
-            ? 'Você terminou todas as sessões e o projeto desta semana. Valide a publicação do módulo para liberar a próxima semana.'
-            : 'Você terminou todas as sessões desta semana. Envie o projeto semanal (e valide a publicação, quando pedida) para liberar a próxima semana.'
-      }
-      extra={<PendingReinforcementSlot dailyId={pendingReinforcementDailyId} />}
-      primaryAction={
-        projectPending && projectUrl
-          ? { label: 'Ir para o projeto', onClick: () => navigate(projectUrl) }
-          : { label: 'Ir para a semana', onClick: () => navigate(`/start?weekly=${weeklyId}`) }
-      }
-      secondaryAction={{ label: 'Voltar ao início', onClick: () => navigate('/start') }}
-    />
-  );
-}
-
-/** Textos (com acento) das recusas de regra de negocio ao abrir uma Daily - o backend manda a mensagem sem acento, so serve de fallback. */
-const DAILY_REFUSAL_COPY: Record<string, string> = {
-  daily_limite_diario_atingido: 'Você já concluiu uma sessão hoje - o limite é 1 por dia. Volte amanhã para continuar.',
-  daily_em_andamento: 'Você já tem uma sessão em andamento. Conclua (ou retome) essa antes de começar outra.',
-  projeto_semana_anterior_pendente: 'O projeto de uma semana anterior ainda não foi concluído. Envie-o e aguarde a avaliação para liberar esta semana.',
-  modulo_bloqueado_por_publicacao: 'Uma semana anterior precisa de uma publicação validada antes de começar esta.',
-};
-
-/**
- * Recusa de regra de negocio (HTTP 409) ao abrir uma Daily - nao e falha do sistema, entao
- * "Algo Deu Errado / Tentar Novamente" (`GenericError`) so confundia: tentar de novo nao muda o
- * resultado. Mostra o motivo real (bug real, 21/09/2026: o botao "Ir para a sessao de reforco"
- * caia nessa tela generica sem dizer nada).
- */
-function DailyRefusedNotice({ error }: { error: ApiFailure }) {
-  const navigate = useNavigate();
-
-  return (
-    <ErrorLayout
-      icon={<img src={lockIcon} alt="" className="size-12 pixelated" />}
-      title="Não dá para abrir essa sessão agora"
-      description={(error.code && DAILY_REFUSAL_COPY[error.code]) ?? error.message}
-      primaryAction={{ label: 'Voltar ao início', onClick: () => navigate('/start') }}
-    />
-  );
 }
 
 /** Modos em que "/hoje" nao tem sessao pra rodar - so um aviso (ver os dois avisos acima). */
@@ -199,26 +92,13 @@ function useSessionExitGuard(active: boolean, onIntercept: () => void) {
 }
 
 /**
- * `/hoje` (Fase 25: voltou pra dentro do shell `<App/>`, ganhou o `GlobalNav` como todo o resto da
- * plataforma - era full-bleed desde a Fase 20 pra nao colidir com o PenaltyGauge/botao de
- * configuracoes fixos no topo). `<App/>` cuida do `<ErrorBoundary key={pathname+search}>` agora
- * (`+search` cobre `/hoje` navegando entre Dailies via `?daily=` sem trocar de rota - sem isso um
- * crash nao seria "esquecido" ao trocar de Daily).
+ * `/hoje` - a sessao diaria. GET /api/today resolve a Daily de hoje; `?daily=` abre outra (sessao de
+ * reforco, "Refazer este dia"). Start/Resume precisam de POST /start antes de poder responder.
  *
- * Fase 36: o contador de erros (antigo `PenaltyGauge` fixo `left-6 top-[72px]`, citado no
- * parágrafo acima) mudou de lugar - agora vive no `GlobalNav` (badge no header), publicado via
- * `dailyPenaltyContext` (ver useEffect logo abaixo do `resolveStep`). `SessionLayout` continua
- * com o mesmo `pt-20` de sempre (ver SessionShell.tsx) - a folga ali era pro badge fixo antigo,
- * hoje meio "orfã" mas inofensiva (só espaço vazio) e não vale reajustar o layout de toda tela de
- * sessão por causa disso sozinho.
- *
- * GET /api/today - a Daily ativa de hoje. Aceita um override opcional `?daily=` (nao documentado
- * como rota separada - so um parametro a mais na mesma rota `/hoje`) pra reaproveitar toda essa
- * tela ao navegar pra uma sessao de reforco recem-gerada (ver CompletionSummary), que e sempre
- * uma Daily diferente da "Daily de hoje" resolvida por /api/today.
- *
- * Start/Resume precisam de POST /start antes de poder responder (Daily.SubmitActivityResponse
- * exige Status != Locked/Available).
+ * Fase 68 (Figma "Daily — redesign proposto"): toda tela daqui roda dentro da casca `SessionLayout`
+ * (components/SessionShell.tsx), que le deste `SessionContext` a Daily, a Weekly (buscada 1x aqui,
+ * nao mais por atividade) e a etapa em tela. O conta-giros de erros saiu do menu global pro topo da
+ * sessao, entao nao ha mais nada publicado pro `GlobalNav`.
  */
 export function TodayPage() {
   const [searchParams] = useSearchParams();
@@ -233,11 +113,15 @@ export function TodayPage() {
   const [completing, setCompleting] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [replayBaseline, setReplayBaseline] = useState<ReplayBaseline>(null);
-  // Fase 15: gate local da ReinforcementIntroScreen - mesmo padrao de "started" das intros de
-  // atividade (QuizActivity, etc), so no nivel da Daily inteira em vez de uma Activity. So mostra
-  // a intro numa sessao de reforco genuinamente nova (nenhuma atividade respondida ainda) - evita
-  // reexibir a cada reload de uma sessao ja em andamento/replay.
+  // Fase 15: entrada da sessao de reforco so numa sessao de reforco genuinamente nova (nenhuma
+  // atividade respondida) - evita reexibir a cada reload de uma sessao ja em andamento/replay.
   const [reinforcementIntroDismissed, setReinforcementIntroDismissed] = useState(false);
+
+  const weeklyId = daily?.weeklyId ?? null;
+  const { data: weekly } = useApiResource<WeeklyDetailDto | null>(
+    () => (weeklyId ? api.getWeekly(weeklyId) : Promise.resolve(null)),
+    [weeklyId],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -257,9 +141,7 @@ export function TodayPage() {
           setDaily(state);
           setReinforcementIntroDismissed(state.activities.some((a) => a.responses.length > 0));
           setReplayBaseline(
-            state.accessMode === DailyAccessMode.Replay
-              ? new Map(state.activities.map((a) => [a.id, a.responses.length]))
-              : null,
+            state.accessMode === DailyAccessMode.Replay ? new Map(state.activities.map((a) => [a.id, a.responses.length])) : null,
           );
         }
       } catch (err) {
@@ -275,47 +157,24 @@ export function TodayPage() {
     };
   }, [overrideDailyId, attempt]);
 
-  // So decide o proximo passo quando ninguem esta "pinado" - ou seja, no carregamento inicial e
-  // depois que o usuario clica "Continuar" (ver handleContinue). Nunca no meio de uma atividade
-  // ja em exibicao, mesmo que `daily` mude (resposta enviada) nesse meio tempo.
+  // So decide o proximo passo quando ninguem esta "pinado" - no carregamento inicial. Nunca no meio
+  // de uma atividade ja em exibicao, mesmo que `daily` mude (resposta enviada) nesse meio tempo.
   useEffect(() => {
     if (daily && step === null) setStep(resolveStep(daily, replayBaseline));
   }, [daily, step, replayBaseline]);
 
-  // Fase 36: publica o contador de erros da Daily atual pro GlobalNav (ver dailyPenaltyContext) -
-  // mesma janela de visibilidade que o badge fixo antigo tinha (nunca durante a CompletionSummary,
-  // ver early return abaixo). Limpa ao sair da tela de qualquer jeito (completar a Daily, trocar de
-  // Daily via `attempt`/`overrideDailyId`, ou desmontar), senao o badge do header ficaria preso
-  // mostrando o numero de uma sessao que ja acabou.
-  useEffect(() => {
-    setDailyPenalty(
-      daily && completion === null && !isSessionBlockedMode(daily.accessMode)
-        ? { penaltyPoints: daily.penaltyPoints, penaltyThreshold: daily.penaltyThreshold }
-        : null,
-    );
-    return () => setDailyPenalty(null);
-  }, [daily, completion]);
-
-  // Sessao "ativa" = ja temos passo pra mostrar e ainda nao concluiu - cobre as telas de
-  // atividade e o "done", mas nunca o loading/erro, a CompletionSummary, nem o aviso de
-  // DailyAccessMode.Blocked (nao ha nada pra "sair" ali, so a mensagem).
+  // Sessao "ativa" = ha passo pra mostrar e ainda nao concluiu - nunca loading/erro, conclusao ou aviso.
   const sessionActive = daily !== null && step !== null && completion === null && !isSessionBlockedMode(daily.accessMode);
   useSessionExitGuard(sessionActive, settings.toggle);
 
   /**
-   * Avanca pra PROXIMA atividade na ordem (`orderIndex + 1` a partir do `step` atual) - nunca
-   * mais recalcula "primeira nao concluida" (`resolveStep`) a cada Continuar, so no carregamento
-   * inicial da Daily (ver useEffect acima). As duas formas davam o mesmo resultado enquanto o
-   * fluxo era estritamente sequencial, mas divergiam ao voltar por "Etapa anterior" (Fase 36): re-
-   * rodar `resolveStep` a partir de uma etapa ja concluida pulava direto pra etapa real em
-   * andamento, em vez de so avancar 1 - descoberto numa verificacao ao vivo (usuario esperava ir
-   * da Etapa 1 revisitada pra Etapa 2, nao pulava pra Etapa 4). `daily.activities` no closure
-   * pode estar 1 render atrasado (a resposta acabou de ser submetida) mas isso nao importa aqui -
-   * so a ORDEM/identidade das atividades e usada, nunca status/responses, e essas nao mudam.
+   * Avanca pra PROXIMA atividade na ordem a partir do `step` atual - nunca recalcula "primeira nao
+   * concluida" a cada Continuar (so no carregamento): voltando por "Etapa anterior" (Fase 36), o
+   * aluno anda 1 etapa por vez em vez de pular direto pra onde parou.
    */
   function handleContinue() {
     if (!daily || step?.kind !== 'activity') {
-      setStep(null); // defensivo - nao deveria disparar fora de um step de atividade.
+      setStep(null);
       return;
     }
     const sorted = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
@@ -324,12 +183,7 @@ export function TodayPage() {
     setStep(next ? { kind: 'activity', activityId: next.id } : { kind: 'done' });
   }
 
-  /** Fase 36: pino manual num id de atividade especifico - usado por "Etapa anterior" (ver
-   * renderStep abaixo). Sempre uma atividade que ja existe em `daily.activities`, entao cada
-   * componente renderiza seu proprio estado "ja respondida" (via `activity.responses`) sozinho -
-   * nunca reabre a atividade pra responder de novo, so revisita. "Continuar" a partir dali agora
-   * so avanca 1 posicao por vez (handleContinue acima), levando de volta pra onde o aluno estava
-   * andando pra frente uma etapa de cada vez, nunca pulando direto pro fim da revisao. */
+  /** Fase 36: revisita uma atividade ja respondida (cada componente mostra o proprio "ja respondida"). */
   function goToActivity(activityId: string) {
     setStep({ kind: 'activity', activityId });
   }
@@ -338,7 +192,6 @@ export function TodayPage() {
     if (!daily) return;
     setCompleting(true);
     setError(null);
-
     try {
       const result = await api.completeDaily(daily.id);
       setCompletion(result);
@@ -350,173 +203,62 @@ export function TodayPage() {
     }
   }
 
-  if (loading) return <Centered text="Carregando..." />;
-  if (error?.status === 409) return <DailyRefusedNotice error={error} />;
+  if (loading) return <SessionLoading />;
+  if (error?.status === 409) return <DailyRefusedScreen error={error} />;
   if (error) return <ApiErrorScreen error={error} onRetry={() => setAttempt((n) => n + 1)} />;
   if (!daily) return null;
-  if (daily.accessMode === DailyAccessMode.Blocked) {
-    return <DailySessionBlockedNotice pendingReinforcementDailyId={daily.pendingReinforcementDailyId} />;
-  }
-  if (daily.accessMode === DailyAccessMode.WeekPendingClosure) {
-    return (
-      <WeekClosurePendingNotice weeklyId={daily.weeklyId} pendingReinforcementDailyId={daily.pendingReinforcementDailyId} />
-    );
-  }
+
+  const sorted = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
+  const provide = (content: ReactNode, activityId: string | null = null, onBack?: () => void, jump?: (id: string) => void) => {
+    const value: SessionContextValue = { daily, weekly: weekly ?? null, activityId, onBack, goToActivity: jump };
+    return <SessionContext.Provider value={value}>{content}</SessionContext.Provider>;
+  };
+
+  if (daily.accessMode === DailyAccessMode.Blocked) return provide(<BlockedTodayScreen />);
+  if (daily.accessMode === DailyAccessMode.WeekPendingClosure) return provide(<WeekClosureScreen />);
   if (!step) return null;
-  if (completion) return <CompletionSummary result={completion} />;
+  if (completion) return provide(<CompletionSummary result={completion} />);
   if (daily.isReinforcement && !reinforcementIntroDismissed) {
-    return <ReinforcementIntroScreen onStart={() => setReinforcementIntroDismissed(true)} />;
+    return provide(<ReinforcementIntroScreen onStart={() => setReinforcementIntroDismissed(true)} />);
   }
 
-  // Fase 36: o contador de erros saiu daqui (badge fixo `left-6 top-[72px]`) e foi pro header
-  // (GlobalNav, via dailyPenaltyContext acima) - reportado numa verificacao ao vivo como confuso
-  // ali, parecendo um contador de etapa por estar tao perto do SessionTopBar.
-  return renderStep();
-
-  function renderStep() {
-    if (!daily || !step) return null;
-
-    const sortedActivities = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
-
-    if (step.kind === 'done') {
-      const lastActivity = sortedActivities.at(-1);
-      return (
-        <ActivityScreen eyebrow="Quase lá" title="Você respondeu tudo por hoje.">
-          {lastActivity && (
-            <button
-              type="button"
-              onClick={() => goToActivity(lastActivity.id)}
-              className="w-fit text-sm text-muted hover:text-primary"
-            >
-              &larr; Etapa anterior
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={handleComplete}
-            disabled={completing}
-            className="rounded-xl bg-accent px-4 py-3 font-semibold text-base disabled:opacity-40"
-          >
-            {completing ? 'Concluindo...' : 'Concluir sessão'}
-          </button>
-        </ActivityScreen>
-      );
-    }
-
-    const rawActivity = daily.activities.find((a) => a.id === step.activityId);
-    if (!rawActivity) {
-      // Nao deveria acontecer (Step so aponta pra atividades que existiam em `daily` no momento em
-      // que foi resolvido) - defensivo, forca reavaliar o passo com os dados atuais.
-      handleContinue();
-      return null;
-    }
-
-    // Fase 36: "Etapa anterior" - omitido na 1a atividade da Daily (nada pra onde voltar).
-    const activityIndex = sortedActivities.findIndex((a) => a.id === rawActivity.id);
-    const previousActivity = activityIndex > 0 ? sortedActivities[activityIndex - 1] : null;
-    const onBack = previousActivity ? () => goToActivity(previousActivity.id) : undefined;
-
-    // Em replay, corta as respostas desta passada anterior - os componentes de atividade decidem
-    // seu proprio "ja respondida" via `activity.responses.length > 0`/`.at(-1)`, sem isso eles
-    // pulariam direto pro feedback antigo em vez de pedir uma resposta nova (ver ReplayBaseline).
-    const baseCount = replayBaseline?.get(rawActivity.id) ?? 0;
-    const activity = replayBaseline ? { ...rawActivity, responses: rawActivity.responses.slice(baseCount) } : rawActivity;
-
-    if (activity.type === ActivityType.Reading) {
-      return (
-        <ReadingActivity
-          key={activity.id}
-          dailyId={daily.id}
-          daily={daily}
-          activity={activity}
-          onDailyRefetched={setDaily}
-          onContinue={handleContinue}
-          onBack={onBack}
-        />
-      );
-    }
-
-    if (activity.type === ActivityType.Video) {
-      return (
-        <VideoActivity
-          key={activity.id}
-          dailyId={daily.id}
-          daily={daily}
-          activity={activity}
-          onDailyRefetched={setDaily}
-          onContinue={handleContinue}
-          onBack={onBack}
-        />
-      );
-    }
-
-    if (activity.type === ActivityType.WordMatch) {
-      return (
-        <WordMatchActivity
-          key={activity.id}
-          dailyId={daily.id}
-          daily={daily}
-          activity={activity}
-          onDailyRefetched={setDaily}
-          onContinue={handleContinue}
-          onBack={onBack}
-        />
-      );
-    }
-
-    if (activity.type === ActivityType.Cloze && activity.answerMode === AnswerMode.FreeText) {
-      return (
-        <ClozeFreeTextActivity
-          key={activity.id}
-          dailyId={daily.id}
-          daily={daily}
-          activity={activity}
-          onDailyRefetched={setDaily}
-          onContinue={handleContinue}
-          onBack={onBack}
-        />
-      );
-    }
-
-    if (activity.type === ActivityType.Roleplay) {
-      return (
-        <RoleplayActivity
-          key={activity.id}
-          dailyId={daily.id}
-          daily={daily}
-          activity={activity}
-          onDailyRefetched={setDaily}
-          onContinue={handleContinue}
-          onBack={onBack}
-        />
-      );
-    }
-
-    if (activity.type === ActivityType.VoiceSummary) {
-      return (
-        <VoiceSummaryActivity
-          key={activity.id}
-          dailyId={daily.id}
-          daily={daily}
-          activity={activity}
-          onDailyRefetched={setDaily}
-          onContinue={handleContinue}
-          onBack={onBack}
-        />
-      );
-    }
-
-    // Quiz e Cloze/MultipleChoice: mesma mecanica de OptionsAnswer, so muda o rotulo (ver QuizActivity).
-    return (
-      <QuizActivity
-        key={activity.id}
-        dailyId={daily.id}
-        daily={daily}
-        activity={activity}
-        onDailyRefetched={setDaily}
-        onContinue={handleContinue}
-        onBack={onBack}
-      />
+  if (step.kind === 'done') {
+    const last = sorted.at(-1);
+    return provide(
+      <SessionDoneScreen onComplete={handleComplete} completing={completing} onReview={last ? () => goToActivity(last.id) : undefined} />,
+      null,
+      undefined,
+      goToActivity,
     );
   }
+
+  const rawActivity = daily.activities.find((a) => a.id === step.activityId);
+  if (!rawActivity) {
+    // Defensivo (Step so aponta pra atividades que existiam em `daily`) - reavalia com os dados atuais.
+    setStep(null);
+    return null;
+  }
+
+  // "Etapa anterior" - omitido na 1a atividade da Daily (nada pra onde voltar).
+  const activityIndex = sorted.findIndex((a) => a.id === rawActivity.id);
+  const previous = activityIndex > 0 ? sorted[activityIndex - 1] : null;
+  const onBack = previous ? () => goToActivity(previous.id) : undefined;
+
+  // Em replay, corta as respostas da passada anterior - senao cada atividade pularia direto pro
+  // feedback antigo em vez de pedir uma resposta nova (ver ReplayBaseline).
+  const baseCount = replayBaseline?.get(rawActivity.id) ?? 0;
+  const activity = replayBaseline ? { ...rawActivity, responses: rawActivity.responses.slice(baseCount) } : rawActivity;
+  const common = { dailyId: daily.id, activity, onDailyRefetched: setDaily, onContinue: handleContinue };
+
+  let content: ReactNode;
+  if (activity.type === ActivityType.Reading) content = <ReadingActivity {...common} />;
+  else if (activity.type === ActivityType.Video) content = <VideoActivity {...common} />;
+  else if (activity.type === ActivityType.WordMatch) content = <WordMatchActivity {...common} daily={daily} />;
+  else if (activity.type === ActivityType.Cloze && activity.answerMode === AnswerMode.FreeText) content = <ClozeFreeTextActivity {...common} daily={daily} />;
+  else if (activity.type === ActivityType.Roleplay) content = <RoleplayActivity {...common} daily={daily} />;
+  else if (activity.type === ActivityType.VoiceSummary) content = <VoiceSummaryActivity {...common} daily={daily} />;
+  // Quiz e Cloze/MultipleChoice: mesma mecanica de OptionsAnswer (ver QuizActivity).
+  else content = <QuizActivity {...common} daily={daily} />;
+
+  return provide(<Fragment key={activity.id}>{content}</Fragment>, activity.id, onBack, goToActivity);
 }

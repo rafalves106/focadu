@@ -1,75 +1,107 @@
 import type { ReactNode } from 'react';
+import type { TerminalQuality } from '../api/types';
+import { REINFORCEMENT_CREATED, feedbackLine } from '../lib/focadaSessionLines';
+import { useSession } from '../lib/sessionContext';
+import { useSessionKeys } from '../lib/useSessionKeys';
+import { SessionFooter } from './SessionShell';
+import { FocadaSays } from './session/FocadaSays';
+import { PixelButton, PixelChip } from './session/PixelButton';
+import reinforcementIcon from '../assets/pixel/mapa/badge-reforco.png';
 
 /**
- * Bloco de resultado compartilhado pelos 5 componentes de atividade (Fase 7, design "feedback-ia"
- * do Figma) - gauge circular de Score, inset com a resposta do usuario (quando houver transcript)
- * e feedback textual (quando houver aiFeedback), sempre terminando no botao "Continuar". So a
- * apresentacao foi unificada aqui - cada chamador continua decidindo seu proprio fluxo de submit/
- * revalidacao, isso so troca o JSX do "reveal" final.
+ * Resultado de uma etapa avaliada (Fase 7, redesenhado na Fase 68 - Figma "Daily — redesign
+ * proposto"): a Focada reage no lugar do antigo painel com gauge circular. Por padrao a fala dela vai
+ * pro rodape fixo junto do "Continuar" (Quiz, Lacuna, Ligar, Roleplay); no Resumo Falado
+ * (`focadaInContent`) o feedback da IA e longo e fica no conteudo, com a nota grande em cima.
  *
- * O design mostra 2 colunas (O que voce acertou / Onde melhorar) com bullets separados - simplificado
- * pra 1 bloco de texto porque o dominio so guarda 1 AiFeedback (string unica da Groq, ver
- * GroqContentEvaluationService), nao uma lista estruturada de acertos/erros. Mantido assim na
- * Fase 19 (fidelidade visual) - nao e um detalhe de estilo, e a mesma divergencia de dado real
- * documentada na Fase 7, so a cor/tamanho do gauge e das bordas foram ajustados.
+ * No erro que completa o conta-giros (`penaltyPoints === penaltyThreshold`), avisa que o reforco foi
+ * criado, que ele nao gasta a sessao do dia e onde encontrar - antes isso so aparecia na conclusao.
+ * Enter continua (mesmo atalho das opcoes).
  */
 export function FeedbackPanel({
   passed,
   score,
+  showScore = false,
   transcript,
   aiFeedback,
   detail,
-  headline,
+  roleplayQuality,
+  seed,
+  focadaInContent = false,
   onContinue,
 }: {
   passed: boolean;
   score: number;
+  /** Nota em destaque - so faz sentido onde ha nota parcial (Resumo Falado, Ligar Palavras). */
+  showScore?: boolean;
   transcript?: string | null;
   aiFeedback?: string | null;
-  /** Linha extra especifica do tipo de atividade (ex: "Resposta esperada: cookie", "Qualidade do desfecho: Ideal"). */
+  /** Linha extra especifica do tipo (ex: resposta esperada da lacuna). */
   detail?: ReactNode;
-  /** Texto do resultado - default cobre a maioria dos tipos; Roleplay usa uma copia propria ("Desfecho ideal!"). */
-  headline?: { pass: string; fail: string };
-  /** Omitido dentro de grupos (ex: cada termo do WordMatch) - quem chama decide quando mostrar "Continuar". */
+  roleplayQuality?: TerminalQuality | null;
+  /** Escolhe a variante da fala padrao (id da atividade: mesma fala a cada render). */
+  seed: string;
+  focadaInContent?: boolean;
   onContinue?: () => void;
 }) {
-  const { pass = 'Acertou! 🎉', fail = '❌ Quase lá.' } = headline ?? {};
+  const { daily } = useSession();
+  const reinforcementNow =
+    !passed && !daily.isReinforcement && daily.penaltyThreshold > 0 && daily.penaltyPoints === daily.penaltyThreshold;
+  const errorLabel = !passed && !daily.isReinforcement ? ` · erro ${Math.min(daily.penaltyPoints, daily.penaltyThreshold)} de ${daily.penaltyThreshold}` : '';
+
+  useSessionKeys((key) => {
+    if (key === 'Enter' && onContinue) onContinue();
+  }, !!onContinue);
+
+  const focada = (
+    <FocadaSays
+      expression={passed ? 'comemorando' : 'acolhedora'}
+      label={`Focada${errorLabel}`}
+      size={focadaInContent ? 'md' : 'sm'}
+      tone={focadaInContent && passed ? 'accent' : 'metal'}
+      className={focadaInContent ? '' : 'min-w-0 flex-1 basis-80'}
+    >
+      {reinforcementNow ? REINFORCEMENT_CREATED : (aiFeedback ?? feedbackLine(passed, seed, roleplayQuality))}
+    </FocadaSays>
+  );
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-4">
-        <p className={`font-semibold ${passed ? 'text-accent' : 'text-alert'}`}>{passed ? pass : fail}</p>
-        {/* Fase 19 (Figma "feedback-ia"): gauge 72px (era 56px) + preenchimento verde translucido
-            (bg-accent/25 aproxima o "neon-green-dim" #1f5c33 do design) quando passou. */}
-        <div
-          className={`flex size-[72px] shrink-0 flex-col items-center justify-center rounded-full ${
-            passed ? 'bg-accent/25 text-accent' : 'bg-alert/10 text-alert'
-          }`}
-        >
-          <span className="text-xl font-bold leading-none">{score}</span>
-          <span className="mt-1 text-[10px] font-medium uppercase tracking-wide">Score</span>
+    <>
+      <div className="flex flex-wrap items-center gap-4">
+        {showScore && <p className={`font-pixel text-7xl leading-none ${passed ? 'text-accent' : 'text-alert'}`}>{score}</p>}
+        <div className="flex flex-col gap-2">
+          <PixelChip tone={passed ? 'accent' : 'alert'}>{passed ? (showScore ? 'Aprovado · mínimo 80' : 'Acertou') : showScore ? 'Abaixo de 80' : 'Errou'}</PixelChip>
+          {showScore && <p className="font-pixel text-lg leading-tight text-secondary">Nota única que pondera correção e clareza.</p>}
         </div>
       </div>
 
+      {detail}
+
+      {focadaInContent && focada}
+
       {transcript && (
-        <div className={`rounded-xl border border-stroke bg-surface-alt p-4`}>
-          <p className="text-[11px] font-semibold uppercase tracking-[1px] text-muted">Sua resposta</p>
-          <p className="mt-1 text-sm italic text-primary">{transcript}</p>
+        <details className="border-2 border-stroke bg-surface px-4 py-3">
+          <summary className="cursor-pointer font-pixel-label text-[9px] text-secondary">O que você disse</summary>
+          <p className="mt-2 font-pixel text-lg leading-tight text-primary">“{transcript}”</p>
+        </details>
+      )}
+
+      {reinforcementNow && (
+        <div className="flex items-center gap-3 border-2 border-alert px-4 py-3">
+          <img src={reinforcementIcon} alt="" className="size-8 shrink-0 pixelated" />
+          <div className="flex flex-col gap-1">
+            <p className="font-pixel-label text-[10px] text-alert">Reforço do dia {daily.dayNumber} criado</p>
+            <p className="font-pixel text-lg leading-tight text-secondary">
+              As etapas que você errou viram uma sessão curta. Ela fica no mapa e no start até você fazer — e não gasta a sessão do dia.
+            </p>
+          </div>
         </div>
       )}
 
-      {aiFeedback && <p className="text-sm text-secondary">{aiFeedback}</p>}
-      {detail}
-
-      {onContinue && (
-        <button
-          type="button"
-          onClick={onContinue}
-          className="rounded-xl bg-accent py-4 text-sm font-bold tracking-[1px] text-base"
-        >
-          CONTINUAR →
-        </button>
-      )}
-    </div>
+      <SessionFooter>
+        {!focadaInContent && focada}
+        {onContinue && <PixelButton onClick={onContinue}>Continuar ›</PixelButton>}
+      </SessionFooter>
+    </>
   );
 }

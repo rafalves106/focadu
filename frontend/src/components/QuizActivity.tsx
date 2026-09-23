@@ -1,17 +1,15 @@
 import { useState } from 'react';
 import { ActivityType, type DailyActivityDto, type DailyStateDto } from '../api/types';
 import { isFirstOfActivityGroup } from '../lib/activityGroup';
-import { IntroCard } from './activities/IntroCard';
+import { ClozeSentence } from './activities/ClozeSentence';
 import { OptionsAnswer } from './OptionsAnswer';
 import { SessionLayout } from './SessionShell';
-import { useMaterialSidebar } from './useMaterialSidebar';
+import { BlockIntro } from './session/BlockIntro';
 
 /**
- * Quiz e Cloze/MultipleChoice (Fase 9, design Figma "Quiz 1-5" - fidelidade revisada na Fase 19,
- * node "Sessão Diária — Quiz") - mesma mecanica de OptionsAnswer, so o rotulo muda; ganharam tela
- * propria pra caber a Intro (design "Quiz 1") sem inchar TodayPage.renderStep. `started` e so um
- * gate visual local - a maquina de passo do TodayPage nem sabe que essa etapa existe, a atividade
- * so aparece "concluida" quando responde de verdade.
+ * Quiz e Lacuna de multipla escolha (Fase 9; casca pixel art na Fase 68) - mesma mecanica de
+ * OptionsAnswer, so o enunciado muda (a lacuna aparece realcada). `started` e so o gate da
+ * apresentacao do bloco pela Focada (`BlockIntro`), na 1a atividade do bloco.
  */
 export function QuizActivity({
   dailyId,
@@ -19,47 +17,24 @@ export function QuizActivity({
   activity,
   onDailyRefetched,
   onContinue,
-  onBack,
 }: {
   dailyId: string;
   daily: DailyStateDto;
   activity: DailyActivityDto;
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
-  onBack?: () => void;
 }) {
   const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || activity.responses.length > 0);
-  const isQuiz = activity.type === ActivityType.Quiz;
-  const { weekly, materialSidebar, sidebar } = useMaterialSidebar(daily);
 
-  if (!started) {
-    return (
-      <IntroCard
-        badge={isQuiz ? 'Quiz ativo' : 'Complete a frase'}
-        title={isQuiz ? 'Quiz do dia' : 'Cloze — Complete a frase'}
-        description={activity.prompt ?? ''}
-        rules={['1 tentativa por pergunta - a opção correta é revelada logo depois de responder.']}
-        ctaLabel={isQuiz ? 'INICIAR QUIZ' : 'COMEÇAR'}
-        onStart={() => setStarted(true)}
-        onBack={onBack}
-      />
-    );
-  }
-
-  const sortedActivities = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
-  const stepIndex = sortedActivities.findIndex((a) => a.id === activity.id);
-  const total = sortedActivities.length;
+  if (!started) return <BlockIntro activity={activity} onStart={() => setStarted(true)} />;
 
   return (
-    <SessionLayout
-      eyebrow={(weekly?.theme ?? weekly?.title ?? '').toUpperCase()}
-      stepLabel={`ETAPA ${stepIndex + 1} DE ${total} — ${isQuiz ? 'QUIZ' : 'CLOZE TEST'}`}
-      progress={(stepIndex + 1) / total}
-      leftSidebar={materialSidebar}
-      sidebar={sidebar}
-      onBack={onBack}
-    >
-      <p className="text-2xl font-semibold leading-[1.3] text-primary">{activity.prompt}</p>
+    <SessionLayout>
+      {activity.type === ActivityType.Quiz ? (
+        <p className="font-pixel text-[28px] leading-[1.1] text-primary lg:text-[32px]">{activity.prompt}</p>
+      ) : (
+        <ClozeSentence text={activity.prompt ?? ''} />
+      )}
       <OptionsAnswer dailyId={dailyId} activity={activity} onDailyRefetched={onDailyRefetched} onContinue={onContinue} />
     </SessionLayout>
   );

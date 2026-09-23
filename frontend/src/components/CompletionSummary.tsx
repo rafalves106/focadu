@@ -1,111 +1,98 @@
 import { Link } from 'react-router-dom';
 import type { CompleteDailyResult } from '../api/types';
-import checkIcon from '../assets/pixel/check.png';
-import trophyIcon from '../assets/pixel/trofeu.png';
+import { completionLine } from '../lib/focadaSessionLines';
+import { useSession } from '../lib/sessionContext';
+import { SessionFooter, SessionLayout } from './SessionShell';
+import { FocadaSays } from './session/FocadaSays';
+import { PixelLink } from './session/PixelButton';
 import gemIcon from '../assets/pixel/gema.png';
+import fireIcon from '../assets/pixel/chama-streak.png';
+import reinforcementIcon from '../assets/pixel/mapa/badge-reforco.png';
 
 /**
- * Tela pos-conclusao de POST .../complete. Reforco diario/semanal, quando existe, ja foi
- * disparado antes (durante alguma resposta anterior) - aqui so avisamos e damos um jeito de
- * navegar ate a sessao de reforco (via /hoje?daily=, ver TodayPage).
- *
- * Fase 9 (design Figma "Resultado Final", uniformizado nas 4 atividades): o mockup mostra XP/
- * Gemas/tempo total - Gemas descartado na Fase 9 (dominio nao tinha o campo ainda, ver
- * docs/fase-9), reativado na Fase 14 com dado real (`gemsEarned`); XP/tempo total continuam de
- * fora (XP e conceito reservado pra Squad/PvP, fora de escopo ate nova ordem). Resumo real (X de Y
- * atividades aprovadas, derivado de ActivityResponse.Passed) e um badge "Conceito Dominado" quando
- * a taxa de aprovacao do dia bate >= 90%.
- *
- * Fase 15: `wasReinforcementBonus` troca a copy padrao de Gems por "Bonus de Superacao" quando
- * esta conclusao era de uma Daily de reforco com tudo aprovado - mesmo texto pequeno, discreto,
- * sem popup/confete (so a copy muda, nao o tratamento visual).
+ * Sessao concluida (POST .../complete) - Fase 68, Figma "Daily — 13": a Focada comemora e a
+ * recompensa vira cartoes (gemas desta conclusao, streak, acertos, erros). Reforco diario/semanal,
+ * quando existe, ja foi disparado antes (durante alguma resposta) - aqui so aparece o caminho ate ele.
+ * `wasReinforcementBonus` troca o rotulo das gemas por "Bonus de Superacao" (Fase 15).
  */
 export function CompletionSummary({ result }: { result: CompleteDailyResult }) {
+  const { weekly } = useSession();
   const lastResponses = result.daily.activities.flatMap((a) => (a.responses.length > 0 ? [a.responses.at(-1)!] : []));
   const total = lastResponses.length;
   const passedCount = lastResponses.filter((r) => r.passed).length;
-  const approvalRate = total > 0 ? Math.round((100 * passedCount) / total) : null;
-  const mastered = approvalRate !== null && approvalRate >= 90;
+  const mapHref = weekly ? `/start?course=${weekly.courseId}` : '/start';
+  const weekHref = weekly ? `/start?course=${weekly.courseId}&weekly=${weekly.id}` : `/start?weekly=${result.daily.weeklyId}`;
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-4 p-6 text-center">
-      <img src={checkIcon} alt="" className="size-12 pixelated" />
-      <h1 className="text-2xl font-semibold text-primary">Sessão concluída!</h1>
+    <SessionLayout label="Sessão concluída" sub={`${total} de ${total}`} chain="done">
+      <FocadaSays expression="comemorando" size="lg" tone="accent" label="Focada">
+        {result.wasReinforcementBonus && result.gemsEarned > 0
+          ? 'Reforço gabaritado, agente! Isso é o bônus de superação: errar, voltar e acertar tudo.'
+          : completionLine(passedCount, total)}
+      </FocadaSays>
 
-      {/* Discreto de proposito - texto pequeno, sem popup/confete (minimalismo do produto, ver
-          docs/fase-14). Pode ser +1 (Daily), +5 (tambem fechou a Weekly) ou +30 (tambem fechou o
-          Monthly) - sempre o total creditado por ESTA conclusao, nunca o saldo inteiro. Fase 15:
-          "Bonus de Superacao" no lugar do texto padrao quando veio de um reforco bem-sucedido. */}
-      {result.gemsEarned > 0 &&
-        (result.wasReinforcementBonus ? (
-          <p className="flex items-center gap-1 text-sm font-semibold text-accent">
-            🎯 Bônus de Superação: +{result.gemsEarned} <img src={gemIcon} alt="" className="size-4 pixelated" />
-          </p>
-        ) : (
-          <p className="flex items-center gap-1 text-sm font-semibold text-primary">
-            +{result.gemsEarned} <img src={gemIcon} alt="" className="size-4 pixelated" />
-          </p>
-        ))}
-
-      {approvalRate !== null && (
-        <div className="flex w-full items-center justify-between rounded-2xl border border-surface-alt bg-surface p-6 text-left">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">Resultado de hoje</p>
-            <p className="mt-1 text-2xl font-bold text-primary">
-              {passedCount} de {total} corretas
-            </p>
-            {mastered && (
-              <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-                <img src={trophyIcon} alt="" className="size-4 pixelated" />
-                Conceito Dominado
-              </p>
-            )}
-          </div>
-          <div
-            className={`flex size-16 shrink-0 flex-col items-center justify-center rounded-full text-lg font-bold ${
-              mastered ? 'bg-accent/10 text-accent' : 'bg-surface-alt text-secondary'
-            }`}
-          >
-            {approvalRate}%
-          </div>
-        </div>
-      )}
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <Stat
+          icon={gemIcon}
+          value={result.gemsEarned > 0 ? `+${result.gemsEarned}` : '0'}
+          label={result.wasReinforcementBonus ? 'Bônus de superação' : result.gemsEarned > 0 ? 'Gemas' : 'Gemas (limite do mês)'}
+          tone="accent"
+        />
+        <Stat icon={fireIcon} value={`${result.streakAfterCompletion} ${result.streakAfterCompletion === 1 ? 'dia' : 'dias'}`} label="Streak" tone="project" />
+        <Stat value={`${passedCount}/${total}`} label="Acertos" />
+        {!result.daily.isReinforcement && (
+          <Stat
+            value={`${Math.min(result.daily.penaltyPoints, result.daily.penaltyThreshold)}/${result.daily.penaltyThreshold}`}
+            label="Erros"
+            tone={result.daily.penaltyPoints > 0 ? 'alert' : undefined}
+          />
+        )}
+      </div>
 
       {result.dailyReinforcementTriggered && result.reinforcementDailyId && (
-        <div className="w-full rounded-xl border border-alert bg-alert/10 p-4 text-left">
-          <p className="font-semibold text-alert">Sessão de reforço gerada</p>
-          <p className="mt-1 text-sm text-secondary">
-            Você errou demais hoje - uma sessão extra de ~15 minutos foi criada pra reforçar o que não pegou.
-          </p>
-          <Link
-            to={`/hoje?daily=${result.reinforcementDailyId}`}
-            className="mt-3 inline-block rounded-lg bg-alert px-4 py-2 font-semibold text-base"
-          >
-            Ir para a sessão de reforço
-          </Link>
+        <div className="flex flex-wrap items-center gap-4 border-2 border-alert px-4 py-3">
+          <img src={reinforcementIcon} alt="" className="size-8 shrink-0 pixelated" />
+          <div className="flex min-w-0 flex-1 basis-56 flex-col gap-1">
+            <p className="font-pixel-label text-[10px] text-alert">Reforço do dia {result.daily.dayNumber} criado</p>
+            <p className="font-pixel text-lg leading-tight text-secondary">Uma sessão curta só com o que escapou. Não gasta a sessão do dia — fica no mapa até você fazer.</p>
+          </div>
+          <PixelLink to={`/hoje?daily=${result.reinforcementDailyId}`} tone="alert">
+            Fazer agora ›
+          </PixelLink>
         </div>
       )}
 
       {result.weeklyReinforcementTriggered && (
-        <div className="w-full rounded-xl border border-surface-alt bg-surface p-4 text-left">
-          <p className="font-semibold text-primary">Revisão semanal registrada</p>
-          <p className="mt-1 text-sm text-secondary">
-            Você acumulou dias fracos suficientes essa semana - uma revisão semanal foi registrada.
-          </p>
-          <Link to={`/start?weekly=${result.daily.weeklyId}`} className="mt-3 inline-block text-sm text-accent hover:underline">
-            Ver a semana
-          </Link>
+        <div className="flex flex-col gap-1 border-2 border-project px-4 py-3">
+          <p className="font-pixel-label text-[10px] text-project">Revisão semanal registrada</p>
+          <p className="font-pixel text-lg leading-tight text-secondary">Você acumulou dias fracos nesta semana. A revisão aparece na visão da semana.</p>
         </div>
       )}
 
-      <div className="flex items-center gap-4">
-        <Link to={`/hoje?daily=${result.daily.id}`} className="text-sm text-secondary hover:text-accent">
+      <SessionFooter>
+        <Link to={`/hoje?daily=${result.daily.id}`} className="font-pixel-label text-[9px] text-secondary hover:text-primary">
           Refazer este dia
         </Link>
-        <Link to="/start" className="text-sm text-secondary hover:text-accent">
-          Voltar ao início
-        </Link>
-      </div>
+        <div className="flex flex-wrap gap-3">
+          <PixelLink to={weekHref} tone="muted" ghost>
+            Ver a semana
+          </PixelLink>
+          <PixelLink to={mapHref}>Voltar pro mapa ›</PixelLink>
+        </div>
+      </SessionFooter>
+    </SessionLayout>
+  );
+}
+
+function Stat({ icon, value, label, tone }: { icon?: string; value: string; label: string; tone?: 'accent' | 'project' | 'alert' }) {
+  const color = tone === 'accent' ? 'border-accent text-accent' : tone === 'project' ? 'border-project text-project' : tone === 'alert' ? 'border-alert text-alert' : 'border-secondary text-primary';
+  return (
+    <div className={`flex flex-col gap-2 border-2 px-4 py-3 ${color}`}>
+      <p className="flex items-center gap-2 whitespace-nowrap font-pixel text-3xl leading-none">
+        {icon && <img src={icon} alt="" className="size-8 pixelated" />}
+        {value}
+      </p>
+      <p className="font-pixel-label text-[8px] text-secondary">{label}</p>
     </div>
   );
 }

@@ -12,12 +12,11 @@ export function GenericError({ status, onRetry }: { status?: number; onRetry: ()
 
   return (
     <ErrorLayout
-      icon="❌"
       caption={status ? `ERRO ${status}` : undefined}
-      title="Algo Deu Errado"
-      description="Desculpe, ocorreu um erro. Tente novamente em instantes."
-      primaryAction={{ label: 'Tentar Novamente', onClick: onRetry }}
-      secondaryAction={{ label: 'Voltar ao Início', onClick: () => navigate('/start') }}
+      title="Algo deu errado"
+      description="Algo quebrou do nosso lado — não foi você. Tenta de novo em instantes."
+      primaryAction={{ label: 'Tentar de novo', onClick: onRetry }}
+      secondaryAction={{ label: 'Voltar ao início', onClick: () => navigate('/start') }}
     />
   );
 }

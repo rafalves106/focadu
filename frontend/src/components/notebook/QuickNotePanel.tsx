@@ -98,7 +98,9 @@ export function QuickNotePanel({
         onChange={(e) => setContent(e.target.value)}
         placeholder={
           fill
-            ? 'Anote um insight ou dúvida do projeto (aceita markdown)...'
+            ? 'dailyId' in target
+              ? 'Anote um insight ou dúvida desta etapa (aceita markdown)...'
+              : 'Anote um insight ou dúvida do projeto (aceita markdown)...'
             : 'Anote um insight, dúvida ou resumo desta aula (markdown: **negrito**, *itálico*, `código`, - lista, [link](url))...'
         }
         rows={fill ? 2 : 5}

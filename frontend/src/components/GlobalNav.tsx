@@ -10,8 +10,6 @@ import navRanking from '../assets/pixel/nav-ranking.png';
 import navSquad from '../assets/pixel/nav-squad.png';
 import navLoja from '../assets/pixel/nav-loja.png';
 import { UserMenu } from './UserMenu';
-import { PenaltyHeaderBadge } from './gamification/PenaltyHeaderBadge';
-import { PomodoroHeaderBadge } from './pomodoro/PomodoroHeaderBadge';
 
 /**
  * Menu global unico (Fase 25) - substitui o antigo `<nav>` de 2 links (Hoje/Início) do App.tsx.
@@ -48,10 +46,8 @@ import { PomodoroHeaderBadge } from './pomodoro/PomodoroHeaderBadge';
  * no desktop largo, sempre escala inteira. Agrupados por modo de jogo (decisao do dono): esquerda =
  * solo (Hoje/Trilhas/Loja), direita = multiplayer (Ranking/Squad), com o logo no meio dividindo.
  *
- * `PomodoroHeaderBadge` (Fase 36, ver secret/rascunhos/timer-pomodoro-sessao.md) - versao compacta
- * do timer Pomodoro da sessao (`PomodoroWidget`, ver useMaterialSidebar.tsx), sincronizada via
- * `lib/pomodoroTimer` (store modulo-level). So aparece depois que o aluno da play pela 1a vez -
- * nao renderiza nada fora disso, entao encaixa aqui sem `if` proprio, igual `PenaltyHeaderBadge`.
+ * Fase 68: o menu e global e unico - igual em toda tela. O conta-giros de erros e o timer Pomodoro,
+ * que apareciam aqui durante a sessao (Fase 36), foram pra dentro da propria sessao diaria.
  */
 export function GlobalNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -91,16 +87,12 @@ export function GlobalNav() {
           <NavItem to={rankingHref} icon={navRanking} label="Ranking" />
           <NavItem to="/perfil?tab=squad" icon={navSquad} label="Squad" />
           <div className="ml-2 flex shrink-0 items-center gap-2 xl:ml-4">
-            <PenaltyHeaderBadge />
-            <PomodoroHeaderBadge />
             <UserMenu />
           </div>
         </div>
 
         {/* Mobile: os badges sempre visiveis, sem o resto do grupo direito (ver menu suspenso abaixo). */}
         <div className="flex shrink-0 items-center gap-2 md:hidden">
-          <PenaltyHeaderBadge />
-          <PomodoroHeaderBadge />
           <UserMenu />
         </div>
       </div>

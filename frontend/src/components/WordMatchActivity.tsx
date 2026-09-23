@@ -2,13 +2,13 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
 import { isFirstOfActivityGroup } from '../lib/activityGroup';
-import { IntroCard } from './activities/IntroCard';
 import { OptionCard } from './activities/OptionCard';
 import { FeedbackPanel } from './FeedbackPanel';
-import { SessionLayout } from './SessionShell';
-import { useMaterialSidebar } from './useMaterialSidebar';
+import { SessionFooter, SessionLayout } from './SessionShell';
+import { BlockIntro } from './session/BlockIntro';
+import { PixelButton } from './session/PixelButton';
 
-const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
+const LETTERS = ['1', '2', '3', '4', '5', '6'];
 
 /** Item atualmente "armado" aguardando seu par (toque no termo primeiro OU na definição primeiro - ambos os fluxos funcionam). */
 type Pending = { side: 'term'; id: string } | { side: 'definition'; id: string } | null;
@@ -122,17 +122,14 @@ export function WordMatchActivity({
   activity,
   onDailyRefetched,
   onContinue,
-  onBack,
 }: {
   dailyId: string;
   daily: DailyStateDto;
   activity: DailyActivityDto;
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
-  onBack?: () => void;
 }) {
   const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || activity.responses.length > 0);
-  const { weekly, materialSidebar, sidebar } = useMaterialSidebar(daily);
 
   const [terms, setTerms] = useState(activity.wordMatchTerms);
   const [definitions, setDefinitions] = useState(activity.wordMatchDefinitions);
@@ -260,46 +257,21 @@ export function WordMatchActivity({
     }
   }
 
-  if (!started) {
-    return (
-      <IntroCard
-        badge="Ligar palavras"
-        title="Associe os termos"
-        description={`Toque num termo e depois na definição certa - ${total} pares ao todo.`}
-        rules={['1 tentativa por grupo - confirme só depois de ligar todos os pares.']}
-        ctaLabel="COMEÇAR"
-        onStart={() => setStarted(true)}
-        onBack={onBack}
-      />
-    );
-  }
-
-  const sortedActivities = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
-  const stepIndex = sortedActivities.findIndex((a) => a.id === activity.id);
-  const stepTotal = sortedActivities.length;
+  if (!started) return <BlockIntro activity={activity} onStart={() => setStarted(true)} />;
 
   function pendingState(side: 'term' | 'definition', id: string) {
     return pending?.side === side && pending.id === id ? 'selected' : 'neutral';
   }
 
   return (
-    <SessionLayout
-      eyebrow={(weekly?.theme ?? weekly?.title ?? '').toUpperCase()}
-      stepLabel={`ETAPA ${stepIndex + 1} DE ${stepTotal} — LIGAR PALAVRAS`}
-      progress={(stepIndex + 1) / stepTotal}
-      leftSidebar={materialSidebar}
-      sidebar={sidebar}
-      onBack={onBack}
-    >
-      <div className="flex flex-col gap-2">
-        <p className="text-[22px] font-semibold leading-[1.3] text-primary">Conecte cada termo à sua definição</p>
-        <p className="text-xs text-secondary">{matchedCount} de {total} pares ligados</p>
-      </div>
+    <SessionLayout>
+      <p className="font-pixel text-xl leading-tight text-secondary">Ligue cada termo à sua definição. Toque no termo e depois na definição.</p>
 
-      <div ref={containerRef} className="relative grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div ref={containerRef} className="relative grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-12">
         <ConnectorSvg lines={lines} />
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
+          <p className="font-pixel-label text-[8px] text-muted">Termos</p>
           {terms.map((term) => {
             const known = answered && !knowsSubmittedMatches; // reveal "gabarito", sem palpite do usuario
             const letter = known || matches[term.id] ? letterByTermId.get(term.id) : undefined;
@@ -322,7 +294,8 @@ export function WordMatchActivity({
           })}
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
+          <p className="font-pixel-label text-[8px] text-muted">Definições</p>
           {definitions.map((definition) => {
             // Antes de responder (ou com o palpite em memoria): quem esta ligado a esta definicao.
             // No reveal sem memoria do palpite: o termo pra quem ESTA e a resposta certa.
@@ -351,26 +324,21 @@ export function WordMatchActivity({
         </div>
       </div>
 
-      {error && <p className="text-sm text-alert">{error}</p>}
+      {error && <p className="font-pixel text-lg leading-tight text-alert">{error}</p>}
 
       {!answered && (
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!allMatched || submitting}
-          className="rounded-xl bg-accent px-4 py-3.5 text-sm font-bold tracking-wide text-base disabled:opacity-40"
-        >
-          {submitting ? 'ENVIANDO...' : 'CONFIRMAR RESPOSTA'}
-        </button>
+        <SessionFooter>
+          <p className="font-pixel-label text-[8px] text-muted">
+            {matchedCount} de {total} ligados · toque num par pra desfazer
+          </p>
+          <PixelButton onClick={handleSubmit} disabled={!allMatched || submitting}>
+            {submitting ? 'Enviando...' : 'Confirmar ›'}
+          </PixelButton>
+        </SessionFooter>
       )}
 
       {answered && lastResponse && (
-        <FeedbackPanel
-          passed={lastResponse.passed}
-          score={lastResponse.score}
-          headline={{ pass: 'Acertou todos! 🎉', fail: 'Quase lá - confira os pares certos acima.' }}
-          onContinue={onContinue}
-        />
+        <FeedbackPanel passed={lastResponse.passed} score={lastResponse.score} showScore seed={activity.id} onContinue={onContinue} />
       )}
     </SessionLayout>
   );

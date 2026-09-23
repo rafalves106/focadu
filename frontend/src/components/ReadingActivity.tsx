@@ -2,13 +2,11 @@ import { useMemo, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
-import { Centered } from './Layout';
-import { ApiErrorScreen } from './errors/ApiErrorScreen';
 import { MarkdownBlock } from './activities/MarkdownBlock';
-import { SessionLayout } from './SessionShell';
-import { useMaterialSidebar } from './useMaterialSidebar';
+import { SessionFooter, SessionLayout } from './SessionShell';
+import { PixelButton } from './session/PixelButton';
 import { stripFencedBlocks, stripRedundantTitleHeading } from '../lib/markdown';
-import dotSmall from '../assets/reading/dot-small.svg';
+import { PIXEL_PROSE } from '../lib/pixelProse';
 
 const SECTION_HEADING = /^####\s+.+$/gm;
 
@@ -31,47 +29,33 @@ function splitReadingSections(bodyText: string): { preamble: string; sections: s
 }
 
 /**
- * Etapa de leitura (design Figma "sessao-leitura", Fase 7 - fidelidade revisada na Fase 19) -
- * ActivityType.Reading, ContentId obrigatorio (ver DailyActivity.ctor). Concluir so registra uma
- * ActivityResponse com Score fixo (backend, ver SubmitActivityResponseUseCase.ResolveScore) - sem
- * revelar gabarito nem feedback, por isso nao usa FeedbackPanel: e so avanca direto (onContinue),
- * como o design pede. Chrome (SessionLayout) generalizado na Fase 19 - antes era JSX proprio.
+ * Etapa de leitura (ActivityType.Reading, ContentId obrigatorio). Concluir so registra uma
+ * ActivityResponse com Score fixo (backend) e avanca direto - sem gabarito nem Focada.
+ *
+ * Fase 68 (Figma "Daily — 01"): o texto rola dentro do cartao da casca (antes tinha rolagem propria
+ * com `max-h`), a analogia "pra voce" (IA, Fases 21/47) vira caixa ambar e o botao fica no rodape fixo.
  */
 export function ReadingActivity({
   dailyId,
-  daily,
   activity,
   onDailyRefetched,
   onContinue,
-  onBack,
 }: {
   dailyId: string;
-  daily: DailyStateDto;
   activity: DailyActivityDto;
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
-  onBack?: () => void;
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const {
-    data: content,
-    error: contentError,
-    loading,
-    retry,
-  } = useApiResource(() => api.getCuratedContent(activity.contentId!), [activity.contentId]);
-  const { weekly, materialSidebar, sidebar } = useMaterialSidebar(daily, activity.contentId);
-  // Antes dos early return abaixo (Regras dos Hooks: useMemo nao pode vir depois de um return condicional).
+  const { data: content, error: contentError, loading, retry } = useApiResource(
+    () => api.getCuratedContent(activity.contentId!),
+    [activity.contentId],
+  );
   const { preamble, sections } = useMemo(() => splitReadingSections(content?.bodyText ?? ''), [content?.bodyText]);
 
-  if (loading) return <Centered text="Carregando leitura..." />;
-  if (contentError) return <ApiErrorScreen error={contentError} onRetry={retry} />;
-  if (!content) return null;
-
-  // Fase 36: Reading/Video eram os unicos 2 tipos sem NENHUM indicador de "ja respondida" (os
-  // outros 5 mostram FeedbackPanel/gabarito) - revisitando via "Etapa anterior", o botao "CONCLUÍ
-  // A LEITURA" parecia uma etapa nova, gerando confusao real (reportado numa verificacao ao vivo).
+  // Fase 36: revisitando via "Etapa anterior", deixa claro que a leitura ja foi concluida.
   const alreadyCompleted = activity.responses.length > 0;
 
   async function handleComplete() {
@@ -92,80 +76,70 @@ export function ReadingActivity({
     }
   }
 
-  const sortedActivities = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
-  const stepIndex = sortedActivities.findIndex((a) => a.id === activity.id);
-  const total = sortedActivities.length;
+  if (loading) {
+    return (
+      <SessionLayout>
+        <p className="font-pixel text-xl text-secondary">Carregando leitura...</p>
+      </SessionLayout>
+    );
+  }
+  if (contentError || !content) {
+    return (
+      <SessionLayout>
+        <p className="font-pixel text-lg leading-tight text-alert">{contentError?.message ?? 'Leitura não encontrada.'}</p>
+        <SessionFooter>
+          <PixelButton ghost onClick={retry}>
+            Tentar de novo
+          </PixelButton>
+        </SessionFooter>
+      </SessionLayout>
+    );
+  }
 
-  const sourceHost = content.externalUrl
-    ? new URL(content.externalUrl).hostname.replace(/^www\./, '').toUpperCase()
-    : null;
-  // stripFencedBlocks: um bloco "```diagrama" (Fase 30) nao e prosa "lida" - excluido da contagem pra nao inflar a estimativa de tempo.
+  const sourceHost = content.externalUrl ? new URL(content.externalUrl).hostname.replace(/^www\./, '').toUpperCase() : null;
+  // stripFencedBlocks: um bloco "```diagrama" (Fase 30) nao e prosa "lida" - fora da estimativa de tempo.
   const wordCount = stripFencedBlocks(content.bodyText ?? '').trim().split(/\s+/).filter(Boolean).length;
   const readMinutes = wordCount > 0 ? Math.max(1, Math.round(wordCount / 200)) : null;
   const analogies = content.personalizedAnalogies ?? [];
 
   return (
     <SessionLayout
-      eyebrow={(weekly?.theme ?? weekly?.title ?? '').toUpperCase()}
-      stepLabel={`ETAPA ${stepIndex + 1} DE ${total} — LEITURA`}
-      progress={(stepIndex + 1) / total}
-      leftSidebar={materialSidebar}
-      sidebar={sidebar}
-      onBack={onBack}
-      // Fase 32: da pro Suporte Rapido de IA o texto real da leitura (nao so titulo/etapa, o
-      // fallback generico de SessionLayout) - o cenario mais provavel de "duvida sobre o
-      // conteudo" entre as 7 atividades.
+      sub={readMinutes ? `~${readMinutes} min` : ''}
+      // Fase 32: o Suporte Rapido de IA recebe o texto real da leitura.
       assistantContext={`Leitura: "${content.title}"\n\n${content.bodyText ?? ''}`}
     >
-      <div className="flex max-h-[620px] w-full flex-col gap-5">
-        {sourceHost && (
-          <div className="flex w-fit items-center gap-2 rounded-full bg-surface-alt px-3 py-1.5">
-            <img src={dotSmall} alt="" className="size-1.5" />
-            <p className="text-[11px] font-medium tracking-[0.5px] text-secondary">FONTE: {sourceHost}</p>
-          </div>
-        )}
-        <div className="flex items-start justify-between gap-3">
-          <h1 className="text-2xl font-semibold leading-[1.3] text-primary">{content.title}</h1>
-          {alreadyCompleted && (
-            <span className="mt-1 shrink-0 text-xs font-medium whitespace-nowrap text-accent">✓ Já concluída</span>
-          )}
-        </div>
-
-        <div className="relative min-h-0 flex-1 overflow-y-auto pr-3">
-          {!content.bodyText && (
-            <p className="whitespace-pre-line text-sm leading-[1.5] text-secondary">Conteúdo ainda não cadastrado.</p>
-          )}
-          {preamble && <MarkdownBlock text={stripRedundantTitleHeading(preamble, content.title)} />}
-          {/* Uma analogia por seção "####" (mesma ordem de splitReadingSections) - explica aquela seção específica, em vez de 1 analogia só cobrindo o texto inteiro no final. */}
-          {sections.map((section, i) => (
-            <div key={i} className={preamble || i > 0 ? 'mt-5' : ''}>
-              <MarkdownBlock text={section} />
-              {analogies[i] && (
-                <div className="mt-3 rounded-xl bg-surface-alt p-4">
-                  <p className="mb-1 text-[11px] font-medium tracking-[0.5px] text-secondary">💡 PRA VOCÊ</p>
-                  <p className="text-sm leading-[1.5] text-primary">{analogies[i]}</p>
-                </div>
-              )}
-            </div>
-          ))}
-          <div className="pointer-events-none sticky bottom-0 h-8 bg-gradient-to-b from-transparent to-surface" />
-        </div>
-
-        <div className="flex flex-col gap-3">
-          {error && <p className="text-sm text-alert">{error}</p>}
-          {!alreadyCompleted && readMinutes && (
-            <p className="text-center text-xs font-medium text-muted">⏱ ~{readMinutes} min de leitura estimada</p>
-          )}
-          <button
-            type="button"
-            onClick={handleComplete}
-            disabled={submitting}
-            className="rounded-xl bg-accent py-4 text-center text-sm font-semibold tracking-[1px] text-base disabled:opacity-40"
-          >
-            {alreadyCompleted ? 'PRÓXIMA ETAPA' : submitting ? 'ENVIANDO...' : 'CONCLUÍ A LEITURA'}
-          </button>
-        </div>
+      {sourceHost && <p className="font-pixel-label text-[8px] text-secondary">Fonte: {sourceHost}</p>}
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="font-pixel text-[32px] leading-none text-primary">{content.title}</h2>
+        {alreadyCompleted && <span className="mt-1.5 shrink-0 font-pixel-label text-[9px] text-accent">✓ Concluída</span>}
       </div>
+
+      {/* Fase 68: texto curado tambem em VT323 (pedido do dono: sessao inteira na fonte pixel). */}
+      <div className={PIXEL_PROSE}>
+        {!content.bodyText && <p className="font-pixel text-lg leading-tight text-secondary">Conteúdo ainda não cadastrado.</p>}
+        {preamble && <MarkdownBlock text={stripRedundantTitleHeading(preamble, content.title)} />}
+        {/* Uma analogia por seção "####" (mesma ordem de splitReadingSections). */}
+        {sections.map((section, i) => (
+          <div key={i} className={preamble || i > 0 ? 'mt-5' : ''}>
+            <MarkdownBlock text={section} />
+            {analogies[i] && (
+              <div className="mt-4 flex flex-col gap-2 border-2 border-project px-4 py-3">
+                <p className="font-pixel-label text-[9px] text-project">// Pra você</p>
+                <p className="font-pixel text-xl leading-tight text-primary">{analogies[i]}</p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {error && <p className="font-pixel text-lg leading-tight text-alert">{error}</p>}
+
+      <SessionFooter>
+        {!alreadyCompleted && readMinutes && <p className="font-pixel-label text-[8px] text-muted">~{readMinutes} min de leitura</p>}
+        <PixelButton onClick={handleComplete} disabled={submitting}>
+          {alreadyCompleted ? 'Próxima etapa ›' : submitting ? 'Enviando...' : 'Concluí a leitura ›'}
+        </PixelButton>
+      </SessionFooter>
     </SessionLayout>
   );
 }

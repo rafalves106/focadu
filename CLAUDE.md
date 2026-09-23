@@ -86,9 +86,15 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 67 — Casca global sem rolagem externa** (23/09/2026).
+Última fase concluída: **Fase 68 — Sessão diária em pixel art** (23/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Sessão diária em pixel art (Fase 68, Figma "Daily — redesign proposto")**: tudo em `/hoje` roda na
+  casca `SessionLayout` (lê o `SessionContext` da TodayPage): topo com o conta-giros (saiu do menu, que
+  agora é global e único - sem badges de sessão), 3 colunas sem rolagem externa, cadeia de etapas em
+  blocos, rodapé fixo (`SessionFooter`). A Focada apresenta os blocos, reage a acerto/erro e dá o
+  feedback da IA; atalhos 1-N/Enter; tudo em VT323. Telas de erro e a avaliação do projeto também em
+  pixel art. Mock pra ver a sessão sem produção: `npm run dev:mock` (porta 5199). Ver `docs/fase-68/`.
 - **Casca global sem rolagem externa (Fase 67, 1º passo das telas em pixel art antes da v0.1.0)**:
   a partir de `lg` o `App` tem a altura da janela e o conteúdo fica num `<main>` que ocupa o resto —
   tela "sem rolagem externa" só precisa de `lg:min-h-0 lg:flex-1 lg:overflow-hidden`, sem descontar a

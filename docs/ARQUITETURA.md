@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 67 - Casca global sem rolagem externa**.
+> Ultima fase que atualizou este documento: **Fase 68 - Sessao diaria em pixel art**.
 
 ## Visao geral do projeto
 
@@ -2606,18 +2606,20 @@ frontend/
                                    localStorage por userId, ultima posicao do personagem no mapa
                                    (continuidade cosmetica, mesmo principio de nao-sincronizar-entre-
                                    dispositivos ja usado pro limite de gravacao)
-      dailyPenaltyContext.ts            <- setDailyPenalty/useDailyPenalty (Fase 36) - store externo
-                                   modulo-level via useSyncExternalStore (nao React Context, mesmo
-                                   padrao de studyAssistantContext.ts abaixo). TodayPage seta via
-                                   useEffect com o penaltyPoints/penaltyThreshold da Daily atual;
-                                   null fora de sessao ativa. Existe pra PenaltyHeaderBadge
-                                   (GlobalNav, sempre montado) ler o contador sem precisar de Provider
-                                   novo envolvendo o app inteiro so pra isso
+      dailyPenaltyContext.ts            <- REMOVIDO na Fase 68 (o conta-giros saiu do GlobalNav e vive
+                                   no topo da propria sessao - ver "Sessao diaria em pixel art")
+      sessionContext.ts (Fase 68)       <- SessionContext (Daily, Weekly, etapa em tela, onBack,
+                                   goToActivity) fornecido pela TodayPage + SessionFooterContext
+      sessionSteps.ts (Fase 68)         <- agrupa as atividades em blocos (cadeia) e o rotulo da etapa
+      focadaSessionLines.ts (Fase 68)   <- falas padrao da Focada na sessao (bloco, acerto/erro, fim)
+      useSessionKeys.ts (Fase 68)       <- atalhos 1-9/Enter da sessao (ignora campos de texto)
+      useIsDesktop.ts (Fase 68)         <- true a partir de `lg` (colunas vs. gaveta do celular)
+      pixelProse.ts (Fase 68)           <- classes que poem MarkdownBlock/DiagramBlock em VT323
       pomodoroTimer.ts                  <- store modulo-level do Timer Pomodoro (Fase 36, ver
                                    secret/rascunhos/timer-pomodoro-sessao.md) - mesmo padrao
                                    useSyncExternalStore de dailyPenaltyContext.ts, com setInterval
-                                   proprio (independente de qualquer componente montado, por isso o
-                                   badge do header continua contando ao navegar pra fora da sessao).
+                                   proprio (independente de qualquer componente montado - o timer continua contando ao
+                                   navegar pra fora da sessao; desde a Fase 68 so aparece dentro dela).
                                    Manual (aluno liga/desliga, sem relacao com Daily.Start/Resume/
                                    Complete); predefinicoes fixas (25/5, 50/10, 15/3) em vez de
                                    duracao livre; fim de ciclo troca de fase automaticamente + bipe
@@ -2700,11 +2702,9 @@ frontend/
                                    `<ErrorBoundary key={pathname+search}>` agora, `/hoje` esta dentro
                                    do shell de novo) - `TodayPage` e o elemento de rota direto; botao/
                                    estado proprio de Configuracoes saiu (usa `useSettings()`, ver
-                                   contexts/SettingsProvider.tsx). Fase 36: o contador de erros (antigo
-                                   `PenaltyGauge` `fixed left-6 top-[72px]`) saiu daqui - publicado
-                                   via `setDailyPenalty` (`lib/dailyPenaltyContext.ts`) num useEffect
-                                   proprio, pro `GlobalNav` mostrar (`PenaltyHeaderBadge`); limpo
-                                   (`null`) ao completar a Daily, trocar de Daily ou desmontar. Fase
+                                   contexts/SettingsProvider.tsx). Fase 68: fornece o `SessionContext` e toda tela
+                                   (etapas, avisos, conclusao) roda dentro da casca `SessionLayout`;
+                                   o conta-giros voltou pra dentro da sessao (topo). Fase
                                    36 tambem trouxe "Etapa anterior" (`goToActivity`, pino manual num
                                    `activityId` especifico - `handleContinue` passou a so avancar 1
                                    posicao a partir do `step` atual, nunca mais recalcular "1a
@@ -2767,27 +2767,16 @@ frontend/
                                    por StartPage pro fallback mobile em /start
       GlobalNav.tsx (Fase 25)       <- menu global unico (components/) - substitui o antigo <nav> de
                                    2 links do App.tsx. Fase 62 (Figma node 178:143): Hoje, Trilhas,
-                                   Ranking | botao central | Squad, Loja + PenaltyHeaderBadge +
-                                   PomodoroHeaderBadge (Fase 36) + UserMenu ("@usuario" + avatar;
+                                   Ranking | botao central | Squad, Loja + UserMenu ("@usuario" + avatar;
                                    abre Meu perfil, Configuracoes e o status da IA - os dois ultimos
                                    sairam da barra, o Figma nao os tem). 73px de altura e texto 24px
                                    em `xl` (>= 1280px), tamanho antigo abaixo; altura em
                                    `--nav-height` (index.css), descontada pelas telas sem rolagem
                                    externa. Botao central "volta pro mapa" - placeholder (emoji),
                                    sem PNG pixel art de verdade ainda (ver "Fora de escopo").
-                                   **PenaltyHeaderBadge** (`gamification/`, Fase 36): contador de
-                                   erros da Daily em andamento - substitui o antigo `PenaltyGauge`
-                                   `fixed left-6 top-[72px]` sobre o canto de QUALQUER tela de sessao
-                                   (reportado numa verificacao ao vivo como confuso ali, parecendo
-                                   contador de etapa por ficar perto do SessionTopBar); le
-                                   `lib/dailyPenaltyContext.ts` (TodayPage seta via useEffect), null
-                                   fora de Daily ativa - o proprio componente decide nao renderizar
-                                   nada. Ganhou legenda + tooltip explicando o numero (antes so o
-                                   `title` nativo do navegador). **PomodoroHeaderBadge**
-                                   (`pomodoro/`, Fase 36): versao compacta do Timer Pomodoro da
-                                   sessao (ver `PomodoroWidget` abaixo e `lib/pomodoroTimer.ts`), so
-                                   aparece depois que o aluno da play pela 1a vez; clicavel (play/
-                                   pausa direto do header).
+                                   Fase 68: menu global e UNICO - os badges de sessao da Fase 36
+                                   (`PenaltyHeaderBadge`, `PomodoroHeaderBadge`) foram removidos; o
+                                   conta-giros e o Pomodoro vivem dentro da sessao diaria.
                                    `courseId` resolvido com busca propria (GET /api/courses, mesmo
                                    fallback Active->primeiro que WorldMapPage/StartDashboard sempre
                                    usaram) - self-contained, mesmo padrao de UserMenu. Sem
@@ -2879,21 +2868,15 @@ frontend/
       gamification/                 <- Fase 14
         GemBadge.tsx                     <- icone + contador de Gems, mesmo padrao pill de StatusBadge
         StreakIndicator.tsx               <- "🔥 N dias" - perfil e EmptyStateStartPage (fixo em 0)
-        PenaltyHeaderBadge.tsx             <- Fase 15 (`PenaltyGauge`) / Fase 36 (renomeado e movido
-                                   pro GlobalNav) - "conta-giros" de erros da Daily em andamento,
-                                   cor por faixa (neutro/amarelo/laranja/vermelho); mesma linguagem
-                                   visual do ProgressBar (Fase 8). Ate a Fase 35 era `PenaltyGauge`,
-                                   `fixed left-6 top-[72px]` sobre QUALQUER tela de sessao (ver
-                                   GlobalNav.tsx acima pro raciocinio da mudanca) - le
-                                   `lib/dailyPenaltyContext.ts` em vez de receber props diretas
+        (PenaltyHeaderBadge.tsx removido na Fase 68 - virou session/ErrorGauge.tsx)
       pomodoro/                     <- Fase 36 (ver secret/rascunhos/timer-pomodoro-sessao.md)
         PomodoroWidget.tsx                 <- versao "design exclusivo" do Timer Pomodoro, empilhada
-                                   no sidebar esquerdo da sessao (ver useMaterialSidebar.tsx) -
+                                   no sidebar esquerdo da sessao (SessionLayout, Fase 68: pixel art) -
                                    digitos grandes, ProgressBar (tone accent=foco/project=pausa),
                                    pills de preset (25/5, 50/10, 15/3), play/pausar/zerar. Fase 37:
                                    ganhou `flex-1` (cresce pra preencher a coluna esquerda inteira,
                                    pedido explicito - antes sobrava vao vazio empilhado acima dele)
-        PomodoroHeaderBadge.tsx              <- versao compacta pro GlobalNav, ver entrada acima
+        (PomodoroHeaderBadge.tsx removido na Fase 68 - menu global unico)
       assistant/                    <- Fase 37
         StudyAssistantPanel.tsx              <- Suporte Rapido de IA em card fixo (pedido explicito:
                                    "algo mais parecido com um chat" em vez do botao flutuante) -
@@ -3305,6 +3288,52 @@ lg:overflow-y-auto">`. Consequencias:
 - `min-h-screen` das telas da sessao diaria (`SessionShell`, `IntroCard`, `CompletionSummary`,
   `ActivityScreen`, `Centered`, `ErrorLayout`) ainda nao foi trocado - passam da altura do `<main>`
   pelo tamanho do nav e rolam nele; sao tratados tela a tela (ver `docs/fase-67/`).
+
+### Sessao diaria em pixel art (Fase 68)
+
+Desenho aprovado no Figma "Focadu — Pixel Art", pagina "Daily — redesign proposto" (node `61:4502`,
+18 telas + notas de UX). Tudo que `/hoje` mostra roda dentro da mesma casca:
+
+- **`SessionLayout` (`components/SessionShell.tsx`)** le do `SessionContext` (`lib/sessionContext.ts`,
+  fornecido pela `TodayPage`) a Daily, a Weekly (buscada 1x por sessao - antes cada atividade
+  buscava de novo), a etapa em tela, `onBack` e `goToActivity`. Monta: topo (voltar pro mapa, "DIA N ·
+  titulo do material", semana, `ErrorGauge` = conta-giros que saiu do menu), 3 colunas a partir de `lg`
+  (Material + Pomodoro | cartao | Anotacao + Suporte Rapido, colunas com `ScrollArea` proprio) e o
+  cartao central: rotulo "ETAPA N DE M — TIPO" + contador fino, `StageChain` (atividades agrupadas em
+  blocos consecutivos do mesmo tipo/modo, `lib/sessionSteps.ts`), conteudo num `ScrollArea` e rodape
+  fixo. Conteudo de qualquer profundidade manda botoes/fala pro rodape via `<SessionFooter>` (portal
+  no `SessionFooterContext`). Sem rolagem externa a partir de `lg` (medido 1440x900 e 1280x720 em
+  todas as etapas); abaixo de `lg`, 1 coluna e gaveta fixa no rodape (Material, Notas, Duvida,
+  Pomodoro) - colunas OU gaveta, nunca as duas (`useIsDesktop`), pra nao duplicar estado.
+- **A Focada** (`session/FocadaSays.tsx`, estatica, sem digitacao) apresenta cada bloco
+  (`session/BlockIntro.tsx`, substitui o antigo `IntroCard`), reage no rodape a acerto/erro
+  (`FeedbackPanel` redesenhado, "erro N de 3"; no erro que completa o conta-giros avisa que o
+  reforco foi criado) e da o feedback da IA do Resumo Falado. Falas padrao por situacao em
+  `lib/focadaSessionLines.ts` (curadoria nao precisa escrever).
+- **Telas de estado** (`session/SessionScreens.tsx`): tudo respondido, sessao de hoje ja feita
+  (contagem ate meia-noite + reforco pendente), semana esperando o castelo, recusa 409 (sem casca,
+  nao ha Daily). `CompletionSummary` (cartoes de gemas/streak/acertos/erros) e
+  `ReinforcementIntroScreen` (cartao vermelho, +2 do Bonus de Superacao) tambem na casca.
+- **Atalhos** (`lib/useSessionKeys.ts`): 1-N escolhem opcao (Quiz, Lacuna de multipla escolha,
+  Roleplay), Enter confirma/continua/comeca; ignorados em campo de texto e em botao/link focado (o
+  navegador ja clica - senao "Continuar" pularia 2 etapas).
+- **Fonte**: tudo em VT323/Silkscreen, inclusive o texto curado da Leitura e a especificacao do
+  Projeto Semanal (`lib/pixelProse.ts`, por seletor no pai - MarkdownBlock/DiagramBlock seguem em Inter
+  no Caderninho).
+- **Material de hoje**: clicar num item nao abre mais previa (`ContentPreviewModal` removido) - a
+  Focada pergunta (`PixelConfirmDialog`) se o aluno quer voltar pra etapa daquele conteudo. So pra tras
+  (conteudo ja concluido), nunca gravando, nunca no reforco (ele nao tem Leitura/Video).
+- Removidos: `PenaltyHeaderBadge`, `PomodoroHeaderBadge`, `lib/dailyPenaltyContext.ts`, `IntroCard`,
+  `useMaterialSidebar`, `ContentPreviewModal`, `StudyAssistantWidget`/`QuickQuestionOrb`, `ActivityScreen`
+  (`Layout.tsx`). `CodeHighlight` virou `activities/ClozeSentence.tsx`.
+- **Telas de erro** (`errors/ErrorLayout.tsx`): pixel art, a Focada explica (textos na voz dela), altura
+  = abaixo do menu. **Projeto Semanal**: caixa "Avaliacao do castelo", entrega e o cartao de
+  especificacao (semanas sem briefing) em pixel art.
+- **Mock de desenvolvimento**: `npm run dev:mock` (porta 5199, `vite.mock.config.ts` +
+  `mock/sessionMock.ts`) responde `/api/*` em memoria com o Dia 1 real da curadoria - nunca fala com
+  producao, nunca entra no build. Cenarios por `/__mock/reset?...` (etapa, erros, bloqueado, semana,
+  reforco, projeto) e erros em `/start?course=erro-500|erro-offline|erro-lento` - lista no topo do
+  arquivo.
 
 ### Identidade pixel art (Fase 64)
 

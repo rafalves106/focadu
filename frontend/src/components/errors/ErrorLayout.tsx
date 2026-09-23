@@ -1,15 +1,15 @@
 import type { ReactNode } from 'react';
+import type { FocadaExpression } from '../../lib/focadaLines';
+import { FocadaSays } from '../session/FocadaSays';
+import { PixelButton } from '../session/PixelButton';
 
 /**
- * Chrome compartilhado pelas 4 telas de erro (Fase 10, design Figma "Erro - Sem Conexao" - unico
- * dos 4 links do prompt cujo conteudo batia com o nome: os outros 3 apontavam pra "Sessao
- * Expirada" (conceito de sessao/login que este app nao tem), "Resposta Incorreta" (variante de
- * feedback de quiz, nao um erro) e "Streak Perdido" (gamificacao, em standby desde a Fase 6/7) -
- * ver docs/fase-10 pra detalhes). Reaproveita o mesmo padrao visual (icone num frame, titulo,
- * descricao, CTA primario + secundario) nas 4 telas, sem duplicar o layout.
+ * Chrome compartilhado pelas telas de erro e de estado vazio (Fase 10). Fase 68: pixel art - a Focada
+ * explica o problema (no lugar do emoji num frame arredondado), titulo em VT323, rotulo em Silkscreen e
+ * botoes pixel. Altura = o que sobra abaixo do menu, pra nunca criar rolagem externa dentro do app.
  */
 export function ErrorLayout({
-  icon,
+  expression = 'acolhedora',
   caption,
   title,
   description,
@@ -17,45 +17,33 @@ export function ErrorLayout({
   secondaryAction,
   extra,
 }: {
-  icon: ReactNode;
-  /** Legenda pequena abaixo do icone, ex: "PING TIMEOUT" no design original - opcional. */
+  expression?: FocadaExpression;
+  /** Rotulo pequeno acima do titulo, ex: "ERRO 500" - opcional. */
   caption?: string;
   title: string;
   description: string;
   primaryAction: { label: string; onClick: () => void };
   secondaryAction?: { label: string; onClick: () => void };
-  /** Conteudo extra entre a descricao e os botoes (ex: spinner do TimeoutError). */
+  /** Conteudo extra entre a fala e os botoes (ex: carregando do TimeoutError). */
   extra?: ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-10 p-10 text-center">
-      <div className="flex size-[140px] flex-col items-center justify-center gap-3 rounded-3xl border border-surface-alt bg-surface">
-        <div className="text-5xl" aria-hidden="true">
-          {icon}
+    <div className="flex min-h-[calc(100dvh-var(--nav-height))] flex-col items-center justify-center bg-base px-4 py-10">
+      <div className="flex w-full max-w-2xl flex-col gap-5">
+        <p className="font-pixel-label text-[9px] text-alert">// {caption ?? 'Ops'}</p>
+        <h1 className="font-pixel text-4xl leading-none text-primary uppercase">{title}</h1>
+        <FocadaSays expression={expression} size="lg">
+          {description}
+        </FocadaSays>
+        {extra}
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {secondaryAction && (
+            <PixelButton ghost tone="muted" onClick={secondaryAction.onClick}>
+              {secondaryAction.label}
+            </PixelButton>
+          )}
+          <PixelButton onClick={primaryAction.onClick}>{primaryAction.label} ›</PixelButton>
         </div>
-        {caption && <p className="text-xs font-semibold uppercase tracking-wide text-muted">{caption}</p>}
-      </div>
-
-      <div className="flex max-w-lg flex-col gap-3">
-        <h1 className="text-3xl font-bold text-primary">{title}</h1>
-        <p className="text-base leading-relaxed text-secondary">{description}</p>
-      </div>
-
-      {extra}
-
-      <div className="flex flex-col items-center gap-4">
-        <button
-          type="button"
-          onClick={primaryAction.onClick}
-          className="w-80 rounded-xl bg-accent px-8 py-4 text-sm font-bold tracking-wide text-base"
-        >
-          {primaryAction.label.toUpperCase()}
-        </button>
-        {secondaryAction && (
-          <button type="button" onClick={secondaryAction.onClick} className="text-xs font-semibold tracking-wide text-secondary hover:text-primary">
-            {secondaryAction.label.toUpperCase()}
-          </button>
-        )}
       </div>
     </div>
   );

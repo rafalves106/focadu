@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
 import { getRecordingLimitMinutes } from '../lib/settings';
+import { useSession } from '../lib/sessionContext';
 import { FeedbackPanel } from './FeedbackPanel';
-import { SessionLayout } from './SessionShell';
-import { useMaterialSidebar } from './useMaterialSidebar';
+import { SessionFooter, SessionLayout } from './SessionShell';
 import { DailyNotesModal } from './notebook/DailyNotesModal';
+import { PixelMic } from './session/PixelMic';
+import { PixelButton, PixelChip } from './session/PixelButton';
 
 type RecorderState = 'idle' | 'recording' | 'submitting' | 'answered' | 'permission_denied';
 
@@ -101,21 +103,15 @@ function VoicedPrompt({ text, spokenChars, highlight }: { text: string; spokenCh
 /**
  * VoiceSummary: grava um resumo falado (MediaRecorder) e envia como multipart/form-data pro
  * endpoint de audio - o backend transcreve (Groq Whisper) e avalia (Groq chat completion) contra
- * o CuratedContent de referencia. Score/Passed vem inteiramente da avaliacao, nunca do cliente
- * (mesma garantia dos outros 4 tipos de atividade).
+ * o CuratedContent de referencia. Score/Passed vem inteiramente da avaliacao, nunca do cliente.
  *
- * Fase 19 (fidelidade revisada, node "Sessão Diária — Resumo Falado"): unico tipo de atividade
- * sem cartao ao redor (`SessionLayout card={false}`) - o Figma mostra a gravação flutuando direto
- * sobre o fundo. Legenda "Baseado em: ..." do mockup omitida - exigiria buscar o CuratedContent
- * só pra essa legenda (chamada de API nova), fora do escopo de uma fase que é só estilo.
+ * Fase 35 (ver secret/rascunhos/caderninho-no-resumo-falado.md): "Reler minhas anotacoes" so ANTES
+ * de comecar a gravar (`idle`/`permission_denied`), nunca durante nem depois - consultar o caderninho
+ * pra relembrar e legitimo, ler em voz alta enquanto grava esvaziaria a atividade (avaliar recall).
  *
- * Fase 35 (ver secret/rascunhos/caderninho-no-resumo-falado.md): "Ver minhas anotações" - so
- * disponivel ANTES de comecar a gravar (`state === 'idle' | 'permission_denied'`), nunca durante
- * (`recording`) nem depois (`submitting`/`answered`) - decisao deliberada: consultar o proprio
- * caderninho pra relembrar antes de falar e legitimo, mas ler ele em voz alta enquanto grava
- * esvaziaria o proposito da atividade (avaliar recall real, nao leitura). `DailyNotesModal` e um
- * overlay full-screen - o botao de gravar so fica alcancavel de novo depois de fechar o modal, mas
- * o gate por `state` abaixo e defensivo mesmo assim (fecha sozinho se `state` virar 'recording').
+ * Fase 68 (Figma "Daily — 02/03/04"): microfone pixel art (grava ao clicar nele ou no botao), barras
+ * animadas enquanto grava (decorativas - nao medem o volume), anotacoes da coluna direita travadas
+ * durante a gravacao e, no resultado, a nota grande com o feedback da IA na voz da Focada.
  */
 export function VoiceSummaryActivity({
   dailyId,
@@ -123,24 +119,22 @@ export function VoiceSummaryActivity({
   activity,
   onDailyRefetched,
   onContinue,
-  onBack,
 }: {
   dailyId: string;
   daily: DailyStateDto;
   activity: DailyActivityDto;
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
-  onBack?: () => void;
 }) {
+  const { weekly } = useSession();
   const [state, setState] = useState<RecorderState>(activity.responses.length > 0 ? 'answered' : 'idle');
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [lastResponse, setLastResponse] = useState(activity.responses.at(-1) ?? null);
   const [showNotes, setShowNotes] = useState(false);
-  const { weekly, materialSidebar, sidebar } = useMaterialSidebar(daily);
-  const { spokenChars, supported: voiceSupported, replay: replayPrompt } = usePromptVoice(activity.prompt ?? '');
+  const { spokenChars, supported: voiceSupported } = usePromptVoice(activity.prompt ?? '');
 
-  // Defensivo (ver doc da classe acima) - fecha sozinho se a gravacao comecar com o modal aberto.
+  // Defensivo (ver doc acima) - fecha sozinho se a gravacao comecar com o modal aberto.
   useEffect(() => {
     if (state === 'recording') setShowNotes(false);
   }, [state]);
@@ -149,8 +143,7 @@ export function VoiceSummaryActivity({
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  // Le uma vez por montagem - configuravel em "Limite de gravação" no menu de configurações
-  // (frontend/src/lib/settings.ts), efeito so na proxima sessao/atividade aberta.
+  // Le uma vez por montagem - configuravel em "Limite de gravacao" nas Configuracoes.
   const maxRecordingSeconds = useMemo(() => getRecordingLimitMinutes() * 60, []);
 
   useEffect(
@@ -161,12 +154,9 @@ export function VoiceSummaryActivity({
     [],
   );
 
-  // Para automaticamente ao atingir o limite - separado do handler do interval pra nao chamar
-  // efeito colateral (parar a gravacao) de dentro de um updater de estado.
+  // Para automaticamente ao atingir o limite - fora do handler do interval (efeito colateral).
   useEffect(() => {
-    if (state === 'recording' && seconds >= maxRecordingSeconds) {
-      handleStop();
-    }
+    if (state === 'recording' && seconds >= maxRecordingSeconds) handleStop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seconds, state]);
 
@@ -175,7 +165,6 @@ export function VoiceSummaryActivity({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
-
       const recorder = new MediaRecorder(stream);
       chunksRef.current = [];
       recorder.ondataavailable = (e) => {
@@ -184,7 +173,6 @@ export function VoiceSummaryActivity({
       recorder.onstop = () => {
         void handleSubmit(new Blob(chunksRef.current, { type: recorder.mimeType }));
       };
-
       mediaRecorderRef.current = recorder;
       recorder.start();
       setSeconds(0);
@@ -207,17 +195,17 @@ export function VoiceSummaryActivity({
   async function handleSubmit(audioBlob: Blob) {
     try {
       const result = await api.submitVoiceSummaryResponse(dailyId, activity.id, audioBlob);
+      const refreshedDaily = await api.getDaily(dailyId);
       setLastResponse(result.response);
       setState('answered');
-      onDailyRefetched(await api.getDaily(dailyId));
+      onDailyRefetched(refreshedDaily);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Nao foi possivel enviar sua gravacao. Tente de novo.');
+      setError(err instanceof ApiError ? err.message : 'Não foi possível enviar sua gravação. Tente de novo.');
       setState('idle');
     }
   }
 
-  // O timer roda num efeito proprio, disparado so na transicao pra 'recording' (nao a cada
-  // segundo) - evita recriar o interval a cada tick.
+  // Timer num efeito proprio, disparado so na transicao pra 'recording' (nao a cada segundo).
   useEffect(() => {
     if (state !== 'recording') return;
     timerRef.current = setInterval(() => setSeconds((prev) => prev + 1), 1000);
@@ -226,99 +214,88 @@ export function VoiceSummaryActivity({
     };
   }, [state]);
 
-  const minutes = String(Math.floor(seconds / 60)).padStart(2, '0');
-  const secs = String(seconds % 60).padStart(2, '0');
-
-  const sortedActivities = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
-  const stepIndex = sortedActivities.findIndex((a) => a.id === activity.id);
-  const total = sortedActivities.length;
+  const clock = (total: number) => `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+  const recording = state === 'recording';
+  const busy = recording || state === 'submitting';
 
   return (
-    <SessionLayout
-      eyebrow={(weekly?.theme ?? weekly?.title ?? '').toUpperCase()}
-      stepLabel={`ETAPA ${stepIndex + 1} DE ${total} — RESUMO FALADO`}
-      progress={(stepIndex + 1) / total}
-      leftSidebar={materialSidebar}
-      sidebar={sidebar}
-      card={state === 'answered'}
-      // Fase 36: escondido durante gravacao/envio - mesma cautela de "Ver minhas anotacoes"
-      // (linha abaixo): trocar de atividade nesses estados abandonaria o MediaRecorder no meio do
-      // caminho (o cleanup de unmount para as tracks, o que dispara onstop e sobe um audio parcial
-      // sozinho - ver handleStart/useEffect de cleanup).
-      onBack={state === 'recording' || state === 'submitting' ? undefined : onBack}
-    >
+    <SessionLayout notesLocked={busy} hideBack={busy}>
       {state !== 'answered' && (
-        <div className="flex max-w-[560px] flex-col items-start gap-3">
-          <p className="text-xl font-semibold leading-[1.4] text-primary">
+        <>
+          <p className="font-pixel text-2xl leading-[1.15] text-primary lg:text-[26px]">
             <VoicedPrompt text={activity.prompt ?? ''} spokenChars={spokenChars} highlight={voiceSupported} />
           </p>
-          {voiceSupported && (
-            <button type="button" onClick={replayPrompt} className="text-xs text-muted hover:text-primary">
-              🔊 Ouvir a pergunta de novo
-            </button>
-          )}
-          {(state === 'idle' || state === 'permission_denied') && weekly && (
-            <button type="button" onClick={() => setShowNotes(true)} className="text-xs text-muted hover:text-primary">
-              {daily.isReinforcement ? '📓 Ver as anotações do dia base' : '📓 Ver minhas anotações de hoje'}
-            </button>
-          )}
-        </div>
-      )}
+          <div className="flex flex-wrap gap-2">
+            <PixelChip>Só por voz</PixelChip>
+            <PixelChip>Até {Math.round(maxRecordingSeconds / 60)} min</PixelChip>
+            <PixelChip>Vale 2× no score</PixelChip>
+          </div>
 
-      {state === 'permission_denied' && (
-        <p className="text-alert">
-          Não conseguimos acessar o microfone - verifique a permissão do navegador pra este site e tente de novo.
-        </p>
-      )}
-
-      {error && <p className="text-sm text-alert">{error}</p>}
-
-      {state !== 'submitting' && state !== 'answered' && (
-        <div className="flex flex-col items-center gap-5">
           <button
             type="button"
-            onClick={state === 'recording' ? handleStop : handleStart}
-            aria-label={state === 'recording' ? 'Parar gravação' : 'Começar a gravar'}
-            className={[
-              'flex size-[180px] items-center justify-center rounded-full text-6xl transition-shadow duration-300',
-              state === 'recording'
-                ? 'animate-pulse bg-alert/20 shadow-[0_0_0_14px_rgba(255,59,59,0.15)]'
-                : 'bg-accent/20 shadow-[0_0_0_10px_rgba(57,255,106,0.15)] hover:shadow-[0_0_0_14px_rgba(57,255,106,0.22)]',
-            ].join(' ')}
+            onClick={recording ? handleStop : handleStart}
+            disabled={state === 'submitting'}
+            aria-label={recording ? 'Parar e enviar' : 'Começar a gravar'}
+            className={`flex min-h-[190px] flex-1 flex-col items-center justify-center gap-3 border-2 bg-surface px-6 py-6 ${
+              recording ? 'border-alert' : 'border-stroke hover:border-accent'
+            }`}
           >
-            🎙️
+            <PixelMic recording={recording} className="size-24" />
+            {recording && (
+              <span className="flex h-9 items-end gap-1" aria-hidden="true">
+                {Array.from({ length: 16 }, (_, i) => (
+                  <span
+                    key={i}
+                    className="w-2 animate-pulse bg-alert"
+                    style={{ height: `${8 + ((i * 7) % 26)}px`, animationDelay: `${(i % 5) * 120}ms` }}
+                  />
+                ))}
+              </span>
+            )}
+            {state === 'submitting' ? (
+              <span className="font-pixel text-2xl text-secondary">Transcrevendo e avaliando...</span>
+            ) : recording ? (
+              <span className="font-pixel text-3xl leading-none text-alert">
+                ● Gravando {clock(seconds)} / {clock(maxRecordingSeconds)}
+              </span>
+            ) : (
+              <>
+                <span className="font-pixel-label text-[11px] text-accent">
+                  {state === 'permission_denied' ? 'Toque pra tentar de novo' : 'Aperte gravar quando estiver pronto'}
+                </span>
+                <span className="font-pixel text-2xl leading-none text-secondary">00:00 / {clock(maxRecordingSeconds)}</span>
+              </>
+            )}
+            {recording && <span className="font-pixel text-lg leading-tight text-secondary">As anotações ficam travadas até você parar — vale o que você lembra.</span>}
           </button>
 
-          {state === 'recording' ? (
-            <p className="flex items-center gap-2 font-mono text-xs tracking-[1px] text-secondary uppercase">
-              <span className="size-2 rounded-full bg-alert" aria-hidden="true" />
-              Gravando — {minutes}:{secs} / limite 10:00
-            </p>
-          ) : (
-            <p className="text-sm text-secondary">
-              {state === 'permission_denied' ? 'Toque pra tentar de novo' : 'Toque pra começar a gravar'}
-            </p>
+          {state === 'permission_denied' && (
+            <p className="font-pixel text-lg leading-tight text-alert">Não conseguimos acessar o microfone - verifique a permissão do navegador pra este site e tente de novo.</p>
           )}
+          {error && <p className="font-pixel text-lg leading-tight text-alert">{error}</p>}
 
-          {state === 'recording' && (
-            <button type="button" onClick={handleStop} className="text-sm text-muted hover:text-primary">
-              Toque para parar quando terminar de explicar
-            </button>
-          )}
-        </div>
-      )}
-
-      {state === 'submitting' && (
-        <div className="flex flex-col items-center gap-2 py-6">
-          <p className="text-secondary">Transcrevendo e avaliando sua resposta...</p>
-          <p className="text-xs text-muted">Isso pode levar alguns segundos.</p>
-        </div>
+          <SessionFooter>
+            {(state === 'idle' || state === 'permission_denied') && weekly && (
+              <PixelButton ghost tone="project" onClick={() => setShowNotes(true)}>
+                {daily.isReinforcement ? 'Reler anotações do dia base' : 'Reler minhas anotações'}
+              </PixelButton>
+            )}
+            {state !== 'submitting' && (
+              <PixelButton tone={recording ? 'accent' : 'alert'} onClick={recording ? handleStop : handleStart}>
+                {recording ? '■ Parar e enviar' : '● Gravar'}
+              </PixelButton>
+            )}
+          </SessionFooter>
+        </>
       )}
 
       {state === 'answered' && lastResponse && (
         <FeedbackPanel
           passed={lastResponse.passed}
           score={lastResponse.score}
+          showScore
+          focadaInContent
+          seed={activity.id}
           transcript={lastResponse.transcript}
           aiFeedback={lastResponse.aiFeedback}
           onContinue={onContinue}
@@ -326,12 +303,7 @@ export function VoiceSummaryActivity({
       )}
 
       {showNotes && weekly && (
-        <DailyNotesModal
-          courseId={weekly.courseId}
-          dailyId={daily.id}
-          isReinforcement={daily.isReinforcement}
-          onClose={() => setShowNotes(false)}
-        />
+        <DailyNotesModal courseId={weekly.courseId} dailyId={daily.id} isReinforcement={daily.isReinforcement} onClose={() => setShowNotes(false)} />
       )}
     </SessionLayout>
   );

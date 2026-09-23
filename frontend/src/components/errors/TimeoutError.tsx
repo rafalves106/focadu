@@ -12,11 +12,17 @@ export function TimeoutError({ onRetry }: { onRetry: () => void }) {
 
   return (
     <ErrorLayout
-      icon="⏱️"
-      title="Carregamento Lento"
-      description="A requisição está demorando mais do que o esperado. Pode ser um problema de conexão ou o servidor pode estar ocupado."
-      extra={<div className="size-8 animate-spin rounded-full border-2 border-surface-alt border-t-accent" aria-hidden="true" />}
-      primaryAction={{ label: 'Continuar Esperando', onClick: onRetry }}
+      caption="Demorando"
+      title="Carregamento lento"
+      description="O servidor está demorando mais que o normal. Pode ser a conexão ou ele está ocupado — espera mais um pouco?"
+      extra={
+        <div className="flex gap-1.5" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="size-3 animate-pulse bg-accent" style={{ animationDelay: `${i * 200}ms` }} />
+          ))}
+        </div>
+      }
+      primaryAction={{ label: 'Continuar esperando', onClick: onRetry }}
       secondaryAction={{ label: 'Voltar', onClick: () => navigate(-1) }}
     />
   );

@@ -1,9 +1,9 @@
 import type { CuratedContentDto } from '../api/types';
 import { extractYouTubeId } from '../lib/youtube';
-import dotMedium from '../assets/reading/dot-medium.svg';
 import playThumbnail from '../assets/pixel/play-inativo.png';
 import playThumbnailActive from '../assets/pixel/play-ativo.png';
-import checkIcon from '../assets/reading/check-icon.svg';
+import checkIcon from '../assets/pixel/check.png';
+import { CardLabel } from './CardLabel';
 
 const GROUP_LABEL: Record<number, string> = { 0: 'LEITURA', 1: 'VÍDEO' };
 
@@ -12,7 +12,8 @@ const GROUP_LABEL: Record<number, string> = { 0: 'LEITURA', 1: 'VÍDEO' };
  * CuratedContent da semana, agrupada por tipo (Reading/Video).
  * Compartilhado entre ReadingActivity e VideoActivity - so muda o item ativo/concluido.
  *
- * Fase 23: itens viram botao (`onSelect`) que abre `ContentPreviewModal` - antes eram so status
+ * Fase 23: itens viram botao (`onSelect`) - ate a Fase 67 abriam uma previa em modal; desde a Fase 68
+ * a casca da sessao pergunta se o aluno quer voltar pra etapa do conteudo. Antes da Fase 23 eram so status
  * visual, sem jeito de reler o texto/reassistir o video depois de passar da etapa (pesava mais
  * numa Daily de reforco, onde nao ha etapa de Leitura/Video pra voltar - so o Resumo Falado).
  *
@@ -24,6 +25,8 @@ const GROUP_LABEL: Record<number, string> = { 0: 'LEITURA', 1: 'VÍDEO' };
  * pro embed). Sem `videoId` reconhecido (link ainda nao cadastrado/formato inesperado), cai de
  * volta pro fundo liso de antes - nunca quebra a lista por causa de 1 item sem link.
  */
+/* Fase 68: visual pixel art (caixa reta de 2px, rotulo em Silkscreen, titulos em VT323); a largura
+ * vem da coluna da casca da sessao. */
 export function MaterialSidebar({
   contents,
   activeContentId,
@@ -34,11 +37,12 @@ export function MaterialSidebar({
   /** Nulo nas telas sem conteudo proprio (Quiz/Ligar Palavras/Cloze/Roleplay, Fase 19) - nenhum item fica em destaque, so o estado concluido aparece. */
   activeContentId: string | null;
   completedContentIds: Set<string>;
-  onSelect: (contentId: string) => void;
+  /** Omitido = itens so informativos (gravando, fora de sessao). */
+  onSelect?: (contentId: string) => void;
 }) {
   return (
-    <aside className="flex w-[280px] shrink-0 flex-col gap-4 rounded-2xl border border-stroke bg-surface p-5">
-      <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-muted">Material de hoje</p>
+    <aside className="flex shrink-0 flex-col gap-3 pixel-box bg-base p-5">
+      <CardLabel pixel>Material de hoje</CardLabel>
 
       {([0, 1] as const).map((type) => {
         const items = contents.filter((c) => c.type === type);
@@ -46,7 +50,7 @@ export function MaterialSidebar({
 
         return (
           <div key={type} className="flex flex-col gap-2">
-            <p className="text-[10px] font-medium uppercase tracking-[1px] text-secondary">{GROUP_LABEL[type]}</p>
+            <p className="font-pixel-label text-[8px] text-muted">{GROUP_LABEL[type]}</p>
 
             {type === 0
               ? items.map((item) => {
@@ -56,21 +60,15 @@ export function MaterialSidebar({
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => onSelect(item.id)}
-                      className={
-                        isActive
-                          ? 'flex w-full items-center gap-2.5 rounded-[10px] border border-accent bg-accent/25 p-3 text-left hover:bg-accent/35'
-                          : 'flex w-full items-center gap-2.5 rounded-[10px] border border-transparent bg-surface-alt p-3 text-left hover:border-stroke'
-                      }
+                      onClick={() => onSelect?.(item.id)}
+                      disabled={!onSelect}
+                      title={item.title}
+                      className={`flex w-full items-center gap-2 border-2 px-2.5 py-2 text-left enabled:hover:border-accent disabled:cursor-default ${
+                        isActive ? 'border-accent bg-surface-alt' : 'border-stroke'
+                      }`}
                     >
-                      {isDone ? (
-                        <span className="flex size-3 shrink-0 items-center justify-center rounded-[6px] bg-accent">
-                          <img src={checkIcon} alt="" className="size-2" />
-                        </span>
-                      ) : (
-                        <img src={dotMedium} alt="" className="size-2 shrink-0" />
-                      )}
-                      <span className="truncate text-[13px] text-primary">{item.title}</span>
+                      <img src={isDone ? checkIcon : isActive ? playThumbnailActive : playThumbnail} alt="" className="size-4 shrink-0 pixelated" />
+                      <span className="truncate font-pixel text-lg leading-none text-primary">{item.title}</span>
                     </button>
                   );
                 })
@@ -81,14 +79,16 @@ export function MaterialSidebar({
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => onSelect(item.id)}
-                      className={
-                        isActive
-                          ? 'flex w-full flex-col gap-2 rounded-[10px] border border-accent bg-accent/25 text-left'
-                          : 'flex w-full flex-col gap-2 rounded-[10px] bg-surface-alt text-left hover:brightness-110'
-                      }
+                      onClick={() => onSelect?.(item.id)}
+                      disabled={!onSelect}
+                      title={item.title}
+                      className="flex w-full flex-col gap-1.5 text-left enabled:hover:brightness-110 disabled:cursor-default"
                     >
-                      <div className="relative flex h-[110px] w-full items-center justify-center overflow-hidden rounded-[10px] bg-base">
+                      <div
+                        className={`relative flex h-[104px] w-full items-center justify-center overflow-hidden border-2 bg-surface-alt ${
+                          isActive ? 'border-accent' : 'border-stroke'
+                        }`}
+                      >
                         {videoId && (
                           <img
                             src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
@@ -96,10 +96,10 @@ export function MaterialSidebar({
                             className="absolute inset-0 size-full object-cover"
                           />
                         )}
-                        {videoId && <div className="absolute inset-0 bg-base/35" />}
+                        {videoId && <div className="absolute inset-0 bg-base/45" />}
                         <img src={isActive ? playThumbnailActive : playThumbnail} alt="" className="relative size-8 pixelated" />
                       </div>
-                      <p className="truncate px-3 pb-3 text-xs font-medium text-primary">{item.title}</p>
+                      <p className="line-clamp-2 font-pixel text-base leading-tight text-secondary">{item.title}</p>
                     </button>
                   );
                 })}

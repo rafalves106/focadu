@@ -22,7 +22,8 @@ export function EmptyStateStartPage() {
 
   return (
     <ErrorLayout
-      icon="🧭"
+      expression="neutra"
+      caption="Começo"
       title="Sua jornada ainda não começou"
       description="Você ainda não está matriculado em nenhum curso - escolha um pra desbloquear sua primeira sessão."
       primaryAction={{ label: 'Escolher meu curso', onClick: () => navigate('/selecionar-curso') }}

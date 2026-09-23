@@ -6,7 +6,6 @@ import { DailyStatus, PROJECT_LANGUAGE_NAMES, ProjectLanguage, ProjectLanguageSt
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { MarkdownBlock } from '../components/activities/MarkdownBlock';
-import { ProgressBar } from '../components/ProgressBar';
 import { ScrollArea } from '../components/ScrollArea';
 import { StudyAssistantPanel } from '../components/assistant/StudyAssistantPanel';
 import backArrow from '../assets/pixel/voltar.png';
@@ -15,18 +14,20 @@ import { CardLabel } from '../components/CardLabel';
 import { QuickNotePanel } from '../components/notebook/QuickNotePanel';
 import { setStudyAssistantContext } from '../lib/studyAssistantContext';
 import lockIcon from '../assets/pixel/cadeado-bloqueado.png';
+import castleIcon from '../assets/pixel/mapa/castelo-pendente.png';
+import { PIXEL_PROSE } from '../lib/pixelProse';
 import { DialogueBox } from '../components/DialogueBox';
 import { PixelConfirmDialog } from '../components/PixelConfirmDialog';
 import { buildFocadaLines } from '../lib/focadaLines';
 
 const STATUS_BADGE: Record<number, { label: string; className: string }> = {
-  [WeeklyProjectStatus.Pending]: { label: 'PENDENTE', className: 'bg-surface-alt text-alert' },
-  [WeeklyProjectStatus.Submitted]: { label: 'AGUARDANDO AVALIAÇÃO', className: 'bg-surface-alt text-project' },
-  [WeeklyProjectStatus.Evaluated]: { label: 'AVALIADO', className: 'bg-surface-alt text-accent' },
+  [WeeklyProjectStatus.Pending]: { label: 'Pendente', className: 'border-alert text-alert' },
+  [WeeklyProjectStatus.Submitted]: { label: 'Aguardando avaliação', className: 'border-project text-project' },
+  [WeeklyProjectStatus.Evaluated]: { label: 'Avaliado', className: 'border-accent text-accent' },
 };
 
 // Fase 38: mesma prioridade de WeeklyProjectCard - IsLocked vence Status (so coexiste com Pending).
-const LOCKED_BADGE = { label: 'BLOQUEADO', className: 'bg-surface-alt text-muted' };
+const LOCKED_BADGE = { label: 'Bloqueado', className: 'border-stroke text-muted' };
 
 // Progresso do topo = progresso da SEMANA (pedido do dono, 23/09/2026): mesma conta da
 // WeeklyDetailPage (dias originais concluidos, sem reforco) com o projeto como ultima etapa -
@@ -145,7 +146,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
         <div className="flex shrink-0 flex-col gap-3 lg:grid lg:grid-cols-[1fr_minmax(0,250px)_1fr] lg:items-center lg:gap-4">
           <Link
             to={backTo}
-            className="flex min-w-0 items-center gap-2 text-sm font-medium uppercase tracking-[1.6px] text-secondary hover:text-primary"
+            className="flex min-w-0 items-center gap-2 font-pixel-label text-[9px] text-secondary hover:text-accent"
           >
             <img src={backArrow} alt="" width={16} height={16} className="size-4 shrink-0 pixelated" />
             <span className="truncate">Voltar para {weekly.theme ?? weekly.title}</span>
@@ -158,7 +159,11 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
             aria-valuemax={progress.total}
             title={`${progress.done} de ${progress.total} etapas da semana (dias + projeto)`}
           >
-            <ProgressBar progress={progress.total ? progress.done / progress.total : 0} tone="project" heightClass="h-2" />
+            <div className="flex gap-0.5" aria-hidden="true">
+              {Array.from({ length: progress.total }, (_, i) => (
+                <span key={i} className={`h-2 flex-1 ${i < progress.done ? 'bg-project' : 'bg-surface-alt'}`} />
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -190,35 +195,36 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
             sem fundo, sem rotulo "Desafio semanal" e sem o recuo interno; o dialogo alinha no topo com os
             cartoes laterais e usa a largura toda da coluna. */}
         <div
-          className={`flex min-h-0 min-w-0 flex-1 flex-col ${showDialogue ? '' : 'rounded-2xl border-[1.5px] border-project bg-surface'}`}
+          className={`flex min-h-0 min-w-0 flex-1 flex-col ${showDialogue ? '' : 'border-2 border-project bg-base'}`}
         >
           <ScrollArea
             className="min-h-0 flex-1"
             // pr-3: respiro pra barra fina do ScrollArea nao passar por cima da borda das caixas de dialogo.
             contentClassName={showDialogue ? 'flex flex-col gap-6 pr-3 pb-6 lg:pb-10' : 'flex flex-col gap-6 px-[18px] pt-4 pb-6 lg:pb-10'}
           >
-            {!showDialogue && <CardLabel>Desafio semanal</CardLabel>}
+            {!showDialogue && <p className="font-pixel-label text-[9px] text-project">// Desafio semanal</p>}
             <div className={`flex flex-col gap-6 ${showDialogue ? '' : 'lg:px-[22px]'}`}>
               {/* Fase 64 (pedido do dono): com o dialogo da Focada, sem as tags "CHEFE DE FASE"/status e sem
                   o titulo visivel - a Focada ja diz o que e e em que pe esta. O titulo fica pra leitor de tela. */}
               {!showDialogue && (
                 <div className="flex items-center justify-between">
-                  <span className="rounded-full border border-project bg-project/10 px-3 py-1.5 text-[11px] font-semibold tracking-[0.5px] text-project">
-                    CHEFE DE FASE 👾
+                  <span className="flex items-center gap-2 border-2 border-project px-2.5 py-1 font-pixel-label text-[9px] text-project">
+                    <img src={castleIcon} alt="" className="size-8 pixelated" />
+                    Chefe de fase
                   </span>
-                  <span className={`rounded-md px-3 py-1.5 text-xs font-semibold ${badge.className}`}>{badge.label}</span>
+                  <span className={`border-2 px-2.5 py-1.5 font-pixel-label text-[9px] ${badge.className}`}>{badge.label}</span>
                 </div>
               )}
 
               <div className="flex flex-col gap-4">
-                <h1 className={showDialogue ? 'sr-only' : 'text-[28px] font-bold text-primary'}>Projeto da Semana {weekly.number}</h1>
+                <h1 className={showDialogue ? 'sr-only' : 'font-pixel text-4xl leading-none text-primary uppercase'}>Projeto da Semana {weekly.number}</h1>
 
                 {/* Fase 38: trava tudo abaixo enquanto a Weekly ainda tem Daily original nao concluida
                     (Weekly.AreDailiesComplete) - inclusive a escolha de linguagem (Fase 59): "so depois
                     de desbloqueado" (decisao do dono), pra nao mostrar um seletor que o backend so
                     aceitaria depois. */}
                 {project.isLocked ? (
-                  <p className="flex items-center gap-2 rounded-xl border border-stroke bg-surface-alt px-4 py-3 text-sm text-secondary">
+                  <p className="flex items-center gap-2 border-2 border-stroke px-4 py-3 font-pixel text-xl leading-tight text-secondary">
                     <img src={lockIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
                     Termine todas as dailies desta semana para desbloquear o projeto.
                   </p>
@@ -257,7 +263,11 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
                         choicesNote={submitError}
                       />
                     )}
-                    {!specInReadme && <MarkdownBlock text={project.specText} />}
+                    {!specInReadme && (
+                      <div className={PIXEL_PROSE}>
+                        <MarkdownBlock text={project.specText} />
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -273,20 +283,20 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
                       avaliado, nao ha reenvio (WeeklyProject.Submit bloqueia depois de Evaluated), so a
                       nota fica registrada. */}
                   {project.status === WeeklyProjectStatus.Evaluated && (
-                    <div className="flex flex-col gap-3 rounded-xl border border-project/40 bg-surface-alt p-5">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Avaliação</p>
-                        <p className="text-2xl font-bold text-project">
+                    <div className="flex flex-col gap-3 border-2 border-project bg-base px-5 py-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <p className="font-pixel-label text-[9px] text-project">// Avaliação do castelo</p>
+                        <p className="font-pixel text-5xl leading-none text-project">
                           {project.score}
-                          <span className="text-sm font-medium text-muted">/100</span>
+                          <span className="font-pixel text-2xl text-muted">/100</span>
                         </p>
                       </div>
-                      {project.feedback && <p className="text-sm text-secondary">{project.feedback}</p>}
+                      {project.feedback && <p className="font-pixel text-xl leading-tight text-secondary">{project.feedback}</p>}
                     </div>
                   )}
 
                   {!project.submissionUrl && (
-                    <p className="rounded-xl border border-alert/40 bg-surface-alt px-4 py-3 text-sm text-alert">
+                    <p className="border-2 border-alert bg-base px-4 py-3 font-pixel text-xl leading-tight text-alert">
                       Seu repositório ainda não foi provisionado - tente recarregar a página em alguns instantes.
                     </p>
                   )}
@@ -300,17 +310,17 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
               {/* Repositorio gerenciado no Forgejo interno e avaliado automaticamente ao entregar
                   (ver EvaluateWeeklyProjectUseCase) - nao ha mais URL pra colar, so confirmar que
                   o trabalho no repositorio ja provisionado esta pronto. */}
-              <p className="text-xs text-muted">Terminou de commitar seu código? Entregue para receber nota automática.</p>
+              <p className="font-pixel text-lg leading-tight text-muted">Terminou de commitar seu código? Entregue para receber nota automática.</p>
 
-              {submitError && <p className="text-sm text-alert">{submitError}</p>}
+              {submitError && <p className="font-pixel text-lg leading-tight text-alert">{submitError}</p>}
 
               <button
                 type="button"
                 onClick={() => setConfirmingSubmit(true)}
                 disabled={submitting}
-                className="self-end rounded-xl bg-project px-8 py-4 text-sm font-bold text-base disabled:opacity-40"
+                className="self-end border-2 border-project bg-project px-6 py-3 font-pixel-label text-[11px] text-base hover:brightness-110 disabled:opacity-40"
               >
-                {submitting ? 'ENVIANDO...' : 'ENTREGAR PROJETO'}
+                {submitting ? 'Enviando...' : 'Entregar projeto ›'}
               </button>
             </div>
           )}

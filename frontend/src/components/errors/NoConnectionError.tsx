@@ -10,11 +10,10 @@ import { ErrorLayout } from './ErrorLayout';
 export function NoConnectionError({ onRetry }: { onRetry: () => void }) {
   return (
     <ErrorLayout
-      icon="🔌"
       caption="Sem sinal"
-      title="Sem Conexão com o Servidor"
-      description="Não foi possível conectar ao servidor. Verifique sua conexão com a internet e tente novamente."
-      primaryAction={{ label: 'Tentar Novamente', onClick: onRetry }}
+      title="Sem conexão com o servidor"
+      description="Perdi o sinal com o servidor, agente. Confere sua internet e tenta de novo."
+      primaryAction={{ label: 'Tentar de novo', onClick: onRetry }}
     />
   );
 }

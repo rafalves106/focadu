@@ -8,74 +8,62 @@ import {
   startPomodoroTimer,
   usePomodoroTimer,
 } from '../../lib/pomodoroTimer';
-import { ProgressBar } from '../ProgressBar';
+import { CardLabel } from '../CardLabel';
+
+const BLOCKS = 10;
 
 /**
- * Timer Pomodoro "de verdade" da sessao (Fase 36, secret/rascunhos/timer-pomodoro-sessao.md) - a
- * versao "design exclusivo" citada no rascunho, empilhada no sidebar de material junto de
- * MaterialSidebar/QuickNotePanel (ver useMaterialSidebar.tsx, mesmo padrao aditivo da Fase 29:
- * nenhuma funcionalidade existente e perdida, so acrescenta). A versao simplificada pro header
- * mora em PomodoroHeaderBadge - ambas leem o mesmo `lib/pomodoroTimer` (store modulo-level), entao
- * continuam sincronizadas ao navegar pra fora da sessao (ex: Caderninho) e voltar.
+ * Timer Pomodoro da sessao (Fase 36, secret/rascunhos/timer-pomodoro-sessao.md): manual (aluno
+ * liga/desliga, sem relacao com Daily.Start/Resume/Complete), predefinicoes fixas, 100% client-side.
  *
- * Manual de proposito (aluno liga/desliga, sem relacao com Daily.Start/Resume/Complete) e com
- * predefinicoes fixas em vez de duracao livre - decisoes do Falves fechando as perguntas em aberto
- * do rascunho antes de implementar.
- *
- * `flex-1` (Fase 37, pedido explicito) - antes ficava do tamanho do proprio conteudo, com o vao
- * sobrando empilhado ACIMA dele (justify-between em useMaterialSidebar.tsx); reportado como "esse
- * card podia ocupar esse espaco" - agora e o proprio card (borda incluida) que cresce pra
- * preencher a coluna. `justify-between` (era `justify-center`, mesmo pedido: "os cronogramas
- * possiveis [= os presets] ficarem espacados corretamente") distribui as secoes internas
- * (cabecalho, digitos, barra de progresso, presets, botoes) pela altura extra toda, em vez de
- * deixa-las todas juntas centralizadas com vao morto so em cima/embaixo do bloco inteiro.
+ * Fase 68 (Figma "Daily — redesign proposto"): visual pixel art e SEM versao no menu - o menu e
+ * global e unico, entao o antigo `PomodoroHeaderBadge` saiu. O timer continua rodando em
+ * `lib/pomodoroTimer` (store modulo-level) quando o aluno sai da sessao e volta. O cartao cresce pra
+ * ocupar a sobra da coluna (`flex-1`), com as secoes distribuidas na altura (`justify-between`).
  */
-export function PomodoroWidget() {
+export function PomodoroWidget({ className = '' }: { className?: string }) {
   const timer = usePomodoroTimer();
   const isFocus = timer.phase === 'focus';
   const total = currentPhaseTotalSeconds(timer);
   const progress = total > 0 ? 1 - timer.remainingSeconds / total : 0;
+  const filled = Math.round(progress * BLOCKS);
 
   return (
-    <div className="flex w-[280px] flex-1 flex-col justify-between gap-3 rounded-2xl border border-stroke bg-surface p-5">
+    <div className={`flex flex-col justify-between gap-3 pixel-box bg-base p-5 ${className}`}>
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-muted">Pomodoro</p>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-            isFocus ? 'bg-accent/25 text-accent' : 'bg-project/25 text-project'
-          }`}
-        >
-          {isFocus ? 'Foco' : 'Pausa'}
-        </span>
+        <CardLabel pixel>Pomodoro</CardLabel>
+        <span className={`font-pixel-label text-[8px] ${isFocus ? 'text-accent' : 'text-project'}`}>{isFocus ? 'Foco' : 'Pausa'}</span>
       </div>
 
       <p
-        className={`text-center text-4xl font-bold tabular-nums ${isFocus ? 'text-primary' : 'text-project'} ${
+        className={`text-center font-pixel text-6xl leading-none tabular-nums ${isFocus ? 'text-primary' : 'text-project'} ${
           timer.justSwitchedPhase ? 'animate-pulse' : ''
         }`}
       >
         {formatPomodoroTime(timer.remainingSeconds)}
       </p>
 
-      <ProgressBar progress={progress} tone={isFocus ? 'accent' : 'project'} />
+      <div className="flex gap-[3px]" aria-hidden="true">
+        {Array.from({ length: BLOCKS }, (_, i) => (
+          <span key={i} className={`h-2 flex-1 ${i < filled ? (isFocus ? 'bg-accent' : 'bg-project') : 'bg-surface-alt'}`} />
+        ))}
+      </div>
 
       {timer.justSwitchedPhase && (
-        <p className="text-center text-xs font-medium text-secondary">
-          {isFocus ? '⏱️ Hora de focar de novo!' : '☕ Hora da pausa — esticar as pernas.'}
+        <p className="text-center font-pixel text-lg leading-tight text-secondary">
+          {isFocus ? 'Hora de focar de novo!' : 'Hora da pausa — estica as pernas.'}
         </p>
       )}
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex gap-1.5">
         {POMODORO_PRESETS.map((preset, index) => (
           <button
             key={preset.label}
             type="button"
             onClick={() => selectPomodoroPreset(index)}
-            className={
-              index === timer.presetIndex
-                ? 'rounded-full border border-accent bg-accent/25 px-2.5 py-1 text-[11px] font-semibold text-primary'
-                : 'rounded-full border border-stroke bg-surface-alt px-2.5 py-1 text-[11px] font-medium text-secondary hover:border-accent/50'
-            }
+            className={`flex-1 border-2 py-1.5 font-pixel-label text-[9px] ${
+              index === timer.presetIndex ? 'border-accent text-accent' : 'border-stroke text-secondary hover:text-primary'
+            }`}
           >
             {preset.label}
           </button>
@@ -86,7 +74,7 @@ export function PomodoroWidget() {
         <button
           type="button"
           onClick={() => (timer.isRunning ? pausePomodoroTimer() : startPomodoroTimer())}
-          className="flex-1 rounded-xl bg-accent py-2 text-sm font-bold tracking-wide text-base"
+          className="flex-1 border-2 border-accent py-2.5 font-pixel-label text-[10px] text-accent hover:bg-accent/10"
         >
           {timer.isRunning ? 'Pausar' : timer.started ? 'Continuar' : 'Iniciar'}
         </button>
@@ -94,7 +82,7 @@ export function PomodoroWidget() {
           <button
             type="button"
             onClick={resetPomodoroTimer}
-            className="rounded-xl border border-stroke px-3 py-2 text-sm font-medium text-secondary hover:text-primary"
+            className="border-2 border-stroke px-3 py-2.5 font-pixel-label text-[10px] text-secondary hover:text-primary"
           >
             Zerar
           </button>

@@ -18,10 +18,11 @@ export function EmptyStateError({
 
   return (
     <ErrorLayout
-      icon="📦"
+      expression="neutra"
+      caption="Vazio"
       title={title}
       description={description}
-      primaryAction={{ label: 'Explorar Cursos', onClick: () => navigate('/start') }}
+      primaryAction={{ label: 'Explorar cursos', onClick: () => navigate('/start') }}
     />
   );
 }
