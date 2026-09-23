@@ -271,6 +271,9 @@ export const api = {
   // Caderninho de Anotacoes (Fase 29) - painel de captura rapida na Daily + aba "Caderninho" no Course.
   createNote: (dailyId: string, content: string, tags: string[]) =>
     request<NoteDto>(`/api/dailies/${dailyId}/notes`, { method: 'POST', body: JSON.stringify({ content, tags }) }),
+  // Fase 63: "Anotação rápida" da tela do Projeto Semanal - nota presa ao projeto, nao a uma Daily.
+  createWeeklyProjectNote: (weeklyId: string, content: string, tags: string[]) =>
+    request<NoteDto>(`/api/weeklies/${weeklyId}/project/notes`, { method: 'POST', body: JSON.stringify({ content, tags }) }),
   updateNote: (noteId: string, content: string, tags: string[]) =>
     request<NoteDto>(`/api/notes/${noteId}`, { method: 'PUT', body: JSON.stringify({ content, tags }) }),
   deleteNote: (noteId: string) => request<void>(`/api/notes/${noteId}`, { method: 'DELETE' }),

@@ -77,6 +77,7 @@ public static class DependencyInjection
         services.AddScoped<GetAiProviderStatusUseCase>();
         // Caderninho de Anotacoes (Fase 29).
         services.AddScoped<CreateNoteUseCase>();
+        services.AddScoped<CreateWeeklyProjectNoteUseCase>();
         services.AddScoped<EditNoteUseCase>();
         services.AddScoped<DeleteNoteUseCase>();
         services.AddScoped<ListNotesUseCase>();

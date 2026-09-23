@@ -73,7 +73,7 @@ export function useMaterialSidebar(daily: DailyStateDto, activeContentId: string
 
   const sidebar = weekly ? (
     <div className="flex flex-col justify-between gap-4">
-      <QuickNotePanel dailyId={daily.id} courseId={weekly.courseId} />
+      <QuickNotePanel target={{ dailyId: daily.id }} courseId={weekly.courseId} />
       <StudyAssistantPanel />
     </div>
   ) : undefined;

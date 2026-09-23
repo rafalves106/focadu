@@ -30,7 +30,7 @@ import { PomodoroHeaderBadge } from './pomodoro/PomodoroHeaderBadge';
  * lista - so o botao central e o `UserMenu` continuam sempre visiveis na
  * barra. Acima de `md`, layout identico ao original (3 grupos numa linha so).
  *
- * Fase 62 (Figma node 178:143): 73px de altura e texto de 24px no desktop largo (`xl`, >= 1280px -
+ * Fase 62 (Figma node 178:143): 73px de altura e texto de 16px no desktop largo (24px no Figma, reduzido a pedido do dono) (`xl`, >= 1280px -
  * abaixo disso o tamanho antigo, senao nao cabe), "Trilha do Curso" virou "Trilhas", e o canto
  * direito virou "@usuario" + avatar (`UserMenu`), que abre o menu com Perfil, Configuracoes e o
  * status da IA - os dois ultimos sairam da barra porque o Figma nao os tem (decisao do dono: mover,
@@ -119,7 +119,7 @@ export function GlobalNav() {
 
 function NavItem({ to, children }: { to: string; children: ReactNode }) {
   return (
-    <Link to={to} className="rounded-lg px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary xl:text-[24px]">
+    <Link to={to} className="rounded-lg px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary xl:text-[16px]">
       {children}
     </Link>
   );

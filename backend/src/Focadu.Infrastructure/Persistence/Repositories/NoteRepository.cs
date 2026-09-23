@@ -16,10 +16,12 @@ public class NoteRepository : INoteRepository
     public async Task<Note?> GetByIdAsync(Guid id, Guid userId, CancellationToken cancellationToken = default) =>
         await _context.Notes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId, cancellationToken);
 
-    public async Task<IReadOnlyCollection<Note>> ListByUserAndDailyIdsAsync(
-        Guid userId, IReadOnlyCollection<Guid> dailyIds, CancellationToken cancellationToken = default) =>
+    public async Task<IReadOnlyCollection<Note>> ListByUserAndContextIdsAsync(
+        Guid userId, IReadOnlyCollection<Guid> dailyIds, IReadOnlyCollection<Guid> weeklyProjectIds, CancellationToken cancellationToken = default) =>
         await _context.Notes
-            .Where(n => n.UserId == userId && dailyIds.Contains(n.DailyId))
+            .Where(n => n.UserId == userId
+                && ((n.DailyId != null && dailyIds.Contains(n.DailyId.Value))
+                    || (n.WeeklyProjectId != null && weeklyProjectIds.Contains(n.WeeklyProjectId.Value))))
             .ToListAsync(cancellationToken);
 
     public async Task AddAsync(Note note, CancellationToken cancellationToken = default) =>

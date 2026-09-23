@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError, api } from '../../api/client';
 import { useApiResource } from '../../api/useApiResource';
+import { CardLabel } from '../CardLabel';
 
 function parseTags(raw: string): string[] {
   return Array.from(new Set(raw.split(',').map((t) => t.trim()).filter(Boolean)));
@@ -15,8 +16,23 @@ function parseTags(raw: string): string[] {
  *
  * Empilhado abaixo do `<MaterialSidebar>` já existente (ver useMaterialSidebar.tsx) - nenhuma das
  * duas substitui a outra.
+ *
+ * `fill` (Fase 63, Projeto Semanal): o cartao ocupa a altura que o pai der (240px no Figma) e o
+ * texto estica pra preencher o que sobra; rotulo no estilo `CardLabel` do layout novo. Sem `fill`,
+ * nada muda (Daily).
  */
-export function QuickNotePanel({ dailyId, courseId }: { dailyId: string; courseId: string }) {
+export function QuickNotePanel({
+  target,
+  courseId,
+  fill = false,
+  className = '',
+}: {
+  /** Onde a nota fica presa: a Daily da sessao ou, na tela do projeto (Fase 63), o Projeto Semanal. */
+  target: { dailyId: string } | { weeklyId: string };
+  courseId: string;
+  fill?: boolean;
+  className?: string;
+}) {
   const { data: knownTags } = useApiResource(() => api.listNoteTags(courseId), [courseId]);
   const [content, setContent] = useState('');
   const [tagsInput, setTagsInput] = useState('');
@@ -29,7 +45,8 @@ export function QuickNotePanel({ dailyId, courseId }: { dailyId: string; courseI
     setSaving(true);
     setError(null);
     try {
-      await api.createNote(dailyId, content.trim(), parseTags(tagsInput));
+      if ('dailyId' in target) await api.createNote(target.dailyId, content.trim(), parseTags(tagsInput));
+      else await api.createWeeklyProjectNote(target.weeklyId, content.trim(), parseTags(tagsInput));
       setContent('');
       setTagsInput('');
       setSaved(true);
@@ -42,9 +59,17 @@ export function QuickNotePanel({ dailyId, courseId }: { dailyId: string; courseI
   }
 
   return (
-    <div className="flex w-[280px] shrink-0 flex-col gap-3 rounded-2xl border border-stroke bg-surface p-5">
+    <div
+      className={`flex shrink-0 flex-col rounded-2xl border border-stroke bg-surface ${
+        fill ? 'gap-2 px-[18px] pt-4 pb-4' : 'w-[280px] gap-3 p-5'
+      } ${className}`}
+    >
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-muted">Anotação Rápida</p>
+        {fill ? (
+          <CardLabel>Anotação rápida</CardLabel>
+        ) : (
+          <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-muted">Anotação Rápida</p>
+        )}
         <Link
           to={`/start?course=${courseId}&tab=caderninho`}
           className="text-[10px] font-semibold uppercase tracking-wide text-accent hover:underline"
@@ -57,8 +82,10 @@ export function QuickNotePanel({ dailyId, courseId }: { dailyId: string; courseI
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="Anote um insight, dúvida ou resumo desta aula (markdown: **negrito**, *itálico*, `código`, - lista, [link](url))..."
-        rows={5}
-        className="w-full resize-none rounded-xl border border-stroke bg-base p-3 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+        rows={fill ? 2 : 5}
+        className={`w-full resize-none rounded-xl border border-stroke bg-base p-3 text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent ${
+          fill ? 'min-h-0 flex-1 text-xs' : 'text-sm'
+        }`}
       />
 
       <input

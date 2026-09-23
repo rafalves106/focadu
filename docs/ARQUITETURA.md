@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 62 - Menu global do Figma (node 178:143) + menu do usuario**.
+> Ultima fase que atualizou este documento: **Fase 63 - Projeto Semanal com o layout ajustado do Figma + anotacao presa ao projeto**.
 
 ## Visao geral do projeto
 
@@ -866,6 +866,14 @@ tempo, qualquer entidade de "partida"/Challenge/PvP, Elo/Patente - continuam nao
 
 ### Caderninho de Anotacoes (Fase 29)
 
+**Fase 63 - nota de Projeto Semanal:** `Note` tem exatamente um contexto, `DailyId` **ou**
+`WeeklyProjectId` (check constraint `CK_Notes_ExactlyOneContext`; `Note.ForWeeklyProject`). Criada
+pela "Anotacao rapida" da tela do projeto via `POST /api/weeklies/{weeklyId}/project/notes`
+(`CreateWeeklyProjectNoteUseCase`). `NoteDto`: `dailyId`/`dayNumber` opcionais + `weeklyProjectId`;
+em nota de projeto `dailyDate` = dia (local) de criacao. `ListNotesUseCase` busca as duas
+(`ListByUserAndContextIdsAsync`); o escopo `?dailyId=` (Fase 57) nunca inclui nota de projeto. UI:
+"Semana N, Projeto".
+
 Anotacao livre do aluno (`Note`, `Focadu.Domain.Notes`), criada no contexto de uma Daily
 especifica - ideia trazida por um colega, validada e mapeada em detalhe (incluindo mockups Figma)
 em `secret/rascunhos/caderninho-de-anotacoes.md` antes desta fase. `Note` e aggregate root proprio
@@ -1212,6 +1220,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 DELETE | `/api/squads/members/{userId}` | `LeaveSquadUseCase` (se `{userId}` = usuario logado) ou `RemoveMemberUseCase` (Fase 24) | 204, 404 `squad_nao_encontrado`/`membro_nao_encontrado`, 409 `dono_nao_pode_sair`/`dono_nao_pode_se_remover` |
 | 🔒 GET | `/api/squads/me/ranking?scope=&page=` | `GetSquadRankingUseCase` (Fase 24) | 200 (`SquadRankingResultDto`) - gera `JoinCode` na 1a consulta (lazy), `Members` paginado (Fase 24c), 404 `squad_nao_encontrado` |
 | 🔒 GET | `/api/system/ai-status` | `GetAiProviderStatusUseCase` (Fase 28) | 200 (array de `AiProviderStatusDto` - hoje so Groq), nunca 404/erro (a checagem em si nunca lanca, ver secao Groq abaixo) |
+| 🔒 POST | `/api/weeklies/{weeklyId}/project/notes` | `CreateWeeklyProjectNoteUseCase` (Fase 63) | 201 (`NoteDto` com `weeklyProjectId`), 404 `semana_nao_encontrada`/`projeto_nao_encontrado`, mesmos 400 de validacao da nota |
 | 🔒 POST | `/api/dailies/{dailyId}/notes` | `CreateNoteUseCase` (Fase 29) | 201 (`NoteDto`), 404 `daily_nao_encontrada`, 400 `nota_vazia`/`nota_muito_longa`/`tag_muito_longa`/`notas_tags_demais` |
 | 🔒 PUT | `/api/notes/{noteId}` | `EditNoteUseCase` (Fase 29) | 200 (`NoteDto`), 404 `nota_nao_encontrada`, 400 (mesmos codigos de validacao acima) |
 | 🔒 DELETE | `/api/notes/{noteId}` | `DeleteNoteUseCase` (Fase 29) | 204, 404 `nota_nao_encontrada` |
@@ -2323,9 +2332,11 @@ via `ScrollArea` (`components/ScrollArea.tsx`): barra nativa escondida (`scrollb
 + barra propria de 4px que aparece so enquanto rola e some com desfoque. Todo contêiner flex no
 caminho ate a area que rola precisa de `min-h-0`. Abaixo de `lg`, fluxo empilhado com rolagem normal.
 Plano do dono: levar pro sistema inteiro - abordagem e armadilhas em `docs/fase-61/`.
-`WeeklyProjectPage` segue o Figma node `178:132`: repositorio (esquerda), especificacao com entrega
-fixa no rodape (centro), referencias + chat alto `StudyAssistantPanel tall` (direita) - o botao
-flutuante `QuickQuestionOrb` nao e mais usado em nenhuma tela.
+`WeeklyProjectPage` segue o Figma node `178:132` (2a versao, Fase 63): esquerda REPOSITORIO (clone
++ credenciais com icone de copiar) e REFERENCIAS; centro DESAFIO SEMANAL com entrega fixa no
+rodape; direita ANOTACAO RAPIDA (`QuickNotePanel fill`, nota presa ao projeto) e TIRA DUVIDAS
+(`StudyAssistantPanel tall`). Rotulos via `CardLabel`. O botao flutuante `QuickQuestionOrb` nao e
+mais usado em nenhuma tela.
 
 **Fidelidade visual da Sessao Diaria (Fase 19):** fase so de estilo, sem mudanca de logica/API/
 estrutura de dados - as 8 telas de atividade (Leitura/Resumo Falado/Video/Quiz/Ligar Palavras/

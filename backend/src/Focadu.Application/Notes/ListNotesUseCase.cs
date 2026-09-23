@@ -35,40 +35,34 @@ public class ListNotesUseCase
             ?? throw new NotFoundException("matricula_nao_encontrada", "Usuario nao esta matriculado neste curso.");
 
         var weeklies = await _weeklyRepository.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken);
-        var dailyContext = BuildDailyContext(weeklies);
+        var weeklyByDaily = weeklies.SelectMany(w => w.Dailies.Select(d => (d.Id, w))).ToDictionary(x => x.Id, x => x.w);
+        var weeklyByProject = weeklies.Where(w => w.Project is not null).ToDictionary(w => w.Project!.Id);
 
-        var notes = await _noteRepository.ListByUserAndDailyIdsAsync(userId, dailyContext.Keys.ToList(), cancellationToken);
+        var notes = await _noteRepository.ListByUserAndContextIdsAsync(
+            userId, weeklyByDaily.Keys.ToList(), weeklyByProject.Keys.ToList(), cancellationToken);
 
-        var query = notes.AsEnumerable();
+        // Fase 63: nota de Daily ou de Projeto Semanal - NoteDto.From resolve Semana/Dia/data dos dois.
+        var query = notes.Select(n => NoteDto.From(n, n.DailyId is { } d ? weeklyByDaily[d] : weeklyByProject[n.WeeklyProjectId!.Value]));
 
         if (dailyId is { } scopedDailyId)
         {
+            // Escopo de uma sessao (Fase 57) - nota de projeto nunca entra (nao e de Daily nenhuma).
             var scope = NoteDailyScope.Resolve(weeklies, scopedDailyId);
-            query = query.Where(n => scope.Contains(n.DailyId));
+            query = query.Where(n => n.DailyId is { } d && scope.Contains(d));
         }
 
         if (from is { } fromDate)
-            query = query.Where(n => dailyContext[n.DailyId].Date >= fromDate);
+            query = query.Where(n => n.DailyDate >= fromDate);
         if (to is { } toDate)
-            query = query.Where(n => dailyContext[n.DailyId].Date <= toDate);
+            query = query.Where(n => n.DailyDate <= toDate);
         if (!string.IsNullOrWhiteSpace(searchText))
             query = query.Where(n => n.Content.Contains(searchText, StringComparison.OrdinalIgnoreCase));
         if (!string.IsNullOrWhiteSpace(tag))
             query = query.Where(n => n.Tags.Any(t => string.Equals(t, tag, StringComparison.OrdinalIgnoreCase)));
 
         return query
-            .OrderByDescending(n => dailyContext[n.DailyId].Date)
+            .OrderByDescending(n => n.DailyDate)
             .ThenByDescending(n => n.CreatedAt)
-            .Select(n =>
-            {
-                var context = dailyContext[n.DailyId];
-                return new NoteDto(n.Id, n.DailyId, context.WeekNumber, context.DayNumber, context.Date, n.Content, n.Tags, n.CreatedAt, n.UpdatedAt);
-            })
             .ToList();
     }
-
-    private static Dictionary<Guid, (int WeekNumber, int DayNumber, DateOnly Date)> BuildDailyContext(IReadOnlyCollection<Weekly> weeklies) =>
-        weeklies
-            .SelectMany(w => w.Dailies.Select(d => (d.Id, Context: (WeekNumber: w.Number, d.DayNumber, d.Date))))
-            .ToDictionary(x => x.Id, x => x.Context);
 }

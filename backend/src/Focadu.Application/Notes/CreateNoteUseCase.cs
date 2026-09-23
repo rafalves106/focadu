@@ -27,12 +27,10 @@ public class CreateNoteUseCase
     {
         var weekly = await _weeklyRepository.GetByDailyIdAsync(dailyId, userId, cancellationToken)
             ?? throw new NotFoundException("daily_nao_encontrada", "Daily nao encontrada.");
-        var daily = weekly.Dailies.First(d => d.Id == dailyId);
-
         var note = new Note(userId, dailyId, content, tags ?? Array.Empty<string>());
         await _noteRepository.AddAsync(note, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new NoteDto(note.Id, dailyId, weekly.Number, daily.DayNumber, daily.Date, note.Content, note.Tags, note.CreatedAt, note.UpdatedAt);
+        return NoteDto.From(note, weekly);
     }
 }

@@ -26,12 +26,13 @@ public class EditNoteUseCase
         note.Edit(content, tags ?? Array.Empty<string>());
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        // Weekly.Number/Daily.DayNumber nunca mudam pra uma nota ja existente (DailyId e fixo) -
+        // Weekly.Number/Daily.DayNumber nunca mudam pra uma nota ja existente (o contexto e fixo) -
         // resolvidos de novo so pra montar o NoteDto de resposta (mesmo dado de CreateNoteUseCase).
-        var weekly = await _weeklyRepository.GetByDailyIdAsync(note.DailyId, userId, cancellationToken)
-            ?? throw new NotFoundException("daily_nao_encontrada", "Daily nao encontrada.");
-        var daily = weekly.Dailies.First(d => d.Id == note.DailyId);
+        var weekly = (note.DailyId is { } dailyId
+                ? await _weeklyRepository.GetByDailyIdAsync(dailyId, userId, cancellationToken)
+                : await _weeklyRepository.GetByWeeklyProjectIdAsync(note.WeeklyProjectId!.Value, userId, cancellationToken))
+            ?? throw new NotFoundException("contexto_da_nota_nao_encontrado", "Daily ou projeto da nota nao encontrado.");
 
-        return new NoteDto(note.Id, note.DailyId, weekly.Number, daily.DayNumber, daily.Date, note.Content, note.Tags, note.CreatedAt, note.UpdatedAt);
+        return NoteDto.From(note, weekly);
     }
 }

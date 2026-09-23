@@ -618,9 +618,13 @@ export interface AiProviderStatusDto {
  */
 export interface NoteDto {
   id: string;
-  dailyId: string;
+  /** Fase 63: nota de Daily OU de Projeto Semanal - exatamente um dos dois vem preenchido. */
+  dailyId: string | null;
+  weeklyProjectId: string | null;
   weekNumber: number;
-  dayNumber: number;
+  /** Nulo em nota de projeto (Fase 63). */
+  dayNumber: number | null;
+  /** Data da Daily; em nota de projeto, o dia em que a nota foi criada. */
   dailyDate: string;
   content: string;
   tags: string[];

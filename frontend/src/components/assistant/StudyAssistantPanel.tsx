@@ -1,5 +1,6 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react';
 import { STUDY_ASSISTANT_MAX_QUESTION_LENGTH, useStudyAssistantChat } from '../../lib/useStudyAssistantChat';
+import { CardLabel } from '../CardLabel';
 import { ScrollArea } from '../ScrollArea';
 
 /**
@@ -37,9 +38,13 @@ export function StudyAssistantPanel({ tall = false, className = '' }: { tall?: b
   }
 
   return (
-    <div className={`flex shrink-0 flex-col gap-3 rounded-2xl border border-stroke bg-surface p-5 ${tall ? '' : 'w-[280px]'} ${className}`}>
+    <div className={`flex shrink-0 flex-col gap-3 rounded-2xl border border-stroke bg-surface ${tall ? 'px-[18px] pt-4 pb-4' : 'w-[280px] p-5'} ${className}`}>
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-muted">Tire sua dúvida</p>
+        {tall ? (
+          <CardLabel>Tira dúvidas</CardLabel>
+        ) : (
+          <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-muted">Tire sua dúvida</p>
+        )}
         {messages.length > 0 && (
           <button
             type="button"

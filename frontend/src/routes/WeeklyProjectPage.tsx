@@ -10,6 +10,9 @@ import { ProgressBar } from '../components/ProgressBar';
 import { ScrollArea } from '../components/ScrollArea';
 import { StudyAssistantPanel } from '../components/assistant/StudyAssistantPanel';
 import backArrow from '../assets/project/back-arrow.svg';
+import terminalIcon from '../assets/project/terminal-icon.png';
+import { CardLabel } from '../components/CardLabel';
+import { QuickNotePanel } from '../components/notebook/QuickNotePanel';
 import { setStudyAssistantContext } from '../lib/studyAssistantContext';
 
 const STATUS_BADGE: Record<number, { label: string; className: string }> = {
@@ -121,7 +124,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
       <div className="flex shrink-0 flex-col gap-3 lg:grid lg:grid-cols-[1fr_minmax(0,250px)_1fr] lg:items-center lg:gap-4">
         <Link
           to={backTo}
-          className="flex min-w-0 items-center gap-2 text-sm font-medium uppercase tracking-[1.6px] text-secondary hover:text-primary lg:text-[16px]"
+          className="flex min-w-0 items-center gap-2 text-sm font-medium uppercase tracking-[1.6px] text-secondary hover:text-primary"
         >
           <img src={backArrow} alt="" width={17} height={7.36} className="shrink-0" />
           <span className="truncate">Voltar para {weekly.theme ?? weekly.title}</span>
@@ -132,90 +135,104 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-8 lg:flex-row">
-        {/* Coluna esquerda: repositorio - so depois do projeto disponibilizado. */}
-        {released && project.submissionUrl && (
-          <RepositoryPanel
-            submissionUrl={project.submissionUrl}
-            username={project.forgejoUsername}
-            tokenLastEight={project.forgejoTokenLastEight}
-          />
+        {/* Coluna esquerda (Fase 63): repositorio em cima (altura do conteudo) e referencias ocupando
+            o resto - so depois do projeto disponibilizado. */}
+        {released && (project.submissionUrl || project.references.length > 0) && (
+          <div className="flex min-h-0 flex-col gap-8 lg:w-[250px] lg:shrink-0">
+            {project.submissionUrl && (
+              <RepositoryPanel
+                submissionUrl={project.submissionUrl}
+                username={project.forgejoUsername}
+                tokenLastEight={project.forgejoTokenLastEight}
+              />
+            )}
+            {project.references.length > 0 && (
+              <ReferencesPanel
+                references={project.references}
+                languageName={project.language !== null ? PROJECT_LANGUAGE_NAMES[project.language] : null}
+              />
+            )}
+          </div>
         )}
 
         {/* Centro: especificacao rola por dentro; a entrega fica fixa no rodape do cartao, sempre
             visivel, sem precisar rolar ate o fim da especificacao. */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-2xl border-[1.5px] border-project bg-surface">
-          <ScrollArea className="min-h-0 flex-1" contentClassName="flex flex-col gap-6 p-6 lg:p-10">
-            <div className="flex items-center justify-between">
-              <span className="rounded-full border border-project bg-project/10 px-3 py-1.5 text-[11px] font-semibold tracking-[0.5px] text-project">
-                CHEFE DE FASE 👾
-              </span>
-              <span className={`rounded-md px-3 py-1.5 text-xs font-semibold ${badge.className}`}>{badge.label}</span>
-            </div>
+          <ScrollArea className="min-h-0 flex-1" contentClassName="flex flex-col gap-6 px-[18px] pt-4 pb-6 lg:pb-10">
+            <CardLabel>Desafio semanal</CardLabel>
+            <div className="flex flex-col gap-6 lg:px-[22px]">
+              <div className="flex items-center justify-between">
+                <span className="rounded-full border border-project bg-project/10 px-3 py-1.5 text-[11px] font-semibold tracking-[0.5px] text-project">
+                  CHEFE DE FASE 👾
+                </span>
+                <span className={`rounded-md px-3 py-1.5 text-xs font-semibold ${badge.className}`}>{badge.label}</span>
+              </div>
 
-            <div className="flex flex-col gap-4">
-              <h1 className="text-[28px] font-bold text-primary">Projeto da Semana {weekly.number}</h1>
+              <div className="flex flex-col gap-4">
+                <h1 className="text-[28px] font-bold text-primary">Projeto da Semana {weekly.number}</h1>
 
-              {/* Fase 38: trava tudo abaixo enquanto a Weekly ainda tem Daily original nao concluida
-                  (Weekly.AreDailiesComplete) - inclusive a escolha de linguagem (Fase 59): "so depois
-                  de desbloqueado" (decisao do dono), pra nao mostrar um seletor que o backend so
-                  aceitaria depois. */}
-              {project.isLocked ? (
-                <p className="rounded-xl border border-stroke bg-surface-alt px-4 py-3 text-sm text-secondary">
-                  🔒 Termine todas as dailies desta semana para desbloquear o projeto.
-                </p>
-              ) : project.languageStep === ProjectLanguageStep.NeedsPreference ? (
-                <LanguagePreferenceNeeded />
-              ) : project.languageStep === ProjectLanguageStep.NeedsChoice ? (
-                <LanguagePicker
-                  choosableLanguages={project.choosableLanguages}
-                  pendingLanguage={pendingLanguage}
-                  onPick={setPendingLanguage}
-                  onCancel={() => {
-                    setPendingLanguage(null);
-                    setChooseLanguageError(null);
-                  }}
-                  onConfirm={handleConfirmLanguage}
-                  submitting={choosingLanguage}
-                  error={chooseLanguageError}
-                />
-              ) : (
-                // SpecText e Markdown curado (titulos "###", listas, negrito/codigo inline) - antes ia
-                // num <p whitespace-pre-line> e a sintaxe aparecia crua na tela. Mesmo renderizador das
-                // leituras.
-                <MarkdownBlock text={project.specText} />
+                {/* Fase 38: trava tudo abaixo enquanto a Weekly ainda tem Daily original nao concluida
+                    (Weekly.AreDailiesComplete) - inclusive a escolha de linguagem (Fase 59): "so depois
+                    de desbloqueado" (decisao do dono), pra nao mostrar um seletor que o backend so
+                    aceitaria depois. */}
+                {project.isLocked ? (
+                  <p className="rounded-xl border border-stroke bg-surface-alt px-4 py-3 text-sm text-secondary">
+                    🔒 Termine todas as dailies desta semana para desbloquear o projeto.
+                  </p>
+                ) : project.languageStep === ProjectLanguageStep.NeedsPreference ? (
+                  <LanguagePreferenceNeeded />
+                ) : project.languageStep === ProjectLanguageStep.NeedsChoice ? (
+                  <LanguagePicker
+                    choosableLanguages={project.choosableLanguages}
+                    pendingLanguage={pendingLanguage}
+                    onPick={setPendingLanguage}
+                    onCancel={() => {
+                      setPendingLanguage(null);
+                      setChooseLanguageError(null);
+                    }}
+                    onConfirm={handleConfirmLanguage}
+                    submitting={choosingLanguage}
+                    error={chooseLanguageError}
+                  />
+                ) : (
+                  // SpecText e Markdown curado (titulos "###", listas, negrito/codigo inline) - antes ia
+                  // num <p whitespace-pre-line> e a sintaxe aparecia crua na tela. Mesmo renderizador das
+                  // leituras.
+                  <MarkdownBlock text={project.specText} />
+                )}
+              </div>
+
+              {released && (
+                <>
+                  <div className="h-px bg-stroke" />
+
+                  {/* Fase 27b: Score/Feedback existem no dominio desde a Fase 16 mas nunca apareciam
+                      aqui - nada disparava a avaliacao pela UI antes desta fase (ver
+                      SubmitWeeklyProjectUseCase). Estilo proprio (nao FeedbackPanel, usado pelas 5
+                      atividades da Daily) porque projeto nao tem conceito de passed/reprovado - uma vez
+                      avaliado, nao ha reenvio (WeeklyProject.Submit bloqueia depois de Evaluated), so a
+                      nota fica registrada. */}
+                  {project.status === WeeklyProjectStatus.Evaluated && (
+                    <div className="flex flex-col gap-3 rounded-xl border border-project/40 bg-surface-alt p-5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Avaliação</p>
+                        <p className="text-2xl font-bold text-project">
+                          {project.score}
+                          <span className="text-sm font-medium text-muted">/100</span>
+                        </p>
+                      </div>
+                      {project.feedback && <p className="text-sm text-secondary">{project.feedback}</p>}
+                    </div>
+                  )}
+
+                  {!project.submissionUrl && (
+                    <p className="rounded-xl border border-alert/40 bg-surface-alt px-4 py-3 text-sm text-alert">
+                      Seu repositório ainda não foi provisionado - tente recarregar a página em alguns instantes.
+                    </p>
+                  )}
+                </>
               )}
             </div>
-
-            {released && (
-              <>
-                <div className="h-px bg-stroke" />
-
-                {/* Fase 27b: Score/Feedback existem no dominio desde a Fase 16 mas nunca apareciam
-                    aqui - nada disparava a avaliacao pela UI antes desta fase (ver
-                    SubmitWeeklyProjectUseCase). Estilo proprio (nao FeedbackPanel, usado pelas 5
-                    atividades da Daily) porque projeto nao tem conceito de passed/reprovado - uma vez
-                    avaliado, nao ha reenvio (WeeklyProject.Submit bloqueia depois de Evaluated), so a
-                    nota fica registrada. */}
-                {project.status === WeeklyProjectStatus.Evaluated && (
-                  <div className="flex flex-col gap-3 rounded-xl border border-project/40 bg-surface-alt p-5">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted">Avaliação</p>
-                      <p className="text-2xl font-bold text-project">
-                        {project.score}
-                        <span className="text-sm font-medium text-muted">/100</span>
-                      </p>
-                    </div>
-                    {project.feedback && <p className="text-sm text-secondary">{project.feedback}</p>}
-                  </div>
-                )}
-
-                {!project.submissionUrl && (
-                  <p className="rounded-xl border border-alert/40 bg-surface-alt px-4 py-3 text-sm text-alert">
-                    Seu repositório ainda não foi provisionado - tente recarregar a página em alguns instantes.
-                  </p>
-                )}
-              </>
-            )}
           </ScrollArea>
 
           {canSubmit && project.submissionUrl && (
@@ -239,14 +256,10 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
           )}
         </div>
 
-        {/* Coluna direita: referencias (cartao baixo, 240px) + chat ocupando o resto da altura. */}
+        {/* Coluna direita (Fase 63): anotacao rapida (240px, presa ao PROJETO, nao a uma Daily) + chat
+            ocupando o resto da altura. */}
         <div className="flex min-h-0 flex-col gap-8 lg:w-[250px] lg:shrink-0">
-          {released && project.references.length > 0 && (
-            <ReferencesPanel
-              references={project.references}
-              languageName={project.language !== null ? PROJECT_LANGUAGE_NAMES[project.language] : null}
-            />
-          )}
+          <QuickNotePanel fill target={{ weeklyId }} courseId={weekly.courseId} className="h-[240px]" />
           <StudyAssistantPanel tall className="h-[480px] lg:h-auto lg:min-h-0 lg:flex-1" />
         </div>
       </div>
@@ -255,13 +268,13 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
 }
 
 /**
- * Coluna esquerda: repositorio gerenciado no Forgejo interno (fork do template da semana). Mesmo
- * cartao de 280px do MaterialSidebar da Daily.
+ * Cartao "REPOSITORIO" (Fase 63, Figma node 178:132): icone de terminal + caixa com o `git clone`,
+ * botao que copia o comando, e as credenciais do git (usuario e token) com icone de copiar.
  *
- * Fase 60: a Focadu nao guarda mais o token do git (antes ficava em texto puro no banco e aparecia
- * aqui sempre). O aluno gera sob demanda e ve o valor uma unica vez, nesta tela - so fica em state,
- * some ao recarregar. Gerar de novo revoga o anterior no Forgejo, por isso a confirmacao quando ja
- * existe um valendo (`tokenLastEight`).
+ * Fase 60: a Focadu nao guarda o token do git. O Figma desenha o estado "token recem-gerado"
+ * (caixa tracejada vermelha + aviso); sem token na tela, a caixa mostra o final do token valendo e o
+ * botao GERAR - gerar de novo revoga o anterior no Forgejo, por isso a confirmacao quando ja existe
+ * um (`tokenLastEight`). O token gerado so vive em state, some ao recarregar.
  */
 function RepositoryPanel({
   submissionUrl,
@@ -276,7 +289,8 @@ function RepositoryPanel({
   const [confirming, setConfirming] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'clone' | 'username' | 'token' | null>(null);
+  const cloneCommand = `git clone ${submissionUrl}`;
   const currentLastEight = generated ? generated.accessToken.slice(-8) : tokenLastEight;
 
   async function handleGenerate() {
@@ -292,125 +306,143 @@ function RepositoryPanel({
     }
   }
 
-  async function handleCopy(token: string) {
+  async function handleCopy(what: 'clone' | 'username' | 'token', text: string) {
     try {
-      await navigator.clipboard.writeText(token);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(text);
+      setCopied(what);
+      setTimeout(() => setCopied((c) => (c === what ? null : c)), 2000);
     } catch {
       // Clipboard indisponivel (ex: contexto nao seguro) - sem tratamento especial, so nao copia.
     }
   }
 
   return (
-    <ScrollArea
-      className="shrink-0 rounded-2xl border border-stroke bg-surface lg:h-full lg:w-[250px]"
-      contentClassName="flex flex-col gap-4 p-5 pr-6"
-    >
-      <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-muted">Seu repositório</p>
-      <a href={submissionUrl} target="_blank" rel="noreferrer" className="break-all text-[13px] text-accent hover:underline">
-        {submissionUrl}
-      </a>
+    <ScrollArea className="shrink-0 rounded-2xl border border-stroke bg-surface" contentClassName="flex flex-col px-[18px] pt-4 pb-5">
+      <CardLabel>Repositório</CardLabel>
 
-      <div className="flex flex-col gap-1">
-        <p className="text-[10px] font-medium uppercase tracking-[1px] text-secondary">Clonar</p>
-        <code className="whitespace-pre-wrap break-all rounded-lg bg-base px-3 py-2 text-xs text-secondary">
-          git clone {submissionUrl}
-        </code>
+      <div className="mt-3 flex items-center gap-[7px]">
+        <img src={terminalIcon} alt="" width={40} height={40} className="size-10 shrink-0" />
+        <a
+          href={submissionUrl}
+          target="_blank"
+          rel="noreferrer"
+          title={cloneCommand}
+          className="min-w-0 flex-1 rounded-lg border border-dashed border-stroke px-2 py-[7px] font-mono text-[8px] leading-snug text-secondary hover:text-primary"
+        >
+          {/* line-clamp num span proprio: no <a> com padding, a 3a linha vazava no padding de baixo. */}
+          <span className="line-clamp-2 break-all">{cloneCommand}</span>
+        </a>
       </div>
 
+      <button
+        type="button"
+        onClick={() => handleCopy('clone', cloneCommand)}
+        className="mt-[9px] h-[30px] rounded-lg bg-accent font-mono text-[10px] font-semibold uppercase tracking-[1px] text-stroke"
+      >
+        {copied === 'clone' ? 'Copiado ✓' : 'Copiar comando git clone'}
+      </button>
+
+      <p className="mt-2.5 font-mono text-[8px] leading-snug text-secondary">
+        O git vai pedir usuário e senha na hora do push - utilize as credenciais abaixo.
+      </p>
+
       {username && (
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <p className="text-[10px] font-medium uppercase tracking-[1px] text-secondary">Usuário do git</p>
-            <code className="break-all rounded-lg bg-base px-3 py-2 text-xs text-primary">{username}</code>
+        <>
+          <p className="mt-6 pl-[9px] font-mono text-[10px] font-semibold uppercase tracking-[1px] text-secondary">Usuário do git</p>
+          <div className="mt-2 flex min-h-9 items-center gap-2 rounded-lg border border-stroke py-1.5 pl-[9px] pr-2">
+            <code className="min-w-0 flex-1 break-all font-mono text-[10px] text-secondary">{username}</code>
+            <CopyIconButton label="Copiar usuário do git" copied={copied === 'username'} onClick={() => handleCopy('username', username)} />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <p className="text-[10px] font-medium uppercase tracking-[1px] text-secondary">Token (use como senha)</p>
-
-            {generated ? (
-              <>
-                <code className="break-all rounded-lg bg-base px-3 py-2 text-xs text-primary">{generated.accessToken}</code>
-                <button
-                  type="button"
-                  onClick={() => handleCopy(generated.accessToken)}
-                  className="rounded-lg bg-accent px-3 py-2 text-xs font-bold text-base"
-                >
-                  {copied ? 'COPIADO ✓' : 'COPIAR TOKEN'}
-                </button>
-                <p className="text-xs text-alert">
-                  Copie agora: por segurança a Focadu não guarda o token, ele não aparece de novo depois que você sair desta tela.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-xs text-secondary">
-                  {currentLastEight ? (
-                    <>
-                      Token atual termina em <span className="font-mono text-primary">…{currentLastEight}</span>. Perdeu? Gere outro.
-                    </>
-                  ) : (
-                    'Gere um token para enviar (git push) seu código.'
-                  )}
-                </p>
-                {confirming ? (
-                  <div className="flex flex-col gap-2 rounded-lg border border-alert/40 p-3">
-                    <p className="text-xs text-secondary">O token atual deixa de funcionar. Continuar?</p>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleGenerate}
-                        disabled={generating}
-                        className="flex-1 rounded-lg bg-accent px-3 py-2 text-xs font-bold text-base disabled:opacity-50"
-                      >
-                        {generating ? 'GERANDO...' : 'GERAR'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirming(false)}
-                        disabled={generating}
-                        className="flex-1 rounded-lg border border-stroke px-3 py-2 text-xs font-bold text-secondary"
-                      >
-                        CANCELAR
-                      </button>
-                    </div>
-                  </div>
-                ) : (
+          <p className="mt-5 pl-[9px] font-mono text-[10px] font-semibold uppercase tracking-[1px] text-secondary">
+            Token (use como senha)
+          </p>
+          {generated ? (
+            <>
+              <div className="mt-2 flex min-h-9 items-center gap-2 rounded-lg border border-dashed border-alert/50 py-1.5 pl-[9px] pr-2">
+                <code className="min-w-0 flex-1 break-all font-mono text-[10px] text-secondary">{generated.accessToken}</code>
+                <CopyIconButton label="Copiar token" copied={copied === 'token'} onClick={() => handleCopy('token', generated.accessToken)} />
+              </div>
+              <p className="mt-2 pl-[9px] font-mono text-[8px] leading-snug text-alert/50">
+                Copie agora: por segurança a Focadu não guarda o token, ele não aparece de novo depois que você sair desta tela.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="mt-2 flex min-h-9 items-center gap-2 rounded-lg border border-stroke py-1.5 pl-[9px] pr-2">
+                <code className="min-w-0 flex-1 font-mono text-[10px] text-muted">
+                  {currentLastEight ? `…${currentLastEight}` : 'nenhum token gerado'}
+                </code>
+                {!confirming && (
                   <button
                     type="button"
                     onClick={currentLastEight ? () => setConfirming(true) : handleGenerate}
                     disabled={generating}
-                    className="rounded-lg bg-accent px-3 py-2 text-xs font-bold text-base disabled:opacity-50"
+                    className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-[1px] text-accent hover:underline disabled:opacity-50"
                   >
-                    {generating ? 'GERANDO...' : currentLastEight ? 'GERAR NOVO TOKEN' : 'GERAR TOKEN'}
+                    {generating ? 'Gerando...' : 'Gerar'}
                   </button>
                 )}
-              </>
-            )}
-            {error && <p className="text-xs text-alert">{error}</p>}
-          </div>
-
-          <p className="text-xs text-muted">O git vai pedir usuário e senha na hora do push - use o usuário e o token acima.</p>
-        </div>
+              </div>
+              {confirming && (
+                <div className="mt-2 flex flex-col gap-2 pl-[9px]">
+                  <p className="font-mono text-[8px] leading-snug text-secondary">O token atual deixa de funcionar. Gerar outro?</p>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={handleGenerate}
+                      disabled={generating}
+                      className="font-mono text-[10px] font-semibold uppercase tracking-[1px] text-accent hover:underline disabled:opacity-50"
+                    >
+                      {generating ? 'Gerando...' : 'Gerar'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirming(false)}
+                      disabled={generating}
+                      className="font-mono text-[10px] font-semibold uppercase tracking-[1px] text-secondary hover:underline"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+          {error && <p className="mt-2 pl-[9px] font-mono text-[8px] text-alert">{error}</p>}
+        </>
       )}
     </ScrollArea>
   );
 }
 
+/** Icone de copiar do Figma (dois quadrados de 8px sobrepostos) - vira ✓ por 2s depois de copiar. */
+function CopyIconButton({ label, copied, onClick }: { label: string; copied: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} aria-label={label} title={label} className="relative size-4 shrink-0">
+      {copied ? (
+        <span className="text-[11px] font-bold text-accent">✓</span>
+      ) : (
+        <>
+          <span className="absolute left-[7px] top-[7px] size-2 rounded-[2px] border border-accent" />
+          <span className="absolute left-1 top-1 size-2 rounded-[2px] bg-accent/30" />
+        </>
+      )}
+    </button>
+  );
+}
+
 /**
- * Coluna direita (Fase 59): links de referencia (biblioteca/documentacao) da linguagem escolhida +
+ * Cartao de referencias (Fase 59; coluna esquerda desde a Fase 63): links de referencia (biblioteca/documentacao) da linguagem escolhida +
  * os comuns a todas, curados manualmente - so vem preenchido com languageStep Chosen.
  */
 function ReferencesPanel({ references, languageName }: { references: ProjectReferenceDto[]; languageName: string | null }) {
   return (
     <ScrollArea
-      className="h-[240px] shrink-0 rounded-2xl border border-stroke bg-surface"
-      contentClassName="flex flex-col gap-4 p-5 pr-6"
+      className="min-h-[200px] rounded-2xl border border-stroke bg-surface lg:min-h-0 lg:flex-1"
+      contentClassName="flex flex-col gap-3 px-[18px] pt-4 pb-5"
     >
-      <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-muted">
-        Referências{languageName && ` (${languageName})`}
-      </p>
+      <CardLabel>Referências{languageName && ` (${languageName})`}</CardLabel>
       <div className="flex flex-col gap-2">
         {references.map((reference) => (
           <a

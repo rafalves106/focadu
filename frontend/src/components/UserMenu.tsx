@@ -66,7 +66,7 @@ export function UserMenu() {
         className="flex items-center gap-3 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <span
-          className={`hidden font-mono font-semibold sm:inline xl:text-[24px] ${
+          className={`hidden font-mono font-semibold sm:inline xl:text-[16px] ${
             equippedNameColor ? nameColorClass(equippedNameColor) : 'text-accent'
           }`}
         >

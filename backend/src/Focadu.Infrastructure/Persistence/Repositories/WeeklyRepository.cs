@@ -45,6 +45,9 @@ public class WeeklyRepository : IWeeklyRepository
     public async Task<Weekly?> GetByDailyIdAsync(Guid dailyId, Guid userId, CancellationToken cancellationToken = default) =>
         await OwnedBy(userId).FirstOrDefaultAsync(w => w.Dailies.Any(d => d.Id == dailyId), cancellationToken);
 
+    public async Task<Weekly?> GetByWeeklyProjectIdAsync(Guid weeklyProjectId, Guid userId, CancellationToken cancellationToken = default) =>
+        await OwnedBy(userId).FirstOrDefaultAsync(w => w.Project != null && w.Project.Id == weeklyProjectId, cancellationToken);
+
     public async Task<IReadOnlyCollection<Weekly>> GetByEnrollmentIdAsync(Guid enrollmentId, CancellationToken cancellationToken = default) =>
         await FullGraph().Where(w => w.EnrollmentId == enrollmentId).ToListAsync(cancellationToken);
 

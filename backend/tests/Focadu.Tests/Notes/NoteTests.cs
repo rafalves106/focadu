@@ -88,4 +88,29 @@ public class NoteTests
         Assert.Throws<DomainException>(() => note.Edit("   ", Array.Empty<string>()));
         Assert.Equal("original", note.Content);
     }
+
+    [Fact]
+    public void DailyNote_HasOnlyDailyContext()
+    {
+        var dailyId = Guid.NewGuid();
+
+        var note = new Note(Guid.NewGuid(), dailyId, "conteudo", Array.Empty<string>());
+
+        Assert.Equal(dailyId, note.DailyId);
+        Assert.Null(note.WeeklyProjectId);
+    }
+
+    [Fact]
+    public void ForWeeklyProject_HasOnlyProjectContext_AndSameValidation()
+    {
+        var projectId = Guid.NewGuid();
+
+        var note = Note.ForWeeklyProject(Guid.NewGuid(), projectId, "  do projeto  ", new[] { "Insight", "insight" });
+
+        Assert.Equal(projectId, note.WeeklyProjectId);
+        Assert.Null(note.DailyId);
+        Assert.Equal("do projeto", note.Content);
+        Assert.Equal(new[] { "Insight" }, note.Tags);
+        Assert.Throws<DomainException>(() => Note.ForWeeklyProject(Guid.NewGuid(), projectId, "   ", Array.Empty<string>()));
+    }
 }

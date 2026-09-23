@@ -88,7 +88,7 @@ export function ContentPreviewModal({
           {content?.bodyText && <MarkdownBlock text={stripRedundantTitleHeading(content.bodyText, content.title)} />}
         </div>
 
-        {showNotes && <QuickNotePanel dailyId={dailyId} courseId={courseId} />}
+        {showNotes && <QuickNotePanel target={{ dailyId }} courseId={courseId} />}
       </div>
     </div>
   );

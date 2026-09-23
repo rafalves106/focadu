@@ -6,6 +6,7 @@ import { Centered } from '../Layout';
 import { ApiErrorScreen } from '../errors/ApiErrorScreen';
 import { MarkdownBlock } from '../activities/MarkdownBlock';
 import { NoteEditorModal } from './NoteEditorModal';
+import { noteContextLabel } from '../../lib/noteContext';
 
 type Period = 'all' | '7d' | 'month';
 
@@ -35,7 +36,8 @@ function periodRange(period: Period): { from?: string; to?: string } {
 
 interface NoteGroup {
   weekNumber: number;
-  dayNumber: number;
+  /** Nulo = grupo das notas do Projeto Semanal (Fase 63). */
+  dayNumber: number | null;
   dailyDate: string;
   notes: NoteDto[];
 }
@@ -126,7 +128,7 @@ export function NotebookTab({ courseId }: { courseId: string }) {
         groups.map((group) => (
           <div key={`${group.weekNumber}-${group.dayNumber}`} className="flex flex-col gap-3">
             <p className="text-xs font-bold uppercase tracking-wide text-muted">
-              Semana {group.weekNumber}, Dia {group.dayNumber}
+              {noteContextLabel(group)}
             </p>
             {group.notes.map((note) => (
               <button

@@ -713,6 +713,16 @@ api.MapPost("/dailies/{dailyId}/notes", async (ClaimsPrincipal principal, string
     .RequireAuthorization()
     .WithName("CreateNote");
 
+// Fase 63: "Anotação rápida" da tela do Projeto Semanal - a nota fica presa ao projeto, nao a uma Daily.
+api.MapPost("/weeklies/{weeklyId}/project/notes", async (ClaimsPrincipal principal, string weeklyId, CreateNoteRequest? request, CreateWeeklyProjectNoteUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
+        var result = await useCase.ExecuteAsync(CurrentUserId(principal), id, request?.Content ?? string.Empty, request?.Tags, ct);
+        return Results.Created($"/api/notes/{result.Id}", result);
+    })
+    .RequireAuthorization()
+    .WithName("CreateWeeklyProjectNote");
+
 api.MapPut("/notes/{noteId}", async (ClaimsPrincipal principal, string noteId, UpdateNoteRequest? request, EditNoteUseCase useCase, CancellationToken ct) =>
     {
         var id = RouteParsing.RequireGuid(noteId, "noteId");

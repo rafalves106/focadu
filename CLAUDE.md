@@ -84,9 +84,13 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 62 — Menu global do Figma + menu do usuário** (22/09/2026).
+Última fase concluída: **Fase 63 — Projeto Semanal com layout ajustado + anotação do projeto** (22/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Projeto Semanal, 2ª versão do layout + anotação do projeto (Fase 63)**: repositório (copiar
+  `git clone`/usuário/token) e referências à esquerda, anotação rápida e chat à direita. A anotação
+  feita ali fica presa ao **projeto** (`Note.WeeklyProjectId`, pedido do dono), não a uma Daily, e
+  aparece no Caderninho como "Semana N, Projeto". Ver `docs/fase-63/`.
 - **Menu global do Figma (Fase 62, node 178:143)**: Hoje/Trilhas/Ranking | START | Squad/Loja/@usuário
   + avatar, 73px no desktop largo. Configurações e o status da IA saíram da barra e foram para o menu
   que abre no clique do usuário (decisão do dono). Ver `docs/fase-62/`.

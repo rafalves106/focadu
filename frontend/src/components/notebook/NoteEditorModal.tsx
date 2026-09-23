@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ApiError, api } from '../../api/client';
 import { useApiResource } from '../../api/useApiResource';
 import type { NoteDto } from '../../api/types';
+import { noteContextLabel } from '../../lib/noteContext';
 
 function parseTags(raw: string): string[] {
   return Array.from(new Set(raw.split(',').map((t) => t.trim()).filter(Boolean)));
@@ -70,7 +71,7 @@ export function NoteEditorModal({
       >
         <div className="flex items-start justify-between gap-4">
           <p className="text-sm font-semibold text-accent">
-            Semana {note.weekNumber}, Dia {note.dayNumber}
+            {noteContextLabel(note)}
           </p>
           <button type="button" onClick={onClose} className="shrink-0 text-secondary hover:text-primary" aria-label="Fechar">
             ✕

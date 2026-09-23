@@ -12,11 +12,17 @@ namespace Focadu.Domain.Notes;
 /// precisa desses dados busca através dele (ver Application/Notes). Conteúdo é markdown livre
 /// (negrito/listas/link, ver MarkdownBlock.tsx no frontend), nunca avaliado - é só anotação
 /// pessoal, sem relação com o progresso/pontuação do aluno.
+///
+/// Fase 63: a nota pertence a EXATAMENTE um contexto - uma Daily (<see cref="DailyId"/>) ou o
+/// Projeto Semanal (<see cref="WeeklyProjectId"/>, "Anotação rápida" da tela do projeto; pedido do
+/// dono: a anotação feita no projeto é do projeto, não de uma Daily). O outro fica nulo; o banco
+/// garante isso com um check constraint (ver NoteConfiguration).
 /// </summary>
 public class Note : Entity
 {
     public Guid UserId { get; private set; }
-    public Guid DailyId { get; private set; }
+    public Guid? DailyId { get; private set; }
+    public Guid? WeeklyProjectId { get; private set; }
     public string Content { get; private set; } = string.Empty;
 
     private readonly List<string> _tags = new();
@@ -29,10 +35,20 @@ public class Note : Entity
     {
     }
 
+    /// <summary>Nota de uma Daily (Fase 29).</summary>
     public Note(Guid userId, Guid dailyId, string content, IEnumerable<string> tags)
+        : this(userId, content, tags)
+    {
+        DailyId = dailyId;
+    }
+
+    /// <summary>Nota do Projeto Semanal (Fase 63).</summary>
+    public static Note ForWeeklyProject(Guid userId, Guid weeklyProjectId, string content, IEnumerable<string> tags) =>
+        new(userId, content, tags) { WeeklyProjectId = weeklyProjectId };
+
+    private Note(Guid userId, string content, IEnumerable<string> tags)
     {
         UserId = userId;
-        DailyId = dailyId;
         Content = ValidateContent(content);
         _tags = NormalizeTags(tags);
         CreatedAt = DateTime.UtcNow;
