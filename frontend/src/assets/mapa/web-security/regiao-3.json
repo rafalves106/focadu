@@ -1,0 +1,112 @@
+{
+  "monthlyNumber": 3,
+  "titulo": "Criptografia Aplicada, Secure Coding & DevSecOps",
+  "arte": {
+    "figma": "Focadu — Pixel Art, componente mapa/web-security/regiao-3",
+    "largura": 384,
+    "altura": 192,
+    "escala": 2
+  },
+  "entrada": [
+    14,
+    60
+  ],
+  "saida": [
+    382,
+    138
+  ],
+  "pontos": {
+    "dia-31": [
+      36,
+      84
+    ],
+    "dia-32": [
+      60,
+      84
+    ],
+    "dia-33": [
+      60,
+      60
+    ],
+    "dia-34": [
+      84,
+      60
+    ],
+    "dia-35": [
+      108,
+      60
+    ],
+    "projeto-semana-7": [
+      110,
+      88
+    ],
+    "dia-36": [
+      146,
+      130
+    ],
+    "dia-37": [
+      170,
+      130
+    ],
+    "dia-38": [
+      170,
+      156
+    ],
+    "dia-39": [
+      194,
+      156
+    ],
+    "dia-40": [
+      218,
+      156
+    ],
+    "projeto-semana-8": [
+      242,
+      128
+    ],
+    "dia-41": [
+      280,
+      84
+    ],
+    "dia-42": [
+      304,
+      84
+    ],
+    "dia-43": [
+      304,
+      108
+    ],
+    "dia-44": [
+      328,
+      108
+    ],
+    "dia-45": [
+      352,
+      108
+    ],
+    "projeto-semana-9": [
+      356,
+      138
+    ]
+  },
+  "ilhas": [
+    [
+      6,
+      36,
+      118,
+      76
+    ],
+    [
+      132,
+      110,
+      128,
+      76
+    ],
+    [
+      266,
+      56,
+      112,
+      116
+    ]
+  ]
+}

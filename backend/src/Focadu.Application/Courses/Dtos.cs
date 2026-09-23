@@ -52,7 +52,13 @@ public record WeeklyOverviewDto(
     /// seguintes ficam bloqueadas". Calculado no servidor (DailySequencing.FindPendingClosureBefore,
     /// a mesma regra que StartOrResumeDailyUseCase aplica) pra a trilha nao reimplementar a regra.
     /// </summary>
-    bool IsLocked);
+    bool IsLocked,
+    /// <summary>
+    /// Fase 65: status do Projeto Semanal desta semana (null se ainda nao existe) - o mapa da trilha
+    /// usa pro estado do castelo (concluido quando Evaluated) e pras falas da Focada que dependem do
+    /// projeto (entregue, aguardando avaliacao, curso concluido).
+    /// </summary>
+    WeeklyProjectStatus? ProjectStatus);
 
 /// <summary>Resumo enxuto de uma Daily pra grids de navegacao (Fase 8) - versao mais leve de DailyOverviewDto (WeeklyDetailDto), sem PenaltyPoints/PassedActivities que essas telas nao usam.</summary>
 public record DailyStatusSummaryDto(
@@ -62,4 +68,12 @@ public record DailyStatusSummaryDto(
     DailyStatus Status,
     bool IsReinforcement,
     int TotalActivities,
-    int CompletedActivities);
+    int CompletedActivities,
+    /// <summary>Fase 65: titulo do material do dia (mesma regra de DailyOverviewDto.Title, ver GetWeeklyDetailUseCase) - mostrado no balao do ponto no mapa da trilha.</summary>
+    string? Title,
+    /// <summary>Fase 65: mesma semantica de DailyOverviewDto.IsNext (DailySequencing.FindNext) - onde a Focada fica parada no mapa.</summary>
+    bool IsNext,
+    /// <summary>Fase 65: Daily de reforco gerada a partir desta (Daily.ReinforcementDailyId) - o mapa mostra o selo de reforco no ponto do dia de origem, ja que o reforco tem DayNumber proprio (max+1 da semana) e nao tem ponto no mapa.</summary>
+    Guid? ReinforcementDailyId,
+    /// <summary>Fase 65: concluida hoje (hora local, mesma conversao de Weekly.EvaluateDailyAccess) - o mapa usa pra fala "por hoje acabou" quando a cota diaria ja foi gasta.</summary>
+    bool CompletedToday);

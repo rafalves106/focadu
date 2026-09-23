@@ -1,0 +1,112 @@
+{
+  "monthlyNumber": 2,
+  "titulo": "Vulnerabilidades Web Profundas & OWASP Top 10",
+  "arte": {
+    "figma": "Focadu — Pixel Art, componente mapa/web-security/regiao-2",
+    "largura": 384,
+    "altura": 192,
+    "escala": 2
+  },
+  "entrada": [
+    14,
+    124
+  ],
+  "saida": [
+    382,
+    60
+  ],
+  "pontos": {
+    "dia-16": [
+      36,
+      124
+    ],
+    "dia-17": [
+      60,
+      124
+    ],
+    "dia-18": [
+      60,
+      150
+    ],
+    "dia-19": [
+      84,
+      150
+    ],
+    "dia-20": [
+      108,
+      150
+    ],
+    "projeto-semana-4": [
+      112,
+      118
+    ],
+    "dia-21": [
+      152,
+      76
+    ],
+    "dia-22": [
+      176,
+      76
+    ],
+    "dia-23": [
+      200,
+      76
+    ],
+    "dia-24": [
+      200,
+      50
+    ],
+    "dia-25": [
+      224,
+      50
+    ],
+    "projeto-semana-5": [
+      236,
+      76
+    ],
+    "dia-26": [
+      272,
+      112
+    ],
+    "dia-27": [
+      296,
+      112
+    ],
+    "dia-28": [
+      320,
+      112
+    ],
+    "dia-29": [
+      320,
+      88
+    ],
+    "dia-30": [
+      344,
+      88
+    ],
+    "projeto-semana-6": [
+      356,
+      60
+    ]
+  },
+  "ilhas": [
+    [
+      6,
+      100,
+      120,
+      78
+    ],
+    [
+      140,
+      20,
+      112,
+      72
+    ],
+    [
+      258,
+      36,
+      120,
+      122
+    ]
+  ]
+}

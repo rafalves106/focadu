@@ -64,6 +64,8 @@ function prefersReducedMotion() {
  *   que a Focada termina de falar. `choicesNote` = aviso embaixo delas (ex.: erro ao entregar).
  * - Leitor de tela recebe a fala inteira (regiao aria-live), nunca letra por letra.
  * - Sons sintetizados (lib/uiSound.ts), obedecem "Sons da interface" nas Configuracoes. Sem voz.
+ * - `stacked` (Fase 65, mapa da trilha): retrato em cima da caixa em vez de ao lado - pra coluna
+ *   estreita a esquerda do mapa.
  */
 export function DialogueBox({
   projectId,
@@ -71,8 +73,10 @@ export function DialogueBox({
   readmeUrl,
   choices = [],
   choicesNote = null,
+  stacked = false,
 }: {
   projectId: string;
+  stacked?: boolean;
   lines: FocadaLine[];
   readmeUrl: string | null;
   choices?: DialogueChoice[];
@@ -153,8 +157,8 @@ export function DialogueBox({
     <div className="flex flex-col gap-6">
       {/* Digitando: retrato alinhado embaixo, junto da fala. Em lista: retrato no topo e fixo enquanto a
           conversa rola dentro do cartao (ScrollArea do WeeklyProjectPage). */}
-      <div className={`flex gap-4 ${finished ? 'items-start' : 'items-end'}`}>
-        <div className={`pixel-box hidden shrink-0 bg-surface p-2 sm:block ${finished ? 'sticky top-0' : ''}`}>
+      <div className={stacked ? 'flex flex-col items-start gap-4' : `flex gap-4 ${finished ? 'items-start' : 'items-end'}`}>
+        <div className={`pixel-box hidden shrink-0 bg-surface p-2 sm:block ${finished && !stacked ? 'sticky top-0' : ''}`}>
           <img src={PORTRAITS[current.expression]} alt="" className="size-24 pixelated" aria-hidden="true" />
         </div>
 
@@ -164,7 +168,7 @@ export function DialogueBox({
           tabIndex={finished ? undefined : 0}
           onClick={finished ? undefined : advance}
           onKeyDown={finished ? undefined : onKeyDown}
-          className={`pixel-box flex min-w-0 flex-1 flex-col gap-3 bg-base px-6 pt-5 pb-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${
+          className={`pixel-box flex min-w-0 flex-1 flex-col gap-3 bg-base ${stacked ? 'w-full px-5' : 'px-6'} pt-5 pb-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${
             finished ? '' : 'cursor-pointer'
           }`}
         >

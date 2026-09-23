@@ -1,6 +1,9 @@
 using Focadu.Application.Dailies;
 using Focadu.Application.Exceptions;
+using Focadu.Application.Ports;
 using Focadu.Application.Shared;
+using Focadu.Domain.Dailies;
+using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
 
 namespace Focadu.Application.Courses;
@@ -17,13 +20,16 @@ public class GetCourseDetailUseCase
     private readonly ICourseRepository _courseRepository;
     private readonly IEnrollmentRepository _enrollmentRepository;
     private readonly IWeeklyRepository _weeklyRepository;
+    private readonly IClock _clock;
 
     public GetCourseDetailUseCase(
-        ICourseRepository courseRepository, IEnrollmentRepository enrollmentRepository, IWeeklyRepository weeklyRepository)
+        ICourseRepository courseRepository, IEnrollmentRepository enrollmentRepository, IWeeklyRepository weeklyRepository,
+        IClock clock)
     {
         _courseRepository = courseRepository;
         _enrollmentRepository = enrollmentRepository;
         _weeklyRepository = weeklyRepository;
+        _clock = clock;
     }
 
     public async Task<CourseDetailDto> ExecuteAsync(Guid userId, Guid courseId, CancellationToken cancellationToken = default)
@@ -36,6 +42,8 @@ public class GetCourseDetailUseCase
 
         var instanceWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken);
         var weeklyByTemplateId = instanceWeeklies.ToDictionary(w => w.WeeklyTemplateId);
+        var nextDailyId = DailySequencing.FindNext(instanceWeeklies)?.Id;
+        var today = _clock.Today();
 
         var monthlyDtos = new List<MonthlyOverviewDto>();
         var dailyReinforcements = new List<DailyReinforcementSummaryDto>();
@@ -60,18 +68,34 @@ public class GetCourseDetailUseCase
                 var weeklyCompleted = weekly.Dailies.Count(d => d.Status == Domain.Enums.DailyStatus.Completed);
                 var weeklyWeak = weekly.GetWeakDailies().Count;
 
+                // Fase 65 (mapa da trilha): titulo do dia - mesma regra de GetWeeklyDetailUseCase (Leitura,
+                // ou Video se nao houver Leitura; Daily nao tem titulo proprio).
+                var contentTitleById = weekly.Template.CuratedContents.ToDictionary(c => c.Id, c => c.Title);
+                string? ResolveDailyTitle(Daily daily)
+                {
+                    var material = daily.Activities.FirstOrDefault(a => a.Type == ActivityType.Reading)
+                        ?? daily.Activities.FirstOrDefault(a => a.Type == ActivityType.Video);
+                    return material?.ContentId is { } contentId ? contentTitleById.GetValueOrDefault(contentId) : null;
+                }
+
                 var dayDtos = weekly.Dailies
                     .OrderBy(d => d.DayNumber)
                     .Select(d => new DailyStatusSummaryDto(
                         d.Id, d.DayNumber, d.Date, d.Status, d.IsReinforcement,
-                        d.Activities.Count, d.Activities.Count(a => d.Responses.Any(r => r.ActivityId == a.Id))))
+                        d.Activities.Count, d.Activities.Count(a => d.Responses.Any(r => r.ActivityId == a.Id)),
+                        ResolveDailyTitle(d),
+                        d.Id == nextDailyId,
+                        d.ReinforcementDailyId,
+                        // CompletedAt e UTC; "today" e hora local (IClock) - mesma conversao de Weekly.EvaluateDailyAccess.
+                        d.CompletedAt.HasValue && DateOnly.FromDateTime(d.CompletedAt.Value.ToLocalTime()) == today))
                     .ToList();
 
                 weeklyDtos.Add(new WeeklyOverviewDto(
                     weekly.Id, weekly.Number, weekly.Title, weekly.Theme,
                     weeklyTotal, weeklyCompleted, weeklyWeak, weekly.Reinforcements.Count > 0, dayDtos,
                     weekly.RequiresPublicationToUnlock(),
-                    DailySequencing.FindPendingClosureBefore(instanceWeeklies, weekly) is not null));
+                    DailySequencing.FindPendingClosureBefore(instanceWeeklies, weekly) is not null,
+                    weekly.Project?.Status));
 
                 totalDailies += weeklyTotal;
                 completedDailies += weeklyCompleted;

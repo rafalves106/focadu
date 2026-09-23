@@ -13,6 +13,7 @@ import { CourseDetailPage } from './CourseDetailPage';
 import { WeeklyDetailPage } from './WeeklyDetailPage';
 import { RankingPage } from './RankingPage';
 import { CertificationsPage } from './CertificationsPage';
+import { NotebookPage } from './NotebookPage';
 
 /**
  * `/start` (Fase 25): fora do shell `<App/>` no roteador - mesmo motivo/tratamento de `/hoje`
@@ -62,7 +63,10 @@ function StartPage() {
   const dailyId = searchParams.get('daily');
   const showProject = searchParams.get('project') !== null;
   const showRanking = searchParams.get('ranking') !== null;
-  const showCertifications = searchParams.get('certifications') !== null;
+  // Fase 65: `?tab=` era a aba da tela do curso (Fase 29); as abas viraram telas proprias.
+  const tabParam = searchParams.get('tab');
+  const showCertifications = searchParams.get('certifications') !== null || tabParam === 'certificacoes';
+  const showNotebook = searchParams.get('caderninho') !== null || tabParam === 'caderninho';
 
   if (showProject && weeklyId) {
     return (
@@ -82,6 +86,13 @@ function StartPage() {
     return (
       <App>
         <CertificationsPage courseId={courseId} />
+      </App>
+    );
+  }
+  if (showNotebook && courseId) {
+    return (
+      <App>
+        <NotebookPage courseId={courseId} />
       </App>
     );
   }

@@ -316,10 +316,10 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
           )}
         </div>
 
-        {/* Coluna direita (Fase 63): anotacao rapida (240px, presa ao PROJETO, nao a uma Daily) + chat
+        {/* Coluna direita (Fase 63): anotacao rapida (264px - 240px do Figma + 10%, pedido do dono 23/09/2026 - presa ao PROJETO, nao a uma Daily) + chat
             ocupando o resto da altura. */}
         <div className="flex min-h-0 flex-col gap-8 lg:w-[250px] lg:shrink-0">
-          <QuickNotePanel fill target={{ weeklyId }} courseId={weekly.courseId} className="h-[240px]" />
+          <QuickNotePanel fill target={{ weeklyId }} courseId={weekly.courseId} className="h-[264px]" />
           <StudyAssistantPanel tall className="h-[480px] lg:h-auto lg:min-h-0 lg:flex-1" />
         </div>
       </div>
@@ -340,9 +340,10 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
 }
 
 /**
- * Tipografia (Fase 64, ajuste de UX sobre o Figma): mono so pra codigo/credencial (11px) e
- * rotulos (10px, `CardLabel`); texto corrido (ajuda/avisos) em Inter 12px - os 8px do Figma ficavam
- * abaixo do minimo legivel. Aviso do token em alert/80 (a 50% nao tinha contraste no fundo escuro).
+ * Tipografia (ajuste pixel art, 23/09/2026 - mesma linguagem dos cartoes laterais da trilha,
+ * CourseDetailPage): rotulos e botoes em Silkscreen 10px (`font-pixel-label`), texto corrido,
+ * link e credenciais em VT323 18px (`font-pixel text-lg`), cartao em `pixel-box` e campos com
+ * borda de 2px reta. Aviso do token em alert/80 (a 50% nao tinha contraste no fundo escuro).
  *
  * Cartao "REPOSITORIO" (Fase 63, Figma node 178:132): icone de terminal + caixa com o link do
  * repositorio (so a URL - o comando inteiro fica no botao de copiar, pedido do dono),
@@ -394,17 +395,17 @@ function RepositoryPanel({
   }
 
   return (
-    <ScrollArea className="shrink-0 rounded-2xl border border-stroke bg-surface" contentClassName="flex flex-col px-[18px] pt-4 pb-5">
-      <CardLabel>Repositório</CardLabel>
+    <ScrollArea className="pixel-box shrink-0 bg-base" contentClassName="flex flex-col p-5">
+      <CardLabel pixel>Repositório</CardLabel>
 
-      <div className="mt-3 flex items-center gap-[7px]">
+      <div className="mt-3 flex items-center gap-2">
         <img src={terminalIcon} alt="" width={48} height={48} className="size-12 shrink-0 pixelated" />
         <a
           href={submissionUrl}
           target="_blank"
           rel="noreferrer"
           title={submissionUrl}
-          className="min-w-0 flex-1 rounded-lg border border-dashed border-stroke px-2 py-[7px] font-mono text-[11px] leading-snug text-secondary hover:text-primary"
+          className="min-w-0 flex-1 border-2 border-dashed border-stroke px-2 py-1 font-pixel text-lg leading-tight text-secondary hover:border-accent hover:text-primary"
         >
           {/* line-clamp num span proprio: no <a> com padding, a 3a linha vazava no padding de baixo. */}
           <span className="line-clamp-2 break-all">{submissionUrl}</span>
@@ -414,40 +415,38 @@ function RepositoryPanel({
       <button
         type="button"
         onClick={() => handleCopy('clone', cloneCommand)}
-        className="mt-[9px] h-8 rounded-lg bg-accent font-mono text-[11px] font-semibold uppercase tracking-[1px] text-stroke"
+        className="mt-3 bg-accent py-2.5 font-pixel-label text-[10px] text-base hover:brightness-110"
       >
-        {copied === 'clone' ? 'Copiado ✓' : 'Copiar comando git clone'}
+        {copied === 'clone' ? 'Copiado ✓' : 'Copiar git clone'}
       </button>
 
-      <p className="mt-2.5 text-xs leading-relaxed text-secondary">
+      <p className="mt-3 font-pixel text-lg leading-snug text-secondary">
         O git vai pedir usuário e senha na hora do push - utilize as credenciais abaixo.
       </p>
 
       {username && (
         <>
-          <p className="mt-6 pl-[9px] font-mono text-[10px] font-semibold uppercase tracking-[1px] text-secondary">Usuário do git</p>
-          <div className="mt-2 flex min-h-9 items-center gap-2 rounded-lg border border-stroke py-1.5 pl-[9px] pr-2">
-            <code className="min-w-0 flex-1 break-all font-mono text-[11px] text-secondary">{username}</code>
+          <p className="mt-5 font-pixel-label text-[10px] text-secondary">Usuário do git</p>
+          <div className="mt-2 flex min-h-9 items-center gap-2 border-2 border-stroke py-1 pl-2 pr-2">
+            <code className="min-w-0 flex-1 break-all font-pixel text-lg leading-tight text-primary">{username}</code>
             <CopyIconButton label="Copiar usuário do git" copied={copied === 'username'} onClick={() => handleCopy('username', username)} />
           </div>
 
-          <p className="mt-5 pl-[9px] font-mono text-[10px] font-semibold uppercase tracking-[1px] text-secondary">
-            Token (use como senha)
-          </p>
+          <p className="mt-4 font-pixel-label text-[10px] text-secondary">Token (use como senha)</p>
           {generated ? (
             <>
-              <div className="mt-2 flex min-h-9 items-center gap-2 rounded-lg border border-dashed border-alert/60 py-1.5 pl-[9px] pr-2">
-                <code className="min-w-0 flex-1 break-all font-mono text-[11px] text-secondary">{generated.accessToken}</code>
+              <div className="mt-2 flex min-h-9 items-center gap-2 border-2 border-dashed border-alert/60 py-1 pl-2 pr-2">
+                <code className="min-w-0 flex-1 break-all font-pixel text-lg leading-tight text-primary">{generated.accessToken}</code>
                 <CopyIconButton label="Copiar token" copied={copied === 'token'} onClick={() => handleCopy('token', generated.accessToken)} />
               </div>
-              <p className="mt-2 pl-[9px] text-xs leading-relaxed text-alert/80">
+              <p className="mt-2 font-pixel text-lg leading-snug text-alert/80">
                 Copie agora: por segurança a Focadu não guarda o token, ele não aparece de novo depois que você sair desta tela.
               </p>
             </>
           ) : (
             <>
-              <div className="mt-2 flex min-h-9 items-center gap-2 rounded-lg border border-stroke py-1.5 pl-[9px] pr-2">
-                <code className="min-w-0 flex-1 font-mono text-[11px] text-muted">
+              <div className="mt-2 flex min-h-9 items-center gap-2 border-2 border-stroke py-1 pl-2 pr-2">
+                <code className="min-w-0 flex-1 font-pixel text-lg leading-tight text-muted">
                   {currentLastEight ? `…${currentLastEight}` : 'nenhum token gerado'}
                 </code>
                 {!confirming && (
@@ -455,21 +454,21 @@ function RepositoryPanel({
                     type="button"
                     onClick={currentLastEight ? () => setConfirming(true) : handleGenerate}
                     disabled={generating}
-                    className="shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[1px] text-accent hover:underline disabled:opacity-50"
+                    className="shrink-0 font-pixel-label text-[10px] text-accent hover:underline disabled:opacity-50"
                   >
                     {generating ? 'Gerando...' : 'Gerar'}
                   </button>
                 )}
               </div>
               {confirming && (
-                <div className="mt-2 flex flex-col gap-2 pl-[9px]">
-                  <p className="text-xs leading-relaxed text-secondary">O token atual deixa de funcionar. Gerar outro?</p>
-                  <div className="flex gap-3">
+                <div className="mt-2 flex flex-col gap-2">
+                  <p className="font-pixel text-lg leading-snug text-secondary">O token atual deixa de funcionar. Gerar outro?</p>
+                  <div className="flex gap-4">
                     <button
                       type="button"
                       onClick={handleGenerate}
                       disabled={generating}
-                      className="font-mono text-[11px] font-semibold uppercase tracking-[1px] text-accent hover:underline disabled:opacity-50"
+                      className="font-pixel-label text-[10px] text-accent hover:underline disabled:opacity-50"
                     >
                       {generating ? 'Gerando...' : 'Gerar'}
                     </button>
@@ -477,7 +476,7 @@ function RepositoryPanel({
                       type="button"
                       onClick={() => setConfirming(false)}
                       disabled={generating}
-                      className="font-mono text-[11px] font-semibold uppercase tracking-[1px] text-secondary hover:underline"
+                      className="font-pixel-label text-[10px] text-secondary hover:text-primary"
                     >
                       Cancelar
                     </button>
@@ -486,23 +485,23 @@ function RepositoryPanel({
               )}
             </>
           )}
-          {error && <p className="mt-2 pl-[9px] text-xs text-alert">{error}</p>}
+          {error && <p className="mt-2 font-pixel text-lg leading-snug text-alert">{error}</p>}
         </>
       )}
     </ScrollArea>
   );
 }
 
-/** Icone de copiar do Figma (dois quadrados de 8px sobrepostos) - vira ✓ por 2s depois de copiar. */
+/** Icone de copiar do Figma (dois quadrados de 8px sobrepostos, cantos retos) - vira ✓ por 2s depois de copiar. */
 function CopyIconButton({ label, copied, onClick }: { label: string; copied: boolean; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} aria-label={label} title={label} className="relative size-4 shrink-0">
       {copied ? (
-        <span className="text-[11px] font-bold text-accent">✓</span>
+        <span className="font-pixel text-lg leading-none text-accent">✓</span>
       ) : (
         <>
-          <span className="absolute left-[7px] top-[7px] size-2 rounded-[2px] border border-accent" />
-          <span className="absolute left-1 top-1 size-2 rounded-[2px] bg-accent/30" />
+          <span className="absolute left-[7px] top-[7px] size-2 border border-accent" />
+          <span className="absolute left-1 top-1 size-2 bg-accent/30" />
         </>
       )}
     </button>
@@ -511,15 +510,13 @@ function CopyIconButton({ label, copied, onClick }: { label: string; copied: boo
 
 /**
  * Cartao de referencias (Fase 59; coluna esquerda desde a Fase 63): links de referencia (biblioteca/documentacao) da linguagem escolhida +
- * os comuns a todas, curados manualmente - so vem preenchido com languageStep Chosen.
+ * os comuns a todas, curados manualmente - so vem preenchido com languageStep Chosen. Itens no
+ * mesmo desenho dos atalhos da trilha (`SideLink` do CourseDetailPage: borda de 2px que acende no hover).
  */
 function ReferencesPanel({ references, languageName }: { references: ProjectReferenceDto[]; languageName: string | null }) {
   return (
-    <ScrollArea
-      className="min-h-[200px] rounded-2xl border border-stroke bg-surface lg:min-h-0 lg:flex-1"
-      contentClassName="flex flex-col gap-3 px-[18px] pt-4 pb-5"
-    >
-      <CardLabel>Referências{languageName && ` (${languageName})`}</CardLabel>
+    <ScrollArea className="pixel-box min-h-[200px] bg-base lg:min-h-0 lg:flex-1" contentClassName="flex flex-col gap-3 p-5">
+      <CardLabel pixel>Referências{languageName && ` (${languageName})`}</CardLabel>
       <div className="flex flex-col gap-2">
         {references.map((reference) => (
           <a
@@ -527,10 +524,10 @@ function ReferencesPanel({ references, languageName }: { references: ProjectRefe
             href={reference.url}
             target="_blank"
             rel="noreferrer"
-            className="flex flex-col gap-1 rounded-[10px] border border-transparent bg-surface-alt p-3 hover:border-stroke"
+            className="flex flex-col gap-0.5 border-2 border-stroke px-3 py-2 hover:border-accent"
           >
-            <span className="text-[13px] font-semibold text-accent">{reference.title}</span>
-            <span className="text-xs text-secondary">{reference.documents}</span>
+            <span className="font-pixel text-xl leading-tight text-accent">{reference.title}</span>
+            <span className="font-pixel text-lg leading-snug text-secondary">{reference.documents}</span>
           </a>
         ))}
       </div>

@@ -1,0 +1,112 @@
+{
+  "monthlyNumber": 4,
+  "titulo": "Nuvem, Detecção de Ameaças, Forense e Red/Blue Team",
+  "arte": {
+    "figma": "Focadu — Pixel Art, componente mapa/web-security/regiao-4",
+    "largura": 384,
+    "altura": 192,
+    "escala": 2
+  },
+  "entrada": [
+    14,
+    138
+  ],
+  "saida": [
+    366,
+    66
+  ],
+  "pontos": {
+    "dia-46": [
+      36,
+      138
+    ],
+    "dia-47": [
+      60,
+      138
+    ],
+    "dia-48": [
+      60,
+      162
+    ],
+    "dia-49": [
+      84,
+      162
+    ],
+    "dia-50": [
+      108,
+      162
+    ],
+    "projeto-semana-10": [
+      112,
+      130
+    ],
+    "dia-51": [
+      146,
+      84
+    ],
+    "dia-52": [
+      170,
+      84
+    ],
+    "dia-53": [
+      194,
+      84
+    ],
+    "dia-54": [
+      194,
+      60
+    ],
+    "dia-55": [
+      218,
+      60
+    ],
+    "projeto-semana-11": [
+      238,
+      84
+    ],
+    "dia-56": [
+      276,
+      112
+    ],
+    "dia-57": [
+      300,
+      112
+    ],
+    "dia-58": [
+      300,
+      138
+    ],
+    "dia-59": [
+      324,
+      138
+    ],
+    "dia-60": [
+      348,
+      138
+    ],
+    "projeto-semana-12": [
+      352,
+      104
+    ]
+  },
+  "ilhas": [
+    [
+      6,
+      112,
+      120,
+      72
+    ],
+    [
+      134,
+      26,
+      120,
+      78
+    ],
+    [
+      262,
+      48,
+      116,
+      130
+    ]
+  ]
+}

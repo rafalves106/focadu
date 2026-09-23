@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 64 - Identidade pixel art + dialogo da Focada no Projeto Semanal**.
+> Ultima fase que atualizou este documento: **Fase 65 - Mapa da trilha em pixel art (tela do curso)**.
 
 ## Visao geral do projeto
 
@@ -909,7 +909,9 @@ material (`useMaterialSidebar.tsx`) - so escreve e salva, nunca lista nada, mant
 sessao. Ate a Fase 36 ficava empilhado embaixo do `MaterialSidebar`, na mesma coluna; a Fase 37
 reagrupou o sidebar em 2 colunas (ver "Frontend" abaixo) e moveu o Caderninho pra coluna direita,
 ao lado do novo `StudyAssistantPanel`. Aba "Caderninho" (`components/notebook/NotebookTab.tsx`)
-dentro de `CourseDetailPage` (que ganhou abas pela 1a vez nesta fase -
+dentro de `CourseDetailPage` (**desde a Fase 65 e tela propria, `NotebookPage`, em
+`/start?course=&caderninho=1` - as abas sairam da tela do curso, ver "Mapa da trilha"**; na Fase 29 a
+tela ganhou abas pela 1a vez -
 `components/notebook/CourseDetailTabs.tsx`, mesmo padrao de `ProfileTabs.tsx`, lido via
 `?tab=` na query string de `/start?course=` - precisa mesclar com os outros params da URL, nao so
 substituir como `ProfilePage` faz, porque `/start` e uma rota so orientada por query string) -
@@ -1187,7 +1189,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 POST | `/api/enrollments` | `EnrollUserInCourseUseCase` (Fase 13) | 201, 409 `ja_matriculado` - gera Weekly/Daily/WeeklyProject-instancia pra todo o curriculo do curso |
 | 🔒 GET | `/api/enrollments/me` | `GetMyEnrollmentsUseCase` (Fase 13) | 200 (lista - hoje no maximo 1) |
 | 🔒 GET | `/api/courses` | `ListCoursesUseCase` | 200 |
-| 🔒 GET | `/api/courses/{courseId}` | `GetCourseDetailUseCase` | 200, 404 se nao existe/usuario nao matriculado (Fase 8: `WeeklyOverviewDto.Days` traz status por dia, pro mini-grid de `CourseDetailPage`) |
+| 🔒 GET | `/api/courses/{courseId}` | `GetCourseDetailUseCase` | 200, 404 se nao existe/usuario nao matriculado (Fase 8: `WeeklyOverviewDto.Days` traz status por dia, pro mini-grid de `CourseDetailPage`; Fase 65: `ProjectStatus` por semana e `Title`/`IsNext`/`ReinforcementDailyId`/`CompletedToday` por dia, pro mapa da trilha) |
 | 🔒 GET | `/api/courses/{courseId}/curriculum` | `GetCourseCurriculumUseCase` (Fase 13b) | 200, 404 - curriculo (Course -> Monthly -> WeeklyTemplate), sem exigir matricula; so `/admin/conteudo` usa isso |
 | 🔒 GET | `/api/weeklies/{weeklyId}` | `GetWeeklyDetailUseCase` | 200, 404 se nao existe/nao e do usuario - Fase 15: `WeeklyDetailDto` ganhou `HasPendingWeeklyReinforcement`. Fase 29: ganhou `CourseId` (resolvido via `IMonthlyRepository.GetByIdAsync(weekly.MonthlyId)` - Weekly/instancia nao guarda CourseId direto, so Monthly/template). Fase 39: `DailyOverviewDto` ganhou `Title` (titulo do `CuratedContent` da atividade de Leitura do dia, Video como fallback; nulo se nenhum dos dois existir) - Daily nao tem titulo proprio, so usado por `WeeklyDetailPage` |
 | 🔒 GET | `/api/weekly-templates/{id}` | `GetWeeklyTemplateDetailUseCase` (Fase 13b) | 200, 404 - WeeklyTemplate (curriculo), sem exigir matricula; so `/admin/conteudo` usa isso |
@@ -1628,8 +1630,8 @@ precisavam devolver o campo.
 
 **Frontend**, 4 pontos de contato, todos reaproveitando `CourseDetailDto` ja carregado (sem
 fetch novo em 3 dos 4):
-- 3a aba "Certificações" em `CourseDetailPage` (`CertificationsTab`, novo em
-  `components/certifications/`).
+- 3a aba "Certificações" em `CourseDetailPage` (`CertificationsTab`) - **removida na Fase 65**: a
+  tela do curso virou o mapa da trilha e o atalho "Certificações" abre a tela dedicada abaixo.
 - Card resumo novo em `StartDashboard` (`CertificationsSummaryCard`).
 - Bloco sempre visivel em `WeeklyDetailPage` + reforco no `SuccessStep` do `PublicationModal`
   (momento da prova publica de fim de `Weekly`) - usando `weekly.moduleCertifications`.
@@ -2149,7 +2151,7 @@ a conversa inteira em lista (anteriores em cinza, atual em destaque, retrato fix
 cursor de selecao so - o mouse move o foco, setas trocam). Com o dialogo ativo, a tela fica so com as
 3 colunas: sem "voltar", barra de progresso, tags "CHEFE DE FASE"/status, titulo visivel (fica
 `sr-only`), borda, fundo e rotulo do cartao central. Semana sem briefing mantem o layout anterior. Fontes VT323 (fala) e Silkscreen (rotulos) - tokens
-`--font-pixel`/`--font-pixel-label`, so nessa tela por enquanto. Caixa: `@utility pixel-box`
+`--font-pixel`/`--font-pixel-label` (nessa tela e, desde a Fase 65, na tela do curso/mapa da trilha). Caixa: `@utility pixel-box`
 (contorno 4px + filete interno + cantos mordidos via `clip-path`). Sons sintetizados na hora com Web
 Audio (`lib/uiSound.ts`, sem arquivo de audio), obedecendo "Sons da interface" nas Configuracoes
 (liga/desliga + volume, `lib/settings.ts`; o bipe do Pomodoro NAO obedece, e alarme).
@@ -2167,6 +2169,65 @@ a partir dele: `secret/curadoria/scripts/gerar_readme_modelo.py` troca o marcado
 `README.md` dos 2 repositorios-modelo da Semana 1 no Forgejo foi atualizado pela API de conteudo
 (`publicar_modelo_forgejo.py` so cria, nao sobrescreve). O fork do dono (unico aluno, projeto ainda
 nao comecado) foi apagado e a escolha de linguagem zerada, pra nascer do modelo novo.
+
+### Mapa da trilha em pixel art (Fase 65)
+
+Origem: `secret/rascunhos/mapa-da-trilha-pixel-art.md` (decisoes, falas aprovadas, plano). A tela do
+curso (`/start?course=`, `CourseDetailPage`) trocou a lista de semanas por um **mapa-mundi em pixel
+art**, uma regiao desenhada por Monthly (mes), com os dias como pontos no caminho e o Projeto Semanal
+como castelo no fim de cada semana.
+
+**Arte e posicoes (curadoria):** desenhadas no Figma "Focadu — Pixel Art", pagina "Mapa da trilha"
+(componentes `mapa/web-security/regiao-1..4`, sprites `mapa/ponto/*`, `mapa/castelo/*`,
+`mapa/badge/reforco`, `mapa/focada/marcador`), mas a **fonte e script**: `secret/curadoria/scripts/mapa/`
+(`base.js` + `landmarks.js` + `regiao-N.js` geram uma grade de indices da paleta fechada). O mesmo
+script alimenta o Figma (`figma-regiao.js`), o `secret/curadoria/web-security/mapa/regiao-N.json`
+(`gerar-mapa-json.js`) e o frontend (`exportar-frontend.js` grava `frontend/src/assets/mapa/web-security/
+regiao-N.png|json` e `frontend/src/assets/pixel/mapa/*.png`) - nunca editar os PNG/JSON do frontend a
+mao. Cada `regiao-N.json` traz, a 1x (arte 384x192): centro de cada ponto (`dia-N` por DayNumber,
+`projeto-semana-N` por numero da Weekly), `entrada`/`saida` e o retangulo da ilha de cada semana
+(`ilhas`, usado pela nevoa). Mudou a quantidade de dias de um mes = redesenhar a regiao (aceito).
+
+**Api (sem endpoint novo), campos novos em `GET /api/courses/{courseId}`:**
+`WeeklyOverviewDto.ProjectStatus` (`WeeklyProjectStatus?`, estado do castelo) e, em
+`DailyStatusSummaryDto`, `Title` (mesma regra de `DailyOverviewDto.Title`), `IsNext`
+(`DailySequencing.FindNext`), `ReinforcementDailyId` (o reforco tem DayNumber proprio - max+1 da
+semana - entao o mapa poe o selo no ponto do dia de origem) e `CompletedToday` (hora local, mesma
+conversao de `Weekly.EvaluateDailyAccess`; `GetCourseDetailUseCase` passou a receber `IClock`).
+
+**Frontend:** `lib/courseMaps.ts` (registro curso -> regioes; chave = nome do curso normalizado,
+`Course` nao tem slug), `components/courseMap/CourseMap.tsx` (seletor de mes + `RegionView`),
+`lib/focadaMapLines.ts` (falas). Pontos e castelos sao `<button>` posicionados em % sobre a arte (a
+ordem do DOM segue o caminho; aria-label com dia, titulo e status); clique abre o balao (dia/tema/
+status + "Entrar"/"Rever", "Fazer reforco", "Abrir projeto", "Ver semana"). Estados: ponto concluido/
+em andamento/disponivel (`isNext`)/trancado; castelo trancado (dias da semana incompletos)/liberado/
+entregue/concluido (`ProjectStatus`). Nevoa (bloco `bg-base` a 90% + borda de meias-nuvens) a partir
+da 1a semana trancada ou alem da semana atual; pontos sob ela ficam inertes. A Focada (sprite 16x16)
+fica sobre a proxima Daily - ou no castelo que bloqueia, se a semana dela esta trancada - e na 1a
+abertura depois de avancar anda ponto a ponto desde a ultima posicao vista (`localStorage`
+`focadu:mapa-posicao:<courseId>`; `prefers-reduced-motion` aparece direto). Regiao sem arte cai na
+lista de semanas antiga (`renderFallback`); celular (`useIsMobile`) e curso sem mapa tambem.
+
+**Falas da Focada no mapa:** 11 falas padrao aprovadas pelo dono (`DEFAULT_MAP_LINES`), uma por
+abertura, a 1a situacao verdadeira na ordem: curso concluido, reforco pendente, projeto liberado,
+projeto entregue, daily em andamento, dia feito hoje, primeira vez, novo mes, nova semana, ultimo dia
+antes do castelo, padrao. Marcadores `{dia}`/`{semana}`/`{faltam}`/`{mes}`/`{tituloMes}` (titulo do mes
+com acento vem do `regiao-N.json` - o do seed e sem acento). Semana fechada so esperando a publicacao
+do modulo nao tem fala (sem fala aprovada). A troca por curso na curadoria (decidida no rascunho) ainda
+nao tem caminho de dado. **Desde os ajustes da Fase 65** a fala e um balao em cima do marcador da
+Focada no proprio mapa (nao mais uma coluna com o `DialogueBox`, que gerava rolagem no monitor):
+abre sozinha depois da caminhada quando a fala mudou (`localStorage` `focadu:mapa-fala:<courseId>`),
+fecha com Esc/clique fora, e reabre no hover/foco do marcador.
+
+**Layout da tela do curso:** mesma receita do Projeto Semanal (Fase 61) - margens `lg:px-16`/45px no
+topo e, a partir de `lg`, altura da tela com rolagem so por dentro das colunas. 3 colunas (desde os
+ajustes da Fase 65): cabecalho HUD do curso (250px: titulo, barra de progresso em 30 segmentos) | so o
+mapa | Resumo do Curso HUD (250px: dailies, projetos avaliados, reforcos, conclusao, "Continuar
+estudando" e os atalhos Ver ranking, Conquistas, Caderninho, Certificacoes). As laterais descem 44px
+(`lg:pt-11`, a altura do seletor de mes) pra comecar junto com a caixa do mapa. **As abas sairam:** Caderninho virou tela propria
+(`routes/NotebookPage.tsx`, `/start?course=&caderninho=1`) e Certificacoes usa a tela da Fase 45
+(`/start?course=&certifications=1`); `?tab=caderninho`/`?tab=certificacoes` (links antigos) caem nessas
+telas (`StartPage`). `CourseDetailTabs` e `CertificationsTab` foram removidos.
 
 ## Autenticacao (Fase 12)
 
@@ -2388,7 +2449,11 @@ Plano do dono: levar pro sistema inteiro - abordagem e armadilhas em `docs/fase-
 + credenciais com icone de copiar) e REFERENCIAS; centro DESAFIO SEMANAL com entrega fixa no
 rodape; direita ANOTACAO RAPIDA (`QuickNotePanel fill`, nota presa ao projeto) e TIRA DUVIDAS
 (`StudyAssistantPanel tall`). Rotulos via `CardLabel`. O botao flutuante `QuickQuestionOrb` nao e
-mais usado em nenhuma tela.
+mais usado em nenhuma tela. **Cartoes laterais em pixel art (ajustes da Fase 65, 23/09/2026):**
+repositorio, referencias, anotacao rapida (264px, 240 do Figma + 10%) e tira-duvidas usam a mesma
+linguagem dos cartoes da trilha - `pixel-box`, rotulos/botoes em Silkscreen (`CardLabel pixel`, com
+"// " na frente), texto e campos em VT323 com borda reta. O campo do chat cresce com a mensagem
+(ate `max-h-40`, depois rola por dentro); o link do Caderninho na anotacao virou icone.
 
 **Fidelidade visual da Sessao Diaria (Fase 19):** fase so de estilo, sem mudanca de logica/API/
 estrutura de dados - as 8 telas de atividade (Leitura/Resumo Falado/Video/Quiz/Ligar Palavras/
@@ -2709,7 +2774,10 @@ frontend/
                                    Fase 39: `DayCard` mostra `day.title` (titulo do material do dia)
                                    em vez de so "Dia N"; container alargado (`max-w-6xl`/`px-6 py-8`,
                                    mesmo ajuste ja feito em `SessionShell.tsx`)
-      CourseDetailPage.tsx        <- /start?course= - trilha completa (semanas + mini-grid de dias)
+      CourseDetailPage.tsx        <- /start?course= - Fase 65: mapa da trilha em pixel art (CourseMap +
+                                   fala da Focada + HUD do curso + Resumo com atalhos), 3 colunas com
+                                   altura da tela; lista de semanas so no celular/curso sem mapa (ver
+                                   "Mapa da trilha"). Historico: trilha completa (semanas + mini-grid de dias)
                                    (Fase 8); badge "🔒 Bloqueado" na Weekly seguinte a uma que ainda
                                    precisa de publicacao (Fase 11); links "🏆 Ver Ranking" ->
                                    /start?course=&ranking=1 (Fase 16) e "🎖️ Conquistas" -> /conquistas
@@ -2941,7 +3009,8 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7). Fora do shell `<App/>` da Fase 20 ate a 24 (full-bleed); dentro do shell de novo desde a Fase 25 (ganhou `GlobalNav`); contador de erros saiu do HUD fixo e virou badge no proprio `GlobalNav` desde a Fase 36 (`PenaltyHeaderBadge`) |
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco; Fase 8: tambem usada como "reprise" de um dia ja concluido, clicado a partir da Visao Semanal) |
 | `/start` (sem params) | `GET /api/today` + `GET /api/courses` + `GET /api/users/me/gamification` | `StartDashboard` (Fase 8-24, e de volta desktop+celular pos-Fase 26 - `WorldMapPage` da Fase 25 desativado pro lancamento, ver nota em "Frontend" acima) |
-| `/start?course=` | `GET /api/courses/{courseId}` | `CourseDetailPage` (Fase 8) - trilha completa do curso |
+| `/start?course=` | `GET /api/courses/{courseId}` | `CourseDetailPage` (Fase 8) - trilha completa do curso; mapa da trilha em pixel art desde a Fase 65 |
+| `/start?course=&caderninho=1` (ou `&tab=caderninho`) | `GET /api/courses/{courseId}/notes` + `.../notes/tags` | `NotebookPage` (Fase 65) - Caderninho em tela propria (antes aba da tela do curso) |
 | `/start?course=&ranking=1` | `GET /api/courses/{courseId}/ranking?scope=` | `RankingPage` (Fase 16) - Score de Estudo, top 10 + posicao do usuario |
 | `/loja` | `GET /api/marketplace/catalog` + `POST .../purchase`\|`/equip`\|`/unequip` | `MarketplacePage` (Fase 17) - catalogo de cosmeticos |
 | `/perfil` (`?tab=info`\|`customizacao`\|`conquistas`) | `GET /api/users/me/gamification` + `GET /api/marketplace/catalog` (+ `GET /api/courses`/`.../ranking` na aba Informacoes, `GET /api/users/me/badges`/`referral` na aba Conquistas) | `ProfilePage` (Fase 18) - 3 abas, ver secao "Perfil, 3 Abas" acima |

@@ -227,6 +227,8 @@ export interface WeeklyOverviewDto {
   requiresPublicationToUnlock: boolean;
   /** Fase 55: true quando alguma Weekly ANTERIOR do mesmo curso ainda nao fechou (projeto nao avaliado / publicacao nao validada) - "se existe um projeto pendente, todas as semanas seguintes ficam bloqueadas". Calculado no servidor, a mesma regra do 409 ao iniciar uma Daily. */
   isLocked: boolean;
+  /** Fase 65: status do Projeto Semanal desta semana (null se ainda nao existe) - estado do castelo no mapa da trilha. */
+  projectStatus: WeeklyProjectStatus | null;
 }
 
 /** Resumo enxuto de uma Daily pra grids de navegacao (Fase 8) - versao mais leve de DailyOverviewDto. */
@@ -238,6 +240,14 @@ export interface DailyStatusSummaryDto {
   isReinforcement: boolean;
   totalActivities: number;
   completedActivities: number;
+  /** Fase 65: titulo do material do dia (balao do ponto no mapa da trilha). */
+  title: string | null;
+  /** Fase 65: a proxima Daily da matricula (DailySequencing.FindNext) - onde a Focada fica no mapa. */
+  isNext: boolean;
+  /** Fase 65: Daily de reforco gerada a partir desta - o mapa mostra o selo no ponto deste dia. */
+  reinforcementDailyId: string | null;
+  /** Fase 65: concluida hoje (hora local) - fala "por hoje acabou" da Focada no mapa. */
+  completedToday: boolean;
 }
 
 export interface MonthlyOverviewDto {

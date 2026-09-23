@@ -84,9 +84,16 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 64 — Identidade pixel art + diálogo da Focada no Projeto Semanal** (23/09/2026).
+Última fase concluída: **Fase 65 — Mapa da trilha em pixel art** (23/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Mapa da trilha em pixel art (Fase 65, pedido do dono)**: a tela do curso (`/start?course=`) virou
+  um mapa-mundi — uma região desenhada por mês (arte e posições geradas por script em
+  `secret/curadoria/scripts/mapa/`, mesma fonte do Figma), dias como pontos, Projeto Semanal como
+  castelo, selo de reforço, névoa nas semanas trancadas, balão com "Entrar", e a Focada andando até a
+  próxima Daily e dizendo uma das 11 falas aprovadas. Layout em 3 colunas como o Projeto Semanal;
+  Caderninho e Certificações viraram botões que abrem telas próprias (`NotebookPage` nova). Backend
+  só ganhou campos em `GET /api/courses/{id}`. Celular segue com a lista. Ver `docs/fase-65/`.
 - **Identidade pixel art + Focada (Fase 64, combo pedido pelo dono)**: linha editorial no Figma
   "Focadu — Pixel Art" (paleta fechada, guia de regras, sprites 16×16) aplicada no app — ícones e
   emojis viraram sprites (`assets/pixel/`, sempre `pixelated` e em múltiplos de 16px), logo FOCADU

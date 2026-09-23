@@ -1,20 +1,23 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
-import { CourseStatus, type DailyStatusSummaryDto, type WeeklyOverviewDto } from '../api/types';
+import { CourseStatus, WeeklyProjectStatus, type DailyStatusSummaryDto, type WeeklyOverviewDto } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { EmptyStateError } from '../components/errors/EmptyStateError';
-import { CourseDetailTabs, type CourseDetailTab } from '../components/notebook/CourseDetailTabs';
-import { NotebookTab } from '../components/notebook/NotebookTab';
-import { CertificationsTab } from '../components/certifications/CertificationsTab';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
-import { ProgressBar } from '../components/ProgressBar';
+import { CourseMap } from '../components/courseMap/CourseMap';
+import { ScrollArea } from '../components/ScrollArea';
+import { findCourseMap } from '../lib/courseMaps';
+import { buildFocadaMapLine } from '../lib/focadaMapLines';
+import { useIsMobile } from '../lib/useIsMobile';
 import trophyIcon from '../assets/pixel/trofeu.png';
+import medalIcon from '../assets/pixel/medalha-ouro.png';
+import notebookIcon from '../assets/pixel/terminal.png';
+import shieldIcon from '../assets/pixel/escudo.png';
 import checkIcon from '../assets/pixel/check.png';
 import lockIcon from '../assets/pixel/cadeado-bloqueado.png';
-
-const VALID_TABS: CourseDetailTab[] = ['conteudo', 'caderninho', 'certificacoes'];
 
 const DAY_MINI_TONE: Record<number, string> = {
   0: 'border-transparent bg-surface-alt text-muted', // Locked
@@ -34,22 +37,8 @@ const DAY_MINI_TONE: Record<number, string> = {
  */
 export function CourseDetailPage({ courseId }: { courseId: string }) {
   const { data: course, error, loading, retry } = useApiResource(() => api.getCourse(courseId), [courseId]);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab');
-  const tab: CourseDetailTab = VALID_TABS.includes(tabParam as CourseDetailTab) ? (tabParam as CourseDetailTab) : 'conteudo';
-
-  // Preserva os outros params da URL (course=, e qualquer outro que StartPage venha a ler) - `/start`
-  // e uma rota so orientada por query string (ver StartPage.tsx), diferente de /perfil?tab= (unico
-  // param que importa la), entao nao da pra so substituir tudo como ProfileTabs faz.
-  function setTab(next: CourseDetailTab) {
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev);
-      if (next === 'conteudo') params.delete('tab');
-      else params.set('tab', next);
-      return params;
-    });
-  }
-
+  const isMobile = useIsMobile();
+  const courseMap = useMemo(() => (course ? findCourseMap(course.name) : null), [course]);
   if (loading) return <Centered text="Carregando curso..." />;
   if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
   if (!course) return null;
@@ -57,87 +46,128 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
   const weeks = course.monthlies.flatMap((m) => m.weeklies);
   const reinforcementCount = course.dailyReinforcements.length + course.weeklyReinforcements.length;
   const currentWeekId = findCurrentWeekId(weeks);
+  const projectsDone = weeks.filter((w) => w.projectStatus === WeeklyProjectStatus.Evaluated).length;
+  // Fase 65: mapa da trilha no desktop quando o curso tem arte desenhada; celular (e curso sem mapa)
+  // segue com a lista de semanas - versao vertical do mapa pro celular ficou pra depois (rascunho).
+  const showMap = courseMap !== null && !isMobile;
+  const mapLine = showMap ? buildFocadaMapLine(course, new Map([...courseMap.values()].map((r) => [r.monthlyNumber, r.titulo]))) : null;
 
+  const weekList = (list: WeeklyOverviewDto[]) => (
+    <div className="flex flex-col gap-3">
+      {list.map((weekly) => (
+        <WeekSummaryCard
+          key={weekly.id}
+          weekly={weekly}
+          courseId={courseId}
+          isLocked={weekly.isLocked}
+          isCurrent={weekly.id === currentWeekId}
+        />
+      ))}
+      {list.length === 0 && (
+        <EmptyStateError title="Nenhuma semana cadastrada" description="Este curso ainda não tem semanas cadastradas." />
+      )}
+    </div>
+  );
+
+  // Fase 65: mesma receita do Projeto Semanal (Fase 61, WeeklyProjectPage) - mesmas margens
+  // (lg:px-16, 45px no topo) e, a partir de `lg`, a altura da tela com rolagem so por dentro das colunas
+  // (ScrollArea); abaixo disso volta pro fluxo normal. Tres colunas: cabecalho do curso (HUD) a esquerda
+  // (250px), so o mapa no centro, resumo + atalhos a direita (250px). A fala da Focada saiu da coluna
+  // esquerda (gerava rolagem no monitor, pedido do dono) e virou balao no marcador dela no mapa.
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-8 p-8 lg:flex-row lg:items-start">
-      <div className="flex flex-1 flex-col gap-8">
-        <div className="flex flex-col gap-4 rounded-2xl border border-surface-alt bg-surface p-8">
-          <div className="flex items-center gap-2 text-xs">
+    <div className="flex flex-col gap-8 bg-base px-4 pt-6 pb-8 lg:h-[calc(100dvh-var(--nav-height))] lg:flex-row lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12">
+      <div className={`flex w-full shrink-0 flex-col lg:min-h-0 lg:w-[250px] ${showMap ? 'lg:pt-11' : ''}`}>
+        <div className="pixel-box flex shrink-0 flex-col gap-4 bg-base p-5">
+          <div className="flex flex-wrap items-center gap-3 font-pixel-label text-[10px]">
             {course.status === CourseStatus.Active && (
-              <span className="rounded-full border border-accent bg-accent/10 px-2.5 py-1 font-semibold text-accent">CURSO ATIVO</span>
+              <span className="border-2 border-accent px-2 py-1 text-accent">Curso ativo</span>
             )}
             <span className="text-secondary">
-              • {weeks.length} semana{weeks.length === 1 ? '' : 's'}
+              {weeks.length} semana{weeks.length === 1 ? '' : 's'} · {course.monthlies.length} {course.monthlies.length === 1 ? 'mês' : 'meses'}
             </span>
           </div>
-          <h1 className="text-3xl font-extrabold text-primary">{course.name}</h1>
+          <h1 className="font-pixel-label text-2xl leading-tight tracking-wide text-primary">{course.name}</h1>
           <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 font-pixel-label text-[10px]">
               <span className="text-secondary">Progresso do treinamento</span>
-              <span className="font-bold text-accent">{course.progress.completionPercentage}% completo</span>
+              <span className="text-accent">{course.progress.completionPercentage}% completo</span>
             </div>
-            <ProgressBar progress={course.progress.completionPercentage / 100} heightClass="h-2" />
+            <SegmentedBar percentage={course.progress.completionPercentage} />
           </div>
         </div>
-
-        {/* Fase 29: Conteudo Programatico + Caderninho como abas (antes era single-view) -
-            Conteudo Programatico mantem o visual ATUAL, so ganhou o envolvo de abas (decisao do
-            rascunho: reskin fora de escopo desta fase). Resumo do Curso na coluna da direita fica
-            fora das abas (info do Course inteiro, nao de uma aba especifica). */}
-        <div className="flex flex-col gap-4">
-          <CourseDetailTabs tab={tab} onChange={setTab} />
-
-          {tab === 'conteudo' && (
-            <div className="flex flex-col gap-3">
-              {weeks.map((weekly) => (
-                <WeekSummaryCard
-                  key={weekly.id}
-                  weekly={weekly}
-                  courseId={courseId}
-                  isLocked={weekly.isLocked}
-                  isCurrent={weekly.id === currentWeekId}
-                />
-              ))}
-              {weeks.length === 0 && (
-                <EmptyStateError title="Nenhuma semana cadastrada" description="Este curso ainda não tem semanas cadastradas." />
-              )}
-            </div>
-          )}
-
-          {tab === 'caderninho' && <NotebookTab courseId={courseId} />}
-
-          {tab === 'certificacoes' && <CertificationsTab monthlies={course.monthlies} />}
-        </div>
       </div>
 
-      <div className="flex w-full flex-col gap-6 rounded-2xl border border-surface-alt bg-surface p-8 lg:w-[340px]">
-        <p className="text-xs font-bold uppercase tracking-wide text-accent">// Resumo do Curso</p>
-        <div className="flex flex-col gap-3 text-sm">
-          <Stat label="Dailies completas" value={`${course.progress.completedDailies} de ${course.progress.totalDailies}`} />
-          <Stat label="Conclusão" value={`${course.progress.completionPercentage}%`} />
-          <Stat label="Sessões de reforço" value={`${reinforcementCount}`} />
+      {/* Coluna central: so o mapa da trilha - ou a lista de semanas no celular e em curso sem mapa. */}
+      <ScrollArea className="min-h-0 min-w-0 flex-1" contentClassName="flex flex-col gap-6">
+        {showMap ? (
+          <CourseMap
+            course={course}
+            courseId={courseId}
+            regions={courseMap}
+            renderFallback={(monthly) => weekList(monthly.weeklies)}
+            focadaLine={mapLine}
+          />
+        ) : (
+          weekList(weeks)
+        )}
+      </ScrollArea>
+
+      {/* Coluna lateral: Resumo do Curso como HUD (numeros + atalhos). */}
+      <div className={`flex w-full shrink-0 flex-col lg:min-h-0 lg:w-[250px] ${showMap ? 'lg:pt-11' : ''}`}>
+        <div className="pixel-box flex shrink-0 flex-col gap-4 bg-base p-5">
+          <p className="font-pixel-label text-[10px] text-accent">// Resumo do Curso</p>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+            <Stat label="Dailies" value={`${course.progress.completedDailies}/${course.progress.totalDailies}`} />
+            <Stat label="Projetos" value={`${projectsDone}/${weeks.length}`} tone="text-project" />
+            <Stat label="Reforços" value={`${reinforcementCount}`} />
+            <Stat label="Conclusão" value={`${course.progress.completionPercentage}%`} />
+          </div>
+          <Link to="/hoje" className="bg-accent py-2.5 text-center font-pixel-label text-[10px] text-base hover:brightness-110">
+            Continuar estudando
+          </Link>
+          {/* Atalhos: Ranking (Fase 16, ancorado aqui de proposito - "fica na visualizacao global do
+              Course, pra nao distrair o aluno durante a Daily"), Conquistas (Fase 17) e, desde a Fase 65,
+              Caderninho e Certificacoes - antes abas desta tela, agora botoes que abrem a tela deles. */}
+          <div className="flex flex-col gap-2">
+            <SideLink to={`/start?course=${courseId}&ranking=1`} icon={trophyIcon} label="Ver ranking" />
+            <SideLink to="/conquistas" icon={medalIcon} label="Conquistas" />
+            <SideLink to={`/start?course=${courseId}&caderninho=1`} icon={notebookIcon} label="Caderninho" />
+            <SideLink to={`/start?course=${courseId}&certifications=1`} icon={shieldIcon} label="Certificações" />
+          </div>
         </div>
-        <Link to="/hoje" className="mt-auto block rounded-xl bg-accent py-3 text-center text-sm font-bold tracking-wide text-base">
-          CONTINUAR ESTUDANDO
-        </Link>
-        {/* Fase 16: ranking ancorado aqui de proposito (Documento Mestre original - "fica na
-            visualizacao global do Course, pra nao distrair o aluno durante a Daily"). */}
-        <Link
-          to={`/start?course=${courseId}&ranking=1`}
-          className="flex items-center justify-center gap-1.5 rounded-xl border border-surface-alt py-3 text-center text-sm font-bold tracking-wide text-secondary hover:border-accent hover:text-primary"
-        >
-          <img src={trophyIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
-          VER RANKING
-        </Link>
-        {/* Fase 17: sem lar definitivo ainda (fica pra aba "Conquistas" do Perfil, Fase 18) - por
-            ora, so mais um link daqui, mesmo padrao do Ranking acima. */}
-        <Link
-          to="/conquistas"
-          className="block rounded-xl border border-surface-alt py-3 text-center text-sm font-bold tracking-wide text-secondary hover:border-accent hover:text-primary"
-        >
-          🎖️ CONQUISTAS
-        </Link>
       </div>
+    </div>
+  );
+}
+
+function SideLink({ to, icon, label }: { to: string; icon: string; label: string }) {
+  return (
+    <Link
+      to={to}
+      className="flex items-center justify-center gap-2 border-2 border-stroke py-2 font-pixel-label text-[10px] text-secondary hover:border-accent hover:text-primary"
+    >
+      <img src={icon} alt="" className="size-4 pixelated" aria-hidden="true" />
+      {label}
+    </Link>
+  );
+}
+
+/** Barra de progresso do HUD: 30 segmentos (1 segmento = 2 dias num curso de 60). */
+function SegmentedBar({ percentage }: { percentage: number }) {
+  const SEGMENTS = 30;
+  const filled = Math.floor((percentage / 100) * SEGMENTS);
+  return (
+    <div
+      role="progressbar"
+      aria-valuenow={percentage}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label="Progresso do treinamento"
+      className="flex gap-1"
+    >
+      {Array.from({ length: SEGMENTS }, (_, i) => (
+        <span key={i} className={`h-2.5 flex-1 ${i < filled ? 'bg-accent' : 'bg-stroke'}`} />
+      ))}
     </div>
   );
 }
@@ -151,11 +181,11 @@ function findCurrentWeekId(weeks: WeeklyOverviewDto[]): string | null {
   return null;
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, tone = 'text-primary' }: { label: string; value: string; tone?: string }) {
   return (
-    <div className="flex items-center justify-between border-t border-surface-alt pt-3 first:border-t-0 first:pt-0">
-      <span className="text-secondary">{label}</span>
-      <span className="font-mono font-bold text-primary">{value}</span>
+    <div className="flex flex-col gap-0.5">
+      <span className="font-pixel-label text-[8px] text-secondary">{label}</span>
+      <span className={`font-pixel text-2xl leading-none ${tone}`}>{value}</span>
     </div>
   );
 }
