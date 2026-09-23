@@ -59,3 +59,13 @@ body {
     cursor: pointer;
   }
 }
+
+/* Fase 61: esconde a barra de rolagem NATIVA - so usado junto de <ScrollArea>, que desenha a
+   propria barra por cima (fina, aparece so enquanto rola, some com desfoque). A rolagem em si
+   continua nativa (roda, toque, teclado, leitor de tela). */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

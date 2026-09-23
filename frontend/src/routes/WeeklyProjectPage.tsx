@@ -6,7 +6,10 @@ import { PROJECT_LANGUAGE_NAMES, ProjectLanguage, ProjectLanguageStep, WeeklyPro
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { MarkdownBlock } from '../components/activities/MarkdownBlock';
-import { SessionTopBar, QuickQuestionOrb } from '../components/SessionShell';
+import { ProgressBar } from '../components/ProgressBar';
+import { ScrollArea } from '../components/ScrollArea';
+import { StudyAssistantPanel } from '../components/assistant/StudyAssistantPanel';
+import backArrow from '../assets/project/back-arrow.svg';
 import { setStudyAssistantContext } from '../lib/studyAssistantContext';
 
 const STATUS_BADGE: Record<number, { label: string; className: string }> = {
@@ -46,7 +49,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   const [chooseLanguageError, setChooseLanguageError] = useState<string | null>(null);
 
   // Fase 32: SessionLayout faz isso sozinho via `assistantContext` (ver SessionShell.tsx) - esta
-  // tela nao usa SessionLayout (so SessionTopBar + QuickQuestionOrb soltos), entao alimenta o
+  // tela nao usa SessionLayout (layout proprio desde a Fase 61, chat em StudyAssistantPanel), entao alimenta o
   // Suporte Rapido de IA com a especificacao do projeto direto aqui. Fase 59: specText vem vazio
   // enquanto o projeto nao foi disponibilizado (aluno ainda precisa marcar/escolher linguagem) -
   // sem contexto nenhum nesse caso, em vez de mandar uma string vazia pro assistente.
@@ -108,33 +111,40 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
     }
   }
 
+  // Fase 61 (Figma "LAYOUT CRU - PROJETO SEMANAL", node 178:132): a pagina ocupa exatamente a
+  // altura que sobra abaixo do GlobalNav (h-14 + 1px de borda = 57px) e NUNCA rola por fora - cada
+  // cartao rola por dentro com <ScrollArea>. Abaixo de `lg` (3 colunas nao cabem) volta pro fluxo
+  // normal empilhado, com rolagem da pagina - ver docs/fase-61.
   return (
-    <div className="min-h-screen bg-base px-6 pt-5 pb-6">
-      <div className="mx-auto flex max-w-[1600px] flex-col gap-5">
-        <SessionTopBar
-          eyebrow={
-            <Link to={backTo} className="hover:text-secondary">
-              &larr; {(weekly.theme ?? weekly.title).toUpperCase()}
-            </Link>
-          }
-          stepLabel={`PROJETO SEMANAL — SEMANA ${weekly.number}`}
-          progress={STATUS_PROGRESS[project.status]}
-          tone="project"
-        />
+    <div className="flex flex-col gap-6 bg-base px-4 pt-6 pb-8 lg:h-[calc(100dvh-57px)] lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12">
+      {/* Topo: "voltar" a esquerda e a barra de progresso CENTRALIZADA (250px), como no Figma. */}
+      <div className="flex shrink-0 flex-col gap-3 lg:grid lg:grid-cols-[1fr_minmax(0,250px)_1fr] lg:items-center lg:gap-4">
+        <Link
+          to={backTo}
+          className="flex min-w-0 items-center gap-2 text-sm font-medium uppercase tracking-[1.6px] text-secondary hover:text-primary lg:text-[16px]"
+        >
+          <img src={backArrow} alt="" width={17} height={7.36} className="shrink-0" />
+          <span className="truncate">Voltar para {weekly.theme ?? weekly.title}</span>
+        </Link>
+        <div role="progressbar" aria-label={`Projeto Semanal — Semana ${weekly.number}`} aria-valuenow={Math.round(STATUS_PROGRESS[project.status] * 100)} aria-valuemin={0} aria-valuemax={100}>
+          <ProgressBar progress={STATUS_PROGRESS[project.status]} tone="project" heightClass="h-2" />
+        </div>
+      </div>
 
-        {/* Mesmo layout de 3 colunas das telas da Daily (SessionLayout): repositorio/credenciais a
-            esquerda e referencias a direita, so depois do projeto disponibilizado - antes disso o
-            cartao central fica sozinho, como sempre foi. */}
-        <div className="flex items-stretch gap-8">
-          {released && project.submissionUrl && (
-            <RepositoryPanel
-              submissionUrl={project.submissionUrl}
-              username={project.forgejoUsername}
-              tokenLastEight={project.forgejoTokenLastEight}
-            />
-          )}
+      <div className="flex min-h-0 flex-1 flex-col gap-8 lg:flex-row">
+        {/* Coluna esquerda: repositorio - so depois do projeto disponibilizado. */}
+        {released && project.submissionUrl && (
+          <RepositoryPanel
+            submissionUrl={project.submissionUrl}
+            username={project.forgejoUsername}
+            tokenLastEight={project.forgejoTokenLastEight}
+          />
+        )}
 
-          <div className="mx-auto flex w-full min-w-0 max-w-[1000px] flex-col gap-6 rounded-[20px] border-[1.5px] border-project bg-surface p-10">
+        {/* Centro: especificacao rola por dentro; a entrega fica fixa no rodape do cartao, sempre
+            visivel, sem precisar rolar ate o fim da especificacao. */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-2xl border-[1.5px] border-project bg-surface">
+          <ScrollArea className="min-h-0 flex-1" contentClassName="flex flex-col gap-6 p-6 lg:p-10">
             <div className="flex items-center justify-between">
               <span className="rounded-full border border-project bg-project/10 px-3 py-1.5 text-[11px] font-semibold tracking-[0.5px] text-project">
                 CHEFE DE FASE 👾
@@ -206,38 +216,40 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
                 )}
               </>
             )}
+          </ScrollArea>
 
-            {canSubmit && project.submissionUrl && (
-              <div className="flex flex-col gap-3">
-                {/* Repositorio gerenciado no Forgejo interno e avaliado automaticamente ao entregar
-                    (ver EvaluateWeeklyProjectUseCase) - nao ha mais URL pra colar, so confirmar que
-                    o trabalho no repositorio ja provisionado esta pronto. */}
-                <p className="text-xs text-muted">Terminou de commitar seu código? Entregue para receber nota automática.</p>
+          {canSubmit && project.submissionUrl && (
+            <div className="flex shrink-0 flex-col gap-3 border-t border-stroke px-6 py-5 lg:px-10">
+              {/* Repositorio gerenciado no Forgejo interno e avaliado automaticamente ao entregar
+                  (ver EvaluateWeeklyProjectUseCase) - nao ha mais URL pra colar, so confirmar que
+                  o trabalho no repositorio ja provisionado esta pronto. */}
+              <p className="text-xs text-muted">Terminou de commitar seu código? Entregue para receber nota automática.</p>
 
-                {submitError && <p className="text-sm text-alert">{submitError}</p>}
+              {submitError && <p className="text-sm text-alert">{submitError}</p>}
 
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="self-end rounded-xl bg-project px-8 py-4 text-sm font-bold text-base disabled:opacity-40"
-                >
-                  {submitting ? 'ENVIANDO...' : 'ENTREGAR PROJETO'}
-                </button>
-              </div>
-            )}
-          </div>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="self-end rounded-xl bg-project px-8 py-4 text-sm font-bold text-base disabled:opacity-40"
+              >
+                {submitting ? 'ENVIANDO...' : 'ENTREGAR PROJETO'}
+              </button>
+            </div>
+          )}
+        </div>
 
+        {/* Coluna direita: referencias (cartao baixo, 240px) + chat ocupando o resto da altura. */}
+        <div className="flex min-h-0 flex-col gap-8 lg:w-[250px] lg:shrink-0">
           {released && project.references.length > 0 && (
             <ReferencesPanel
               references={project.references}
               languageName={project.language !== null ? PROJECT_LANGUAGE_NAMES[project.language] : null}
             />
           )}
+          <StudyAssistantPanel tall className="h-[480px] lg:h-auto lg:min-h-0 lg:flex-1" />
         </div>
       </div>
-
-      <QuickQuestionOrb />
     </div>
   );
 }
@@ -291,7 +303,10 @@ function RepositoryPanel({
   }
 
   return (
-    <aside className="flex w-[280px] shrink-0 flex-col gap-4 self-start rounded-2xl border border-stroke bg-surface p-5">
+    <ScrollArea
+      className="shrink-0 rounded-2xl border border-stroke bg-surface lg:h-full lg:w-[250px]"
+      contentClassName="flex flex-col gap-4 p-5 pr-6"
+    >
       <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-muted">Seu repositório</p>
       <a href={submissionUrl} target="_blank" rel="noreferrer" className="break-all text-[13px] text-accent hover:underline">
         {submissionUrl}
@@ -379,7 +394,7 @@ function RepositoryPanel({
           <p className="text-xs text-muted">O git vai pedir usuário e senha na hora do push - use o usuário e o token acima.</p>
         </div>
       )}
-    </aside>
+    </ScrollArea>
   );
 }
 
@@ -389,7 +404,10 @@ function RepositoryPanel({
  */
 function ReferencesPanel({ references, languageName }: { references: ProjectReferenceDto[]; languageName: string | null }) {
   return (
-    <aside className="flex w-[280px] shrink-0 flex-col gap-4 self-start rounded-2xl border border-stroke bg-surface p-5">
+    <ScrollArea
+      className="h-[240px] shrink-0 rounded-2xl border border-stroke bg-surface"
+      contentClassName="flex flex-col gap-4 p-5 pr-6"
+    >
       <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-muted">
         Referências{languageName && ` (${languageName})`}
       </p>
@@ -407,7 +425,7 @@ function ReferencesPanel({ references, languageName }: { references: ProjectRefe
           </a>
         ))}
       </div>
-    </aside>
+    </ScrollArea>
   );
 }
 

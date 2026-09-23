@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
+import { useApiResource } from '../api/useApiResource';
 import { useSettings } from '../contexts/useSettings';
-import { ActivityType, AnswerMode, ActivityStatus, DailyAccessMode, type DailyStateDto, type CompleteDailyResult } from '../api/types';
+import { ActivityType, AnswerMode, ActivityStatus, DailyAccessMode, WeeklyProjectStatus, type DailyStateDto, type CompleteDailyResult } from '../api/types';
 import { classifyApiError, type ApiFailure } from '../lib/apiError';
 import { ActivityScreen, Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
@@ -93,14 +94,37 @@ function PendingReinforcementSlot({ dailyId }: { dailyId: string | null }) {
  */
 function WeekClosurePendingNotice({ weeklyId, pendingReinforcementDailyId }: { weeklyId: string; pendingReinforcementDailyId: string | null }) {
   const navigate = useNavigate();
+  // Pedido do dono: com o projeto pendente, "Hoje" ja deve levar pro projeto, nao pra um aviso com
+  // botao pra semana. Busca a Weekly pra saber O QUE falta fechar - o projeto (ainda nao avaliado)
+  // ou so a publicacao do modulo; o DailyStateDto nao traz isso. Falha na busca cai no aviso de antes.
+  const { data: weekly, loading } = useApiResource(() => api.getWeekly(weeklyId), [weeklyId]);
+
+  if (loading) return <Centered text="Carregando..." />;
+
+  const projectUrl = weekly ? `/start?course=${weekly.courseId}&weekly=${weeklyId}&project=1` : null;
+  const projectPending = !!weekly?.project && weekly.project.status !== WeeklyProjectStatus.Evaluated;
+
+  // Reforco pendente: fica no aviso, que e o unico lugar desta tela com o botao do reforco (ele nao
+  // gasta a cota do dia, o aluno pode querer faze-lo antes) - mas o CTA principal ja e o projeto.
+  if (projectPending && projectUrl && !pendingReinforcementDailyId) return <Navigate to={projectUrl} replace />;
 
   return (
     <ErrorLayout
       icon={<img src={checkIcon} alt="" className="h-12 w-auto" />}
-      title="Semana concluída - falta o projeto"
-      description="Você terminou todas as sessões desta semana. Envie o projeto semanal (e valide a publicação, quando pedida) para liberar a próxima semana."
+      title={projectPending || !weekly ? 'Semana concluída - falta o projeto' : 'Semana concluída - falta a publicação'}
+      description={
+        projectPending
+          ? 'Você terminou todas as sessões desta semana. Envie o projeto semanal para liberar a próxima semana.'
+          : weekly
+            ? 'Você terminou todas as sessões e o projeto desta semana. Valide a publicação do módulo para liberar a próxima semana.'
+            : 'Você terminou todas as sessões desta semana. Envie o projeto semanal (e valide a publicação, quando pedida) para liberar a próxima semana.'
+      }
       extra={<PendingReinforcementSlot dailyId={pendingReinforcementDailyId} />}
-      primaryAction={{ label: 'Ir para a semana', onClick: () => navigate(`/start?weekly=${weeklyId}`) }}
+      primaryAction={
+        projectPending && projectUrl
+          ? { label: 'Ir para o projeto', onClick: () => navigate(projectUrl) }
+          : { label: 'Ir para a semana', onClick: () => navigate(`/start?weekly=${weeklyId}`) }
+      }
       secondaryAction={{ label: 'Voltar ao início', onClick: () => navigate('/start') }}
     />
   );

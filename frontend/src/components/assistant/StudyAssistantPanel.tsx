@@ -1,5 +1,6 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react';
 import { STUDY_ASSISTANT_MAX_QUESTION_LENGTH, useStudyAssistantChat } from '../../lib/useStudyAssistantChat';
+import { ScrollArea } from '../ScrollArea';
 
 /**
  * Suporte Rapido de IA em formato de card fixo (Fase 37, pedido explicito: "ao inves do botao,
@@ -15,8 +16,12 @@ import { STUDY_ASSISTANT_MAX_QUESTION_LENGTH, useStudyAssistantChat } from '../.
  * card empilhado do lado esquerdo), pra os 2 lados ficarem visualmente equilibrados; o total dos 2
  * cards do sidebar (Caderninho + este) fica perto da altura do cartao central por causa do
  * `justify-between` no container pai, nao de este card esticar sozinho.
+ *
+ * `tall` (Fase 61, Projeto Semanal): o card estica pra altura que o pai der (`flex-1 min-h-0` la) e
+ * a lista de mensagens ocupa todo o espaco sobrando, com a rolagem minimalista do `ScrollArea` -
+ * pedido do dono: "ocupando mais espaco vertical, digno de um chat". Sem `tall`, nada muda (Daily).
  */
-export function StudyAssistantPanel() {
+export function StudyAssistantPanel({ tall = false, className = '' }: { tall?: boolean; className?: string }) {
   const { question, setQuestion, messages, sending, error, handleSend, handleClear } = useStudyAssistantChat();
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -32,7 +37,7 @@ export function StudyAssistantPanel() {
   }
 
   return (
-    <div className="flex w-[280px] shrink-0 flex-col gap-3 rounded-2xl border border-stroke bg-surface p-5">
+    <div className={`flex shrink-0 flex-col gap-3 rounded-2xl border border-stroke bg-surface p-5 ${tall ? '' : 'w-[280px]'} ${className}`}>
       <div className="flex items-center justify-between">
         <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-muted">Tire sua dúvida</p>
         {messages.length > 0 && (
@@ -46,23 +51,15 @@ export function StudyAssistantPanel() {
         )}
       </div>
 
+      {tall ? (
+        <ScrollArea scrollRef={listRef} className="min-h-0 flex-1 rounded-xl bg-base" contentClassName="flex flex-col gap-2 p-3 pr-4">
+          <MessageList messages={messages} sending={sending} error={error} />
+        </ScrollArea>
+      ) : (
       <div ref={listRef} className="flex h-[200px] flex-col gap-2 overflow-y-auto rounded-xl bg-base p-3">
-        {messages.length === 0 && (
-          <p className="text-xs text-muted">Pergunte algo sobre o que está estudando agora — respostas curtas, direto ao ponto.</p>
-        )}
-        {messages.map((message, i) => (
-          <div
-            key={i}
-            className={`max-w-[90%] rounded-xl px-3 py-2 text-[13px] leading-[1.4] ${
-              message.role === 'user' ? 'self-end bg-accent text-base' : 'self-start bg-surface-alt text-primary'
-            }`}
-          >
-            {message.text}
-          </div>
-        ))}
-        {sending && <div className="self-start rounded-xl bg-surface-alt px-3 py-2 text-[13px] text-muted">Pensando...</div>}
-        {error && <p className="text-xs text-alert">{error}</p>}
+        <MessageList messages={messages} sending={sending} error={error} />
       </div>
+      )}
 
       <div className="flex items-end gap-2">
         <textarea
@@ -88,5 +85,35 @@ export function StudyAssistantPanel() {
         </button>
       </div>
     </div>
+  );
+}
+
+function MessageList({
+  messages,
+  sending,
+  error,
+}: {
+  messages: ReturnType<typeof useStudyAssistantChat>['messages'];
+  sending: boolean;
+  error: string | null;
+}) {
+  return (
+    <>
+      {messages.length === 0 && (
+        <p className="text-xs text-muted">Pergunte algo sobre o que está estudando agora — respostas curtas, direto ao ponto.</p>
+      )}
+      {messages.map((message, i) => (
+        <div
+          key={i}
+          className={`max-w-[90%] rounded-xl px-3 py-2 text-[13px] leading-[1.4] ${
+            message.role === 'user' ? 'self-end bg-accent text-base' : 'self-start bg-surface-alt text-primary'
+          }`}
+        >
+          {message.text}
+        </div>
+      ))}
+      {sending && <div className="self-start rounded-xl bg-surface-alt px-3 py-2 text-[13px] text-muted">Pensando...</div>}
+      {error && <p className="text-xs text-alert">{error}</p>}
+    </>
   );
 }

@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 60 - Token do Forgejo gerado sob demanda (a Focadu nao guarda mais o token)**.
+> Ultima fase que atualizou este documento: **Fase 61 - Projeto Semanal sem rolagem externa (layout Figma 178:132) + chat integrado**.
 
 ## Visao geral do projeto
 
@@ -2315,6 +2315,16 @@ mudanca de codigo. Não precisa de rebuild de imagem, so recreate do container (
 -d backend`) pra pegar a env var nova.
 
 ## Frontend (Fase 3, telas de atividade completadas nas Fases 4 e 5, autoria na Fase 6)
+
+**Layout sem rolagem externa (Fase 61, por enquanto so no Projeto Semanal):** a pagina ocupa a altura
+que sobra abaixo do `GlobalNav` (`lg:h-[calc(100dvh-57px)] lg:overflow-hidden`) e so os cartoes rolam,
+via `ScrollArea` (`components/ScrollArea.tsx`): barra nativa escondida (`scrollbar-none`, `index.css`)
++ barra propria de 4px que aparece so enquanto rola e some com desfoque. Todo contêiner flex no
+caminho ate a area que rola precisa de `min-h-0`. Abaixo de `lg`, fluxo empilhado com rolagem normal.
+Plano do dono: levar pro sistema inteiro - abordagem e armadilhas em `docs/fase-61/`.
+`WeeklyProjectPage` segue o Figma node `178:132`: repositorio (esquerda), especificacao com entrega
+fixa no rodape (centro), referencias + chat alto `StudyAssistantPanel tall` (direita) - o botao
+flutuante `QuickQuestionOrb` nao e mais usado em nenhuma tela.
 
 **Fidelidade visual da Sessao Diaria (Fase 19):** fase so de estilo, sem mudanca de logica/API/
 estrutura de dados - as 8 telas de atividade (Leitura/Resumo Falado/Video/Quiz/Ligar Palavras/

@@ -84,9 +84,13 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 60 — Token do Forgejo gerado sob demanda** (22/09/2026).
+Última fase concluída: **Fase 61 — Projeto Semanal sem rolagem externa + chat integrado** (22/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Projeto Semanal sem rolagem externa (Fase 61, Figma node 178:132)**: a página cabe na altura da
+  tela e só os cartões rolam por dentro, com barra minimalista que aparece ao rolar e some com
+  desfoque (`ScrollArea`); barra de progresso centralizada no topo; chat de IA fixo e alto na coluna
+  direita. O dono quer isso no sistema inteiro — abordagem documentada em `docs/fase-61/`.
 - **Token do git do Projeto Semanal fora do banco (Fase 60, pedido do dono)**: o token do Forgejo
   ficava em texto puro no Postgres e aparecia sempre na tela. Agora o aluno gera sob demanda
   (`POST /api/users/me/forgejo-token`), vê uma única vez e a Focadu guarda só os 8 últimos
