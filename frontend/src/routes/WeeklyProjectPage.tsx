@@ -133,11 +133,11 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   }
 
   // Fase 61 (Figma "LAYOUT CRU - PROJETO SEMANAL", node 178:132): a pagina ocupa exatamente a
-  // altura que sobra abaixo do GlobalNav (`--nav-height`, index.css) e NUNCA rola por fora - cada
+  // altura que sobra abaixo do GlobalNav (casca global do App, Fase 67) e NUNCA rola por fora - cada
   // cartao rola por dentro com <ScrollArea>. Abaixo de `lg` (3 colunas nao cabem) volta pro fluxo
   // normal empilhado, com rolagem da pagina - ver docs/fase-61.
   return (
-    <div className="flex flex-col gap-6 bg-base px-4 pt-6 pb-8 lg:h-[calc(100dvh-var(--nav-height))] lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12">
+    <div className="flex flex-col gap-6 bg-base px-4 pt-6 pb-8 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12">
       {/* Topo: "voltar" a esquerda e a barra de progresso CENTRALIZADA (250px), como no Figma. Fase 64
           (pedido do dono): some com o dialogo da Focada - a tela fica so com as 3 colunas; volta-se pelo
           menu (Trilhas) ou pelo navegador. */}

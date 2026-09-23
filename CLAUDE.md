@@ -86,9 +86,15 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 66 — Tela de start em pixel art com vários cursos** (23/09/2026).
+Última fase concluída: **Fase 67 — Casca global sem rolagem externa** (23/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Casca global sem rolagem externa (Fase 67, 1º passo das telas em pixel art antes da v0.1.0)**:
+  a partir de `lg` o `App` tem a altura da janela e o conteúdo fica num `<main>` que ocupa o resto —
+  tela "sem rolagem externa" só precisa de `lg:min-h-0 lg:flex-1 lg:overflow-hidden`, sem descontar a
+  altura do menu. O `PageShell` (Ranking, Perfil, Loja, Certificações, Caderninho) saiu da coluna
+  estreita e usa as margens das telas pixel art com `ScrollArea`. Plano das telas restantes em
+  `secret/rascunhos/telas-pixel-art-antes-da-0-1-0.md`. Ver `docs/fase-67/`.
 - **Tela de start redesenhada (Fase 66, pedido do dono)**: desenho no Figma ("Start — redesign
   proposto") e implementação em pixel art, 2 colunas, sem rolagem vertical. À esquerda, os cursos
   como "save slots" (o escolhido troca o centro) e o cartão do agente (gemas, streak da semana); no

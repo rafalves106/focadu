@@ -118,7 +118,7 @@ export function StartDashboard() {
   }
 
   return (
-    <div className="flex flex-col gap-6 bg-base px-4 pt-6 pb-8 lg:h-[calc(100dvh-var(--nav-height))] lg:flex-row lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12 lg:[@media(max-height:820px)]:py-6">
+    <div className="flex flex-col gap-6 bg-base px-4 pt-6 pb-8 lg:min-h-0 lg:flex-1 lg:flex-row lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12 lg:[@media(max-height:820px)]:py-6">
       {!dismissed && gamification.streakJustBroken && (
         <StreakLostModal longestStreak={gamification.longestStreak} onClose={() => setDismissed(true)} />
       )}

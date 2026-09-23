@@ -18,10 +18,17 @@ export function App({ children }: { children?: ReactNode }) {
   // trocar de pathname - mesmo motivo que TodayRoute tinha antes de `/hoje` voltar pra ca.
   const location = useLocation();
 
+  // Casca global (Fase 67, abordagem da Fase 61 levada pro sistema inteiro): a partir de `lg` o app
+  // tem exatamente a altura da janela e o conteudo fica num <main> flex-1/min-h-0 - uma tela "sem
+  // rolagem externa" so precisa de `lg:flex-1 lg:min-h-0 lg:overflow-hidden` e nunca mais descontar a
+  // altura do nav. Tela que ainda nao foi adaptada rola dentro do <main>, nunca a janela. Abaixo de
+  // `lg` a janela volta a rolar normalmente (rolagem interna no celular atrapalha a barra de endereco).
   return (
-    <div className="min-h-screen bg-base">
+    <div className="flex min-h-dvh flex-col bg-base lg:h-dvh">
       <GlobalNav />
-      <ErrorBoundary key={location.pathname + location.search}>{children ?? <Outlet />}</ErrorBoundary>
+      <main className="flex flex-1 flex-col lg:min-h-0 lg:overflow-y-auto">
+        <ErrorBoundary key={location.pathname + location.search}>{children ?? <Outlet />}</ErrorBoundary>
+      </main>
     </div>
   );
 }

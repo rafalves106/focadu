@@ -75,7 +75,7 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
   // (250px), so o mapa no centro, resumo + atalhos a direita (250px). A fala da Focada saiu da coluna
   // esquerda (gerava rolagem no monitor, pedido do dono) e virou balao no marcador dela no mapa.
   return (
-    <div className="flex flex-col gap-8 bg-base px-4 pt-6 pb-8 lg:h-[calc(100dvh-var(--nav-height))] lg:flex-row lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12">
+    <div className="flex flex-col gap-8 bg-base px-4 pt-6 pb-8 lg:min-h-0 lg:flex-1 lg:flex-row lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12">
       <div className={`flex w-full shrink-0 flex-col lg:min-h-0 lg:w-[250px] ${showMap ? 'lg:pt-11' : ''}`}>
         <div className="pixel-box flex shrink-0 flex-col gap-4 bg-base p-5">
           <div className="flex flex-wrap items-center gap-3 font-pixel-label text-[10px]">

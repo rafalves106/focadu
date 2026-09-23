@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 66 - Tela de start em pixel art com varios cursos**.
+> Ultima fase que atualizou este documento: **Fase 67 - Casca global sem rolagem externa**.
 
 ## Visao geral do projeto
 
@@ -3287,6 +3287,24 @@ o cursor de seta padrao apesar de clicaveis. Regra global em `index.css`
 (`button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer }`, dentro de `@layer
 base`) resolve pro app inteiro de uma vez - nenhum componente precisou de `cursor-pointer`
 manual. `:not(:disabled)` preserva o cursor default nos botoes desabilitados (`disabled:opacity-40`).
+
+### Casca global sem rolagem externa (Fase 67)
+
+A partir de `lg`, `App` tem a altura exata da janela (`flex min-h-dvh flex-col lg:h-dvh`) e o
+conteudo de toda rota do shell fica num `<main className="flex flex-1 flex-col lg:min-h-0
+lg:overflow-y-auto">`. Consequencias:
+
+- **Tela sem rolagem externa** (trilha, Projeto Semanal, start): raiz com `lg:min-h-0 lg:flex-1
+  lg:overflow-hidden` e os cartoes rolando por dentro com `ScrollArea` (abordagem da Fase 61).
+  Nenhuma tela desconta mais `--nav-height` (so o `GlobalNav` le essa variavel).
+- **Tela ainda nao adaptada** rola dentro do `<main>`, nunca a janela, no desktop.
+- **`PageShell`** (Ranking, Perfil, Loja, Certificacoes, Caderninho): margens das telas pixel art
+  (`lg:px-16 lg:pt-[45px] lg:pb-12`), largura cheia, cabecalho fixo e conteudo num `ScrollArea`.
+- **Abaixo de `lg`** a janela volta a rolar (`min-h-dvh`, sem altura fixa) - rolagem interna no
+  celular atrapalha a barra de endereco.
+- `min-h-screen` das telas da sessao diaria (`SessionShell`, `IntroCard`, `CompletionSummary`,
+  `ActivityScreen`, `Centered`, `ErrorLayout`) ainda nao foi trocado - passam da altura do `<main>`
+  pelo tamanho do nav e rolam nele; sao tratados tela a tela (ver `docs/fase-67/`).
 
 ### Identidade pixel art (Fase 64)
 
