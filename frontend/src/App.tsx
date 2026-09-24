@@ -17,6 +17,11 @@ export function App({ children }: { children?: ReactNode }) {
   // `+search` cobre `/hoje` (agora dentro do shell) navegando entre Dailies via `?daily=` sem
   // trocar de pathname - mesmo motivo que TodayRoute tinha antes de `/hoje` voltar pra ca.
   const location = useLocation();
+  // Fase 70 (tela preta ao trocar de aba do perfil): em `/perfil` a query e so a aba (`?tab=`) - com
+  // ela no `key`, cada troca remontava a pagina inteira, que buscava tudo de novo e mostrava o
+  // "Carregando perfil..." por um instante. La o boundary so reseta o erro (`resetKey`), sem remontar.
+  const fullPath = location.pathname + location.search;
+  const boundaryKey = location.pathname === '/perfil' ? location.pathname : fullPath;
 
   // Casca global (Fase 67, abordagem da Fase 61 levada pro sistema inteiro): a partir de `lg` o app
   // tem exatamente a altura da janela e o conteudo fica num <main> flex-1/min-h-0 - uma tela "sem
@@ -27,7 +32,7 @@ export function App({ children }: { children?: ReactNode }) {
     <div className="flex min-h-dvh flex-col bg-base lg:h-dvh">
       <GlobalNav />
       <main className="flex flex-1 flex-col lg:min-h-0 lg:overflow-y-auto">
-        <ErrorBoundary key={location.pathname + location.search}>{children ?? <Outlet />}</ErrorBoundary>
+        <ErrorBoundary key={boundaryKey} resetKey={fullPath}>{children ?? <Outlet />}</ErrorBoundary>
       </main>
     </div>
   );

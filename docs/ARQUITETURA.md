@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 69 - Semana de 6 dias (ponte pro projeto) e ofensiva com folga e pausa**.
+> Ultima fase que atualizou este documento: **Fase 70 - Perfil e Squad em pixel art**.
 
 ## Visao geral do projeto
 
@@ -659,7 +659,8 @@ IsAmongFirstRegisteredAsync`, ordem total deterministica por `(CreatedAt, Id)` p
 ambiguamente). O nucleo (`ComputeBadges`) e `internal static`, testado direto com os 4 numeros ja
 resolvidos - mesmo padrao de `SubmitActivityResponseUseCase.ResolveScore`/`GetCourseRankingUseCase.
 ComputeScore`. 5 badges, `code` estavel (`streak_7`/`streak_30`/`easy_weekly`/`embaixador`/
-`founder`) - label/icone/descricao sao so apresentacao no frontend (`BadgeGrid`).
+`founder`) - label/icone/descricao/meta sao so apresentacao no frontend (`lib/badgeInfo.ts` desde a
+Fase 70; era o `BadgeGrid`).
 
 **Onde Badges/ReferralCard moram.** `/conquistas` era rota propria (`AchievementsPage`) nesta fase -
 virou a aba "Conquistas" do Perfil na Fase 18 (`/conquistas` agora so redireciona).
@@ -680,10 +681,21 @@ usuario, Squad tem fluxo proprio de criar/entrar/sair/remover + uma classificaca
 nova em vez de forcar dentro de Conquistas) - ver "Squad (Fase 24)" abaixo.
 
 **Sem endpoint consolidado novo** (`GET /api/users/me/profile-summary` era opcional no prompt) -
-`ProfilePage` faz `Promise.all([getGamification, getMarketplaceCatalog])` pro cabecalho, cada aba
-busca o resto sozinha (`InformationTab` cursos/ranking, `ConquestsTab` badges/indicacao) - mesmo
-padrao ja usado em `StartDashboard`/`AchievementsPage`, mais simples que orquestrar isso no backend
-pra uma fase que e so composicao de leitura.
+`ProfilePage` faz `Promise.all([getGamification, getMarketplaceCatalog, getUserBadges,
+getReferralInfo])` (Fase 70: badges e indicacao subiram pra pagina porque aparecem fora das abas) e a
+ficha do agente busca cursos + ranking do curso ativo sozinha; so a aba Squad busca o proprio dado -
+mais simples que orquestrar isso no backend pra uma tela que e so composicao de leitura.
+
+**Pixel art (Fase 70, Figma "Perfil — redesign proposto", node 85:4502).** Mesma casca da sessao
+diaria: a partir de `lg`, 3 colunas sem rolagem externa, cada uma com `ScrollArea` - esquerda a
+**ficha do agente** (`AgentSheet`: avatar com moldura, nome na cor equipada, cursos, recorde, score e
+posicao no curso ativo, vitrine das badges, atalhos pro ranking e Configuracoes), centro o cartao das
+abas, direita a **Focada** (fala por aba; a do Squad vem do `SquadTab` via `onSay`, depende da
+posicao/lideranca) e o **Indique um amigo** (`ReferralPanel`, saiu da aba Conquistas pra ficar sempre
+visivel). Gems e streak viraram HUD no topo, no lugar do conta-giros da Daily. Abaixo de `lg`, tudo
+empilhado com rolagem normal e abas em 2x2. Conquistas virou lista com barra em blocos ate a meta;
+Squad mostra o selo LIDER pra todos e as acoes do dono ficam na linha de cada membro. Mock:
+`npm run dev:mock` + `/perfil`, squad por `/__mock/squad?as=membro|lider|nenhum`.
 
 **`UserDto` ganhou `Interests`/`AdditionalProfileNotes`** (Fase 18) - a aba Informacoes le direto do
 `user` do `AuthContext` (ja carregado via `GET /api/auth/me`), sem precisar de uma chamada nova.
@@ -860,8 +872,9 @@ calendario" (pro cap de ganho), sem historico por semana/posicao no curriculo; `
 `AverageGems` no `SquadRankingResultDto` sao sempre o saldo total de cada membro. `TotalScore`/
 `AverageScore` (que respeitam `scope`) e `TotalGems`/`AverageGems` juntos cobrem o "soma/media de
 Score/Gems dos membros" pedido - alem da lista de membros (`RankingEntryDto[]`, mesmo shape do
-ranking de Course, reaproveitado sem alteracao no frontend: `RankingTable`/`CurrentUserRankingCard`
-servem os dois sem parametro squad-especifico).
+ranking de Course). Ate a Fase 69 o frontend reaproveitava `RankingTable`/`CurrentUserRankingCard`;
+desde a Fase 70 o `SquadTab` tem tabela propria em pixel art (medalhas, selo LIDER/CO-LIDER, acoes do
+dono na linha) e so `AverageGems` deixou de aparecer - os dois componentes seguem so no `RankingPage`.
 
 **Resolvido na Fase 24b, nao e mais pendencia: sucessao de lideranca + limpeza de squad orfao.**
 Owner sair nao bloqueia mais com outros membros dentro - a lideranca e transferida (referencia
@@ -2868,12 +2881,11 @@ frontend/
                                    repo, sem uso); `purchaseCosmeticItem`/`equipCosmetic`/
                                    `unequipCosmetic` (api/client.ts) intactos, so nao exercitados
                                    aqui mais
-      ProfilePage.tsx            <- /perfil (Fase 18) - 4 abas via ?tab= (Informacoes/Customizacao/
-                                   Conquistas/Squad, default Informacoes); ProfileHeader (nome+
-                                   moldura+Gems+Streak) acima das abas, sempre visivel, le
-                                   `data.catalog` direto (Fase 25: `catalogOverride`/`busyItemId`/
-                                   `actionError`/`runAction` saíram - so existiam pra alimentar a
-                                   aba Customizacao, que virou "em breve", ver CustomizationTab.tsx)
+      ProfilePage.tsx            <- /perfil (Fase 18) - 4 abas via ?tab= (Informacoes/Conquistas/
+                                   Customizacao/Squad, default Informacoes). Fase 70: pixel art em 3
+                                   colunas sem rolagem externa - AgentSheet | abas | Focada +
+                                   ReferralPanel, HUD de Gems/streak no topo; fala da Focada por aba
+                                   (`focadaLine`, a do Squad vem do SquadTab)
       WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7; a especificacao
                                    renderiza via MarkdownBlock desde a Fase 58, antes era
                                    texto corrido com a sintaxe crua; escolha de linguagem
@@ -2888,8 +2900,8 @@ frontend/
                                    isso desde a Fase 13a
       EquippedFramePreview.tsx      <- Fase 18 - placeholder de avatar (iniciais do nome + anel
                                    colorido por raridade quando uma Moldura esta equipada, sem
-                                   upload/ilustracao real); reaproveitado por ProfileHeader e
-                                   UserMenu
+                                   upload/ilustracao real); hoje so no UserMenu (o perfil usa
+                                   o AgentAvatar quadrado desde a Fase 70)
       UserMenu.tsx                   <- Fase 62 (substitui HeaderUserBadge, Fase 18) - "@usuario"
                                    (DisplayName sem espacos/acentos, minusculo - User nao tem
                                    username) + avatar com moldura; clique abre Meu perfil,
@@ -2954,27 +2966,21 @@ frontend/
                                    Customizacao do Perfil (inventario, nao vende nada por la)
         CosmeticSlotFilter.tsx             <- filtro Tudo/Molduras/Cores/Banners, mesmo padrao das
                                    abas do RankingScopeTabs
-      badges/
-        BadgeGrid.tsx                     <- Fase 17 - grid dos 5 badges, conquistado (borda accent)
-                                   vs esmaecido (opacity-40); code -> label/icone/descricao mapeado
-                                   no frontend (mesmo padrao de DailyStatus -> lib/statusBadge.ts)
-      referral/
-        ReferralCard.tsx                   <- Fase 17 - codigo + copiar link (clipboard) + contador
-                                   de indicacoes confirmadas
-      profile/                      <- Fase 18
-        ProfileHeader.tsx                  <- cabecalho do /perfil - EquippedFramePreview + nome
-                                   colorido (nameColorClass) + GemBadge/StreakIndicator reaproveitados
-        ProfileTabs.tsx                     <- abas Informacoes/Customizacao/Conquistas, mesmo
-                                   padrao de RankingScopeTabs/CosmeticSlotFilter
-        InformationTab.tsx                   <- nome/email so leitura, interesses/notas salvos
-                                   (UserDto), link "Editar meus interesses" (-> /onboarding/
-                                   perfil?edit=1), estatisticas basicas (cursos, Recorde de
-                                   Streak, Score no curso ativo)
-        CustomizationTab.tsx                  <- Fase 18: inventario agrupado pelos 3 slots reais
-                                   (CosmeticSlot). Fase 25: "em breve" (mesmo motivo da
-                                   MarketplacePage) - componente sem props, so `ComingSoon`
-        ConquestsTab.tsx                       <- BadgeGrid + ReferralCard movidos de
-                                   AchievementsPage.tsx (removido) - mesmo conteudo, novo lar
+      profile/                      <- Fase 18; pixel art na Fase 70 (BadgeGrid, ReferralCard e
+                                   ProfileHeader removidos)
+        AgentSheet.tsx                    <- ficha do agente (coluna esquerda, todas as abas) +
+                                   AgentAvatar (iniciais em caixa, borda = raridade da moldura)
+        ReferralPanel.tsx                 <- Indique um amigo (codigo, copiar link, confirmadas)
+        ProfileTabs.tsx                     <- abas pixel, 2x2 no celular; selo "Em breve" na
+                                   Customizacao (some entre sm e 1400px, onde nao cabe)
+        InformationTab.tsx                   <- conta so leitura, interesses/notas e linguagem dos
+                                   projetos (editar -> /onboarding/perfil?edit=1); exporta Section
+        CustomizationTab.tsx                  <- "em breve" (Fase 25): previa do visual equipado e
+                                   os slots trancados (Moldura, Cor do nome, Banner, Roupa)
+        ConquestsTab.tsx                       <- badges em lista com barra ate a meta
+        SquadTab.tsx                           <- Squad (Fase 24): cabecalho com codigo, recorte,
+                                   ranking com medalhas e acoes do dono na linha; sem squad =
+                                   criar/entrar
       activities/                 <- primitivas visuais das atividades avaliaveis (Fase 9)
         IntroCard.tsx                <- tela de intro (badge/titulo/descricao/regras/CTA) - gate local (`started`), nao e passo novo no Step do TodayPage
         OptionCard.tsx                <- card de opcao (neutro/selecionado/correto/errado/esmaecido) - Quiz, Roleplay, e (Fase 23) os 2

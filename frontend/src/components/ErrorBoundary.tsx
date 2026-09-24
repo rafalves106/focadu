@@ -10,11 +10,16 @@ import { GenericError } from './errors/GenericError';
  * "Tentar Novamente" so reseta o boundary - o React nao tem como "refazer" sozinho o render que
  * quebrou; se a causa persistir, quebra nesse mesmo lugar de novo.
  */
-export class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  state = { hasError: false };
+export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: string }, { hasError: boolean; resetKey?: string }> {
+  state = { hasError: false, resetKey: this.props.resetKey };
 
   static getDerivedStateFromError() {
     return { hasError: true };
+  }
+
+  /** `resetKey` mudou (ex: outra aba do perfil): limpa o erro sem remontar o conteudo, como o `key` faria. */
+  static getDerivedStateFromProps(props: { resetKey?: string }, state: { hasError: boolean; resetKey?: string }) {
+    return props.resetKey === state.resetKey ? null : { hasError: false, resetKey: props.resetKey };
   }
 
   componentDidCatch(error: unknown, info: unknown) {

@@ -47,6 +47,44 @@ export const MOCK_IDS = {
 };
 const ids = MOCK_IDS;
 
+// Perfil (Fase 70): squad do aluno do mock - `/__mock/squad?as=membro|lider|nenhum` troca e abre a aba.
+type SquadRole = 'membro' | 'lider' | 'nenhum';
+let squadRole: SquadRole = 'membro';
+let squadCoLeader: string | null = 'u-marina';
+const SQUAD_MEMBERS = [
+  { userId: 'u-marina', displayName: 'Marina', score: 96.2 },
+  { userId: 'u-diego', displayName: 'Diego', score: 91.0 },
+  { userId: MOCK_IDS.user, displayName: 'Falves (mock)', score: 87.4 },
+  { userId: 'u-bia', displayName: 'Bia', score: 74.8 },
+  { userId: 'u-caio', displayName: 'Caio', score: 41.5 },
+  { userId: 'u-lu', displayName: 'Lu', score: 21.7 },
+];
+let squadMembers = [...SQUAD_MEMBERS];
+
+function squadRankingDto() {
+  const members = squadMembers.map((m, i) => ({ ...m, position: i + 1, equippedNameColor: null }));
+  const total = members.reduce((sum, m) => sum + m.score, 0);
+  const owner = squadRole === 'lider' ? ids.user : 'u-diego';
+  const coLeader = members.find((m) => m.userId === squadCoLeader) ?? null;
+  return {
+    squadId: 'squad-1',
+    squadName: 'Os Firewalls',
+    joinCode: 'X9K2P7QD',
+    ownerUserId: owner,
+    coLeaderUserId: coLeader?.userId ?? null,
+    coLeaderDisplayName: coLeader?.displayName ?? null,
+    members,
+    currentUserEntry: members.find((m) => m.userId === ids.user) ?? null,
+    totalScore: total,
+    averageScore: total / members.length,
+    totalGems: 1240,
+    averageGems: 1240 / members.length,
+    page: 1,
+    pageSize: 20,
+    totalMembers: members.length,
+  };
+}
+
 function loadCurated(root: string): Curated {
   const path = resolve(root, '../secret/curadoria/web-security/semana-1/dia-1.json');
   if (!existsSync(path)) throw new Error(`[mock] conteudo curado nao encontrado em ${path} (precisa do repo focadu-secret em secret/)`);
@@ -336,6 +374,14 @@ export function sessionMock(): Plugin {
           );
           return res.end();
         }
+        if (path === '/__mock/squad') {
+          squadRole = (url.searchParams.get('as') as SquadRole | null) ?? 'membro';
+          squadMembers = [...SQUAD_MEMBERS];
+          squadCoLeader = 'u-marina';
+          res.statusCode = 302;
+          res.setHeader('Location', '/perfil?tab=squad');
+          return res.end();
+        }
         if (!path.startsWith('/api/')) return next();
 
         // Telas de erro (Fase 10): 500, sem conexao (socket derrubado) e timeout do cliente (10s).
@@ -369,6 +415,40 @@ export function sessionMock(): Plugin {
             { provider: 'Groq', configured: true, available: true, errorMessage: null, checkedAt: now },
             { provider: 'GitHub', configured: true, available: true, errorMessage: null, checkedAt: now },
           ]);
+
+        // Perfil (Fase 70)
+        if (path === '/api/users/me/badges')
+          return send(res, 200, {
+            badges: [
+              { code: 'streak_7', achieved: true, progress: 7 },
+              { code: 'streak_30', achieved: false, progress: 7 },
+              { code: 'easy_weekly', achieved: true, progress: 1 },
+              { code: 'embaixador', achieved: false, progress: 0 },
+              { code: 'founder', achieved: true, progress: 1 },
+            ],
+          });
+        if (path === '/api/users/me/referral') return send(res, 200, { referralCode: 'K7Q2M9XA', confirmedReferralCount: 0 });
+        if (path === `/api/courses/${ids.course}/ranking`) {
+          const me = { userId: ids.user, displayName: 'Falves (mock)', score: 87.4, position: 3, equippedNameColor: null };
+          return send(res, 200, { topEntries: [me], currentUserEntry: me });
+        }
+        if (path === '/api/squads/me/ranking')
+          return squadRole === 'nenhum'
+            ? send(res, 404, { error: 'squad_nao_encontrado', message: 'Você ainda não tem squad.' })
+            : send(res, 200, squadRankingDto());
+        if ((path === '/api/squads' || path === '/api/squads/join') && method === 'POST') {
+          squadRole = path === '/api/squads' ? 'lider' : 'membro';
+          return send(res, 200, { id: 'squad-1', name: 'Os Firewalls', joinCode: 'X9K2P7QD' });
+        }
+        if ((m = path.match(/^\/api\/squads\/members\/([^/]+)$/)) && method === 'DELETE') {
+          if (m[1] === ids.user) squadRole = 'nenhum';
+          else squadMembers = squadMembers.filter((x) => x.userId !== m![1]);
+          return send(res, 204);
+        }
+        if ((m = path.match(/^\/api\/squads\/co-leader(?:\/([^/]+))?$/))) {
+          squadCoLeader = method === 'PUT' ? (m[1] ?? null) : null;
+          return send(res, 204);
+        }
 
         if (path === '/api/today') return send(res, 200, dailyDto(state, scenario));
         if ((m = path.match(/^\/api\/dailies\/([^/]+)(\/start)?$/))) {

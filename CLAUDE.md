@@ -87,9 +87,15 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 69 — Semana de 6 dias (ponte pro projeto) e ofensiva com folga e pausa** (23/09/2026).
+Última fase concluída: **Fase 70 — Perfil e Squad em pixel art** (24/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Perfil e Squad em pixel art (Fase 70, Figma "Perfil — redesign proposto")**: `/perfil` na mesma
+  casca da Daily (3 colunas sem rolagem externa): ficha do agente à esquerda (avatar com moldura,
+  score/posição no curso ativo, vitrine das badges), abas pixel no centro, a Focada comentando a aba e o
+  "Indique um amigo" sempre visível à direita; Gems/streak como HUD no topo. Conquistas em lista com
+  barra até a meta; Squad com selo LÍDER e as ações do dono na linha de cada membro. Mock:
+  `/__mock/squad?as=membro|lider|nenhum`. Ver `docs/fase-70/`.
 - **Semana de 6 dias + ofensiva com folga e pausa (Fase 69, dor do dono como aluno: o projeto da Semana 1
   era difícil de começar)**: a semana passou a ter 6 Dailies + Projeto e o curso foi de 60 pra 72 dias
   (semana N = Dias 6N-5 a 6N). O 6º dia é a **ponte**, prática e numa versão por linguagem

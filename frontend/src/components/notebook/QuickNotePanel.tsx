@@ -52,7 +52,7 @@ export function QuickNotePanel({
       setContent('');
       setTagsInput('');
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000); // mesmo padrao de "LINK COPIADO ✓" em ReferralCard.tsx.
+      setTimeout(() => setSaved(false), 2000); // mesmo padrao de "Link copiado ✓" em profile/ReferralPanel.tsx.
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Não foi possível salvar a nota. Tente de novo.');
     } finally {

@@ -1,102 +1,93 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../../api/client';
-import { useApiResource } from '../../api/useApiResource';
-import { CourseStatus, PROJECT_LANGUAGE_NAMES, type GamificationSummaryDto, type UserDto } from '../../api/types';
-import { Centered } from '../Layout';
+import { PROJECT_LANGUAGE_NAMES, type UserDto } from '../../api/types';
+import terminalIcon from '../../assets/pixel/terminal.png';
+
+const EDIT_LINK = '/onboarding/perfil?edit=1';
 
 /**
- * Aba "Informações" do Perfil (Fase 18) - nome/email somente leitura (edição de conta em si fora
- * de escopo, ver docs/fase-18), interesses/notas da Entrevista de Perfil (já salvos, UserDto),
- * botão pra editar (reaproveita ProfileInterviewPage em modo edição) + estatísticas básicas.
- *
- * Sem Elo/Patente/Nível/XP nem "sessões completas" - o mockup do Figma mostra isso, mas nenhum
- * desses dados existe no domínio (confirmado fora de escopo até Squad/PvP existir); "Recorde de
- * Streak" do mockup vira `longestStreak` de verdade (GamificationSummaryDto).
+ * Aba "Informações" do Perfil (Fase 18; pixel art na Fase 70) - nome/e-mail somente leitura (edicao
+ * de conta fora de escopo, ver docs/fase-18), interesses/notas da Entrevista de Perfil e a linguagem
+ * dos Projetos Semanais (Fase 59), os dois editados na propria entrevista (`?edit=1`). As estatisticas
+ * que moravam aqui foram pra ficha do agente (`AgentSheet`), que aparece em todas as abas.
  */
-export function InformationTab({ user, gamification }: { user: UserDto; gamification: GamificationSummaryDto }) {
-  const { data, loading } = useApiResource(async () => {
-    const courses = await api.getCourses();
-    const active = courses.find((c) => c.status === CourseStatus.Active) ?? courses[0] ?? null;
-    const ranking = active ? await api.getCourseRanking(active.id, 'course') : null;
-    return { coursesCount: courses.length, courseName: active?.name ?? null, score: ranking?.currentUserEntry?.score ?? null };
-  }, []);
-
+export function InformationTab({ user }: { user: UserDto }) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-stroke bg-surface p-6 sm:grid-cols-2">
-        <Field label="Nome de exibição" value={user.displayName} />
-        <Field label="E-mail" value={user.email} />
-      </div>
-
-      <div className="flex flex-col gap-3 rounded-2xl border border-stroke bg-surface p-6">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Seus interesses</p>
-          <Link to="/onboarding/perfil?edit=1" className="text-sm font-semibold text-accent hover:underline">
-            Editar meus interesses →
-          </Link>
+      <Section title="Conta" aside={<span className="font-pixel-label text-[9px] text-muted">Somente leitura</span>}>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Nome de exibição" value={user.displayName} />
+          <Field label="E-mail" value={user.email} />
         </div>
+      </Section>
+
+      <Section title="Seus interesses" aside={<EditLink />}>
         {user.interests.length === 0 ? (
-          <p className="text-sm text-secondary">Nenhum interesse informado ainda.</p>
+          <p className="font-pixel text-xl leading-tight text-secondary">Nenhum interesse informado ainda.</p>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <ul className="flex flex-wrap gap-2">
             {user.interests.map((interest) => (
-              <span key={interest} className="rounded-full border border-accent bg-accent/10 px-4 py-2 text-sm font-medium text-primary">
-                {interest}
-              </span>
+              <Chip key={interest}>{interest}</Chip>
             ))}
-          </div>
+          </ul>
         )}
-        {user.additionalProfileNotes && <p className="text-sm text-secondary">{user.additionalProfileNotes}</p>}
-      </div>
+        {user.additionalProfileNotes && (
+          <p className="font-pixel text-[19px] leading-tight break-words text-secondary">"{user.additionalProfileNotes}"</p>
+        )}
+        <p className="font-pixel-label text-[8px] text-muted">A Focada usa isso na analogia "pra você" da Leitura</p>
+      </Section>
 
-      {/* Fase 59 (piloto Semana 1): mesma tela de edicao dos interesses acima, so que pra
-          linguagem dos Projetos Semanais - ver ProfileInterviewPage. */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-stroke bg-surface p-6">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Linguagem dos Projetos Semanais</p>
-          <Link to="/onboarding/perfil?edit=1" className="text-sm font-semibold text-accent hover:underline">
-            Editar →
-          </Link>
-        </div>
+      <Section title="Linguagem dos Projetos Semanais" aside={<EditLink />}>
         {user.preferredLanguages.length === 0 ? (
-          <p className="text-sm text-secondary">Nenhuma linguagem marcada ainda.</p>
+          <p className="font-pixel text-xl leading-tight text-secondary">Nenhuma linguagem marcada ainda.</p>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <ul className="flex flex-wrap gap-2">
             {user.preferredLanguages.map((language) => (
-              <span key={language} className="rounded-full border border-accent bg-accent/10 px-4 py-2 text-sm font-medium text-primary">
+              <Chip key={language} icon={terminalIcon}>
                 {PROJECT_LANGUAGE_NAMES[language]}
-              </span>
+              </Chip>
             ))}
-          </div>
+          </ul>
         )}
-      </div>
-
-      {loading && <Centered text="Carregando estatísticas..." />}
-      {data && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Stat label="Curso(s)" value={String(data.coursesCount)} />
-          <Stat label="Recorde de Streak" value={`${gamification.longestStreak} dia(s)`} />
-          {data.courseName && data.score !== null && <Stat label={`Score em ${data.courseName}`} value={data.score.toFixed(1)} />}
-        </div>
-      )}
+      </Section>
     </div>
+  );
+}
+
+export function Section({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-pixel-label text-[9px] text-accent">// {title}</h2>
+        {aside}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function EditLink() {
+  return (
+    <Link to={EDIT_LINK} className="shrink-0 font-pixel-label text-[9px] text-accent hover:underline">
+      Editar ›
+    </Link>
   );
 }
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-[12px] font-semibold tracking-[0.5px] text-secondary uppercase">{label}</p>
-      <p className="rounded-[10px] border border-stroke bg-surface-alt p-4 text-[15px] text-primary">{value}</p>
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <p className="font-pixel-label text-[8px] text-secondary">{label}</p>
+      <p className="truncate border-2 border-stroke bg-surface px-3 py-2 font-pixel text-[22px] leading-tight text-primary">{value}</p>
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Chip({ icon, children }: { icon?: string; children: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-stroke bg-surface p-4 text-center">
-      <p className="text-xl font-bold text-primary">{value}</p>
-      <p className="text-xs text-secondary">{label}</p>
-    </div>
+    <li className="flex items-center gap-2 border-2 border-accent/60 px-3 py-1 font-pixel text-xl leading-tight text-primary">
+      {icon && <img src={icon} alt="" className="size-4 pixelated" />}
+      {children}
+    </li>
   );
 }

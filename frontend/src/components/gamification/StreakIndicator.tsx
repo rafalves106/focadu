@@ -5,7 +5,7 @@ import fireIcon from '../../assets/pixel/chama-streak.png';
  * StatusBadge. Usado no header do StartDashboard e, com currentStreak=0, no EmptyStateStartPage
  * (estado inicial neutro pra quem ainda nao completou nada - sem alarmismo). Icone trocado de
  * emoji (🔥) por PNG pixel art (pedido do Falves) - mesmo arquivo reaproveitado em
- * StreakLostModal/BadgeGrid.
+ * StreakLostModal e as badges do perfil (lib/badgeInfo.ts).
  *
  * Fase 20 (Figma "dashboard-start", "Streak Tag"): preenchimento verde translucido + borda (era
  * so bg-surface-alt neutro) - streak > 0 e uma conquista real, ganhou destaque visual proprio; em

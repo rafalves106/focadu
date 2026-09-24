@@ -27,6 +27,7 @@ export function FocadaSays({
   children,
   size = 'md',
   tone = 'metal',
+  stacked = false,
   className = '',
 }: {
   expression?: FocadaExpression;
@@ -34,8 +35,22 @@ export function FocadaSays({
   children: ReactNode;
   size?: keyof typeof SIZE;
   tone?: keyof typeof BORDER;
+  /** Coluna estreita (perfil, Fase 70): retrato em cima e a fala solta embaixo, sem a caixa. */
+  stacked?: boolean;
   className?: string;
 }) {
+  if (stacked) {
+    return (
+      <div className={`flex min-w-0 flex-col gap-3 ${className}`}>
+        <div className="flex w-fit items-center justify-center border-2 border-stroke bg-base p-1">
+          <img src={PORTRAITS[expression]} alt="Focada" className={`${SIZE[size]} pixelated`} />
+        </div>
+        <div className={`font-pixel text-primary ${TEXT[size]}`} aria-live="polite">
+          {children}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className={`flex min-w-0 items-stretch gap-3 ${className}`}>
       <div className={`flex shrink-0 items-center justify-center self-start border-2 bg-base p-1 ${BORDER[tone]}`}>
