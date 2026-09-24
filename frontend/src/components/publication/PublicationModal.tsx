@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import {
@@ -11,6 +11,10 @@ import {
 } from '../../api/types';
 import { classifyApiError, type ApiFailure } from '../../lib/apiError';
 import shieldIcon from '../../assets/pixel/escudo.png';
+import { PixelModal, pixelField } from '../PixelModal';
+import { SegmentedBar } from '../SegmentedBar';
+import { FocadaSays } from '../session/FocadaSays';
+import { PixelButton, PixelChip } from '../session/PixelButton';
 
 const LINKEDIN_MAX_CHARS = 3000;
 
@@ -44,6 +48,10 @@ type Step =
  * `step`) antes do usuario ver a confirmacao. O chamador so precisa re-buscar dados quando o modal
  * de fato fecha (`onClose` cobre "publicou e fechou" e "cancelou" do mesmo jeito, sem diferenca
  * pratica aqui).
+ *
+ * Pixel art desde 24/09/2026 (pedido do dono, todos os modais): casca `PixelModal`, a Focada comemora
+ * a abertura e o sucesso e acolhe o erro, botoes `PixelButton`, progresso em `SegmentedBar`. Os emojis
+ * 💼/🐙 sairam (sem sprite ainda) - as opcoes dizem a plataforma num rotulo em Silkscreen.
  */
 export function PublicationModal({
   weeklyId,
@@ -148,20 +156,13 @@ export function PublicationModal({
   const currentMonthly = course?.monthlies.find((m) => m.weeklies.some((w) => w.id === weeklyId));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/70 p-6" onClick={onClose} role="presentation">
-      <div
-        className="flex max-h-[85vh] w-[560px] flex-col gap-6 overflow-y-auto rounded-2xl border border-surface-alt bg-surface p-8"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Compartilhe seu aprendizado"
-      >
+    <PixelModal label="Compartilhe seu aprendizado" title="Prova pública" onClose={onClose}>
         {networkError && (
-          <div className="flex flex-col gap-2 rounded-xl border border-alert bg-alert/10 p-4 text-sm">
-            <p className="text-alert">{networkError.message}</p>
-            <button type="button" onClick={() => setNetworkError(null)} className="w-fit text-secondary hover:text-primary">
+          <div className="flex flex-col items-start gap-3 border-2 border-alert p-4">
+            <p className="font-pixel text-lg leading-snug text-alert">{networkError.message}</p>
+            <PixelButton ghost tone="muted" onClick={() => setNetworkError(null)}>
               Fechar aviso
-            </button>
+            </PixelButton>
           </div>
         )}
 
@@ -237,8 +238,7 @@ export function PublicationModal({
             onRetry={() => (publication.platform === PublicationPlatform.GitHub ? handleGitHubContinue() : handleSubmitUrl())}
           />
         )}
-      </div>
-    </div>
+    </PixelModal>
   );
 }
 
@@ -253,46 +253,62 @@ function IntroStep({
   onGitHub: () => void;
   onCancel: () => void;
 }) {
+  const option = 'flex flex-1 flex-col items-start gap-2 border-2 bg-surface p-4 text-left transition hover:brightness-110 disabled:opacity-50';
   return (
-    <div className="flex flex-col items-center gap-6 text-center">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-xl font-bold text-primary">Compartilhe Seu Aprendizado</h1>
-        <p className="text-sm text-secondary">
-          Publique o que aprendeu neste módulo - prova pública de evolução, seu conhecimento é seu melhor currículo.
-        </p>
-      </div>
+    <div className="flex flex-col gap-5">
+      <StepTitle>Compartilhe seu aprendizado</StepTitle>
+      <FocadaSays expression="comemorando">
+        Módulo fechado, agente! Agora mostra pro mundo: publicar o que você aprendeu é a prova pública da sua evolução.
+      </FocadaSays>
 
-      <div className="flex w-full gap-4">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onLinkedIn}
-          className="flex flex-1 flex-col items-center gap-3 rounded-xl border-[1.5px] border-accent bg-base p-5 disabled:opacity-50"
-        >
-          <span className="text-2xl" aria-hidden="true">
-            💼
-          </span>
-          <span className="text-sm font-bold text-primary">Compartilhar no LinkedIn</span>
+      <div className="flex w-full flex-col gap-3 sm:flex-row">
+        <button type="button" disabled={busy} onClick={onLinkedIn} className={`${option} border-accent`}>
+          <span className="font-pixel-label text-[10px] text-accent">LinkedIn</span>
+          <span className="font-pixel text-xl leading-tight text-primary">Compartilhar um post</span>
         </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onGitHub}
-          className="flex flex-1 flex-col items-center gap-3 rounded-xl border border-surface-alt bg-base p-5 hover:border-secondary disabled:opacity-50"
-        >
-          <span className="text-2xl" aria-hidden="true">
-            🐙
-          </span>
-          <span className="text-sm font-semibold text-secondary">Criar repositório no GitHub</span>
+        <button type="button" disabled={busy} onClick={onGitHub} className={`${option} border-stroke hover:border-secondary`}>
+          <span className="font-pixel-label text-[10px] text-secondary">GitHub</span>
+          <span className="font-pixel text-xl leading-tight text-primary">Criar um repositório</span>
         </button>
       </div>
 
-      {busy && <p className="text-xs text-secondary">Carregando...</p>}
+      {busy && <LoadingBlocks label="Carregando..." />}
 
-      <button type="button" onClick={onCancel} className="text-sm text-secondary underline hover:text-primary">
-        Cancelar
-      </button>
-      <p className="text-[11px] uppercase tracking-wide text-muted">Seu conhecimento é seu melhor currículo.</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-pixel-label text-[9px] text-muted">Seu conhecimento é seu melhor currículo.</p>
+        <PixelButton ghost tone="muted" onClick={onCancel}>
+          Cancelar
+        </PixelButton>
+      </div>
+    </div>
+  );
+}
+
+/** Titulo do passo, em VT323 grande (mesmo das telas pixel art). */
+function StepTitle({ children }: { children: ReactNode }) {
+  return <h1 className="font-pixel text-3xl leading-none text-primary">{children}</h1>;
+}
+
+/** Tres blocos piscando (mesmo carregando do TimeoutError). */
+function LoadingBlocks({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3" role="status">
+      <div className="flex gap-1.5" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="size-3 animate-pulse bg-accent" style={{ animationDelay: `${i * 200}ms` }} />
+        ))}
+      </div>
+      <p className="font-pixel text-lg leading-none text-secondary">{label}</p>
+    </div>
+  );
+}
+
+/** Caixa de texto de apoio (rotulo em Silkscreen + corpo em VT323). */
+function InfoBox({ label, tone = 'muted', children }: { label: string; tone?: 'muted' | 'alert'; children: ReactNode }) {
+  return (
+    <div className={`flex w-full flex-col gap-1.5 border-2 p-4 text-left ${tone === 'alert' ? 'border-alert' : 'border-stroke bg-surface'}`}>
+      <p className={`font-pixel-label text-[9px] ${tone === 'alert' ? 'text-alert' : 'text-muted'}`}>{label}</p>
+      <div className="font-pixel text-lg leading-snug text-primary">{children}</div>
     </div>
   );
 }
@@ -310,27 +326,23 @@ function DraftPreviewStep({
 }) {
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-base font-bold text-primary">
-          <span aria-hidden="true">💼</span> Preview — Rascunho Gerado
-        </h1>
-        <span className="rounded bg-surface-alt px-1.5 py-0.5 text-[11px] font-mono text-accent">AUTO-GEN</span>
+      <div className="flex items-center justify-between gap-3">
+        <StepTitle>Rascunho do post</StepTitle>
+        <PixelChip tone="accent">Auto-gen</PixelChip>
       </div>
 
-      <div className="whitespace-pre-wrap rounded-lg border border-surface-alt bg-base p-5 text-sm leading-relaxed text-primary">
-        {draftText}
-      </div>
+      <div className="whitespace-pre-wrap border-2 border-stroke bg-surface p-4 font-pixel text-lg leading-snug text-primary">{draftText}</div>
 
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-col gap-3">
         <div className="flex w-full gap-3">
-          <button type="button" onClick={onEdit} className="flex-1 rounded border border-surface-alt py-2.5 text-sm font-semibold text-primary">
+          <PixelButton ghost tone="muted" onClick={onEdit} className="flex-1">
             Editar
-          </button>
-          <button type="button" onClick={onCopyAndPublish} className="flex-1 rounded bg-accent py-2.5 text-sm font-bold text-base">
-            Copiar e Publicar
-          </button>
+          </PixelButton>
+          <PixelButton onClick={onCopyAndPublish} className="flex-1">
+            Copiar e publicar
+          </PixelButton>
         </div>
-        <button type="button" onClick={onWriteOwn} className="text-xs text-secondary underline hover:text-primary">
+        <button type="button" onClick={onWriteOwn} className="self-center font-pixel text-lg text-secondary underline hover:text-primary">
           Prefiro criar meu próprio
         </button>
       </div>
@@ -351,24 +363,14 @@ function EditorStep({
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-base font-bold text-primary">Editar rascunho</h1>
-      <textarea
-        value={draftText}
-        onChange={(e) => onChange(e.target.value)}
-        rows={10}
-        className="resize-none rounded-lg border border-surface-alt bg-base p-4 text-sm text-primary outline-none focus:border-accent"
-      />
-      <p className={`text-right text-xs ${overLimit ? 'text-alert' : 'text-secondary'}`}>
+      <StepTitle>Editar rascunho</StepTitle>
+      <textarea value={draftText} onChange={(e) => onChange(e.target.value)} rows={10} aria-label="Texto do post" className={`${pixelField} resize-none`} />
+      <p className={`text-right font-pixel text-lg leading-none ${overLimit ? 'text-alert' : 'text-secondary'}`}>
         {draftText.length} / {LINKEDIN_MAX_CHARS}
       </p>
-      <button
-        type="button"
-        disabled={!draftText.trim() || overLimit}
-        onClick={onCopyAndPublish}
-        className="rounded bg-accent py-3 text-sm font-bold text-base disabled:opacity-40"
-      >
-        Copiar e Publicar
-      </button>
+      <PixelButton disabled={!draftText.trim() || overLimit} onClick={onCopyAndPublish} className="w-full">
+        Copiar e publicar
+      </PixelButton>
     </div>
   );
 }
@@ -398,60 +400,53 @@ function GitHubSelectStep({
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="flex items-center gap-2 text-base font-bold text-primary">
-        <span aria-hidden="true">🐙</span> Onde quer publicar?
-      </h1>
+      <StepTitle>Onde quer publicar?</StepTitle>
 
       <div className="flex flex-col gap-2">
-        {repos.length === 0 && <p className="text-sm text-secondary">Nenhum repositório público encontrado.</p>}
-        {repos.map((repo) => (
-          <button
-            key={repo.fullName}
-            type="button"
-            onClick={() => onSelectRepo(repo.name)}
-            className={`flex items-center justify-between rounded-lg border p-4 text-left ${
-              !creatingNewRepo && selectedRepo === repo.name ? 'border-accent bg-accent/10' : 'border-surface-alt bg-base'
-            }`}
-          >
-            <span className="font-mono text-sm text-primary">{repo.fullName}</span>
-            <span className="rounded-full border border-accent bg-accent/10 px-2 py-0.5 text-[11px] font-bold text-accent">PUBLIC</span>
-          </button>
-        ))}
+        {repos.length === 0 && <p className="font-pixel text-lg text-secondary">Nenhum repositório público encontrado.</p>}
+        {repos.map((repo) => {
+          const selected = !creatingNewRepo && selectedRepo === repo.name;
+          return (
+            <button
+              key={repo.fullName}
+              type="button"
+              onClick={() => onSelectRepo(repo.name)}
+              aria-pressed={selected}
+              className={`flex items-center justify-between gap-3 border-2 p-3 text-left ${
+                selected ? 'border-accent bg-accent/10' : 'border-stroke bg-surface hover:border-secondary'
+              }`}
+            >
+              <span className="min-w-0 truncate font-pixel text-xl leading-none text-primary">{repo.fullName}</span>
+              <PixelChip tone="accent">Public</PixelChip>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="flex items-center gap-3 text-xs text-secondary">
-        <div className="h-px flex-1 bg-surface-alt" />
-        OU
-        <div className="h-px flex-1 bg-surface-alt" />
+      <div className="flex items-center gap-3 font-pixel-label text-[9px] text-muted">
+        <div className="h-0.5 flex-1 bg-stroke" />
+        ou
+        <div className="h-0.5 flex-1 bg-stroke" />
       </div>
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-xs font-semibold text-secondary">Criar novo repositório</span>
+      <label className="flex flex-col gap-2">
+        <span className="font-pixel-label text-[9px] text-secondary">Criar novo repositório</span>
         <input
           value={newRepoName}
           onChange={(e) => onNewRepoNameChange(e.target.value)}
-          className={`rounded border bg-base p-3 font-mono text-sm text-primary outline-none focus:border-accent ${
-            creatingNewRepo ? 'border-accent' : 'border-surface-alt'
-          }`}
+          className={`${pixelField} ${creatingNewRepo ? 'border-accent' : ''}`}
         />
       </label>
 
-      <p className="rounded bg-surface-alt p-3 text-xs text-secondary">
-        Vou criar um commit com o resumo do que você aprendeu neste módulo.
-      </p>
+      <InfoBox label="O que acontece">Vou criar um commit com o resumo do que você aprendeu neste módulo.</InfoBox>
 
       <div className="flex items-center justify-between">
-        <button type="button" onClick={onBack} className="text-sm text-secondary underline hover:text-primary">
-          Voltar
-        </button>
-        <button
-          type="button"
-          disabled={!canContinue || busy}
-          onClick={onContinue}
-          className="rounded bg-accent px-5 py-2.5 text-sm font-bold text-base disabled:opacity-40"
-        >
-          Continuar
-        </button>
+        <PixelButton ghost tone="muted" onClick={onBack}>
+          ‹ Voltar
+        </PixelButton>
+        <PixelButton disabled={!canContinue || busy} onClick={onContinue}>
+          Continuar ›
+        </PixelButton>
       </div>
     </div>
   );
@@ -472,28 +467,24 @@ function UrlSubmitStep({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-base font-bold text-primary">Cole aqui o link do seu post</h1>
-      <p className="text-sm text-secondary">
+      <StepTitle>Cole o link do seu post</StepTitle>
+      <p className="font-pixel text-lg leading-snug text-secondary">
         Publique o post no LinkedIn e volte aqui para colar o link - é assim que confirmamos a publicação.
       </p>
       <input
         value={url}
         onChange={(e) => onChange(e.target.value)}
         placeholder="https://www.linkedin.com/posts/..."
-        className="rounded-lg border border-surface-alt bg-base p-3 font-mono text-sm text-primary outline-none focus:border-accent"
+        aria-label="Link do post"
+        className={pixelField}
       />
       <div className="flex items-center justify-between">
-        <button type="button" onClick={onBack} className="text-sm text-secondary underline hover:text-primary">
-          Voltar
-        </button>
-        <button
-          type="button"
-          disabled={!url.trim() || busy}
-          onClick={onSubmit}
-          className="rounded bg-accent px-5 py-2.5 text-sm font-bold text-base disabled:opacity-40"
-        >
-          Validar
-        </button>
+        <PixelButton ghost tone="muted" onClick={onBack}>
+          ‹ Voltar
+        </PixelButton>
+        <PixelButton disabled={!url.trim() || busy} onClick={onSubmit}>
+          Validar ›
+        </PixelButton>
       </div>
     </div>
   );
@@ -501,9 +492,8 @@ function UrlSubmitStep({
 
 function ValidatingStep() {
   return (
-    <div className="flex flex-col items-center gap-4 py-6 text-center">
-      <div className="size-10 animate-spin rounded-full border-2 border-surface-alt border-t-accent" aria-hidden="true" />
-      <p className="text-sm text-secondary">Validando publicação...</p>
+    <div className="flex justify-center py-6">
+      <LoadingBlocks label="Validando publicação..." />
     </div>
   );
 }
@@ -526,84 +516,66 @@ function SuccessStep({
   onClose: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center gap-5 text-center">
-      <span className="flex size-16 items-center justify-center rounded-full border-2 border-accent bg-accent/10 text-3xl text-accent" aria-hidden="true">
-        ✓
-      </span>
-      <div className="flex flex-col gap-1.5">
-        <span className="w-fit self-center rounded bg-accent/20 px-2.5 py-1 text-[11px] font-bold text-accent">SISTEMA // VALIDADO</span>
-        <h1 className="text-xl font-extrabold text-primary">Publicado com Sucesso!</h1>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col items-start gap-2">
+        <PixelChip tone="accent">Sistema // validado</PixelChip>
+        <StepTitle>Publicado com sucesso!</StepTitle>
       </div>
 
+      <FocadaSays expression="comemorando" tone="accent">
+        Seu aprendizado está visível, agente.{nextWeeklyId ? ' Próximo módulo desbloqueado!' : ''}
+      </FocadaSays>
+
       {publication.submittedUrl && (
-        <div className="w-full rounded-lg border border-surface-alt bg-base p-4 text-left">
-          <p className="text-[11px] font-bold uppercase text-muted">Link da publicação confirmada</p>
-          <a
-            href={publication.submittedUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="block truncate font-mono text-sm text-accent hover:underline"
-          >
+        <InfoBox label="Link da publicação confirmada">
+          <a href={publication.submittedUrl} target="_blank" rel="noreferrer" className="block truncate text-accent hover:underline">
             {publication.submittedUrl}
           </a>
-        </div>
+        </InfoBox>
       )}
 
-      <p className="text-sm text-secondary">
-        Seu aprendizado está visível.{nextWeeklyId ? ' Próximo módulo desbloqueado!' : ''}
-      </p>
-
       {moduleCertifications.length > 0 && (
-        <div className="flex w-full flex-col gap-2 rounded-lg border border-surface-alt bg-base p-4 text-left">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase text-muted">
-            <img src={shieldIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
-            Você avançou em direção a</p>
-          <div className="flex flex-wrap gap-2">
+        <InfoBox label="Você avançou em direção a">
+          <div className="mt-1 flex flex-wrap gap-2">
             {moduleCertifications.map((cert) => (
-              <span
-                key={cert.certificationCode}
-                className="rounded-full border border-accent bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent"
-              >
-                {cert.certificationName}
+              <span key={cert.certificationCode} className="inline-flex items-center gap-1.5">
+                <img src={shieldIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
+                <PixelChip tone="accent">{cert.certificationName}</PixelChip>
               </span>
             ))}
           </div>
-        </div>
+        </InfoBox>
       )}
 
       {courseProgress !== null && (
-        <div className="flex w-full flex-col gap-1.5">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-secondary">Conclusão da trilha</span>
-            <span className="font-mono font-bold text-accent">{courseProgress}%</span>
+        <div className="flex w-full flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="font-pixel-label text-[9px] text-secondary">Conclusão da trilha</span>
+            <span className="font-pixel text-xl leading-none text-accent">{courseProgress}%</span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-alt">
-            <div className="h-full rounded-full bg-accent" style={{ width: `${courseProgress}%` }} />
-          </div>
+          <SegmentedBar percentage={courseProgress} label="Conclusão da trilha" />
         </div>
       )}
 
       <div className="flex w-full gap-3">
-        <a
-          href={publication.submittedUrl ?? undefined}
-          target="_blank"
-          rel="noreferrer"
-          className="flex-1 rounded border border-surface-alt py-2.5 text-center text-sm font-semibold text-primary"
-        >
-          Ver Publicação
-        </a>
-        {nextWeeklyId ? (
-          <button
-            type="button"
-            onClick={() => onGoToNext(`/start?course=${courseId ?? ''}&weekly=${nextWeeklyId}`)}
-            className="flex-1 rounded bg-accent py-2.5 text-sm font-bold text-base"
+        {publication.submittedUrl && (
+          <a
+            href={publication.submittedUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex flex-1 items-center justify-center border-2 border-secondary px-5 py-3 font-pixel-label text-[11px] leading-none text-secondary hover:text-primary"
           >
-            Próximo Módulo
-          </button>
+            Ver publicação
+          </a>
+        )}
+        {nextWeeklyId ? (
+          <PixelButton onClick={() => onGoToNext(`/start?course=${courseId ?? ''}&weekly=${nextWeeklyId}`)} className="flex-1">
+            Próximo módulo ›
+          </PixelButton>
         ) : (
-          <button type="button" onClick={onClose} className="flex-1 rounded bg-accent py-2.5 text-sm font-bold text-base">
+          <PixelButton onClick={onClose} className="flex-1">
             Fechar
-          </button>
+          </PixelButton>
         )}
       </div>
     </div>
@@ -625,32 +597,29 @@ function ErrorStep({
       : 'Confirme que colou o link do post já publicado (formato linkedin.com/posts/... ou linkedin.com/feed/update/...).';
 
   return (
-    <div className="flex flex-col items-center gap-5 text-center">
-      <span className="flex size-16 items-center justify-center rounded-full border-2 border-alert bg-alert/10 text-3xl text-alert" aria-hidden="true">
-        ✕
-      </span>
-      <div className="flex flex-col gap-1.5">
-        <span className="w-fit self-center rounded bg-alert/20 px-2.5 py-1 text-[11px] font-bold text-alert">PROCESSO // ERRO</span>
-        <h1 className="text-xl font-extrabold text-primary">Erro na Validação</h1>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col items-start gap-2">
+        <PixelChip tone="alert">Processo // erro</PixelChip>
+        <StepTitle>Erro na validação</StepTitle>
       </div>
 
-      <div className="w-full rounded-lg border border-alert bg-alert/10 p-4 text-left">
-        <p className="text-[11px] font-bold uppercase text-alert">Detalhes da ocorrência</p>
-        <p className="mt-1 text-sm text-primary">{publication.validationError}</p>
-      </div>
+      <FocadaSays expression="acolhedora" tone="alert">
+        Não consegui confirmar a publicação, agente. Dá uma olhada no detalhe e tenta de novo.
+      </FocadaSays>
 
-      <div className="w-full rounded-lg border border-surface-alt bg-base p-4 text-left">
-        <p className="text-[11px] font-bold uppercase text-muted">Solução recomendada</p>
-        <p className="mt-1 text-sm text-secondary">{suggestion}</p>
-      </div>
+      <InfoBox label="Detalhes da ocorrência" tone="alert">
+        {publication.validationError}
+      </InfoBox>
+
+      <InfoBox label="Solução recomendada">{suggestion}</InfoBox>
 
       <div className="flex w-full gap-3">
-        <button type="button" onClick={onEditAgain} className="flex-1 rounded border border-surface-alt py-2.5 text-sm font-semibold text-primary">
-          Voltar e Editar
-        </button>
-        <button type="button" onClick={onRetry} className="flex-1 rounded bg-alert py-2.5 text-sm font-bold text-base">
-          Tentar Novamente
-        </button>
+        <PixelButton ghost tone="muted" onClick={onEditAgain} className="flex-1">
+          ‹ Voltar e editar
+        </PixelButton>
+        <PixelButton tone="alert" onClick={onRetry} className="flex-1">
+          Tentar novamente
+        </PixelButton>
       </div>
     </div>
   );

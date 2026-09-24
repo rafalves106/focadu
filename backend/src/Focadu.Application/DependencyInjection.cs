@@ -45,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<SubmitVoiceSummaryResponseUseCase>();
         services.AddScoped<CompleteDailyUseCase>();
         services.AddScoped<SeedWebSecurityCourseUseCase>();
+        services.AddScoped<SyncBridgeDaysUseCase>();
         services.AddScoped<SeedCosmeticCatalogUseCase>();
         services.AddScoped<GetCuratedContentUseCase>();
         services.AddScoped<RegisterUserUseCase>();
@@ -58,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<GetAvailableCoursesUseCase>();
         services.AddScoped<GetMyEnrollmentsUseCase>();
         services.AddScoped<GamificationCreditor>();
+        services.AddScoped<StreakPauseWindows>();
         services.AddScoped<GetGamificationSummaryUseCase>();
         services.AddScoped<AcknowledgeStreakBreakUseCase>();
         services.AddScoped<GetCourseRankingUseCase>();

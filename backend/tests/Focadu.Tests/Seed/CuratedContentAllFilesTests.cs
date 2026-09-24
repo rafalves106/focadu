@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Focadu.Application.Seed;
+using Focadu.Domain.Enums;
 using Focadu.Domain.Weeklies;
 using Xunit;
 
@@ -76,8 +77,11 @@ public class CuratedContentAllFilesTests
         Assert.True(exception is null, $"{Path.GetFileName(filePath)} falhou ao importar: {exception}");
     }
 
+    // 23/09/2026: 6 Dailies por semana - a semana N ocupa os Dias 6N-5 a 6N, e o Dia 6N (a ponte pro
+    // projeto) ainda nao tem arquivo dia-N.json. Sao 60 dias de conteudo, numerados de 1 a 71 com
+    // os multiplos de 6 livres.
     [Fact]
-    public void ExactlySixtyDayFilesExist_NumberedOneToSixty()
+    public void SixtyContentDayFilesExist_FivePerWeekWithTheBridgeDayFree()
     {
         var dayNumbers = AllDayFiles()
             .Select(args => (string)args[0])
@@ -85,12 +89,28 @@ public class CuratedContentAllFilesTests
             .OrderBy(n => n)
             .ToList();
 
-        Assert.Equal(Enumerable.Range(1, 60), dayNumbers);
+        var expected = Enumerable.Range(1, 12).SelectMany(week => Enumerable.Range(6 * week - 5, 5));
+        Assert.Equal(expected, dayNumbers);
     }
 
     [Fact]
     public void ExactlyTwelveProjectFilesExist()
     {
         Assert.Equal(12, AllProjectFiles().Count());
+    }
+
+    // Fase 69: a ponte da Semana 1 (semana-1/ponte/<linguagem>.json) - uma variante por linguagem,
+    // no Dia 6, e reimportar nao duplica (o SyncBridgeDaysUseCase roda em todo deploy). Mora aqui, e
+    // nao em BridgeDayTests, porque le a curadoria do disco (fora do CI, ver ci.yml).
+    [Fact]
+    public void ImportBridge_Week1_ImportsBothLanguages_OnceOnly()
+    {
+        var template = new WeeklyTemplate(Guid.NewGuid(), 1, "Semana 1");
+
+        var created = SeedWebSecurityCourseUseCase.ImportBridge(template, "semana-1");
+
+        Assert.Equal(new[] { ProjectLanguage.Python, ProjectLanguage.JavaScript }, created.Select(t => t.Language!.Value).OrderBy(l => l));
+        Assert.All(created, t => Assert.Equal(6, t.DayNumber));
+        Assert.Empty(SeedWebSecurityCourseUseCase.ImportBridge(template, "semana-1"));
     }
 }

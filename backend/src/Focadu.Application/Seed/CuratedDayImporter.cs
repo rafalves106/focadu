@@ -22,15 +22,19 @@ public static class CuratedDayImporter
     };
 
     /// <summary>Le um dia-N.json do disco e aplica - ver Import(WeeklyTemplate, string) pro schema.</summary>
-    public static void ImportFile(WeeklyTemplate weeklyTemplate, string jsonFilePath) =>
-        Import(weeklyTemplate, File.ReadAllText(jsonFilePath));
+    public static void ImportFile(WeeklyTemplate weeklyTemplate, string jsonFilePath, ProjectLanguage? language = null) =>
+        Import(weeklyTemplate, File.ReadAllText(jsonFilePath), language);
 
-    public static void Import(WeeklyTemplate weeklyTemplate, string json)
+    /// <param name="language">
+    /// Fase 69: variante de linguagem do dia (a ponte, semana-N/ponte/&lt;linguagem&gt;.json) - mesmo
+    /// schema de um dia normal, so que vira um DailyTemplate com Language. Nulo = dia unico.
+    /// </param>
+    public static void Import(WeeklyTemplate weeklyTemplate, string json, ProjectLanguage? language = null)
     {
         var day = JsonSerializer.Deserialize<CuratedDayJson>(json, JsonOptions)
             ?? throw new InvalidOperationException("Conteudo curado vazio ou invalido.");
 
-        var dailyTemplate = weeklyTemplate.AddDailyTemplate(day.DayNumber);
+        var dailyTemplate = weeklyTemplate.AddDailyTemplate(day.DayNumber, language);
 
         var contentByRef = new Dictionary<string, Guid>();
         foreach (var content in day.CuratedContents)

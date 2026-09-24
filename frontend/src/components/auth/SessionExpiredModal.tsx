@@ -1,5 +1,6 @@
 import { LoginForm } from './LoginForm';
-import lockIcon from '../../assets/pixel/cadeado-bloqueado.png';
+import { PixelModal } from '../PixelModal';
+import { FocadaSays } from '../session/FocadaSays';
 
 /**
  * "Erro - Sessao Expirada" (Fase 10, node Figma 13-978, nunca construida - ver
@@ -8,9 +9,9 @@ import lockIcon from '../../assets/pixel/cadeado-bloqueado.png';
  * rotas (nunca dentro delas) - fica por cima de QUALQUER tela sem trocar a URL nem desmontar o
  * que estava la (ProtectedRoute continua vendo `user` truthy, so a Api que rejeitou a chamada).
  *
- * Chrome de modal (fixed inset-0 + card), nao `ErrorLayout` (Fase 10) - `ErrorLayout` pressupoe
- * `min-h-screen`, incompativel com sobrepor uma rota que continua viva por baixo (mesmo motivo
- * documentado em PublicationModal.tsx, Fase 11).
+ * Chrome de modal (`PixelModal` desde 24/09/2026, com a Focada explicando), nao `ErrorLayout` (Fase
+ * 10) - `ErrorLayout` ocupa a altura da tela, incompativel com sobrepor uma rota que continua viva por
+ * baixo (mesmo motivo documentado em PublicationModal.tsx, Fase 11).
  *
  * Sem fechar no clique do fundo/ESC de proposito: a causa (cookie invalido/expirado) nao
  * desaparece so por fechar o modal - qualquer chamada nova a Api so reabriria de novo. `LoginForm`
@@ -19,28 +20,11 @@ import lockIcon from '../../assets/pixel/cadeado-bloqueado.png';
  */
 export function SessionExpiredModal({ onClose }: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/70 p-6" role="presentation">
-      <div
-        className="flex w-[420px] flex-col gap-6 rounded-2xl border border-surface-alt bg-surface p-8"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Sessão expirada"
-      >
-        <div className="flex flex-col items-center gap-3 text-center">
-          <span
-            className="flex size-14 items-center justify-center rounded-full border-2 border-alert bg-alert/10 text-2xl"
-            aria-hidden="true"
-          >
-            <img src={lockIcon} alt="" className="size-8 pixelated" />
-          </span>
-          <h1 className="text-xl font-bold text-primary">Sessão Expirada</h1>
-          <p className="text-sm text-secondary">
-            Sua sessão expirou. Faça login novamente para continuar - o que você já preencheu nesta tela não foi perdido.
-          </p>
-        </div>
-
-        <LoginForm onSuccess={onClose} submitLabel="Retomar Sessão" />
-      </div>
-    </div>
+    <PixelModal label="Sessão expirada" title="Sessão expirada" widthClass="max-w-lg">
+      <FocadaSays expression="acolhedora">
+        Sua sessão expirou, agente. Entra de novo pra continuar: o que você já preencheu nesta tela não foi perdido.
+      </FocadaSays>
+      <LoginForm onSuccess={onClose} submitLabel="Retomar sessão" pixel />
+    </PixelModal>
   );
 }

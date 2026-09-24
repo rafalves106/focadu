@@ -109,7 +109,17 @@ public class GetTodayUseCase
             // iniciada ainda.
             accessMode = DailyAccessMode.Blocked;
         }
+        catch (DomainException ex) when (ex.Code == "linguagem_nao_escolhida")
+        {
+            // Fase 69: a Daily de hoje e a ponte e a linguagem do projeto ainda nao foi escolhida -
+            // tambem um estado pra descrever, nao um erro (o cliente mostra a escolha de linguagem).
+            accessMode = DailyAccessMode.NeedsProjectLanguage;
+        }
 
-        return DailyStateMapper.ToDto(target, accessMode) with { PendingReinforcementDailyId = pendingReinforcementId };
+        var dto = DailyStateMapper.ToDto(target, accessMode) with { PendingReinforcementDailyId = pendingReinforcementId };
+
+        // Fase 69: sem a linguagem escolhida, a Daily ainda aponta pra variante padrao da ponte -
+        // as atividades dela nao sao as que o aluno vai fazer, entao nao vao na resposta.
+        return accessMode == DailyAccessMode.NeedsProjectLanguage ? dto with { Activities = [] } : dto;
     }
 }

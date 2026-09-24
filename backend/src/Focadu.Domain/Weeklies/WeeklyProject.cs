@@ -30,6 +30,13 @@ public class WeeklyProject : Entity
     /// </summary>
     public ProjectLanguage? Language { get; private set; }
 
+    /// <summary>
+    /// Fase 69: quando o projeto foi avaliado (UTC). Junto com ModulePublication.ValidatedAt, marca
+    /// quando a semana fechou - o fim da pausa da ofensiva (StreakPauseWindows). Nulo nos projetos
+    /// avaliados antes da Fase 69 (a pausa deles ja passou e nao importa mais).
+    /// </summary>
+    public DateTime? EvaluatedAt { get; private set; }
+
     private WeeklyProject()
     {
     }
@@ -99,6 +106,7 @@ public class WeeklyProject : Entity
             throw new DomainException("Score deve estar entre 0 e 100.");
 
         Status = WeeklyProjectStatus.Evaluated;
+        EvaluatedAt = DateTime.UtcNow;
         Score = score;
         Feedback = string.IsNullOrWhiteSpace(feedback) ? null : feedback.Trim();
     }

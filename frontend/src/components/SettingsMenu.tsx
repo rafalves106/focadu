@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   RECORDING_LIMIT_OPTIONS,
@@ -10,20 +10,27 @@ import {
   setUiSoundVolume,
 } from '../lib/settings';
 import { playAdvance } from '../lib/uiSound';
+import { PixelConfirmDialog } from './PixelConfirmDialog';
+import { PixelModal } from './PixelModal';
+import { PixelButton, PixelChip } from './session/PixelButton';
 
-/** Trilho verde/cinza estatico (Fase 7) - visual apenas, ver nota de escopo no topo do arquivo. */
+/** Interruptor pixel (24/09/2026): trilho reto de 2px com o bloco do lado ligado - visual apenas, o
+ * `role="switch"` fica no botao que o envolve. */
 function Toggle({ on }: { on: boolean }) {
   return (
-    <span className={`flex h-6 w-11 items-center rounded-full p-0.5 ${on ? 'justify-end bg-accent' : 'justify-start bg-surface-alt'}`}>
-      <span className="size-5 rounded-full bg-primary" />
+    <span className={`flex h-6 w-11 items-center border-2 p-0.5 ${on ? 'justify-end border-accent' : 'justify-start border-stroke'}`}>
+      <span className={`size-4 ${on ? 'bg-accent' : 'bg-muted'}`} />
     </span>
   );
 }
 
-/** Selo "em breve" (2026-08-28) - marca Aparencia/Notificacoes como placeholder ate existir tema claro/notificacao de verdade por tras (Som virou real na Fase 64). */
-function ComingSoonBadge() {
-  return <span className="rounded-full bg-surface-alt px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted">Em breve</span>;
+/** Rotulo de linha do menu, em VT323. */
+function RowLabel({ children }: { children: ReactNode }) {
+  return <p className="font-pixel text-xl leading-none text-primary">{children}</p>;
 }
+
+/** Link de acao da linha ("Editar", "Ver"), em Silkscreen. */
+const rowAction = 'font-pixel-label text-[9px] text-accent hover:brightness-125';
 
 /**
  * Menu de configuracoes (design Figma "Menu de Configuracoes (overlay)", Fase 7) - modal "estilo
@@ -47,8 +54,13 @@ function ComingSoonBadge() {
  * frontend/src/lib/settings.ts, lido por VoiceSummaryActivity), "Perfil e Analogias" -> Editar
  * navega pra /onboarding/perfil?edit=1 (mesmo link ja usado em InformationTab.tsx) e "Atalhos de
  * teclado" -> Ver expande a lista real (hoje so ESC, ver useSessionExitGuard em TodayPage.tsx).
- * Aparencia/Som/Notificacoes continuam placeholders visuais - nao ha tema claro, engine de som nem
+ * Aparencia/Notificacoes continuam placeholders visuais - nao ha tema claro, engine de som nem
  * sistema de notificacao implementados ainda pra esses toggles controlarem de verdade.
+ *
+ * 24/09/2026 (pedido do dono, todos os modais em pixel art): casca `PixelModal` (ESC e clique fora
+ * fecham), linhas em VT323, interruptor e "Em breve" em pixel, "Sair da conta" confirmado pela Focada
+ * (`PixelConfirmDialog`, foco no "nao") no lugar do `window.confirm`. "Sons da interface" saiu do bloco
+ * desabilitado de "Em breve", onde tinha ficado preso desde a Fase 64 (o interruptor nao recebia clique).
  */
 export function SettingsMenu({
   open,
@@ -64,6 +76,7 @@ export function SettingsMenu({
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [uiSoundEnabled, setUiSoundEnabledState] = useState(() => getUiSoundEnabled());
   const [uiSoundVolume, setUiSoundVolumeState] = useState(() => getUiSoundVolume());
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
 
   // Fase 64: "Som" deixou de ser placeholder - liga/desliga e volume dos sons da interface (hoje, os
   // do dialogo da Focada no Projeto Semanal). Toca um som de amostra ao mudar, pra ouvir o volume.
@@ -86,87 +99,44 @@ export function SettingsMenu({
     setRecordingLimit(minutes);
   }
 
-  function handleLogoutClick() {
-    if (window.confirm('Sair da conta? Você precisará entrar de novo para continuar estudando.')) {
-      onLogout();
-    }
-  }
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-base/50 backdrop-blur-md"
-      onClick={onClose}
-      role="presentation"
-    >
-      <div
-        className="flex w-[420px] flex-col gap-4 rounded-[20px] border border-stroke bg-surface p-6"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Configurações"
-      >
-        <div className="flex flex-col gap-1.5">
-          <p className="text-xs font-semibold uppercase tracking-[1.5px] text-muted">Configurações</p>
-          <p className="text-sm text-secondary">Ajuste a experiência do focadu</p>
-        </div>
+    <>
+      <PixelModal label="Configurações" title="Configurações" onClose={onClose} widthClass="max-w-md">
+        <p className="-mt-2 font-pixel text-lg leading-none text-secondary">Ajuste a experiência do focadu</p>
 
-        <div className="h-px bg-stroke" />
-
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-3 opacity-50 grayscale pointer-events-none">
+        <div className="flex flex-col gap-4 border-t-2 border-stroke pt-4">
+          <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-primary">Aparência</p>
-                <ComingSoonBadge />
-              </div>
-              <div className="flex overflow-hidden rounded-xl border border-stroke bg-surface-alt text-xs font-semibold">
-                <span className="flex h-9 w-[110px] items-center justify-center text-secondary">Tema Claro</span>
-                <span className="flex h-9 w-[110px] items-center justify-center border-l border-stroke bg-accent/25 font-bold text-primary">
-                  Tema Escuro
-                </span>
-              </div>
+              <RowLabel>Sons da interface</RowLabel>
+              <button type="button" role="switch" aria-checked={uiSoundEnabled} aria-label="Sons da interface" onClick={handleUiSoundToggle}>
+                <Toggle on={uiSoundEnabled} />
+              </button>
             </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-primary">Sons da interface</p>
-                <button type="button" role="switch" aria-checked={uiSoundEnabled} aria-label="Sons da interface" onClick={handleUiSoundToggle}>
-                  <Toggle on={uiSoundEnabled} />
-                </button>
-              </div>
-              {uiSoundEnabled && (
-                <label className="flex items-center justify-between gap-4 text-xs text-secondary">
-                  Volume
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={uiSoundVolume}
-                    onChange={(e) => handleUiSoundVolumeChange(Number(e.target.value))}
-                    onPointerUp={() => playAdvance()}
-                    onKeyUp={() => playAdvance()}
-                    className="w-40 accent-accent"
-                  />
-                </label>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-primary">Notificações</p>
-                <ComingSoonBadge />
-              </div>
-              <Toggle on={false} />
-            </div>
+            {uiSoundEnabled && (
+              <label className="flex items-center justify-between gap-4 font-pixel text-lg leading-none text-secondary">
+                Volume
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={uiSoundVolume}
+                  onChange={(e) => handleUiSoundVolumeChange(Number(e.target.value))}
+                  onPointerUp={() => playAdvance()}
+                  onKeyUp={() => playAdvance()}
+                  className="w-40 accent-accent"
+                />
+              </label>
+            )}
           </div>
 
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-primary">Limite de gravação</p>
+            <RowLabel>Limite de gravação</RowLabel>
             <select
               value={recordingLimit}
               onChange={(e) => handleRecordingLimitChange(Number(e.target.value))}
-              className="rounded-lg border border-stroke bg-surface-alt px-2 py-1 text-[13px] font-semibold text-primary"
+              aria-label="Limite de gravação"
+              className="shrink-0 border-2 border-stroke bg-surface px-2 py-1 font-pixel text-xl leading-none text-primary focus:border-accent focus:outline-none"
             >
               {RECORDING_LIMIT_OPTIONS.map((minutes) => (
                 <option key={minutes} value={minutes}>
@@ -175,55 +145,71 @@ export function SettingsMenu({
               ))}
             </select>
           </div>
+
+          <div className="pointer-events-none flex flex-col gap-4 opacity-50 grayscale">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <RowLabel>Aparência</RowLabel>
+                <PixelChip>Em breve</PixelChip>
+              </div>
+              <div className="flex border-2 border-stroke font-pixel-label text-[9px]">
+                <span className="flex h-8 w-20 items-center justify-center text-secondary">Claro</span>
+                <span className="flex h-8 w-20 items-center justify-center border-l-2 border-stroke bg-accent/25 text-primary">Escuro</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <RowLabel>Notificações</RowLabel>
+                <PixelChip>Em breve</PixelChip>
+              </div>
+              <Toggle on={false} />
+            </div>
+          </div>
         </div>
 
-        <div className="h-px bg-stroke" />
-
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-4 border-t-2 border-stroke pt-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-primary">Perfil e Analogias</p>
-            <button
-              type="button"
-              onClick={() => navigate('/onboarding/perfil?edit=1')}
-              className="text-xs font-semibold text-accent hover:underline"
-            >
+            <RowLabel>Perfil e Analogias</RowLabel>
+            <button type="button" onClick={() => navigate('/onboarding/perfil?edit=1')} className={rowAction}>
               Editar
             </button>
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-primary">Atalhos de teclado</p>
-            <button
-              type="button"
-              onClick={() => setShowShortcuts((prev) => !prev)}
-              className="text-xs font-semibold text-accent hover:underline"
-            >
+            <RowLabel>Atalhos de teclado</RowLabel>
+            <button type="button" onClick={() => setShowShortcuts((prev) => !prev)} className={rowAction}>
               {showShortcuts ? 'Ocultar' : 'Ver'}
             </button>
           </div>
           {showShortcuts && (
-            <div className="flex items-center justify-between rounded-lg bg-surface-alt px-3 py-2 text-xs text-secondary">
+            <div className="flex items-center justify-between gap-3 border-2 border-stroke bg-surface px-3 py-2 font-pixel text-lg leading-none text-secondary">
               <span>Fechar/abrir este menu durante uma sessão</span>
-              <kbd className="rounded border border-stroke bg-surface px-1.5 py-0.5 font-semibold text-primary">Esc</kbd>
+              <kbd className="border-2 border-stroke bg-base px-1.5 py-1 font-pixel-label text-[9px] text-primary">Esc</kbd>
             </div>
           )}
         </div>
 
-        <div className="h-px bg-stroke" />
-
-        <div className="flex flex-col items-center gap-2 pt-1">
-          <button type="button" onClick={onClose} className="text-xs text-secondary hover:text-primary">
-            Fechar (ESC)
-          </button>
+        <div className="flex flex-col gap-3 border-t-2 border-stroke pt-4">
+          <PixelButton ghost tone="muted" onClick={onClose} className="w-full">
+            Fechar (Esc)
+          </PixelButton>
+          <PixelButton ghost tone="alert" onClick={() => setConfirmingLogout(true)} className="w-full">
+            Sair da conta
+          </PixelButton>
         </div>
+      </PixelModal>
 
-        <button
-          type="button"
-          onClick={handleLogoutClick}
-          className="w-full rounded-[10px] border border-alert/25 bg-alert/10 py-2.5 text-[13px] font-semibold text-alert hover:bg-alert/15"
-        >
-          Sair da conta
-        </button>
-      </div>
-    </div>
+      <PixelConfirmDialog
+        open={confirmingLogout}
+        message="Sair da conta, agente? Pra continuar estudando você vai precisar entrar de novo."
+        cancelLabel="Não, fico por aqui"
+        confirmLabel="Sim, sair da conta"
+        onCancel={() => setConfirmingLogout(false)}
+        onConfirm={() => {
+          setConfirmingLogout(false);
+          onLogout();
+        }}
+      />
+    </>
   );
 }

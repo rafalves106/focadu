@@ -24,6 +24,15 @@ public class DailyTemplate : Entity
     public Guid? WeeklyTemplateId { get; private set; }
     public int DayNumber { get; private set; }
 
+    /// <summary>
+    /// Fase 69: linguagem desta variante do dia. Nulo = dia unico, igual pra todo mundo (o normal).
+    /// Preenchido so nos dias que existem em uma versao por linguagem - hoje, a ponte pro Projeto
+    /// Semanal (6o dia da semana, secret/rascunhos/ponte-teoria-projeto-semanal.md): varios
+    /// DailyTemplate com o mesmo DayNumber, um por linguagem, e a Daily do aluno aponta pro da
+    /// linguagem que ele escolheu pro projeto (ver Weekly.ChooseProjectLanguage).
+    /// </summary>
+    public ProjectLanguage? Language { get; private set; }
+
     private readonly List<DailyActivity> _activities = new();
     public IReadOnlyCollection<DailyActivity> Activities => _activities.AsReadOnly();
 
@@ -31,10 +40,14 @@ public class DailyTemplate : Entity
     {
     }
 
-    internal DailyTemplate(Guid weeklyTemplateId, int dayNumber)
+    internal DailyTemplate(Guid weeklyTemplateId, int dayNumber, ProjectLanguage? language = null)
         : this(dayNumber)
     {
+        if (language is { } lang && !Enum.IsDefined(lang))
+            throw new DomainException("Linguagem invalida.", "linguagem_invalida");
+
         WeeklyTemplateId = weeklyTemplateId;
+        Language = language;
     }
 
     private DailyTemplate(int dayNumber)

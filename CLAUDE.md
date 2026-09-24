@@ -7,7 +7,8 @@
 ## O que é
 
 Focadu é uma plataforma pessoal de estudo gamificada e multi-curso. O curso piloto é "Web
-Security" (currículo completo desde a Fase 26: 4 módulos / 12 semanas / 60 dias / 12 projetos). A
+Security" (currículo completo desde a Fase 26: 4 módulos / 12 semanas / 12 projetos; desde a Fase 69,
+72 dias - 6 por semana, o 6º é a ponte pro projeto). A
 missão do produto é forçar compreensão real de fundamentos — não resposta fácil de IA — através de
 sessões diárias com múltiplas etapas, avaliação por voz via Groq (transcrição Whisper + nota/
 feedback por LLM), sistema de pontuação/reforço adaptativo, atividades variadas (quiz, ligar-
@@ -86,9 +87,19 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 68 — Sessão diária em pixel art** (23/09/2026).
+Última fase concluída: **Fase 69 — Semana de 6 dias (ponte pro projeto) e ofensiva com folga e pausa** (23/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Semana de 6 dias + ofensiva com folga e pausa (Fase 69, dor do dono como aluno: o projeto da Semana 1
+  era difícil de começar)**: a semana passou a ter 6 Dailies + Projeto e o curso foi de 60 pra 72 dias
+  (semana N = Dias 6N-5 a 6N). O 6º dia é a **ponte**, prática e numa versão por linguagem
+  (`DailyTemplate.Language`, curadoria em `semana-N/ponte/`); a escolha da linguagem do projeto foi pra
+  entrada dela (`DailyAccessMode.NeedsProjectLanguage`, `BridgeLanguageScreen`). Só a Semana 1 tem ponte
+  curada. A ofensiva trocou "fim de semana não quebra" por **folga móvel** (1 dia a cada 7) e fica
+  **pausada** com o projeto aberto até a semana fechar, no máximo 14 dias (`StreakPauseWindows`). O
+  próximo `seed` (deploy) renumera o banco (`Curriculum72Migration`, testada numa cópia de produção) e dá
+  a ponte a quem ainda não entregou o projeto (`SyncBridgeDaysUseCase`). Mapa da trilha com 6 pontos por
+  semana. Ver `docs/fase-69/`.
 - **Sessão diária em pixel art (Fase 68, Figma "Daily — redesign proposto")**: tudo em `/hoje` roda na
   casca `SessionLayout` (lê o `SessionContext` da TodayPage): topo com o conta-giros (saiu do menu, que
   agora é global e único - sem badges de sessão), 3 colunas sem rolagem externa, cadeia de etapas em

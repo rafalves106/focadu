@@ -17,6 +17,7 @@ public class UserStreakConfiguration : IEntityTypeConfiguration<UserStreak>
         builder.Property(s => s.LongestStreak).IsRequired();
         builder.Property(s => s.LastCompletedDate);
         builder.Property(s => s.BrokenAt);
+        builder.Property(s => s.LastRestDate);
 
         // Referencia "fraca" (sem navegacao de volta em User) - mesmo padrao de Enrollment.
         builder.HasOne<User>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);

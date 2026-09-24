@@ -70,7 +70,9 @@ public class SeedWebSecurityCourseUseCase
     /// <summary>
     /// Monta o curso inteiro (12 semanas / 4 modulos, ver CURADORIA.md secao 5) a partir do
     /// conteudo curado em disco. Cada modulo agrupa 3 WeeklyTemplates; cada semana importa seus 5
-    /// dias + 1 projeto pratico via ImportWeek. Semana 1 fica de fora do loop generico so por ja
+    /// dias de conteudo + 1 projeto pratico via ImportWeek. Desde 23/09/2026 a semana N ocupa os
+    /// Dias 6N-5 a 6N: o Dia 6N e reservado pra ponte (secret/rascunhos/ponte-teoria-projeto-semanal.md),
+    /// que ainda nao entra no seed. Semana 1 fica de fora do loop generico so por ja
     /// ter sido escrita a mao antes do CuratedDayImporter existir - manter aqui em vez de migrar
     /// evita mexer num trecho ja testado sem necessidade.
     /// </summary>
@@ -95,59 +97,60 @@ public class SeedWebSecurityCourseUseCase
         // ("Reconhecimento de Trafego HTTP" via DevTools) - divergencia resolvida a favor do
         // roteiro (mais alinhado ao tema de rede da semana), ver CURADORIA.md secao 4.
         CuratedProjectImporter.ImportFile(semana1, CuratedContentPath("semana-1", "projeto.json"));
+        ImportBridge(semana1, "semana-1");
 
         var semana2 = modulo1.AddWeeklyTemplate(2, "Identidade e Controle de Acesso",
             "Cookies, JWT, RBAC/ABAC, CORS e Headers de Seguranca");
-        ImportWeek(semana2, "semana-2", 6, 10);
+        ImportWeek(semana2, "semana-2", 7, 11);
 
         var semana3 = modulo1.AddWeeklyTemplate(3, "Mapeamento de Ativos e Reconhecimento",
             "EASM, OSINT, Nmap, Fuzzing e Modelagem de Ameacas (STRIDE)");
-        ImportWeek(semana3, "semana-3", 11, 15);
+        ImportWeek(semana3, "semana-3", 13, 17);
 
         // MODULO 2: Vulnerabilidades Web Profundas & OWASP Top 10 (Semanas 4-6).
         var modulo2 = course.AddMonthly(2, "Vulnerabilidades Web Profundas & OWASP Top 10");
 
         var semana4 = modulo2.AddWeeklyTemplate(4, "Injecoes e Manipulacao de Dados",
             "SQLi, Queries Parametrizadas, Command Injection, LFI/RFI e SSTI");
-        ImportWeek(semana4, "semana-4", 16, 20);
+        ImportWeek(semana4, "semana-4", 19, 23);
 
         var semana5 = modulo2.AddWeeklyTemplate(5, "Ataques Client-Side e Quebra de Acesso",
             "XSS, CSP Avancado, CSRF, BOLA (IDOR) e BFLA");
-        ImportWeek(semana5, "semana-5", 21, 25);
+        ImportWeek(semana5, "semana-5", 25, 29);
 
         var semana6 = modulo2.AddWeeklyTemplate(6, "Vulnerabilidades Avancadas de Servidor",
             "SSRF, Deserializacao Insegura, XXE, Broken Business Logic e Mass Assignment");
-        ImportWeek(semana6, "semana-6", 26, 30);
+        ImportWeek(semana6, "semana-6", 31, 35);
 
         // MODULO 3: Criptografia Aplicada, Secure Coding & DevSecOps (Semanas 7-9).
         var modulo3 = course.AddMonthly(3, "Criptografia Aplicada, Secure Coding & DevSecOps");
 
         var semana7 = modulo3.AddWeeklyTemplate(7, "Criptografia para Desenvolvedores",
             "AES-GCM, RSA/ECC, Argon2, PKI e Gestao de Segredos");
-        ImportWeek(semana7, "semana-7", 31, 35);
+        ImportWeek(semana7, "semana-7", 37, 41);
 
         var semana8 = modulo3.AddWeeklyTemplate(8, "Seguranca na Pipeline CI/CD",
             "SAST, SCA, DAST, Hardening de Docker e IaC Security");
-        ImportWeek(semana8, "semana-8", 36, 40);
+        ImportWeek(semana8, "semana-8", 43, 47);
 
         var semana9 = modulo3.AddWeeklyTemplate(9, "Arquitetura de Identidade e Zero Trust",
             "OAuth 2.0 (PKCE), OIDC, MFA, Zero Trust e SSO/SAML");
-        ImportWeek(semana9, "semana-9", 41, 45);
+        ImportWeek(semana9, "semana-9", 49, 53);
 
         // MODULO 4: Nuvem, Deteccao de Ameacas, Forense e Red/Blue Team (Semanas 10-12).
         var modulo4 = course.AddMonthly(4, "Nuvem, Deteccao de Ameacas, Forense e Red/Blue Team");
 
         var semana10 = modulo4.AddWeeklyTemplate(10, "Cloud Security",
             "IAM na Nuvem, Storage Misconfigs (S3), Kubernetes RBAC, CloudTrail e Serverless");
-        ImportWeek(semana10, "semana-10", 46, 50);
+        ImportWeek(semana10, "semana-10", 55, 59);
 
         var semana11 = modulo4.AddWeeklyTemplate(11, "Resposta a Incidentes e Forense",
             "Metodologia NIST/SANS, SIEM, Sigma/YARA, MITRE ATT&CK e Analise de Logs");
-        ImportWeek(semana11, "semana-11", 51, 55);
+        ImportWeek(semana11, "semana-11", 61, 65);
 
         var semana12 = modulo4.AddWeeklyTemplate(12, "Capstone e Defesa em Profundidade",
             "Defesa em Profundidade, Evasao, Purple Teaming, Gestao de Risco Executivo e IA Ofensiva");
-        ImportWeek(semana12, "semana-12", 56, 60);
+        ImportWeek(semana12, "semana-12", 67, 71);
 
         ImportCertificationCoverage(course);
 
@@ -176,6 +179,34 @@ public class SeedWebSecurityCourseUseCase
             CuratedDayImporter.ImportFile(weeklyTemplate, CuratedContentPath(weekFolder, $"dia-{dayNumber}.json"));
 
         CuratedProjectImporter.ImportFile(weeklyTemplate, CuratedContentPath(weekFolder, "projeto.json"));
+        ImportBridge(weeklyTemplate, weekFolder);
+    }
+
+    /// <summary>
+    /// Fase 69: importa a ponte da semana (6o dia, secret/rascunhos/ponte-teoria-projeto-semanal.md),
+    /// uma variante por linguagem: semana-N/ponte/&lt;linguagem&gt;.json, mesmo schema de um dia normal.
+    /// So as linguagens que ainda nao estao na semana e cujo arquivo existe - semana sem pasta ponte/
+    /// (ainda nao curada) nao ganha nada. Usado pelo seed (curso novo) e por SyncBridgeDaysUseCase
+    /// (curso ja seedado, ponte curada depois). Devolve os DailyTemplate criados.
+    /// </summary>
+    internal static IReadOnlyList<Domain.Dailies.DailyTemplate> ImportBridge(WeeklyTemplate weeklyTemplate, string weekFolder)
+    {
+        var bridgeDay = 6 * weeklyTemplate.Number;
+        var created = new List<Domain.Dailies.DailyTemplate>();
+        foreach (var language in Enum.GetValues<Domain.Enums.ProjectLanguage>())
+        {
+            if (weeklyTemplate.FindDailyTemplateVariant(bridgeDay, language) is not null) continue;
+
+            var path = TryCuratedContentPath(weekFolder, Path.Combine("ponte", $"{language.ToString().ToLowerInvariant()}.json"));
+            if (path is null) continue;
+
+            CuratedDayImporter.ImportFile(weeklyTemplate, path, language);
+            var template = weeklyTemplate.DailyTemplates.Last();
+            if (template.DayNumber != bridgeDay)
+                throw new InvalidOperationException($"{path}: a ponte da Semana {weeklyTemplate.Number} precisa ter dayNumber {bridgeDay}, mas tem {template.DayNumber}.");
+            created.Add(template);
+        }
+        return created;
     }
 
     // Fase 21: conteudo curado de verdade (secret/curadoria/web-security/semana-1/dia-1.json),
@@ -214,7 +245,14 @@ public class SeedWebSecurityCourseUseCase
     /// mount do clone de focadu-secret) contorna a busca inteira quando presente.
     /// </summary>
     /// <summary>Pasta de semana e opcional - arquivos de curadoria em nivel de curso (ex: certificacoes.json, Fase 45) usam weekFolder null/vazio.</summary>
-    private static string CuratedContentPath(string? weekFolder, string fileName)
+    private static string CuratedContentPath(string? weekFolder, string fileName) =>
+        ResolveCuratedContentPath(weekFolder, fileName, required: true)!;
+
+    /// <summary>Fase 69: como CuratedContentPath, mas devolve null quando o arquivo nao existe (a ponte e opcional).</summary>
+    internal static string? TryCuratedContentPath(string? weekFolder, string fileName) =>
+        ResolveCuratedContentPath(weekFolder, fileName, required: false);
+
+    private static string? ResolveCuratedContentPath(string? weekFolder, string fileName, bool required)
     {
         var relativeSegments = string.IsNullOrEmpty(weekFolder)
             ? new[] { CourseSlug, fileName }
@@ -222,7 +260,10 @@ public class SeedWebSecurityCourseUseCase
 
         var contentRoot = Environment.GetEnvironmentVariable("CURATED_CONTENT_ROOT");
         if (!string.IsNullOrWhiteSpace(contentRoot))
-            return Path.Combine([contentRoot, "curadoria", .. relativeSegments]);
+        {
+            var fromRoot = Path.Combine([contentRoot, "curadoria", .. relativeSegments]);
+            return required || File.Exists(fromRoot) ? fromRoot : null;
+        }
 
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, ".git")))
@@ -241,6 +282,9 @@ public class SeedWebSecurityCourseUseCase
             : Path.Combine([siblingParent, "focadu-secret", "curadoria", .. relativeSegments]);
         if (sibling is not null && File.Exists(sibling))
             return sibling;
+
+        if (!required)
+            return null;
 
         throw new InvalidOperationException(
             $"Conteudo curado nao encontrado. Procurado em '{nested}'" +

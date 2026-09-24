@@ -15,6 +15,7 @@ public class WeeklyProjectConfiguration : IEntityTypeConfiguration<WeeklyProject
         builder.Property(p => p.SubmissionUrl).HasMaxLength(2000);
         // Fase 59: nulo ate o aluno escolher (e pra sempre nulo em semana sem variantes de linguagem).
         builder.Property(p => p.Language).HasConversion<string>().HasMaxLength(20);
+        builder.Property(p => p.EvaluatedAt);
         builder.Property(p => p.WeeklyId).IsRequired();
 
         builder.HasIndex(p => p.WeeklyId).IsUnique();

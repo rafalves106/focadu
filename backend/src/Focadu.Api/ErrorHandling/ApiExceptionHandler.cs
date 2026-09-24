@@ -33,6 +33,9 @@ public class ApiExceptionHandler : IExceptionHandler
         ["projeto_semana_bloqueado"] = StatusCodes.Status409Conflict,
         // Escolha da linguagem do projeto (Fase 59) - estado do projeto, nao entrada invalida.
         ["linguagem_ja_escolhida"] = StatusCodes.Status409Conflict,
+        // Fase 69: a ponte (dia com uma versao por linguagem) sem a linguagem do projeto escolhida.
+        ["linguagem_nao_escolhida"] = StatusCodes.Status409Conflict,
+        ["daily_ja_iniciada"] = StatusCodes.Status409Conflict,
         ["projeto_nao_pendente"] = StatusCodes.Status409Conflict,
         ["semana_sem_variantes_de_linguagem"] = StatusCodes.Status409Conflict,
         ["publicacao_ja_validada"] = StatusCodes.Status409Conflict,

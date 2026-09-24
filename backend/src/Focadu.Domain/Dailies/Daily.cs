@@ -78,6 +78,25 @@ public class Daily : Entity
     /// <summary>"Dia fraco": Daily que atingiu o limiar de penalidade que dispara reforço diário.</summary>
     public bool IsWeakDay => PenaltyPoints >= EvaluationPolicy.DailyPenaltyThreshold;
 
+    /// <summary>
+    /// Fase 69: troca a variante de linguagem deste dia (a ponte pro projeto) pela da linguagem que
+    /// o aluno escolheu - chamado so por Weekly.ChooseProjectLanguage. So antes de a Daily comecar:
+    /// respostas ja dadas pertencem as atividades da variante antiga.
+    /// </summary>
+    internal void BindLanguageVariant(DailyTemplate variant)
+    {
+        if (variant.DayNumber != DayNumber || variant.Language is null)
+            throw new DomainException("A variante nao e deste dia.");
+        if (Status is not (DailyStatus.Locked or DailyStatus.Available) || _responses.Count > 0)
+            throw new DomainException("A Daily ja comecou e nao pode trocar de linguagem.", "daily_ja_iniciada");
+
+        _template = variant;
+        DailyTemplateId = variant.Id;
+    }
+
+    /// <summary>Fase 69: dia que existe em uma versao por linguagem (a ponte) - so pode comecar depois que a linguagem do projeto foi escolhida.</summary>
+    public bool RequiresProjectLanguage => Template.Language is not null;
+
     public void Unlock()
     {
         if (Status == DailyStatus.Locked)

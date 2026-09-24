@@ -1,6 +1,9 @@
 import { api } from '../../api/client';
 import { useApiResource } from '../../api/useApiResource';
 import { MarkdownBlock } from '../activities/MarkdownBlock';
+import { PIXEL_PROSE } from '../../lib/pixelProse';
+import { PixelModal } from '../PixelModal';
+import { PixelButton, PixelChip } from '../session/PixelButton';
 
 /**
  * Revisão rápida e SÓ LEITURA das anotações feitas nesta Daily (Fase 35 - ver
@@ -15,8 +18,8 @@ import { MarkdownBlock } from '../activities/MarkdownBlock';
  * qual dia veio.
  *
  * Read-only de propósito (nem `NoteEditorModal` aqui) - é uma olhada rápida antes de falar, não
- * uma sessão de edição; pra editar, o aluno usa a aba "Caderninho" (`CourseDetailPage`) como
- * sempre. Mesmo chrome de modal de `ContentPreviewModal`/`PublicationModal`.
+ * uma sessão de edição; pra editar, o aluno usa o Caderninho. Casca `PixelModal` desde 24/09/2026
+ * (abre por cima da sessão diária, que já é pixel art).
  */
 export function DailyNotesModal({
   courseId,
@@ -33,68 +36,52 @@ export function DailyNotesModal({
   const title = isReinforcement ? 'Anotações do dia base' : 'Suas anotações de hoje';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/70 p-6" onClick={onClose} role="presentation">
-      <div
-        className="flex max-h-[85vh] w-[560px] flex-col gap-5 overflow-y-auto rounded-2xl border border-surface-alt bg-surface p-8"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-xl font-bold text-primary">{title}</h1>
-            <p className="text-xs text-muted">
-              {isReinforcement && 'Do dia que gerou este reforço. '}
-              Só pra dar uma olhada antes de gravar - a gravação em si é sem consulta.
-            </p>
-          </div>
-          <button type="button" onClick={onClose} className="shrink-0 text-secondary hover:text-primary" aria-label="Fechar">
-            ✕
-          </button>
+    <PixelModal label={title} title={title} onClose={onClose}>
+      <p className="font-pixel text-lg leading-snug text-secondary">
+        {isReinforcement && 'Do dia que gerou este reforço. '}
+        Só pra dar uma olhada antes de gravar - a gravação em si é sem consulta.
+      </p>
+
+      {loading && <p className="font-pixel text-lg text-secondary">Carregando...</p>}
+
+      {error && (
+        <div className="flex flex-col items-start gap-3 border-2 border-alert p-4">
+          <p className="font-pixel text-lg leading-snug text-alert">Não foi possível carregar suas anotações.</p>
+          <PixelButton ghost tone="muted" onClick={retry}>
+            Tentar de novo
+          </PixelButton>
         </div>
+      )}
 
-        {loading && <p className="text-sm text-secondary">Carregando...</p>}
+      {!loading && !error && notes?.length === 0 && (
+        <p className="font-pixel text-lg leading-snug text-secondary">
+          {isReinforcement
+            ? 'Nenhuma anotação registrada no dia base deste reforço.'
+            : 'Nenhuma anotação registrada hoje ainda - use "Anotação Rápida" na barra lateral se quiser guardar algo antes de gravar.'}
+        </p>
+      )}
 
-        {error && (
-          <div className="flex flex-col gap-2 rounded-xl border border-alert bg-alert/10 p-4 text-sm">
-            <p className="text-alert">Não foi possível carregar suas anotações.</p>
-            <button type="button" onClick={retry} className="w-fit text-secondary hover:text-primary">
-              Tentar de novo
-            </button>
-          </div>
-        )}
-
-        {!loading && !error && notes?.length === 0 && (
-          <p className="text-sm text-secondary">
-            {isReinforcement
-              ? 'Nenhuma anotação registrada no dia base deste reforço.'
-              : 'Nenhuma anotação registrada hoje ainda - use "Anotação Rápida" na barra lateral se quiser guardar algo antes de gravar.'}
-          </p>
-        )}
-
-        {!loading &&
-          !error &&
-          notes?.map((note) => (
-            <div key={note.id} className="flex flex-col gap-2 rounded-xl border border-stroke bg-base p-4">
-              {isReinforcement && (
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
-                  {note.dailyId === dailyId ? 'Anotada neste reforço' : `Dia ${note.dayNumber} (dia base)`}
-                </p>
-              )}
+      {!loading &&
+        !error &&
+        notes?.map((note) => (
+          <div key={note.id} className="flex flex-col gap-2 border-2 border-stroke bg-surface p-4">
+            {isReinforcement && (
+              <p className="font-pixel-label text-[9px] text-muted">
+                {note.dailyId === dailyId ? 'Anotada neste reforço' : `Dia ${note.dayNumber} (dia base)`}
+              </p>
+            )}
+            <div className={PIXEL_PROSE}>
               <MarkdownBlock text={note.content} />
-              {note.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {note.tags.map((t) => (
-                    <span key={t} className="rounded-full bg-surface-alt px-2 py-0.5 text-[10px] font-semibold text-secondary">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
-          ))}
-      </div>
-    </div>
+            {note.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {note.tags.map((t) => (
+                  <PixelChip key={t}>{t}</PixelChip>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+    </PixelModal>
   );
 }

@@ -151,12 +151,22 @@ public class Weekly : Entity
         if (_project.Status != WeeklyProjectStatus.Pending)
             throw new DomainException("So e possivel escolher a linguagem de um projeto ainda pendente.", "projeto_nao_pendente");
 
-        if (!AreDailiesComplete())
+        // Fase 69: a escolha passou da abertura do projeto pra entrada da ponte (o dia com uma
+        // versao por linguagem) - basta ter concluido as Dailies de conteudo, as que nao dependem
+        // de linguagem. Semana sem ponte: continua exigindo todas, como na Fase 59.
+        if (!AreDailiesBeforeLanguageDaysComplete())
         {
             throw new DomainException(
-                "Termine todas as dailies desta semana antes de escolher a linguagem do projeto.",
+                "Termine as dailies desta semana antes de escolher a linguagem do projeto.",
                 "projeto_semana_bloqueado");
         }
+    }
+
+    /// <summary>Fase 69: Dailies originais que nao dependem de linguagem - todas concluidas (e ao menos uma existe).</summary>
+    private bool AreDailiesBeforeLanguageDaysComplete()
+    {
+        var contentDailies = _dailies.Where(d => !d.IsReinforcement && !d.RequiresProjectLanguage).ToList();
+        return contentDailies.Count > 0 && contentDailies.All(d => d.Status == DailyStatus.Completed);
     }
 
     /// <summary>Grava a linguagem escolhida e o repositorio dela (Fase 59) - repete as checagens de EnsureProjectLanguageCanBeChosen, que o caso de uso ja chamou antes do fork.</summary>
@@ -168,6 +178,16 @@ public class Weekly : Entity
             throw new DomainException("Esta semana nao tem o projeto nessa linguagem.", "linguagem_indisponivel");
 
         _project!.ChooseLanguage(language, repositoryUrl);
+
+        // Fase 69: a ponte (dia com uma versao por linguagem) passa a apontar pra versao escolhida.
+        foreach (var daily in _dailies.Where(d => !d.IsReinforcement && d.RequiresProjectLanguage))
+        {
+            var variant = Template.FindDailyTemplateVariant(daily.DayNumber, language)
+                ?? throw new DomainException($"O Dia {daily.DayNumber} nao tem versao nessa linguagem.", "linguagem_indisponivel");
+            if (variant.Id != daily.DailyTemplateId)
+                daily.BindLanguageVariant(variant);
+        }
+
         return _project;
     }
 
@@ -289,7 +309,11 @@ public class Weekly : Entity
                 "reforco_diario_condicoes_nao_atingidas");
         }
 
-        var nextDayNumber = _dailies.Max(d => d.DayNumber) + 1;
+        // Fase 69: o reforco nunca ocupa a vaga da ponte (o dia seguinte ao ultimo dia de conteudo,
+        // 6o da semana) - a ponte de uma semana pode ser curada depois de o aluno ja ter reforcos
+        // nela, e entra nessa vaga (SyncBridgeDaysUseCase). O numero do reforco e so uma posicao.
+        var bridgeSlot = _dailies.Where(d => !d.IsReinforcement && !d.RequiresProjectLanguage).Max(d => d.DayNumber) + 1;
+        var nextDayNumber = Math.Max(_dailies.Max(d => d.DayNumber) + 1, bridgeSlot + 1);
         var reinforcementTemplate = DailyTemplate.CreateSynthetic(nextDayNumber);
 
         var orderIndex = 0;
@@ -387,6 +411,16 @@ public class Weekly : Entity
         // Ainda nao iniciada (Locked/Available).
         if (!target.IsReinforcement && !isNextInSequence)
             throw new DomainException("Esta Daily ainda nao foi liberada - conclua as anteriores primeiro.", "daily_bloqueada");
+
+        // Fase 69: a ponte existe numa versao por linguagem - sem a linguagem do projeto escolhida,
+        // nao ha versao certa pra comecar. Vem antes da cota diaria: escolher a linguagem nao gasta
+        // a cota, entao "/hoje" deve oferecer a escolha mesmo depois de uma Daily concluida hoje.
+        if (!target.IsReinforcement && target.RequiresProjectLanguage && _project?.Language is null)
+        {
+            throw new DomainException(
+                "Escolha a linguagem do projeto antes de comecar esta Daily.",
+                "linguagem_nao_escolhida");
+        }
 
         // Matricula inteira (Fase 54), nao so esta Weekly - ver o comentario do metodo.
         var enrollmentDailies = otherWeekliesDailies is null ? _dailies : _dailies.Concat(otherWeekliesDailies).ToList();

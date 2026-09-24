@@ -3,6 +3,16 @@ using Focadu.Domain.Common;
 namespace Focadu.Domain.Gamification;
 
 /// <summary>
+/// Um intervalo de dias em que a ofensiva fica pausada (Fase 69): nem quebra nem cresce. Inclusivo
+/// nas duas pontas. Hoje so existe um motivo: o Projeto Semanal aberto (ver StreakPauseWindows na
+/// Application), quando o aluno nao tem nenhuma Daily pra fazer.
+/// </summary>
+public readonly record struct StreakPause(DateOnly From, DateOnly To)
+{
+    public bool Contains(DateOnly day) => day >= From && day <= To;
+}
+
+/// <summary>
 /// Streak de dias consecutivos de um usuario (Fase 14) - 1:1 com User, criada sob demanda na
 /// primeira conclusao de Daily (mesma logica lazy de UserGemBalance).
 ///
@@ -14,18 +24,26 @@ namespace Focadu.Domain.Gamification;
 /// nunca precisa esperar uma escrita futura pra reportar 0 corretamente - e a 1a leitura que
 /// observa a quebra ja zera o campo persistido (CurrentStreak), junto com a marca BrokenAt.
 ///
-/// ponytail: a janela de tolerancia usa "1 dia util" como proxy pro calendario real do curriculo
-/// (fins de semana nao quebram), nao uma consulta real as Dailies agendadas do usuario - um hiato
-/// legitimo maior que 1 dia util no curriculo (ex: gap entre Weeklies) quebraria o streak
-/// incorretamente. Upgrade natural, se isso importar: checar contra as datas de Daily agendadas de
-/// verdade (IWeeklyRepository) em vez do heuristico de dia util.
+/// Fase 69 (secret/rascunhos/ofensiva-conta-trabalho-no-projeto.md): a tolerancia de "fim de
+/// semana nao quebra" saiu - o curso deixou de seguir o calendario. No lugar dela:
+/// - Folga movel: 1 dia sem estudo a cada 7, em qualquer dia da semana, gasta sozinha (o 1o dia
+///   sem estudo) e sem acumular. A ofensiva quebra com 2 dias sem estudo dentro de qualquer
+///   janela de 7 dias - guardar a data da ultima folga (LastRestDate) basta pra saber isso.
+/// - Pausa: dias dentro de um StreakPause nao contam como "sem estudo" (nem gastam a folga). Os
+///   intervalos chegam de fora, calculados na hora da leitura a partir do estado dos projetos.
 /// </summary>
 public class UserStreak : Entity
 {
+    /// <summary>Fase 69: a folga movel volta a ficar disponivel 7 dias depois do dia em que foi usada.</summary>
+    public const int RestWindowDays = 7;
+
     public Guid UserId { get; private set; }
     public int CurrentStreak { get; private set; }
     public int LongestStreak { get; private set; }
     public DateOnly? LastCompletedDate { get; private set; }
+
+    /// <summary>Fase 69: o ultimo dia sem estudo coberto pela folga movel. Nulo = nunca usou.</summary>
+    public DateOnly? LastRestDate { get; private set; }
 
     /// <summary>
     /// Data em que uma quebra (streak > 0 virando 0) foi observada pela primeira vez e ainda nao
@@ -51,16 +69,21 @@ public class UserStreak : Entity
     /// conclusoes na mesma data (ex: Daily original + reforco no mesmo dia) - a 2a chamada com a
     /// mesma data e um no-op, nao soma streak duas vezes.
     /// </summary>
-    public void RegisterCompletion(DateOnly completionDate)
+    public void RegisterCompletion(DateOnly completionDate, IReadOnlyCollection<StreakPause>? pauses = null)
     {
         if (LastCompletedDate == completionDate) return;
 
-        if (HasBrokenAsOf(completionDate))
+        var missed = MissedDaysBefore(completionDate, pauses);
+        if (IsBroken(missed))
         {
             CurrentStreak = 0;
             // Streak novo ja comecando - "voce perdeu o streak" deixa de fazer sentido, o usuario
             // ja fez exatamente o que a tela pediria.
             BrokenAt = null;
+        }
+        else if (missed.Count == 1)
+        {
+            LastRestDate = missed[0];
         }
 
         CurrentStreak++;
@@ -80,9 +103,9 @@ public class UserStreak : Entity
     /// limpar BrokenAt, a leitura seguinte via "quebrou + CurrentStreak > 0 + BrokenAt nulo" de novo
     /// e remarcava - o aviso voltava a cada abertura da tela de start.
     /// </summary>
-    public int CurrentStreakAsOf(DateOnly today)
+    public int CurrentStreakAsOf(DateOnly today, IReadOnlyCollection<StreakPause>? pauses = null)
     {
-        if (!HasBrokenAsOf(today)) return CurrentStreak;
+        if (!IsBroken(MissedDaysBefore(today, pauses))) return CurrentStreak;
 
         if (CurrentStreak > 0)
         {
@@ -92,16 +115,31 @@ public class UserStreak : Entity
         return 0;
     }
 
+    /// <summary>
+    /// Fase 69: a folga movel esta livre pra cobrir um dia sem estudo em <paramref name="day"/> -
+    /// pra tela mostrar "folga disponivel". Leitura pura.
+    /// </summary>
+    public bool IsRestAvailableOn(DateOnly day) =>
+        LastRestDate is not { } rest || day.DayNumber - rest.DayNumber >= RestWindowDays;
+
     /// <summary>Marca a quebra atual como vista - a tela "Streak Perdido" nao aparece de novo ate a proxima quebra real.</summary>
     public void AcknowledgeBreak() => BrokenAt = null;
 
-    private bool HasBrokenAsOf(DateOnly asOfDate) =>
-        LastCompletedDate is { } last && NextBusinessDay(last) < asOfDate;
-
-    private static DateOnly NextBusinessDay(DateOnly date) => (date.AddDays(1)).DayOfWeek switch
+    /// <summary>Dias sem estudo entre a ultima conclusao e <paramref name="day"/> (exclusivo nas duas pontas), fora das pausas.</summary>
+    private List<DateOnly> MissedDaysBefore(DateOnly day, IReadOnlyCollection<StreakPause>? pauses)
     {
-        DayOfWeek.Saturday => date.AddDays(3),
-        DayOfWeek.Sunday => date.AddDays(2),
-        _ => date.AddDays(1),
-    };
+        var missed = new List<DateOnly>();
+        if (LastCompletedDate is not { } last) return missed;
+
+        for (var d = last.AddDays(1); d < day; d = d.AddDays(1))
+        {
+            if (pauses is null || !pauses.Any(p => p.Contains(d)))
+                missed.Add(d);
+        }
+        return missed;
+    }
+
+    /// <summary>Quebra com 2+ dias sem estudo, ou com 1 dia quando a folga desse dia ja foi gasta nos 7 dias anteriores.</summary>
+    private bool IsBroken(List<DateOnly> missed) =>
+        missed.Count >= 2 || (missed.Count == 1 && !IsRestAvailableOn(missed[0]));
 }

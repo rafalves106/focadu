@@ -37,11 +37,15 @@ export function PixelConfirmDialog({
   useEffect(() => {
     if (!open) return;
     cancelRef.current?.focus();
+    // Captura + stopPropagation: o ESC que cancela nao chega aos atalhos de baixo (o da sessao alterna
+    // as Configuracoes; um `PixelModal` por baixo ve o `data-pixel-confirm` e nao fecha junto).
     function onKey(e: globalThis.KeyboardEvent) {
-      if (e.key === 'Escape') onCancelRef.current();
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      onCancelRef.current();
     }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [open]);
 
   if (!open) return null;
@@ -66,6 +70,7 @@ export function PixelConfirmDialog({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="pixel-confirm-message"
+        data-pixel-confirm
         className="flex w-full max-w-2xl flex-col gap-6"
         onClick={(e) => e.stopPropagation()}
       >

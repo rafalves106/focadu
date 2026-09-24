@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 68 - Sessao diaria em pixel art**.
+> Ultima fase que atualizou este documento: **Fase 69 - Semana de 6 dias (ponte pro projeto) e ofensiva com folga e pausa**.
 
 ## Visao geral do projeto
 
@@ -113,7 +113,8 @@ src/
                                        CompleteProfile() (Fase 13, Entrevista de Perfil)
     Dailies/DailyTemplate.cs         <- curriculo (Fase 13, RENAME do antigo Daily) - so DayNumber
                                        + DailyActivities. WeeklyTemplateId NULLABLE (DailyTemplate
-                                       "sintetico" pra reforco diario, ver secao propria)
+                                       "sintetico" pra reforco diario, ver secao propria). Fase 69:
+                                       Language? (variante por linguagem do dia - a ponte)
     Dailies/Daily.cs                 <- Fase 13: NOVO SIGNIFICADO - instancia por usuario
                                        (WeeklyId/DailyTemplateId/DayNumber/Date/Status/
                                        PenaltyPoints/etc + Responses, que moveu de DailyActivity
@@ -290,7 +291,7 @@ TEMPLATE (curriculo, admin-authored - seed / futuramente /admin/conteudo, muda r
 Course (Draft/Active/Archived, Description)
 └── Monthly (Number, Title)
     └── WeeklyTemplate (Number, Title, Theme, WeeklyProjectSpecText, WeeklyProjectBriefing, WeeklyProjectStateLines)
-        ├── DailyTemplate (DayNumber)                 [WeeklyTemplateId NULL = sintetico, ver reforco abaixo]
+        ├── DailyTemplate (DayNumber, Language?)      [WeeklyTemplateId NULL = sintetico, ver reforco abaixo; Language = variante da ponte, Fase 69]
         │   └── DailyActivity (Type, OrderIndex, AnswerMode, Prompt?, ContentId?, ExpectedAnswer?)
         │       ├── QuizOption (Text, IsCorrect)                  [Quiz, Cloze/MultipleChoice]
         │       ├── WordMatchPair (Term, DefinitionId, Definition)     [WordMatch, Fase 23]
@@ -434,7 +435,7 @@ Gems/streak:
 Focadu.Domain.Gamification
 UserGemBalance (UserId, TotalGems, GemsFromDailiesThisMonth, GemsFromWeekliesThisMonth,
                 GemsFromMonthlyThisMonth, CurrentMonthPeriod)
-UserStreak (UserId, CurrentStreak, LongestStreak, LastCompletedDate?)
+UserStreak (UserId, CurrentStreak, LongestStreak, LastCompletedDate?, LastRestDate?, BrokenAt?)
 ```
 
 **Gems**: +1 por Daily completa pela primeira vez, +5 por Weekly perfeita (`Weekly.IsPerfect()` -
@@ -461,14 +462,22 @@ esperar uma escrita futura pra reportar `0`. A 1a leitura que observa a quebra m
 conclusao, e depois do `acknowledge-broken` a leitura seguinte remarcava a quebra: o aviso "Streak
 Perdido" voltava a cada abertura da tela de start).
 
-**ponytail**: a janela de tolerancia usa "1 dia util" (segunda-sexta) como proxy pro calendario
-real do curriculo - fins de semana nao quebram, mas um hiato legitimo maior que 1 dia util
-(ex: gap entre Weeklies, se um curso futuro tiver) quebraria o streak incorretamente. Upgrade
-natural se isso importar: checar contra as datas de Daily agendadas de verdade (`IWeeklyRepository`)
-em vez do heuristico de dia util. `UserStreak`/`EnrollUserInCourseUseCase` cada um tem sua propria
-copia do helper `NextBusinessDay`/`FirstBusinessDayOnOrAfter` (Domain nao pode depender de
-Application, entao nao da pra compartilhar 1 so) - duplicacao deliberada de ~3 linhas, nao vale
-uma abstracao cross-camada pra isso.
+**Folga movel e pausa (Fase 69, substituiu a tolerancia de "1 dia util").** O curso deixou de seguir
+o calendario (semana de 6 Dailies, secret/rascunhos/ofensiva-conta-trabalho-no-projeto.md):
+- **Folga movel**: a ofensiva quebra com 2 dias sem estudo dentro de qualquer janela de 7. 1 dia sem
+  estudo e coberto pela folga, gasta sozinha e sem acumular - `LastRestDate` guarda o dia coberto
+  (gravado na conclusao seguinte; a leitura so consulta) e ela volta 7 dias depois
+  (`UserStreak.IsRestAvailableOn`).
+- **Pausa**: `RegisterCompletion`/`CurrentStreakAsOf` recebem `IReadOnlyCollection<StreakPause>` e
+  ignoram os dias dentro delas (nem quebram nem gastam a folga). `StreakPauseWindows` (Application)
+  calcula na hora, a partir das Weeklies de todas as matriculas do aluno: do dia seguinte a conclusao
+  da ultima Daily original de uma semana ate a semana fechar (projeto `Evaluated` + publicacao
+  `Validated`, que e quando a proxima semana libera - `WeeklyProject.EvaluatedAt`/
+  `ModulePublication.ValidatedAt`), no maximo 14 dias. Qualquer projeto aberto pausa, de qualquer
+  curso (decisao do dono). Projeto avaliado antes da Fase 69 nao tem `EvaluatedAt` - a pausa dele nao e
+  reconstruida (ja passou).
+- `GamificationSummaryDto` ganhou `StreakPausedUntil` (ultimo dia da pausa que cobre hoje) e
+  `StreakRestAvailable`; o `AgentCard` da tela de start mostra os dois.
 
 **Onde a decisao mora - por que nao nos hooks `Daily.OnFirstCompleted`/`OnReplayCompleted`.**
 Esses hooks (`protected virtual`, ja existiam desde a Fase 4, propositalmente vazios) pareciam o
@@ -1026,6 +1035,9 @@ Weekly - uma Weekly sozinha nunca enxerga as irmas), retorna um `DailyAccessMode
   **Reforco fica de fora da cota diaria nos dois sentidos** (Fase 55): nao e barrado por ela e a
   conclusao dele tambem nao a consome - so conclusoes de Dailies originais (nao-reforco) contam
   pra "uma por dia". "Uma em andamento por vez" continua valendo pra ele.
+- **Fase 69 - ponte sem linguagem**: Daily original com variante de linguagem (a ponte) e projeto
+  ainda sem linguagem -> `DomainException` `linguagem_nao_escolhida` (409), checado antes da cota
+  diaria (escolher a linguagem nao gasta a cota). "/hoje" traduz em `NeedsProjectLanguage`.
 
 > **Fase 54 (21/09/2026) - as duas travas acima passaram a valer pra matricula inteira, e o
 > reforco saiu da cota diaria.** Dois bugs reais relatados ao vivo no mesmo dia (Daily 5, a ultima
@@ -1588,7 +1600,7 @@ Acionado via `dotnet run --project src/Focadu.Api -- seed` (checagem de `args` e
 antes de `app.Run()` - roda e encerra, sem subir o servidor HTTP).
 
 **Fase 21: Dia 1 passou a usar conteudo curado de verdade.** `CuratedDayImporter`
-(`Focadu.Application.Seed`, generico por design - o roteiro real tem 60 dias, um metodo `AddDayN`
+(`Focadu.Application.Seed`, generico por design - o roteiro real tem 72 dias desde a Fase 69, um metodo `AddDayN`
 por dia nao escala) le um `dia-N.json` (schema em `secret/curadoria/CURADORIA.md`, escrito pela
 skill `curar-conteudo`) do disco e aplica a uma `WeeklyTemplate`: cria `DailyTemplate`,
 `CuratedContent`s e `DailyActivity`s em ordem (`QuizOption`s e o grafo de `RoleplayNode`s
@@ -2060,7 +2072,9 @@ implementado) vai precisar pra apontar pra um link especifico.
 `Status = Pending`) junto da URL do fork daquela linguagem (substitui um eventual `SubmissionUrl`
 de fork legado). `Weekly.EnsureProjectLanguageCanBeChosen`/`ChooseProjectLanguage` repetem a mesma
 trava de `SubmitProject` - so depois que `AreDailiesComplete()` (decisao do dono: a escolha so
-acontece com o projeto ja desbloqueado, igual ao envio).
+acontece com o projeto ja desbloqueado, igual ao envio). **Fase 69:** a escolha foi pra entrada da
+ponte - basta ter concluido as Dailies de conteudo (as sem variante de linguagem), e a escolha troca a
+Daily da ponte pra variante daquela linguagem (ver "Semana de 6 dias e ponte" abaixo).
 
 **`ChooseWeeklyProjectLanguageUseCase`** (`POST /weeklies/{id}/project/language`) - valida tudo
 (semana com a variante, linguagem marcada no `User.PreferredLanguages`, projeto desbloqueado e
@@ -2128,6 +2142,38 @@ ainda nao construido - o gancho natural seria o webhook de push do Forgejo dispa
 pipeline de `GetContentSnapshotAsync` + avaliacao por IA), repositorio-template pras outras 11
 semanas do curso piloto, wiring da curadoria pra gerar isso automaticamente.
 
+### Semana de 6 dias e ponte pro projeto (Fase 69)
+
+Desde a Fase 69 a semana N ocupa os **Dias 6N-5 a 6N** (72 no curso): 5 dias de conteudo e, no 6o, a
+**ponte** - dia pratico e guiado que liga a teoria ao projeto, curado numa versao por linguagem
+(`secret/curadoria/web-security/semana-N/ponte/<linguagem>.json`, mesmo schema de um dia). So a Semana
+1 tem ponte curada; as outras semanas ficam com 5 Dailies (o `DayNumber` 6N fica livre).
+
+- **Curriculo**: a ponte sao varios `DailyTemplate` no mesmo `DayNumber`, um por `Language`
+  (`WeeklyTemplate.AddDailyTemplate(day, language)` - um dia tem OU dia unico OU variantes; indice unico
+  `(WeeklyTemplateId, DayNumber, Language)`). O seed importa a pasta `ponte/`
+  (`SeedWebSecurityCourseUseCase.ImportBridge`, exige `dayNumber = 6N`).
+- **Instancia**: a matricula cria 1 Daily por dia (`DefaultDailyTemplatesByDay`), a ponte na variante
+  da menor linguagem. `Weekly.ChooseProjectLanguage` troca a Daily pra variante escolhida
+  (`Daily.BindLanguageVariant`, so antes de comecar). Sem linguagem, iniciar a ponte da
+  `linguagem_nao_escolhida` (409) e `GET /api/today` devolve `DailyAccessMode.NeedsProjectLanguage` (6)
+  sem atividades - o frontend mostra `BridgeLanguageScreen` (escolha em 2 passos, pixel art). Trilha e
+  semana mostram "Ponte pro projeto" como titulo ate a escolha. O projeto continua exigindo todas as
+  Dailies, ponte incluida.
+- **Reforco fora da vaga da ponte**: `CreateDailyReinforcement` numera o reforco depois do dia
+  seguinte ao ultimo dia de conteudo (a ponte pode ser curada depois de o aluno ter reforcos).
+- **`SyncBridgeDaysUseCase`** (roda no `seed`, todo deploy, idempotente): importa pontes curadas depois
+  do curso ja existir e da a Daily da ponte as matriculas cuja semana ainda tem o projeto `Pending` (na
+  variante ja escolhida, se houver). Semana com projeto entregue nao ganha a ponte (uma Daily pendente
+  la trancaria as seguintes).
+- **Migracao 60 -> 72** (`Infrastructure/Persistence/Curriculum72Migration`, no `seed`, antes do seed
+  e do sync): so roda no layout antigo (1o dia da Semana 2 = 6), numa transacao. Renumera `DayNumber` do
+  curriculo e das Dailies (d -> d + (d-1)/5), move os reforcos pra depois da vaga da ponte (d -> d +
+  semana, com os `DailyTemplate` sinteticos) e renumera as mencoes "Dia N" em
+  `CuratedContents.BodyText`, `DailyActivities.Prompt`, `RoleplayNodes.Text` e
+  `WeeklyTemplates.WeeklyProjectSpecText` (`CurriculumRenumbering`, mesma regra dos arquivos). SQL
+  direto: cada grupo passa por valores negativos por causa dos indices unicos.
+
 ### Dialogo da Focada no Projeto Semanal (Fase 64)
 
 Origem: `secret/rascunhos/projeto-semanal-dialogo-de-jogo.md` (decisoes do dono, 23/09/2026) e
@@ -2194,7 +2240,8 @@ como castelo no fim de cada semana.
 script alimenta o Figma (`figma-regiao.js`), o `secret/curadoria/web-security/mapa/regiao-N.json`
 (`gerar-mapa-json.js`) e o frontend (`exportar-frontend.js` grava `frontend/src/assets/mapa/web-security/
 regiao-N.png|json` e `frontend/src/assets/pixel/mapa/*.png`) - nunca editar os PNG/JSON do frontend a
-mao. Cada `regiao-N.json` traz, a 1x (arte 384x192): centro de cada ponto (`dia-N` por DayNumber,
+mao. Fase 69: 6 pontos por semana (o 6o e a ponte), chaves `dN` na numeracao de 72 dias; cada semana
+e uma "cobrinha" de 2 fileiras antes do castelo. Cada `regiao-N.json` traz, a 1x (arte 384x192): centro de cada ponto (`dia-N` por DayNumber,
 `projeto-semana-N` por numero da Weekly), `entrada`/`saida` e o retangulo da ilha de cada semana
 (`ilhas`, usado pela nevoa). Mudou a quantidade de dias de um mes = redesenhar a regiao (aceito).
 

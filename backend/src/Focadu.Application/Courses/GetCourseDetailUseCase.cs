@@ -73,6 +73,11 @@ public class GetCourseDetailUseCase
                 var contentTitleById = weekly.Template.CuratedContents.ToDictionary(c => c.Id, c => c.Title);
                 string? ResolveDailyTitle(Daily daily)
                 {
+                    // Fase 69: a ponte antes da escolha da linguagem ainda aponta pra variante padrao - o
+                    // titulo dela seria o da linguagem errada.
+                    if (daily.RequiresProjectLanguage && weekly.Project?.Language is null)
+                        return "Ponte pro projeto";
+
                     var material = daily.Activities.FirstOrDefault(a => a.Type == ActivityType.Reading)
                         ?? daily.Activities.FirstOrDefault(a => a.Type == ActivityType.Video);
                     return material?.ContentId is { } contentId ? contentTitleById.GetValueOrDefault(contentId) : null;

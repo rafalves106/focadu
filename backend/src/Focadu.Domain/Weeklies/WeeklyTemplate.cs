@@ -81,15 +81,40 @@ public class WeeklyTemplate : Entity
         Theme = theme;
     }
 
-    public DailyTemplate AddDailyTemplate(int dayNumber)
+    /// <summary>
+    /// Adiciona um dia ao curriculo da semana. Fase 69: <paramref name="language"/> cria uma variante
+    /// por linguagem do mesmo dia (a ponte pro projeto) - um DayNumber tem OU um dia unico (sem
+    /// linguagem) OU variantes, uma por linguagem, nunca os dois.
+    /// </summary>
+    public DailyTemplate AddDailyTemplate(int dayNumber, ProjectLanguage? language = null)
     {
-        if (_dailyTemplates.Any(d => d.DayNumber == dayNumber))
+        var sameDay = _dailyTemplates.Where(d => d.DayNumber == dayNumber).ToList();
+        if (sameDay.Any(d => d.Language is null) || (language is null && sameDay.Count > 0))
             throw new DomainException("Ja existe um DailyTemplate com esse DayNumber nesta WeeklyTemplate.");
+        if (sameDay.Any(d => d.Language == language))
+            throw new DomainException("Ja existe uma variante desse dia nessa linguagem nesta WeeklyTemplate.");
 
-        var template = new DailyTemplate(Id, dayNumber);
+        var template = new DailyTemplate(Id, dayNumber, language);
         _dailyTemplates.Add(template);
         return template;
     }
+
+    /// <summary>
+    /// Fase 69: o DailyTemplate que uma Daily nova deste dia recebe na matricula. Dia unico: ele
+    /// mesmo. Dia com variantes por linguagem: a da menor linguagem, so como ponto de partida - a
+    /// Daily troca pra variante certa quando o aluno escolhe a linguagem do projeto
+    /// (Weekly.ChooseProjectLanguage), e nao pode ser iniciada antes disso (EvaluateDailyAccess).
+    /// </summary>
+    public IReadOnlyList<DailyTemplate> DefaultDailyTemplatesByDay() =>
+        _dailyTemplates
+            .GroupBy(d => d.DayNumber)
+            .OrderBy(g => g.Key)
+            .Select(g => g.OrderBy(d => d.Language.HasValue).ThenBy(d => d.Language).First())
+            .ToList();
+
+    /// <summary>Fase 69: a variante do dia <paramref name="dayNumber"/> na linguagem pedida, ou null se esse dia nao tem variantes (ou nao tem essa linguagem).</summary>
+    public DailyTemplate? FindDailyTemplateVariant(int dayNumber, ProjectLanguage language) =>
+        _dailyTemplates.FirstOrDefault(d => d.DayNumber == dayNumber && d.Language == language);
 
     public CuratedContent AddCuratedContent(CuratedContentType type, string title, string? externalUrl = null, string? bodyText = null)
     {

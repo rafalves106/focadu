@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { api, ApiError } from '../../api/client';
 import { PROJECT_LANGUAGE_NAMES, ProjectLanguage, type UserDto } from '../../api/types';
-import { InterestChip } from './InterestChip';
+import { PixelModal } from '../PixelModal';
+import { FocadaSays } from '../session/FocadaSays';
+import { PixelButton } from '../session/PixelButton';
 
 const LANGUAGE_OPTIONS = [ProjectLanguage.Python, ProjectLanguage.JavaScript];
 
@@ -10,7 +12,8 @@ const LANGUAGE_OPTIONS = [ProjectLanguage.Python, ProjectLanguage.JavaScript];
  * linguagem dos Projetos Semanais (Fase 59) - sem isso o projeto da semana fica travado em
  * "marque uma linguagem no perfil". Sem fechar pelo fundo/ESC: some sozinho quando o `user`
  * devolvido pelo PUT ja tem linguagem. Reenvia interesses/notas atuais tal qual, porque o
- * endpoint substitui o perfil inteiro.
+ * endpoint substitui o perfil inteiro. Pixel art desde 24/09/2026: a Focada pergunta, as linguagens
+ * sao caixas de marcar pixel (■/□) e o botao e o `PixelButton`.
  */
 export function LanguagePreferenceModal({ user, onSaved }: { user: UserDto; onSaved: (user: UserDto) => void }) {
   const [languages, setLanguages] = useState<ProjectLanguage[]>([]);
@@ -33,43 +36,39 @@ export function LanguagePreferenceModal({ user, onSaved }: { user: UserDto; onSa
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/70 p-6" role="presentation">
-      <div
-        className="flex w-[460px] max-w-full flex-col gap-6 rounded-2xl border border-surface-alt bg-surface p-8"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Linguagem dos Projetos Semanais"
-      >
-        <div className="flex flex-col gap-3">
-          <h1 className="text-xl font-bold text-primary">Em qual linguagem você quer fazer os projetos?</h1>
-          <p className="text-sm leading-relaxed text-secondary">
-            Os Projetos Semanais agora têm repositório pronto e referências próprias por linguagem. Marque uma ou mais para
-            continuar - dá pra mudar depois no seu perfil.
-          </p>
-        </div>
+    <PixelModal label="Linguagem dos Projetos Semanais" title="Projetos semanais" widthClass="max-w-lg">
+      <FocadaSays>
+        Em qual linguagem você quer fazer os projetos, agente? Cada uma tem repositório pronto e referências próprias. Marca
+        uma ou mais: dá pra mudar depois no seu perfil.
+      </FocadaSays>
 
-        <div className="flex flex-wrap gap-2">
-          {LANGUAGE_OPTIONS.map((language) => (
-            <InterestChip
+      <div className="flex flex-wrap gap-3" role="group" aria-label="Linguagens">
+        {LANGUAGE_OPTIONS.map((language) => {
+          const selected = languages.includes(language);
+          return (
+            <button
               key={language}
-              label={PROJECT_LANGUAGE_NAMES[language]}
-              selected={languages.includes(language)}
-              onToggle={() => toggleLanguage(language)}
-            />
-          ))}
-        </div>
-
-        {error && <p className="text-sm text-alert">{error}</p>}
-
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || languages.length === 0}
-          className="rounded-xl bg-accent px-6 py-3 text-sm font-bold tracking-wide text-base disabled:opacity-50"
-        >
-          {saving ? 'Salvando...' : 'Salvar e continuar'}
-        </button>
+              type="button"
+              onClick={() => toggleLanguage(language)}
+              aria-pressed={selected}
+              className={`flex items-center gap-2 border-2 px-4 py-2 font-pixel text-xl leading-none transition-colors ${
+                selected ? 'border-accent bg-accent/10 text-primary' : 'border-stroke text-secondary hover:border-secondary hover:text-primary'
+              }`}
+            >
+              <span className={selected ? 'text-accent' : 'text-muted'} aria-hidden="true">
+                {selected ? '■' : '□'}
+              </span>
+              {PROJECT_LANGUAGE_NAMES[language]}
+            </button>
+          );
+        })}
       </div>
-    </div>
+
+      {error && <p className="font-pixel text-lg leading-snug text-alert">{error}</p>}
+
+      <PixelButton onClick={handleSave} disabled={saving || languages.length === 0} className="w-full">
+        {saving ? 'Salvando...' : 'Salvar e continuar'}
+      </PixelButton>
+    </PixelModal>
   );
 }

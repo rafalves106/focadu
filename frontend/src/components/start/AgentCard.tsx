@@ -20,13 +20,17 @@ export function AgentCard({
   gamification: GamificationSummaryDto;
   todayDone: boolean;
 }) {
-  const { currentStreak, longestStreak, totalGems } = gamification;
+  const { currentStreak, longestStreak, totalGems, streakPausedUntil, streakRestAvailable } = gamification;
   const week = streakWeek(currentStreak, todayDone);
-  const hint = todayDone
-    ? 'Streak garantido hoje.'
-    : currentStreak > 0
-      ? `Estude hoje: ${currentStreak + 1} ${currentStreak + 1 === 1 ? 'dia' : 'dias'} de streak.`
-      : 'Estude hoje pra começar o streak.';
+  // Fase 69: com o projeto da semana aberto nao ha Daily pra fazer - o streak fica pausado (nem
+  // quebra nem cresce) ate a semana fechar, no maximo 14 dias.
+  const hint = streakPausedUntil
+    ? `Streak pausado até ${formatDayMonth(streakPausedUntil)}: o projeto da semana está aberto.`
+    : todayDone
+      ? 'Streak garantido hoje.'
+      : currentStreak > 0
+        ? `Estude hoje: ${currentStreak + 1} ${currentStreak + 1 === 1 ? 'dia' : 'dias'} de streak.`
+        : 'Estude hoje pra começar o streak.';
 
   return (
     <div className="pixel-box flex shrink-0 flex-col gap-3 bg-base p-4">
@@ -69,9 +73,21 @@ export function AgentCard({
           ))}
         </ol>
         <p className="font-pixel text-lg leading-tight text-secondary">{hint}</p>
+        {/* Fase 69: folga movel - 1 dia sem estudo a cada 7, em qualquer dia, gasta sozinha. */}
+        {!streakPausedUntil && currentStreak > 0 && (
+          <span className={`font-pixel-label text-[8px] ${streakRestAvailable ? 'text-accent' : 'text-muted'}`}>
+            {streakRestAvailable ? 'Folga livre: 1 dia sem estudo não quebra' : 'Folga usada: volta 7 dias depois'}
+          </span>
+        )}
       </div>
     </div>
   );
+}
+
+/** "2026-10-05" -> "05/10" (data do backend, sem fuso - nao passa por Date). */
+function formatDayMonth(isoDate: string): string {
+  const [, month, day] = isoDate.split('-');
+  return `${day}/${month}`;
 }
 
 type Cell = 'streak' | 'hoje' | 'vazio';

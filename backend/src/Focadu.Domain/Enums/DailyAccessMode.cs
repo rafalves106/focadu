@@ -38,5 +38,13 @@ public enum DailyAccessMode
     /// Diferente de <see cref="Blocked"/>, "voltar amanha" nao resolve: precisa fechar a semana.
     /// Como Blocked, so existe vindo de "/hoje"; StartOrResumeDaily recusa a mutacao com 409.
     /// </summary>
-    WeekPendingClosure = 5
+    WeekPendingClosure = 5,
+
+    /// <summary>
+    /// Fase 69: a Daily de hoje e a ponte pro Projeto Semanal, que existe em uma versao por
+    /// linguagem, e o aluno ainda nao escolheu a linguagem do projeto. So vem do atalho "/hoje"
+    /// (GetTodayUseCase) - o cliente mostra a escolha de linguagem no lugar da sessao.
+    /// StartOrResumeDaily recusa com 409 "linguagem_nao_escolhida".
+    /// </summary>
+    NeedsProjectLanguage = 6,
 }

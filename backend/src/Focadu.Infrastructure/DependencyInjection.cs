@@ -48,6 +48,7 @@ public static class DependencyInjection
         services.AddDbContext<FocaduDbContext>(options => options.UseNpgsql(connectionString));
 
         services.AddScoped<ICourseRepository, CourseRepository>();
+        services.AddScoped<Persistence.Curriculum72Migration>();
         services.AddScoped<IMonthlyRepository, MonthlyRepository>();
         services.AddScoped<IWeeklyRepository, WeeklyRepository>();
         services.AddScoped<IWeeklyTemplateRepository, WeeklyTemplateRepository>();

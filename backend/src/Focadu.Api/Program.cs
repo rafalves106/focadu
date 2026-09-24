@@ -198,12 +198,23 @@ RankingScope ParseRankingScope(string? scope)
 if (args.Contains("seed"))
 {
     using var scope = app.Services.CreateScope();
+
+    // Fase 69: renumeracao 60 -> 72 dias num banco que ja tinha o curso (idempotente, so roda uma vez).
+    var renumbering = scope.ServiceProvider.GetRequiredService<Focadu.Infrastructure.Persistence.Curriculum72Migration>();
+    Console.WriteLine(await renumbering.RunAsync());
+
     var seeder = scope.ServiceProvider.GetRequiredService<SeedWebSecurityCourseUseCase>();
     var result = await seeder.ExecuteAsync();
 
     Console.WriteLine(result.AlreadyExisted
         ? "Seed: curso 'Web Security' ja existe - nada foi inserido."
         : $"Seed: curso 'Web Security' criado com sucesso (CourseId={result.CourseId}).");
+
+    // Fase 69: pontes curadas depois do seed (e a da Semana 1 nas matriculas que ja existiam).
+    var bridgeSync = await scope.ServiceProvider.GetRequiredService<SyncBridgeDaysUseCase>().ExecuteAsync();
+    Console.WriteLine($"Seed: pontes - {bridgeSync.TemplatesCreated} variantes importadas, {bridgeSync.DailiesAdded} Dailies adicionadas.");
+    foreach (var skipped in bridgeSync.Skipped)
+        Console.WriteLine($"Seed: ponte NAO adicionada - {skipped}");
 
     // Fase 17: catalogo fixo da loja de cosmeticos - mesmo gatilho `-- seed`, idempotente.
     var cosmeticSeeder = scope.ServiceProvider.GetRequiredService<SeedCosmeticCatalogUseCase>();

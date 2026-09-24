@@ -11,6 +11,8 @@
  *   /__mock/reset?at=semana&reforco=1         (semana esperando o castelo)
  *   /__mock/reset?at=reforco                  (sessao de reforco, 3 etapas)
  *   /__mock/reset?projeto=pendente|avaliado   (tela do Projeto Semanal)
+ *   /__mock/reset?at=ponte                    (Fase 69: a Daily de hoje e a ponte, falta escolher a linguagem)
+ *   /__mock/reset?at=Quiz&pausa=1             (Fase 69: streak pausado - projeto da semana aberto)
  * Erros: /start?course=erro-500 | erro-offline | erro-lento (timeout do cliente, ~10s).
  * Ids fixos (MOCK_IDS) pra os links continuarem valendo depois de reiniciar o Vite.
  */
@@ -171,29 +173,32 @@ function activityDto(act: State['activities'][number]) {
   };
 }
 
-type Mode = 'normal' | 'bloqueado' | 'semana';
+type Mode = 'normal' | 'bloqueado' | 'semana' | 'ponte';
 type ProjectState = 'pendente' | 'entregue' | 'avaliado';
 interface Scenario {
   mode: Mode;
   pendingReinforcement: boolean;
   project: ProjectState;
+  /** Fase 69: streak pausado (projeto aberto) no resumo de gamificacao. */
+  paused?: boolean;
 }
 
 function dailyDto(state: State, scenario: Scenario, id = ids.daily, isReinforcement = false) {
   const accessMode = isReinforcement
     ? state.completedAt ? 2 : 1
-    : scenario.mode === 'bloqueado' ? 4 : scenario.mode === 'semana' ? 5 : state.completedAt ? 2 : 1;
+    : scenario.mode === 'bloqueado' ? 4 : scenario.mode === 'semana' ? 5 : scenario.mode === 'ponte' ? 6 : state.completedAt ? 2 : 1;
   return {
     id,
     weeklyId: ids.weekly,
-    dayNumber: 1,
+    dayNumber: scenario.mode === 'ponte' && !isReinforcement ? 6 : 1,
     date: new Date().toISOString().slice(0, 10),
-    status: state.completedAt || (!isReinforcement && scenario.mode !== 'normal') ? 3 : 2,
+    status: scenario.mode === 'ponte' && !isReinforcement ? 0 : state.completedAt || (!isReinforcement && scenario.mode !== 'normal') ? 3 : 2,
     isReinforcement,
     penaltyPoints: state.penaltyPoints,
     penaltyThreshold: PENALTY_THRESHOLD,
     accessMode,
-    activities: state.activities.map(activityDto),
+    // Fase 69: sem linguagem escolhida, a ponte vem sem atividades (ver GetTodayUseCase).
+    activities: scenario.mode === 'ponte' && !isReinforcement ? [] : state.activities.map(activityDto),
     pendingReinforcementDailyId: scenario.pendingReinforcement && !isReinforcement ? ids.reinforcement : null,
   };
 }
@@ -213,10 +218,10 @@ function projectDto(scenario: Scenario) {
       : null,
     forgejoTokenLastEight: 'abcd1234',
     forgejoUsername: 'falves',
-    languageStep: 0,
+    languageStep: scenario.mode === 'ponte' ? 2 : 0,
     language: null,
-    supportedLanguages: [],
-    choosableLanguages: [],
+    supportedLanguages: scenario.mode === 'ponte' ? [1, 2] : [],
+    choosableLanguages: scenario.mode === 'ponte' ? [1, 2] : [],
     references: [],
     briefing: [],
     stateLines: {},
@@ -292,9 +297,9 @@ export function sessionMock(): Plugin {
   function reset(at = 'Quiz', penalty = 0, extra: Partial<Scenario> = {}) {
     state = buildState(curated);
     reinforcement = reinforcementState(curated);
-    const mode: Mode = at === 'bloqueado' ? 'bloqueado' : at === 'semana' ? 'semana' : 'normal';
-    fastForward(state, mode === 'normal' && at !== 'reforco' ? at : 'done', penalty);
-    if (mode !== 'normal') state.completedAt = new Date().toISOString();
+    const mode: Mode = at === 'bloqueado' ? 'bloqueado' : at === 'semana' ? 'semana' : at === 'ponte' ? 'ponte' : 'normal';
+    fastForward(state, mode === 'normal' && at !== 'reforco' ? at : mode === 'ponte' ? 'Reading' : 'done', penalty);
+    if (mode !== 'normal' && mode !== 'ponte') state.completedAt = new Date().toISOString();
     scenario = { mode, pendingReinforcement: false, project: 'pendente', ...extra };
   }
 
@@ -317,6 +322,7 @@ export function sessionMock(): Plugin {
           const projeto = url.searchParams.get('projeto') as ProjectState | null;
           reset(projeto ? 'semana' : at, Number(url.searchParams.get('penalty') ?? 0), {
             pendingReinforcement: url.searchParams.get('reforco') === '1',
+            paused: url.searchParams.get('pausa') === '1',
             ...(projeto ? { project: projeto } : {}),
           });
           res.statusCode = 302;
@@ -354,7 +360,10 @@ export function sessionMock(): Plugin {
         if (path === '/api/auth/logout') return send(res, 204);
         if (path === '/api/courses') return send(res, 200, [{ id: ids.course, name: 'Web Security', status: 1, monthlyCount: 4 }]);
         if (path === '/api/marketplace/catalog') return send(res, 200, { totalGems: 12, items: [] });
-        if (path === '/api/users/me/gamification') return send(res, 200, { totalGems: 12, currentStreak: 3, longestStreak: 7, streakJustBroken: false });
+        if (path === '/api/users/me/gamification') {
+          const pausedUntil = scenario.paused ? new Date(Date.now() + 9 * 86_400_000).toISOString().slice(0, 10) : null;
+          return send(res, 200, { totalGems: 12, currentStreak: 3, longestStreak: 7, streakJustBroken: false, streakPausedUntil: pausedUntil, streakRestAvailable: true });
+        }
         if (path === '/api/system/ai-status')
           return send(res, 200, [
             { provider: 'Groq', configured: true, available: true, errorMessage: null, checkedAt: now },
@@ -368,6 +377,11 @@ export function sessionMock(): Plugin {
           return send(res, 200, dailyDto(target, scenario, m[1], m[1] === ids.reinforcement));
         }
         if (path === `/api/weeklies/${ids.weekly}`) return send(res, 200, weeklyDto(state, scenario));
+        if (path === `/api/weeklies/${ids.weekly}/project/language` && method === 'POST') {
+          // Fase 69: escolher a linguagem libera a ponte (no mock, a sessao do Dia 1 faz o papel dela).
+          scenario = { ...scenario, mode: 'normal' };
+          return send(res, 200, projectDto(scenario));
+        }
         if (path === `/api/weeklies/${ids.weekly}/project/submit` && method === 'POST') {
           scenario.project = 'avaliado';
           return send(res, 200, projectDto(scenario));

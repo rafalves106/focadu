@@ -3,15 +3,21 @@ import { ApiError } from '../../api/client';
 import type { UserDto } from '../../api/types';
 import { useAuth } from '../../contexts/useAuth';
 import { isValidEmail } from '../../lib/validation';
+import { pixelField } from '../PixelModal';
+import { PixelButton } from '../session/PixelButton';
 
 export function LoginForm({
   onSuccess,
   submitLabel = 'ENTRAR NO COCKPIT',
+  pixel = false,
 }: {
   onSuccess: (user: UserDto) => void;
   // Fase 22 (SessionExpiredModal): mesmo form, CTA "Retomar Sessão" - className ja tem `uppercase`,
   // entao o texto passado aqui nao precisa vir em caixa alta.
   submitLabel?: string;
+  /** Variante pixel art (24/09/2026, SessionExpiredModal): rotulos em Silkscreen, campos em VT323 com
+   * borda reta, `PixelButton`. A tela de login continua na versao antiga ate ser redesenhada. */
+  pixel?: boolean;
 }) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
@@ -43,6 +49,46 @@ export function LoginForm({
     } finally {
       setBusy(false);
     }
+  }
+
+  if (pixel) {
+    return (
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <label className="flex flex-col gap-2">
+          <span className="font-pixel-label text-[9px] text-secondary">Endereço de e-mail</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="seu@email.com"
+            autoComplete="email"
+            className={pixelField}
+          />
+        </label>
+
+        <label className="flex flex-col gap-2">
+          <span className="font-pixel-label text-[9px] text-secondary">Senha de acesso</span>
+          <div className="flex items-center gap-3 border-2 border-stroke bg-surface px-3 py-2 focus-within:border-accent">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              className="min-w-0 flex-1 bg-transparent font-pixel text-xl leading-snug text-primary outline-none"
+            />
+            <button type="button" onClick={() => setShowPassword((v) => !v)} className="shrink-0 font-pixel-label text-[9px] text-accent hover:brightness-110">
+              {showPassword ? 'Ocultar' : 'Mostrar'}
+            </button>
+          </div>
+        </label>
+
+        {error && <p className="font-pixel text-lg leading-snug text-alert">{error}</p>}
+
+        <PixelButton type="submit" disabled={busy} className="mt-1 w-full">
+          {busy ? 'Entrando...' : submitLabel}
+        </PixelButton>
+      </form>
+    );
   }
 
   return (

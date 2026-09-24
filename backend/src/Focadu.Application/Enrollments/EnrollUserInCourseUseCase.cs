@@ -71,7 +71,9 @@ public class EnrollUserInCourseUseCase
         {
             foreach (var weeklyTemplate in monthly.WeeklyTemplates.OrderBy(w => w.Number))
             {
-                var orderedDailyTemplates = weeklyTemplate.DailyTemplates.OrderBy(d => d.DayNumber).ToList();
+                // Fase 69: 1 Daily por dia - num dia com uma versao por linguagem (a ponte), a
+                // Daily nasce na variante padrao e troca pra certa na escolha da linguagem.
+                var orderedDailyTemplates = weeklyTemplate.DefaultDailyTemplatesByDay();
                 if (orderedDailyTemplates.Count == 0) continue;
 
                 var weekly = new Weekly(enrollment.Id, weeklyTemplate, cursor);

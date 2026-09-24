@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { WeeklyProjectStatus } from '../../api/types';
+import { api, ApiError } from '../../api/client';
+import { PROJECT_LANGUAGE_NAMES, ProjectLanguageStep, WeeklyProjectStatus, type ProjectLanguage } from '../../api/types';
 import type { ApiFailure } from '../../lib/apiError';
 import { BLOCKED_TODAY, SESSION_DONE_LINE } from '../../lib/focadaSessionLines';
 import { useSession } from '../../lib/sessionContext';
@@ -8,7 +9,7 @@ import { useSessionKeys } from '../../lib/useSessionKeys';
 import { PendingReinforcementCard } from '../PendingReinforcementCard';
 import { SessionFooter, SessionLayout } from '../SessionShell';
 import { FocadaSays } from './FocadaSays';
-import { PixelButton, PixelLink } from './PixelButton';
+import { PixelButton, PixelChip, PixelLink } from './PixelButton';
 import castleIcon from '../../assets/pixel/mapa/castelo-pendente.png';
 
 /** Carregando dentro da casca global (sem `min-h-screen`, que empurraria a pagina). */
@@ -129,12 +130,126 @@ export function WeekClosureScreen() {
   );
 }
 
+/**
+ * `DailyAccessMode.NeedsProjectLanguage` (Fase 69, secret/rascunhos/ponte-teoria-projeto-semanal.md):
+ * a Daily de hoje e a ponte pro Projeto Semanal, que existe numa versao por linguagem - a escolha da
+ * linguagem do projeto saiu da abertura do projeto e veio pra ca. Mesma regra da Fase 59: definitiva,
+ * em 2 passos (escolher, confirmar), e so entre as linguagens que o aluno marcou no perfil.
+ * Teclas: 1-N escolhem, Enter confirma, Esc volta pro passo 1.
+ */
+export function BridgeLanguageScreen({ onChosen }: { onChosen: () => void }) {
+  const { weekly } = useSession();
+  const [pending, setPending] = useState<ProjectLanguage | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const project = weekly?.project ?? null;
+  const choosable = project?.languageStep === ProjectLanguageStep.NeedsChoice ? project.choosableLanguages : [];
+
+  async function confirm() {
+    if (!weekly || pending === null || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.chooseWeeklyProjectLanguage(weekly.id, pending);
+      onChosen();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Não deu pra confirmar a linguagem. Tenta de novo.');
+      setSubmitting(false);
+    }
+  }
+
+  useSessionKeys((key) => {
+    if (pending === null) {
+      const index = Number(key) - 1;
+      if (index >= 0 && index < choosable.length) setPending(choosable[index]);
+    } else if (key === 'Enter') {
+      confirm();
+    } else if (key === 'Escape' && !submitting) {
+      setPending(null);
+      setError(null);
+    }
+  });
+
+  if (!weekly) return <SessionLoading />;
+
+  if (project?.languageStep === ProjectLanguageStep.NeedsPreference) {
+    return (
+      <SessionLayout tone="project" label={`Semana ${weekly.number} · ponte pro projeto`} showGauge={false} centered>
+        <FocadaSays size="lg" tone="project">
+          Antes da ponte você escolhe a linguagem do projeto. Só que você ainda não marcou nenhuma no seu perfil. Marca lá e volta
+          aqui, agente.
+        </FocadaSays>
+        <SessionFooter>
+          <PixelLink to={`/start?course=${weekly.courseId}`} tone="muted" ghost>
+            Voltar pro mapa
+          </PixelLink>
+          <PixelLink to="/onboarding/perfil?edit=1" tone="project">
+            Marcar no perfil ›
+          </PixelLink>
+        </SessionFooter>
+      </SessionLayout>
+    );
+  }
+
+  return (
+    <SessionLayout tone="project" label={`Semana ${weekly.number} · ponte pro projeto`} sub="Escolha definitiva" showGauge={false} centered>
+      <FocadaSays size="lg" tone="project">
+        {pending === null
+          ? 'Os dias de teoria acabaram. Hoje é a ponte: o mesmo que você viu na semana, só que em código, pra você chegar no projeto sabendo por onde começar. Em qual linguagem você vai construir?'
+          : `${PROJECT_LANGUAGE_NAMES[pending]}, então? A ponte de hoje, o repositório e as referências do projeto vêm nela. Depois de confirmar, não tem troca.`}
+      </FocadaSays>
+
+      {pending === null ? (
+        <div className="flex flex-wrap gap-3">
+          {choosable.map((language, i) => (
+            <PixelButton key={language} tone="project" ghost onClick={() => setPending(language)} className="min-w-40 text-[12px]">
+              <span className="text-muted">{i + 1}</span> {PROJECT_LANGUAGE_NAMES[language]}
+            </PixelButton>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3">
+          <PixelChip tone="project">{PROJECT_LANGUAGE_NAMES[pending]}</PixelChip>
+          {error && <p className="font-pixel text-lg leading-tight text-alert">{error}</p>}
+        </div>
+      )}
+
+      <SessionFooter>
+        {pending === null ? (
+          <PixelLink to={`/start?course=${weekly.courseId}`} tone="muted" ghost>
+            Voltar pro mapa
+          </PixelLink>
+        ) : (
+          <PixelButton
+            tone="muted"
+            ghost
+            disabled={submitting}
+            onClick={() => {
+              setPending(null);
+              setError(null);
+            }}
+          >
+            ← Trocar
+          </PixelButton>
+        )}
+        {pending !== null && (
+          <PixelButton tone="project" onClick={confirm} disabled={submitting}>
+            {submitting ? 'Confirmando...' : `Confirmar ${PROJECT_LANGUAGE_NAMES[pending]} ›`}
+          </PixelButton>
+        )}
+      </SessionFooter>
+    </SessionLayout>
+  );
+}
+
 /** Textos (com acento) das recusas ao abrir uma Daily - o backend manda sem acento, fica de fallback. */
 const DAILY_REFUSAL_COPY: Record<string, string> = {
   daily_limite_diario_atingido: 'Você já fez uma sessão hoje — o limite é 1 por dia. Amanhã tem mais, agente.',
   daily_em_andamento: 'Você já tem uma sessão em andamento. Termina (ou retoma) aquela antes de começar outra.',
   projeto_semana_anterior_pendente: 'O projeto de uma semana anterior ainda não foi concluído. Entrega ele e espera a avaliação pra liberar esta semana.',
   modulo_bloqueado_por_publicacao: 'Uma semana anterior precisa de uma publicação validada antes de começar esta.',
+  linguagem_nao_escolhida: 'Esta é a ponte pro projeto: escolha a linguagem do projeto antes de começar.',
 };
 
 /**

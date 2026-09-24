@@ -31,6 +31,7 @@ public class CompleteDailyUseCase
     private readonly IWeeklyRepository _weeklyRepository;
     private readonly IUserStreakRepository _streakRepository;
     private readonly GamificationCreditor _gamificationCreditor;
+    private readonly StreakPauseWindows _streakPauseWindows;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
 
@@ -38,9 +39,11 @@ public class CompleteDailyUseCase
         IWeeklyRepository weeklyRepository,
         IUserStreakRepository streakRepository,
         GamificationCreditor gamificationCreditor,
+        StreakPauseWindows streakPauseWindows,
         IUnitOfWork unitOfWork,
         IClock clock)
     {
+        _streakPauseWindows = streakPauseWindows;
         _weeklyRepository = weeklyRepository;
         _streakRepository = streakRepository;
         _gamificationCreditor = gamificationCreditor;
@@ -64,6 +67,9 @@ public class CompleteDailyUseCase
         var gemsEarned = 0;
         var wasReinforcementBonus = false;
         var streak = await _streakRepository.GetByUserIdAsync(userId, cancellationToken);
+        // Fase 69: calculado ANTES de salvar a conclusao - e a pausa que valeu ate hoje (a desta
+        // semana, se esta Daily fecha as Dailies dela, so comeca amanha).
+        var streakPauses = await _streakPauseWindows.ForUserAsync(userId, cancellationToken);
 
         if (isFirstCompletion)
         {
@@ -87,7 +93,7 @@ public class CompleteDailyUseCase
                 await _streakRepository.AddAsync(streak, cancellationToken);
             }
 
-            streak.RegisterCompletion(today);
+            streak.RegisterCompletion(today, streakPauses);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -98,7 +104,7 @@ public class CompleteDailyUseCase
         var dailyDto = DailyStateMapper.ToDto(daily, accessMode);
 
         var weeklyReinforcement = weekly.Reinforcements.FirstOrDefault(r => r.WeakDailyIds.Contains(daily.Id));
-        var streakAfterCompletion = streak?.CurrentStreakAsOf(today) ?? 0;
+        var streakAfterCompletion = streak?.CurrentStreakAsOf(today, streakPauses) ?? 0;
 
         return new CompleteDailyResult(
             dailyDto,
