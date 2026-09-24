@@ -1,9 +1,13 @@
 namespace Focadu.Domain.Enums;
 
-/// <summary>Raridade visual de um CosmeticItem (Fase 17) - so cor por raridade nesta fase (sem arte real ainda, ver docs/fase-17).</summary>
+/// <summary>
+/// Raridade de um CosmeticItem. Common/Rare/Epic desde a Fase 17; Legendary (Fase 71) fica
+/// reservada pra pets, auras e itens animados - pesa 1% no sorteio da vitrine (ver ShopShowcase).
+/// </summary>
 public enum CosmeticRarity
 {
     Common,
     Rare,
-    Epic
+    Epic,
+    Legendary
 }

@@ -22,6 +22,14 @@ public class UserEquippedCosmeticsConfiguration : IEntityTypeConfiguration<UserE
         builder.HasOne<CosmeticItem>().WithMany().HasForeignKey(e => e.EquippedNameColorId).OnDelete(DeleteBehavior.SetNull).IsRequired(false);
         builder.HasOne<CosmeticItem>().WithMany().HasForeignKey(e => e.EquippedBannerId).OnDelete(DeleteBehavior.SetNull).IsRequired(false);
 
+        // Fase 71: camadas do agente em pixel art, mesmo tipo de referencia fraca.
+        builder.HasOne<CosmeticItem>().WithMany().HasForeignKey(e => e.EquippedTopId).OnDelete(DeleteBehavior.SetNull).IsRequired(false);
+        builder.HasOne<CosmeticItem>().WithMany().HasForeignKey(e => e.EquippedBottomId).OnDelete(DeleteBehavior.SetNull).IsRequired(false);
+        builder.HasOne<CosmeticItem>().WithMany().HasForeignKey(e => e.EquippedHairId).OnDelete(DeleteBehavior.SetNull).IsRequired(false);
+        builder.HasOne<CosmeticItem>().WithMany().HasForeignKey(e => e.EquippedShoesId).OnDelete(DeleteBehavior.SetNull).IsRequired(false);
+        builder.Property(e => e.SkinTone);
+        builder.Ignore(e => e.HasAgent);
+
         // 1:1 com User - lazy-created, nunca mais de uma linha por usuario.
         builder.HasIndex(e => e.UserId).IsUnique();
     }

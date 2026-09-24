@@ -1,12 +1,13 @@
-import { CosmeticRarity } from '../api/types';
+import { CosmeticRarity, CosmeticSlot } from '../api/types';
 
-// Sem Figma validado pra cosmeticos ainda (Fase 17/18) - cor por raridade como placeholder visual,
-// mesma paleta escura/neon ja estabelecida. Compartilhado por CosmeticItemCard (swatch da loja) e
-// EquippedFramePreview (borda da moldura equipada) - uma unica fonte pra "raridade -> cor".
+// Raridade -> cor, uma unica fonte (vitrine da loja, guarda-roupa, moldura equipada do avatar).
+// Fase 71: saiu de slate/sky/purple pra paleta pixel art fechada (secret/rascunhos/
+// loja-raridade-e-vitrine.md): Comum metal, Raro verde, Epico ambar, Lendario vermelho.
 export const RARITY_STYLE: Record<CosmeticRarity, { swatch: string; border: string; label: string; text: string }> = {
-  [CosmeticRarity.Common]: { swatch: 'bg-slate-400', border: 'border-slate-400', label: 'Comum', text: 'text-slate-400' },
-  [CosmeticRarity.Rare]: { swatch: 'bg-sky-400', border: 'border-sky-400', label: 'Raro', text: 'text-sky-400' },
-  [CosmeticRarity.Epic]: { swatch: 'bg-purple-400', border: 'border-purple-400', label: 'Épico', text: 'text-purple-400' },
+  [CosmeticRarity.Common]: { swatch: 'bg-secondary', border: 'border-secondary', label: 'Comum', text: 'text-secondary' },
+  [CosmeticRarity.Rare]: { swatch: 'bg-accent', border: 'border-accent', label: 'Raro', text: 'text-accent' },
+  [CosmeticRarity.Epic]: { swatch: 'bg-project', border: 'border-project', label: 'Épico', text: 'text-project' },
+  [CosmeticRarity.Legendary]: { swatch: 'bg-alert', border: 'border-alert', label: 'Lendário', text: 'text-alert' },
 };
 
 // Nome do item "Cor do Nome" (Fase 18, token estavel vindo do backend, ver RankingEntryDto.
@@ -23,3 +24,22 @@ const NAME_COLOR_STYLE: Record<string, string> = {
 export function nameColorClass(token: string | null): string {
   return (token && NAME_COLOR_STYLE[token]) || 'text-primary';
 }
+
+/** Nome de cada slot pra UI (Loja, guarda-roupa). */
+export const SLOT_LABEL: Record<CosmeticSlot, string> = {
+  [CosmeticSlot.AvatarFrame]: 'Moldura',
+  [CosmeticSlot.NameColor]: 'Cor do nome',
+  [CosmeticSlot.ProfileBanner]: 'Banner',
+  [CosmeticSlot.Top]: 'Parte de cima',
+  [CosmeticSlot.Bottom]: 'Parte de baixo',
+  [CosmeticSlot.Hair]: 'Cabeça',
+  [CosmeticSlot.Shoes]: 'Tênis',
+};
+
+/** Chance de cada raridade no sorteio da vitrine (ShopShowcase no backend) - so pra explicar na tela. */
+export const RARITY_CHANCE: Record<CosmeticRarity, number> = {
+  [CosmeticRarity.Common]: 60,
+  [CosmeticRarity.Rare]: 30,
+  [CosmeticRarity.Epic]: 9,
+  [CosmeticRarity.Legendary]: 1,
+};

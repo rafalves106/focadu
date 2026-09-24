@@ -216,13 +216,14 @@ if (args.Contains("seed"))
     foreach (var skipped in bridgeSync.Skipped)
         Console.WriteLine($"Seed: ponte NAO adicionada - {skipped}");
 
-    // Fase 17: catalogo fixo da loja de cosmeticos - mesmo gatilho `-- seed`, idempotente.
+    // Fase 17: catalogo fixo da loja de cosmeticos - mesmo gatilho `-- seed`. Fase 71: as pecas em
+    // pixel art entram por Code, so as que faltam (uma leva nova chega em producao pelo proprio seed).
     var cosmeticSeeder = scope.ServiceProvider.GetRequiredService<SeedCosmeticCatalogUseCase>();
-    var cosmeticCatalogAlreadyExisted = await cosmeticSeeder.ExecuteAsync();
+    var cosmeticsInserted = await cosmeticSeeder.ExecuteAsync();
 
-    Console.WriteLine(cosmeticCatalogAlreadyExisted
-        ? "Seed: catalogo de cosmeticos ja existe - nada foi inserido."
-        : "Seed: catalogo de cosmeticos (8 itens) criado com sucesso.");
+    Console.WriteLine(cosmeticsInserted == 0
+        ? "Seed: catalogo de cosmeticos ja esta completo - nada foi inserido."
+        : $"Seed: catalogo de cosmeticos - {cosmeticsInserted} itens inseridos.");
 
     return;
 }
@@ -433,12 +434,36 @@ api.MapPost("/marketplace/equip", async (ClaimsPrincipal principal, EquipCosmeti
 api.MapPost("/marketplace/unequip", async (ClaimsPrincipal principal, UnequipCosmeticRequest? request, UnequipCosmeticUseCase useCase, CancellationToken ct) =>
     {
         if (!Enum.TryParse<CosmeticSlot>(request?.Slot, ignoreCase: true, out var slot) || !Enum.IsDefined(slot))
-            throw new ValidationException("slot_invalido", "O campo 'slot' precisa ser 'AvatarFrame', 'NameColor' ou 'ProfileBanner'.");
+            throw new ValidationException("slot_invalido", "O campo 'slot' precisa ser 'AvatarFrame', 'NameColor', 'ProfileBanner' ou 'Hair'.");
 
         return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), slot, ct));
     })
     .RequireAuthorization()
     .WithName("UnequipCosmetic");
+
+// --- Agente em pixel art (Fase 71) -------------------------------------------------------------
+// Criacao (pele + kit basico + 1 cabelo natural opcional, tudo gratis) e troca de pele. Mesmo
+// retorno do marketplace: o catalogo inteiro recalculado, com o agente e a vitrine da semana.
+
+api.MapPost("/agent", async (ClaimsPrincipal principal, CreateAgentRequest? request, CreateAgentUseCase useCase, CancellationToken ct) =>
+    {
+        if (request?.SkinTone is not { } skinTone)
+            throw new ValidationException("pele_obrigatoria", "O campo 'skinTone' e obrigatorio.");
+
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), skinTone, request.HairCode, ct));
+    })
+    .RequireAuthorization()
+    .WithName("CreateAgent");
+
+api.MapPut("/agent/skin", async (ClaimsPrincipal principal, UpdateAgentSkinToneRequest? request, UpdateAgentSkinToneUseCase useCase, CancellationToken ct) =>
+    {
+        if (request?.SkinTone is not { } skinTone)
+            throw new ValidationException("pele_obrigatoria", "O campo 'skinTone' e obrigatorio.");
+
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), skinTone, ct));
+    })
+    .RequireAuthorization()
+    .WithName("UpdateAgentSkinTone");
 
 // --- Status de IA (Fase 28) -------------------------------------------------------------------
 // Badge do GlobalNav (frontend) - sinaliza quando a Groq (ou outra IA futura) esta fora do ar, pra

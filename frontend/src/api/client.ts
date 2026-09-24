@@ -268,7 +268,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ slot: COSMETIC_SLOT_NAMES[slot] }),
     }),
-  // Status de IA (Fase 28) - badge do GlobalNav, ver AiStatusBadge.tsx.
+  // Agente em pixel art (Fase 71) - mesmo retorno do marketplace (catalogo recalculado).
+  createAgent: (skinTone: number, hairCode: string | null) =>
+    request<MarketplaceCatalogDto>('/api/agent', { method: 'POST', body: JSON.stringify({ skinTone, hairCode }) }),
+  updateAgentSkinTone: (skinTone: number) =>
+    request<MarketplaceCatalogDto>('/api/agent/skin', { method: 'PUT', body: JSON.stringify({ skinTone }) }),
+  // Status de IA (Fase 28) - robozinho do GlobalNav, ver AiStatusMenu.tsx.
   getAiProviderStatus: () => request<AiProviderStatusDto[]>('/api/system/ai-status'),
   // Caderninho de Anotacoes (Fase 29) - painel de captura rapida na Daily + aba "Caderninho" no Course.
   createNote: (dailyId: string, content: string, tags: string[]) =>

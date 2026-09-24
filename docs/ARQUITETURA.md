@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 70 - Perfil e Squad em pixel art**.
+> Ultima fase que atualizou este documento: **Fase 71 - Loja em pixel art, agente e vitrine semanal**.
 
 ## Visao geral do projeto
 
@@ -641,6 +641,40 @@ volta, pra nunca duplicar a montagem do DTO em 4 lugares. `PurchaseCosmeticItemU
 `GamificationCreditor.GetOrCreateGemBalanceAsync` (Fase 14) - mesmo criterio de "so cria a linha
 quando precisa mexer nela de verdade".
 
+**Fase 71 - agente em pixel art, roupas e vitrine semanal.** A cor-por-raridade placeholder acima
+saiu: `RARITY_STYLE` usa a paleta pixel (Comum metal, Raro verde, Epico ambar, Lendario vermelho) e a
+Loja vende roupas do agente em pixel art. Regras decididas pelo dono em
+`secret/rascunhos/loja-raridade-e-vitrine.md`.
+
+```
+CosmeticSlot   + Top, Bottom, Hair, Shoes (camadas do agente; ordem da pilha: Bottom, Shoes, Top, Hair)
+CosmeticRarity + Legendary (reservada pra pets/auras/animados)
+CosmeticItem   + Code? (chave do sprite "<slot>/<peca>", indice unico filtrado) + IsStarter (kit basico)
+               IsSoldInShop = Code != null && !IsStarter
+UserEquippedCosmetics + EquippedTopId?/BottomId?/HairId?/ShoesId? + SkinTone? (1-5; nulo = sem agente)
+               Top/Bottom/Shoes nunca ficam vazios (IsRequiredSlot) - Unequip lanca
+AgentStarter   KitCodes (moletom, calca, tenis) + NaturalHairCodes (curto, longo, black-power)
+ShopShowcase   Draw(catalogo, ownedBeforeWeek, userId, hoje) - ate 6 itens, deterministico
+```
+
+- **Agente**: `CreateAgentUseCase` (pele + kit basico + 1 cabelo natural opcional, gratis, uma vez so;
+  entra no inventario e sai equipado) e `UpdateAgentSkinToneUseCase` (troca livre). Roupa so se equipa e
+  se compra com o agente criado (409 `agente_nao_criado`).
+- **Vitrine**: sorteio por usuario + semana ISO (FNV-1a + Mulberry32, estavel entre versoes do .NET),
+  renova toda segunda (`WeekStart`), pesos 60/30/9/1 renormalizados entre as raridades com item elegivel,
+  >= 2 Comuns, <= 2 por slot, so `IsSoldInShop`. "Ja tem" = adquirido antes da segunda
+  (`OwnedBeforeWeek`): comprar durante a semana nao muda a vitrine (senao seria um rerolar). Sem rerolar.
+  `PurchaseCosmeticItemUseCase` recusa item com Code fora da vitrine (409 `item_fora_da_vitrine`) e peca
+  do kit (409 `item_do_kit_basico`). Os 8 itens da Fase 17 (sem Code) ficam fora do sorteio ate o redesenho.
+- **`MarketplaceCatalogDto`** ganhou `Agent` (`{ SkinTone }` ou nulo), `ShowcaseItemIds` (ordem do
+  sorteio) e `ShowcaseRenewsOn` (proxima segunda); `CosmeticItemDto` ganhou `Code` e `IsStarter`.
+- **Seed** (`SeedCosmeticCatalogUseCase`): os 8 itens legados so num banco vazio; as pecas em pixel art por
+  Code, inserindo so as que faltam (leva nova = linha nova + seed, que o deploy ja roda).
+- **Frontend**: folhas de sprite 192x48 por camada em `assets/pixel/personagem/` (5 vistas 32x32 + 12
+  quadros mini 16x16), geradas por `secret/curadoria/scripts/personagens/exportar-frontend.js`;
+  `lib/agentSprites.ts` + `components/agent/AgentSprite.tsx` recortam por `background-position` em escala
+  inteira. Ver `docs/fase-71/`.
+
 **Sistema de Indicacao - confirmado so na matricula, nunca no registro.** Todo `User` ganha um
 `ReferralCode` unico (8 caracteres, alfabeto sem `0/O/1/I` pra evitar confusao visual), gerado
 lazy na 1a consulta (`GetReferralInfoUseCase`, unicidade checada contra o repositorio antes de
@@ -1238,9 +1272,11 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 GET | `/api/users/me/badges` | `GetUserBadgesUseCase` (Fase 17) | 200 (`UserBadgesDto`, 5 badges calculados sob demanda) |
 | 🔒 GET | `/api/users/me/referral` | `GetReferralInfoUseCase` (Fase 17) | 200 (`ReferralInfoDto`) - gera o `ReferralCode` na 1a consulta |
 | 🔒 GET | `/api/marketplace/catalog` | `GetMarketplaceCatalogUseCase` (Fase 17) | 200 (`MarketplaceCatalogDto`) |
-| 🔒 POST | `/api/marketplace/purchase` | `PurchaseCosmeticItemUseCase` (Fase 17) | 200 (catalogo recalculado), 404, 409 (`item_ja_possuido`/`gems_insuficientes`) |
-| 🔒 POST | `/api/marketplace/equip` | `EquipCosmeticUseCase` (Fase 17) | 200 (catalogo recalculado), 404, 409 (`item_nao_possuido`) |
-| 🔒 POST | `/api/marketplace/unequip` | `UnequipCosmeticUseCase` (Fase 17) | 200 (catalogo recalculado) - no-op se nada equipado ainda |
+| 🔒 POST | `/api/marketplace/purchase` | `PurchaseCosmeticItemUseCase` (Fase 17) | 200 (catalogo recalculado), 404, 409 (`item_ja_possuido`/`gems_insuficientes`/`item_do_kit_basico`/`agente_nao_criado`/`item_fora_da_vitrine`, Fase 71) |
+| 🔒 POST | `/api/marketplace/equip` | `EquipCosmeticUseCase` (Fase 17) | 200 (catalogo recalculado), 404, 409 (`item_nao_possuido`/`agente_nao_criado`) |
+| 🔒 POST | `/api/marketplace/unequip` | `UnequipCosmeticUseCase` (Fase 17) | 200 (catalogo recalculado) - no-op se nada equipado ainda; 409 `slot_obrigatorio` pra Top/Bottom/Shoes (Fase 71) |
+| 🔒 POST | `/api/agent` | `CreateAgentUseCase` (Fase 71) | 200 (catalogo recalculado), 400 (`pele_invalida`/`cabelo_invalido`/`pele_obrigatoria`), 409 (`agente_ja_criado`) |
+| 🔒 PUT | `/api/agent/skin` | `UpdateAgentSkinToneUseCase` (Fase 71) | 200 (catalogo recalculado), 400, 409 (`agente_nao_criado`) |
 | 🔒 GET | `/api/weeklies/{weeklyId}/publication/status` | `GetPublicationStatusUseCase` (Fase 11) | 200, 404 |
 | 🔒 POST | `/api/weeklies/{weeklyId}/publication/draft` | `GenerateLinkedInDraftUseCase` (Fase 11) | 200, 404, 502 (Groq) |
 | 🔒 POST | `/api/weeklies/{weeklyId}/publication/github-commit` | `CommitModuleSummaryUseCase` (Fase 11) | 200, 400/404, 502 (GitHub) |
@@ -2956,27 +2992,23 @@ frontend/
                                    usuario quando ele aparece na lista
         CurrentUserRankingCard.tsx           <- posicao do usuario sempre visivel, mesmo fora do
                                    top N; null quando o usuario nao tem matricula no curso
-      marketplace/                  <- Fase 17
-        CosmeticItemCard.tsx              <- swatch de cor por raridade (sem arte real ainda,
-                                   RARITY_STYLE em lib/cosmeticStyle.ts desde a Fase 18) + nome +
-                                   preco/comprar OU equipar/desequipar (Owned/Equipped ja
-                                   resolvidos pelo backend). `onPurchase` opcional (Fase 18): sem
-                                   ele, item nao possuido mostra "Ver na Loja" (link pra /loja) em
-                                   vez do botao de comprar - reaproveitado tal como esta pela aba
-                                   Customizacao do Perfil (inventario, nao vende nada por la)
-        CosmeticSlotFilter.tsx             <- filtro Tudo/Molduras/Cores/Banners, mesmo padrao das
-                                   abas do RankingScopeTabs
+      agent/                        <- Fase 71 (substitui marketplace/, cujos CosmeticItemCard e
+                                   CosmeticSlotFilter sairam - sem uso desde a Fase 25)
+        AgentSprite.tsx                   <- agente em camadas (corpo + pecas) recortado das folhas
+                                   de sprite em escala inteira; WalkingAgent = mini andando
+        AgentCreator.tsx                  <- criacao: pele, 1 cabelo natural, kit basico gratis
       profile/                      <- Fase 18; pixel art na Fase 70 (BadgeGrid, ReferralCard e
                                    ProfileHeader removidos)
         AgentSheet.tsx                    <- ficha do agente (coluna esquerda, todas as abas) +
-                                   AgentAvatar (iniciais em caixa, borda = raridade da moldura)
+                                   AgentAvatar (sprite do agente de frente, ou iniciais sem agente;
+                                   borda = raridade da moldura)
         ReferralPanel.tsx                 <- Indique um amigo (codigo, copiar link, confirmadas)
-        ProfileTabs.tsx                     <- abas pixel, 2x2 no celular; selo "Em breve" na
-                                   Customizacao (some entre sm e 1400px, onde nao cabe)
+        ProfileTabs.tsx                     <- abas pixel, 2x2 no celular (selo "Em breve" da
+                                   Customizacao saiu na Fase 71)
         InformationTab.tsx                   <- conta so leitura, interesses/notas e linguagem dos
                                    projetos (editar -> /onboarding/perfil?edit=1); exporta Section
-        CustomizationTab.tsx                  <- "em breve" (Fase 25): previa do visual equipado e
-                                   os slots trancados (Moldura, Cor do nome, Banner, Roupa)
+        CustomizationTab.tsx                  <- guarda-roupa do agente (Fase 71): vistas, troca de
+                                   pele e pecas possuidas por slot; sem agente, o AgentCreator
         ConquestsTab.tsx                       <- badges em lista com barra ate a meta
         SquadTab.tsx                           <- Squad (Fase 24): cabecalho com codigo, recorte,
                                    ranking com medalhas e acoes do dono na linha; sem squad =
@@ -3087,7 +3119,7 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/start?course=` | `GET /api/courses/{courseId}` | `CourseDetailPage` (Fase 8) - trilha completa do curso; mapa da trilha em pixel art desde a Fase 65 |
 | `/start?course=&caderninho=1` (ou `&tab=caderninho`) | `GET /api/courses/{courseId}/notes` + `.../notes/tags` | `NotebookPage` (Fase 65) - Caderninho em tela propria (antes aba da tela do curso) |
 | `/start?course=&ranking=1` | `GET /api/courses/{courseId}/ranking?scope=` | `RankingPage` (Fase 16) - Score de Estudo, top 10 + posicao do usuario |
-| `/loja` | `GET /api/marketplace/catalog` + `POST .../purchase`\|`/equip`\|`/unequip` | `MarketplacePage` (Fase 17) - catalogo de cosmeticos |
+| `/loja` | `GET /api/marketplace/catalog` + `POST .../purchase`\|`/equip` + `POST /api/agent` | `MarketplacePage` (Fase 17; pixel art na Fase 71) - vitrine da semana + criador de agente |
 | `/perfil` (`?tab=info`\|`customizacao`\|`conquistas`) | `GET /api/users/me/gamification` + `GET /api/marketplace/catalog` (+ `GET /api/courses`/`.../ranking` na aba Informacoes, `GET /api/users/me/badges`/`referral` na aba Conquistas) | `ProfilePage` (Fase 18) - 3 abas, ver secao "Perfil, 3 Abas" acima |
 | `/conquistas` | - (so redireciona) | `<Navigate to="/perfil?tab=conquistas"/>` (Fase 18, era `AchievementsPage` na Fase 17 - mantido como redirect pra nao quebrar links/favoritos antigos) |
 | `/start?course=&weekly=` | `GET /api/weeklies/{weeklyId}` (+ `GET /api/courses/{courseId}` pra navegacao entre semanas) | `WeeklyDetailPage` (Fase 8) - dias da semana + projeto |
@@ -3559,7 +3591,8 @@ componentes `sprite/*`, pagina "Logo", "Focada — esboço" e o kit `textbox/foc
   Loja tambem, ver abaixo); o botao central do `GlobalNav` ("volta pro mapa") tambem e placeholder
   (emoji, sem PNG pixel art proprio ainda); o HUD sobreposto no mapa (GemBadge/StreakIndicator) e o
   proprio `GlobalNav` vao ser refeitos em UI propria de pixel art (decisao do Falves, ainda nao
-  desenhada); **Loja/Customizacao viraram "em breve"** (`ComingSoon`) ate esse kit inicial chegar -
+  desenhada); **Loja/Customizacao viraram "em breve"** (`ComingSoon`) ate esse kit inicial chegar
+  (reabertas em pixel art na Fase 71) -
   os itens sempre foram bloco de cor solida por raridade, placeholder desde a Fase 17; mecanismo
   de comprar/equipar continua intacto em `api/client.ts`, so as 2 telas pararam de exercitar;
   sem colisao contra predio no mapa (decisao explicita da fase - so as 5 trigger zones

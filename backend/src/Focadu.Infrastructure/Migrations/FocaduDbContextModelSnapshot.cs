@@ -270,7 +270,14 @@ namespace Focadu.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<string>("Code")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<bool>("IsAnimated")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsStarter")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
@@ -292,6 +299,10 @@ namespace Focadu.Infrastructure.Migrations
                         .HasColumnType("character varying(20)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasFilter("\"Code\" IS NOT NULL");
 
                     b.ToTable("CosmeticItems", (string)null);
                 });
@@ -328,11 +339,26 @@ namespace Focadu.Infrastructure.Migrations
                     b.Property<Guid?>("EquippedBannerId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("EquippedBottomId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("EquippedFrameId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("EquippedHairId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("EquippedNameColorId")
                         .HasColumnType("uuid");
+
+                    b.Property<Guid?>("EquippedShoesId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("EquippedTopId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("SkinTone")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -341,9 +367,17 @@ namespace Focadu.Infrastructure.Migrations
 
                     b.HasIndex("EquippedBannerId");
 
+                    b.HasIndex("EquippedBottomId");
+
                     b.HasIndex("EquippedFrameId");
 
+                    b.HasIndex("EquippedHairId");
+
                     b.HasIndex("EquippedNameColorId");
+
+                    b.HasIndex("EquippedShoesId");
+
+                    b.HasIndex("EquippedTopId");
 
                     b.HasIndex("UserId")
                         .IsUnique();
@@ -1197,12 +1231,32 @@ namespace Focadu.Infrastructure.Migrations
 
                     b.HasOne("Focadu.Domain.Cosmetics.CosmeticItem", null)
                         .WithMany()
+                        .HasForeignKey("EquippedBottomId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Focadu.Domain.Cosmetics.CosmeticItem", null)
+                        .WithMany()
                         .HasForeignKey("EquippedFrameId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Focadu.Domain.Cosmetics.CosmeticItem", null)
                         .WithMany()
+                        .HasForeignKey("EquippedHairId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Focadu.Domain.Cosmetics.CosmeticItem", null)
+                        .WithMany()
                         .HasForeignKey("EquippedNameColorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Focadu.Domain.Cosmetics.CosmeticItem", null)
+                        .WithMany()
+                        .HasForeignKey("EquippedShoesId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Focadu.Domain.Cosmetics.CosmeticItem", null)
+                        .WithMany()
+                        .HasForeignKey("EquippedTopId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Focadu.Domain.Users.User", null)

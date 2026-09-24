@@ -87,9 +87,17 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 70 — Perfil e Squad em pixel art** (24/09/2026).
+Última fase concluída: **Fase 71 — Loja em pixel art, agente e vitrine semanal** (24/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Loja em pixel art + agente (Fase 71, Figma "Personagens — corpo, roupas e loja")**: cada aluno cria
+  um agente em pixel art (5 tons de pele, 1 cabelo natural e o kit básico moletom/calça/tênis, tudo grátis;
+  `POST /api/agent`) que veste roupas em camadas (slots `Top`/`Bottom`/`Hair`/`Shoes`). A Loja reabriu
+  com uma **vitrine pessoal de 6 itens sorteada por semana** (`ShopShowcase`: determinística por usuário +
+  semana ISO, pesos Comum 60/Raro 30/Épico 9/Lendário 1, ≥2 Comuns, ≤2 por slot, sem rerolar; comprar na
+  semana não embaralha a vitrine). 14 peças da Leva 1 + kit no seed (incremental por `CosmeticItem.Code`).
+  A aba Customização do Perfil virou o guarda-roupa. Sprites em folhas 192×48 geradas por
+  `secret/curadoria/scripts/personagens/`. Regras em `secret/rascunhos/loja-raridade-e-vitrine.md`. Ver `docs/fase-71/`.
 - **Perfil e Squad em pixel art (Fase 70, Figma "Perfil — redesign proposto")**: `/perfil` na mesma
   casca da Daily (3 colunas sem rolagem externa): ficha do agente à esquerda (avatar com moldura,
   score/posição no curso ativo, vitrine das badges), abas pixel no centro, a Focada comentando a aba e o

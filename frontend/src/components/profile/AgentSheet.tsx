@@ -1,21 +1,20 @@
-import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useApiResource } from '../../api/useApiResource';
 import { CourseStatus, type BadgeDto, type CosmeticRarity, type GamificationSummaryDto, type MarketplaceCatalogDto } from '../../api/types';
-import { useSettings } from '../../contexts/useSettings';
 import { knownBadges } from '../../lib/badgeInfo';
 import { nameColorClass, RARITY_STYLE } from '../../lib/cosmeticStyle';
 import { equippedLook, MEDALS } from '../../lib/profileLook';
+import { agentLook, type AgentLook } from '../../lib/agentSprites';
+import { AgentSprite } from '../agent/AgentSprite';
 import fireIcon from '../../assets/pixel/chama-streak.png';
 import lockIcon from '../../assets/pixel/cadeado-bloqueado.png';
-import rankingIcon from '../../assets/pixel/nav-ranking.png';
 
 /**
- * Avatar quadrado do perfil (Fase 70) - iniciais em VT323 dentro de uma caixa reta; a moldura equipada
- * e a borda grossa na cor da raridade (mesma fonte de verdade da loja, `RARITY_STYLE`). Sem moldura,
- * borda neutra. Ainda nao e sprite: os itens de verdade chegam com a sessao de arte da Loja.
+ * Avatar quadrado do perfil (Fase 70) - a moldura equipada e a borda grossa na cor da raridade (mesma
+ * fonte de verdade da loja, `RARITY_STYLE`); sem moldura, borda neutra. Fase 71: com o agente criado
+ * (`look`), mostra o agente em pixel art de frente; sem agente, as iniciais em VT323 como antes.
  */
-export function AgentAvatar({ displayName, frameRarity, size = 'lg' }: { displayName: string; frameRarity: CosmeticRarity | null; size?: 'md' | 'lg' }) {
+export function AgentAvatar({ displayName, frameRarity, look = null, size = 'lg' }: { displayName: string; frameRarity: CosmeticRarity | null; look?: AgentLook | null; size?: 'md' | 'lg' }) {
   const initials = displayName
     .trim()
     .split(/\s+/)
@@ -25,6 +24,13 @@ export function AgentAvatar({ displayName, frameRarity, size = 'lg' }: { display
     .join('');
   const border = frameRarity !== null ? RARITY_STYLE[frameRarity].border : 'border-stroke';
   const box = size === 'lg' ? 'size-20 text-6xl' : 'size-14 text-4xl';
+  if (look) {
+    return (
+      <div className={`flex shrink-0 items-end justify-center overflow-hidden border-4 bg-surface ${box} ${border}`} aria-hidden="true">
+        <AgentSprite look={look} scale={size === 'lg' ? 2 : 1} className="translate-y-1" />
+      </div>
+    );
+  }
   return (
     <div className={`flex shrink-0 items-center justify-center border-4 bg-surface font-pixel leading-none text-accent ${box} ${border}`} aria-hidden="true">
       {initials || '?'}
@@ -35,7 +41,8 @@ export function AgentAvatar({ displayName, frameRarity, size = 'lg' }: { display
 /**
  * Ficha do agente (Fase 70, Figma "Perfil — redesign proposto", node 85:4503) - coluna esquerda do
  * perfil, a mesma em todas as abas: avatar, nome na cor equipada, cursos, recorde, score e posicao no
- * curso ativo, vitrine das conquistas e atalhos. Score/posicao vem do ranking do curso ativo (era a
+ * curso ativo e vitrine das conquistas (os atalhos pro ranking e as Configuracoes sairam em 24/09/2026,
+ * pedido do dono). Score/posicao vem do ranking do curso ativo (era a
  * aba Informacoes que buscava isso desde a Fase 18).
  */
 export function AgentSheet({
@@ -53,7 +60,6 @@ export function AgentSheet({
   badges: BadgeDto[];
   onSeeBadges: () => void;
 }) {
-  const { open: openSettings } = useSettings();
   const { frameRarity, nameColor } = equippedLook(catalog);
   const { data } = useApiResource(async () => {
     const courses = await api.getCourses();
@@ -72,7 +78,7 @@ export function AgentSheet({
         <p className="font-pixel-label text-[9px] text-accent">// Ficha do agente</p>
 
         <div className="flex min-w-0 items-center gap-3.5">
-          <AgentAvatar displayName={displayName} frameRarity={frameRarity} />
+          <AgentAvatar displayName={displayName} frameRarity={frameRarity} look={agentLook(catalog)} />
           <div className="flex min-w-0 flex-col gap-1">
             <p className={`truncate font-pixel text-[32px] leading-none ${nameColorClass(nameColor)}`}>{displayName}</p>
             <p className="truncate text-xs text-secondary">{email}</p>
@@ -117,24 +123,6 @@ export function AgentSheet({
         </ul>
       </div>
 
-      <div className="flex flex-col gap-3 lg:mt-auto">
-        {data?.course && (
-          <Link
-            to={`/start?course=${data.course.id}&ranking=1`}
-            className="flex items-center justify-center gap-2.5 border-2 border-secondary bg-base px-4 py-3.5 font-pixel-label text-[11px] text-primary hover:border-accent"
-          >
-            <img src={rankingIcon} alt="" className="size-4 pixelated" />
-            Ranking do curso ›
-          </Link>
-        )}
-        <button
-          type="button"
-          onClick={openSettings}
-          className="border-2 border-secondary bg-base px-4 py-3.5 font-pixel-label text-[11px] text-primary hover:border-accent"
-        >
-          Configurações ›
-        </button>
-      </div>
     </>
   );
 }

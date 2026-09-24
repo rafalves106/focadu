@@ -8,7 +8,6 @@ import { ScrollArea } from '../components/ScrollArea';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { FocadaSays } from '../components/session/FocadaSays';
 import { AgentSheet } from '../components/profile/AgentSheet';
-import { equippedLook } from '../lib/profileLook';
 import { ProfileTabs, type ProfileTab } from '../components/profile/ProfileTabs';
 import { InformationTab } from '../components/profile/InformationTab';
 import { CustomizationTab } from '../components/profile/CustomizationTab';
@@ -43,6 +42,8 @@ export function ProfilePage() {
   const tabParam = searchParams.get('tab');
   const tab: ProfileTab = VALID_TABS.includes(tabParam as ProfileTab) ? (tabParam as ProfileTab) : 'info';
   const [squadLine, setSquadLine] = useState<FocadaLine | null>(null);
+  // Catalogo recalculado pelas acoes do guarda-roupa (Fase 71) - vale por cima do que veio no load.
+  const [catalogOverride, setCatalogOverride] = useState<MarketplaceCatalogDto | null>(null);
   const onSquadSay = useCallback((line: FocadaLine) => setSquadLine(line), []);
 
   const { data, error, loading, retry } = useApiResource<ProfileData>(
@@ -62,8 +63,8 @@ export function ProfilePage() {
     setSearchParams(next === 'info' ? {} : { tab: next });
   }
 
-  const { frameRarity, nameColor } = equippedLook(data.catalog);
-  const line = tab === 'squad' ? (squadLine ?? SQUAD_LOADING_LINE) : focadaLine(tab, user, data.badges);
+  const catalog = catalogOverride ?? data.catalog;
+  const line = tab === 'squad' ? (squadLine ?? SQUAD_LOADING_LINE) : focadaLine(tab, user, data.badges, catalog);
 
   return (
     <div className="flex flex-col gap-5 bg-base px-4 pt-5 pb-10 lg:min-h-0 lg:flex-1 lg:gap-6 lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12 lg:[@media(max-height:820px)]:gap-4 lg:[@media(max-height:820px)]:py-6">
@@ -86,7 +87,7 @@ export function ProfilePage() {
               displayName={user.displayName}
               email={user.email}
               gamification={data.gamification}
-              catalog={data.catalog}
+              catalog={catalog}
               badges={data.badges}
               onSeeBadges={() => setTab('conquistas')}
             />
@@ -101,8 +102,7 @@ export function ProfilePage() {
           <ScrollArea className="lg:min-h-0 lg:flex-1" contentClassName="lg:pr-5">
             {tab === 'info' && <InformationTab user={user} />}
             {tab === 'conquistas' && <ConquestsTab badges={data.badges} />}
-            {/* EM BREVE (Fase 25) - ver CustomizationTab.tsx. */}
-            {tab === 'customizacao' && <CustomizationTab displayName={user.displayName} frameRarity={frameRarity} nameColor={nameColor} />}
+            {tab === 'customizacao' && <CustomizationTab catalog={catalog} onCatalog={setCatalogOverride} />}
             {tab === 'squad' && <SquadTab onSay={onSquadSay} />}
           </ScrollArea>
         </section>
@@ -149,9 +149,11 @@ const SQUAD_LOADING_LINE: FocadaLine = { expression: 'neutra', text: 'Deixa eu v
 const COUNT_WORDS = ['Nenhuma', 'Uma', 'Duas', 'Três', 'Quatro', 'Cinco'];
 
 /** Fala da Focada pra aba aberta (a do Squad vem do proprio SquadTab, depende do squad). */
-function focadaLine(tab: Exclude<ProfileTab, 'squad'>, user: UserDto, badges: BadgeDto[]): FocadaLine {
+function focadaLine(tab: Exclude<ProfileTab, 'squad'>, user: UserDto, badges: BadgeDto[], catalog: MarketplaceCatalogDto): FocadaLine {
   if (tab === 'customizacao') {
-    return { expression: 'neutra', text: 'Tô costurando as molduras e os kits de roupa em pixel art. Quando a Loja abrir, você equipa tudo por aqui.' };
+    return catalog.agent
+      ? { expression: 'neutra', text: 'Aqui você veste o que já é seu. Peça nova sai da vitrine da Loja, que troca toda segunda.' }
+      : { expression: 'acolhedora', text: 'Primeiro o agente: escolhe a pele e o cabelo. O kit básico é por minha conta.' };
   }
   if (tab === 'info') {
     return user.interests.length === 0

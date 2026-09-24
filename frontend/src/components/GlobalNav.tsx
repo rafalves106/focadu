@@ -9,7 +9,10 @@ import navTrilhas from '../assets/pixel/nav-trilhas.png';
 import navRanking from '../assets/pixel/nav-ranking.png';
 import navSquad from '../assets/pixel/nav-squad.png';
 import navLoja from '../assets/pixel/nav-loja.png';
+import navConfig from '../assets/pixel/nav-config.png';
+import { useSettings } from '../contexts/useSettings';
 import { UserMenu } from './UserMenu';
+import { AiStatusMenu } from './AiStatusMenu';
 
 /**
  * Menu global unico (Fase 25) - substitui o antigo `<nav>` de 2 links (Hoje/Início) do App.tsx.
@@ -48,9 +51,16 @@ import { UserMenu } from './UserMenu';
  *
  * Fase 68: o menu e global e unico - igual em toda tela. O conta-giros de erros e o timer Pomodoro,
  * que apareciam aqui durante a sessao (Fase 36), foram pra dentro da propria sessao diaria.
+ *
+ * 24/09/2026 (pedido do dono): o "@usuario" + iniciais viraram o proprio agente em pixel art
+ * (`UserMenu`), as Configuracoes ganharam uma engrenagem na barra e o Ranking foi pra esquerda pra
+ * equilibrar os lados; depois o status da IA ganhou icone proprio (`AiStatusMenu`) e o agente virou
+ * link direto pro Perfil: Hoje, Trilhas, Loja, Ranking | logo | Squad, IA, Configuracoes, agente.
+ * Cada lado ocupa metade da barra com os icones distribuidos por igual.
  */
 export function GlobalNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const settings = useSettings();
   const { data: courses } = useApiResource(() => api.getCourses(), []);
   const activeCourse = courses?.find((c) => c.status === CourseStatus.Active) ?? courses?.[0] ?? null;
   const courseId = activeCourse?.id ?? null;
@@ -63,10 +73,11 @@ export function GlobalNav() {
     <nav className="sticky top-0 z-30 border-b border-surface-alt bg-surface">
       <div className="flex h-[calc(var(--nav-height)-1px)] items-center justify-between gap-2 px-4 xl:px-16">
         {/* Desktop (md+): grupo esquerdo. */}
-        <div className="hidden flex-1 items-center gap-1 md:flex xl:gap-4">
+        <div className="hidden flex-1 items-center justify-around pr-4 md:flex xl:pr-10">
           <NavItem to="/hoje" icon={navHoje} label="Hoje" />
           <NavItem to={trilhaHref} icon={navTrilhas} label="Trilhas" />
           <NavItem to="/loja" icon={navLoja} label="Loja" />
+          <NavItem to={rankingHref} icon={navRanking} label="Ranking" />
         </div>
 
         {/* Mobile (abaixo de md): hamburguer no lugar dos 2 grupos de texto. */}
@@ -83,16 +94,16 @@ export function GlobalNav() {
         <MapButton />
 
         {/* Desktop (md+): grupo direito. */}
-        <div className="hidden flex-1 items-center justify-end gap-1 md:flex xl:gap-4">
-          <NavItem to={rankingHref} icon={navRanking} label="Ranking" />
+        <div className="hidden flex-1 items-center justify-around pl-4 md:flex xl:pl-10">
           <NavItem to="/perfil?tab=squad" icon={navSquad} label="Squad" />
-          <div className="ml-2 flex shrink-0 items-center gap-2 xl:ml-4">
-            <UserMenu />
-          </div>
+          <AiStatusMenu />
+          <NavButton onClick={settings.open} icon={navConfig} label="Configurações" />
+          <UserMenu />
         </div>
 
         {/* Mobile: os badges sempre visiveis, sem o resto do grupo direito (ver menu suspenso abaixo). */}
-        <div className="flex shrink-0 items-center gap-2 md:hidden">
+        <div className="flex shrink-0 items-center gap-1 md:hidden">
+          <AiStatusMenu />
           <UserMenu />
         </div>
       </div>
@@ -115,6 +126,17 @@ export function GlobalNav() {
           <MobileNavItem to="/perfil?tab=squad" icon={navSquad} onNavigate={closeMobileMenu}>
             Squad
           </MobileNavItem>
+          <button
+            type="button"
+            onClick={() => {
+              closeMobileMenu();
+              settings.open();
+            }}
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-secondary hover:bg-surface-alt hover:text-primary"
+          >
+            <img src={navConfig} alt="" className="size-8 pixelated" aria-hidden="true" />
+            Configurações
+          </button>
         </div>
       )}
     </nav>
@@ -131,6 +153,20 @@ function NavItem({ to, icon, label }: { to: string; icon: string; label: string 
       <img src={icon} alt="" className="size-8 pixelated xl:size-12" aria-hidden="true" />
       <span className="sr-only">{label}</span>
     </Link>
+  );
+}
+
+function NavButton({ onClick, icon, label }: { onClick: () => void; icon: string; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      className="rounded-lg p-1.5 opacity-80 transition hover:scale-110 hover:opacity-100 focus-visible:opacity-100"
+    >
+      <img src={icon} alt="" className="size-8 pixelated xl:size-12" aria-hidden="true" />
+      <span className="sr-only">{label}</span>
+    </button>
   );
 }
 

@@ -1,6 +1,7 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
 using Focadu.Domain.Cosmetics;
+using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
 
 namespace Focadu.Application.Marketplace;
@@ -9,6 +10,7 @@ namespace Focadu.Application.Marketplace;
 /// Caso de uso: equipa um CosmeticItem ja comprado (Fase 17) - exige posse (inventario), nunca
 /// deixa equipar algo nao comprado. Equipar um item novo no mesmo slot desequipa o anterior
 /// automaticamente (UserEquippedCosmetics.Equip so sobrescreve o campo daquele slot).
+/// Fase 71: roupa do agente (Top/Bottom/Hair/Shoes) so se equipa com o agente ja criado.
 /// </summary>
 public class EquipCosmeticUseCase
 {
@@ -47,6 +49,9 @@ public class EquipCosmeticUseCase
             equipped = new UserEquippedCosmetics(userId);
             await _equippedRepository.AddAsync(equipped, cancellationToken);
         }
+
+        if ((item.Slot is CosmeticSlot.Top or CosmeticSlot.Bottom or CosmeticSlot.Hair or CosmeticSlot.Shoes) && !equipped.HasAgent)
+            throw new ConflictException("agente_nao_criado", "Crie seu agente antes de vestir roupas.");
 
         equipped.Equip(item.Slot, itemId);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

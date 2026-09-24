@@ -13,6 +13,7 @@
  *   /__mock/reset?projeto=pendente|avaliado   (tela do Projeto Semanal)
  *   /__mock/reset?at=ponte                    (Fase 69: a Daily de hoje e a ponte, falta escolher a linguagem)
  *   /__mock/reset?at=Quiz&pausa=1             (Fase 69: streak pausado - projeto da semana aberto)
+ *   /__mock/loja?agente=0|1&gemas=60          (Fase 71: loja e agente, ver shopMock.ts)
  * Erros: /start?course=erro-500 | erro-offline | erro-lento (timeout do cliente, ~10s).
  * Ids fixos (MOCK_IDS) pra os links continuarem valendo depois de reiniciar o Vite.
  */
@@ -21,6 +22,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
+import { handleShop, resetShop } from './shopMock';
 
 const TYPE = { Quiz: 0, WordMatch: 1, Cloze: 2, Roleplay: 3, VoiceSummary: 4, Reading: 5, Video: 6 } as const;
 type TypeName = keyof typeof TYPE;
@@ -382,6 +384,13 @@ export function sessionMock(): Plugin {
           res.setHeader('Location', '/perfil?tab=squad');
           return res.end();
         }
+        if (path === '/__mock/loja') {
+          const q = new URL(req.url ?? '', 'http://x').searchParams;
+          resetShop(q.get('agente') !== '0', Number(q.get('gemas') ?? 60));
+          res.statusCode = 302;
+          res.setHeader('Location', '/loja');
+          return res.end();
+        }
         if (!path.startsWith('/api/')) return next();
 
         // Telas de erro (Fase 10): 500, sem conexao (socket derrubado) e timeout do cliente (10s).
@@ -405,7 +414,8 @@ export function sessionMock(): Plugin {
           });
         if (path === '/api/auth/logout') return send(res, 204);
         if (path === '/api/courses') return send(res, 200, [{ id: ids.course, name: 'Web Security', status: 1, monthlyCount: 4 }]);
-        if (path === '/api/marketplace/catalog') return send(res, 200, { totalGems: 12, items: [] });
+        const shop = handleShop(path, method, body);
+        if (shop) return send(res, shop[0], shop[1]);
         if (path === '/api/users/me/gamification') {
           const pausedUntil = scenario.paused ? new Date(Date.now() + 9 * 86_400_000).toISOString().slice(0, 10) : null;
           return send(res, 200, { totalGems: 12, currentStreak: 3, longestStreak: 7, streakJustBroken: false, streakPausedUntil: pausedUntil, streakRestAvailable: true });

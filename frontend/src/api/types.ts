@@ -461,7 +461,8 @@ export interface SquadRankingResultDto {
 }
 
 // Marketplace de Cosmeticos (Fase 17) - catalogo fixo via seed, sem autoria via Api ainda.
-export const CosmeticSlot = { AvatarFrame: 0, NameColor: 1, ProfileBanner: 2 } as const;
+// Fase 71: Top/Bottom/Hair/Shoes sao as camadas do agente em pixel art (mesmos numeros do enum C#).
+export const CosmeticSlot = { AvatarFrame: 0, NameColor: 1, ProfileBanner: 2, Top: 3, Bottom: 4, Hair: 5, Shoes: 6 } as const;
 export type CosmeticSlot = (typeof CosmeticSlot)[keyof typeof CosmeticSlot];
 
 // Nomes que a Api de unequip espera no campo "slot" do request (case-insensitive, ver
@@ -470,9 +471,13 @@ export const COSMETIC_SLOT_NAMES: Record<CosmeticSlot, string> = {
   [CosmeticSlot.AvatarFrame]: 'AvatarFrame',
   [CosmeticSlot.NameColor]: 'NameColor',
   [CosmeticSlot.ProfileBanner]: 'ProfileBanner',
+  [CosmeticSlot.Top]: 'Top',
+  [CosmeticSlot.Bottom]: 'Bottom',
+  [CosmeticSlot.Hair]: 'Hair',
+  [CosmeticSlot.Shoes]: 'Shoes',
 };
 
-export const CosmeticRarity = { Common: 0, Rare: 1, Epic: 2 } as const;
+export const CosmeticRarity = { Common: 0, Rare: 1, Epic: 2, Legendary: 3 } as const;
 export type CosmeticRarity = (typeof CosmeticRarity)[keyof typeof CosmeticRarity];
 
 /** Owned/Equipped ja resolvidos pro usuario logado - o frontend nunca precisa cruzar inventario/equipados manualmente. */
@@ -484,12 +489,29 @@ export interface CosmeticItemDto {
   priceGems: number;
   owned: boolean;
   equipped: boolean;
+  /** Fase 71: chave do sprite em pixel art ("parte-de-cima/moletom") - nulo nos itens da Fase 17, ainda sem arte. */
+  code: string | null;
+  /** Fase 71: peca do kit basico, dada na criacao do agente - nunca vendida. */
+  isStarter: boolean;
 }
 
-/** Devolvido por GET catalog e por toda acao de compra/equipar/desequipar - sempre o catalogo inteiro recalculado, nunca precisa de uma 2a chamada. */
+/** Agente em pixel art (Fase 71): tom de pele de 1 a 5; as pecas sao os itens com `equipped`. */
+export interface AgentDto {
+  skinTone: number;
+}
+
+/**
+ * Devolvido por GET catalog e por toda acao de compra/equipar/desequipar/agente - sempre o catalogo
+ * inteiro recalculado, nunca precisa de uma 2a chamada. Fase 71: `agent` nulo = agente ainda nao
+ * criado; `showcaseItemIds` = vitrine da semana (ate 6, na ordem do sorteio); `showcaseRenewsOn` =
+ * a proxima segunda (yyyy-MM-dd), quando a vitrine troca.
+ */
 export interface MarketplaceCatalogDto {
   totalGems: number;
   items: CosmeticItemDto[];
+  agent: AgentDto | null;
+  showcaseItemIds: string[];
+  showcaseRenewsOn: string;
 }
 
 // Troféus/Badges (Fase 17) - todos calculados sob demanda no backend. `code` e estavel
@@ -623,7 +645,7 @@ export interface WeeklyTemplateDetailDto {
 /**
  * GET /api/system/ai-status (Fase 28) - status de cada provedor de IA externo (hoje so Groq, ver
  * GroqHealthCheckService). `configured=false` (chave ausente) implica `available=false` sem sequer
- * o backend ter tentado a chamada de teste. Alimenta o badge no GlobalNav - ver AiStatusBadge.tsx.
+ * o backend ter tentado a chamada de teste. Alimenta o robozinho de status da IA no GlobalNav - ver AiStatusMenu.tsx.
  */
 export interface AiProviderStatusDto {
   provider: string;

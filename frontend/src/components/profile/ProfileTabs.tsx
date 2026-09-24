@@ -1,16 +1,15 @@
 export type ProfileTab = 'info' | 'customizacao' | 'conquistas' | 'squad';
 
-const TABS: { tab: ProfileTab; label: string; soon?: boolean }[] = [
+const TABS: { tab: ProfileTab; label: string }[] = [
   { tab: 'info', label: 'Informações' },
   { tab: 'conquistas', label: 'Conquistas' },
-  { tab: 'customizacao', label: 'Customização', soon: true },
+  { tab: 'customizacao', label: 'Customização' },
   { tab: 'squad', label: 'Squad' },
 ];
 
 /**
  * Abas do `/perfil` (Fase 18; pixel art na Fase 70) - caixas retas de 2px, a ativa em verde. No
- * celular viram uma grade 2x2. Customizacao leva o selo "Em breve" ate a Loja abrir - some entre `sm` e 1400px,
- * onde as 4 abas nao cabem numa linha com ele (a propria aba repete o aviso).
+ * celular viram uma grade 2x2. O selo "Em breve" da Customizacao saiu na Fase 71 (guarda-roupa do agente).
  */
 export function ProfileTabs({ tab, onChange }: { tab: ProfileTab; onChange: (tab: ProfileTab) => void }) {
   return (
@@ -29,7 +28,6 @@ export function ProfileTabs({ tab, onChange }: { tab: ProfileTab; onChange: (tab
             }`}
           >
             {t.label}
-            {t.soon && <span className="font-pixel-label text-[7px] text-project sm:hidden min-[1400px]:inline">Em breve</span>}
           </button>
         );
       })}
