@@ -29,14 +29,14 @@ export function PomodoroWidget({ className = '' }: { className?: string }) {
   const filled = Math.round(progress * BLOCKS);
 
   return (
-    <div className={`flex flex-col justify-between gap-3 pixel-box bg-base p-5 ${className}`}>
+    <div className={`flex flex-col justify-between gap-3 pixel-box bg-base p-5 lg:short:gap-2 lg:short:p-4 ${className}`}>
       <div className="flex items-center justify-between">
         <CardLabel pixel>Pomodoro</CardLabel>
         <span className={`font-pixel-label text-[8px] ${isFocus ? 'text-accent' : 'text-project'}`}>{isFocus ? 'Foco' : 'Pausa'}</span>
       </div>
 
       <p
-        className={`text-center font-pixel text-6xl leading-none tabular-nums ${isFocus ? 'text-primary' : 'text-project'} ${
+        className={`text-center font-pixel text-6xl leading-none tabular-nums lg:tight:text-5xl ${isFocus ? 'text-primary' : 'text-project'} ${
           timer.justSwitchedPhase ? 'animate-pulse' : ''
         }`}
       >

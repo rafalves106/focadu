@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { DailyStatus, type DailyOverviewDto } from '../api/types';
 import { Centered } from '../components/Layout';
+import { ScrollArea } from '../components/ScrollArea';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { StatusBadge } from '../components/StatusBadge';
 import { dailyStatusBadgeProps } from '../lib/statusBadge';
@@ -56,7 +57,7 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
     // max-w-5xl/p-8 -> max-w-6xl/px-6 py-8 (pedido explicito): mesmo ajuste ja feito em
     // SessionShell.tsx pra sessao diaria - padding lateral menor + teto mais largo devolvem
     // espaco pro conteudo em vez de sobrar como margem morta nas laterais.
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:short:gap-4 lg:short:py-5">
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2 text-xs font-medium">
           <Link to="/start" className="text-accent hover:underline">
@@ -138,13 +139,14 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
         </div>
       )}
 
-      <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-        <div className="flex flex-1 flex-col gap-3">
+      {/* Fase 72: a partir de `lg`, sem rolagem externa - so a lista de dias rola por dentro; o resumo fica fixo ao lado. */}
+      <div className="flex flex-col gap-8 lg:min-h-0 lg:flex-1 lg:flex-row lg:items-start">
+        <ScrollArea className="min-w-0 flex-1 lg:h-full lg:min-h-0" contentClassName="flex flex-col gap-3 lg:pr-4">
           {days.map((day) => (
             <DayCard key={day.id} day={day} />
           ))}
           <WeeklyProjectCard project={weekly.project} weeklyId={weeklyId} courseId={courseId} />
-        </div>
+        </ScrollArea>
 
         <div className="flex w-full flex-col gap-5 rounded-2xl border border-stroke bg-surface p-6 lg:w-[360px]">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Resumo da Semana</p>

@@ -87,9 +87,15 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 72 — Perfil "tela do agente" e QG do Squad** (24/09/2026).
+Última fase concluída: **Fase 73 — Ranking em pixel art (placar de fliperama)** (25/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Ranking em pixel art + telas sem rolagem (Fase 73, Figma "Ranking — v2")**: pódio com os agentes,
+  placar HIGH SCORE do top 10 (quem está fora aparece preso no pé), "Próximo alvo" (quem está logo
+  acima, `RankingResultDto.AheadEntry`) e aviso quando a semana do aluno ainda não fechou. Antes dela,
+  um passe de responsividade (variantes `short:`/`tight:` em `index.css`) deixou Perfil, sessão diária,
+  Loja, QG do Squad, Projeto Semanal e visão da semana sem rolagem de página de 1024×768 a 1920×1080.
+  Ver `docs/fase-73/`.
 - **Perfil sem abas + QG do Squad (Fase 72, Figma "Perfil + Squad — v2", pedido do dono)**: `/perfil`
   virou a "tela do agente" - o agente em pixel art num palco com os slots do que está vestindo, e ao
   lado ofensiva/score/posição/Gems, estante de troféus, atalho do squad, últimos 14 dias e dossiê;

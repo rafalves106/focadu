@@ -1,5 +1,6 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
+using Focadu.Application.Shared;
 using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
 using Focadu.Domain.Weeklies;
@@ -60,8 +61,8 @@ public class GetCourseRankingUseCase
         // Neon"), nao um hex: o frontend mapeia token -> cor de verdade, mesmo padrao ja
         // estabelecido de BadgeDto.code -> label/icone (BADGE_INFO) e CosmeticRarity -> swatch
         // (RARITY_STYLE). Catalogo inteiro (8 itens) cabe numa unica consulta, sem N+1.
-        var itemNameById = (await _cosmeticItemRepository.GetAllAsync(cancellationToken))
-            .ToDictionary(i => i.Id, i => i.Name);
+        var itemsById = (await _cosmeticItemRepository.GetAllAsync(cancellationToken)).ToDictionary(i => i.Id);
+        (int Number, bool Scored)? requesterWeek = null;
 
         var scored = new List<ScoredEnrollment>();
         foreach (var enrollment in enrollments)
@@ -69,19 +70,28 @@ public class GetCourseRankingUseCase
             var weeklies = await _weeklyRepository.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken);
             var user = await _userRepository.GetByIdAsync(enrollment.UserId, cancellationToken);
             var equipped = await _equippedCosmeticsRepository.GetByUserIdAsync(enrollment.UserId, cancellationToken);
-            var nameColor = equipped?.EquippedNameColorId is { } colorId && itemNameById.TryGetValue(colorId, out var name)
-                ? name
+            var nameColor = equipped?.EquippedNameColorId is { } colorId && itemsById.TryGetValue(colorId, out var colorItem)
+                ? colorItem.Name
                 : null;
 
+            if (enrollment.UserId == requestingUserId && weeklies.Count > 0)
+            {
+                var current = ResolveCurrentWeekly(weeklies, today);
+                requesterWeek = (current.Number, current.CalculateScore() is not null);
+            }
+
             scored.Add(new ScoredEnrollment(
-                enrollment.UserId, user?.DisplayName ?? "Usuario", ComputeScore(weeklies, scope, today), enrollment.EnrolledAt, nameColor));
+                enrollment.UserId, user?.DisplayName ?? "Usuario", ComputeScore(weeklies, scope, today), enrollment.EnrolledAt, nameColor,
+                AgentLooks.Resolve(equipped, itemsById)));
         }
 
         var ranked = RankEntries(scored);
         var topEntries = ranked.Take(TopEntriesCount).ToList();
         var currentUserEntry = ranked.FirstOrDefault(e => e.UserId == requestingUserId);
 
-        return new RankingResultDto(topEntries, currentUserEntry);
+        return new RankingResultDto(
+            topEntries, currentUserEntry, EntryAhead(ranked, currentUserEntry), ranked.Count,
+            requesterWeek?.Number, requesterWeek?.Scored ?? false);
     }
 
     /// <summary>
@@ -128,14 +138,25 @@ public class GetCourseRankingUseCase
         scored
             .OrderByDescending(x => x.Score)
             .ThenBy(x => x.EnrolledAt)
-            .Select((x, index) => new RankingEntryDto(x.UserId, x.DisplayName, x.Score, index + 1, x.EquippedNameColor))
+            .Select((x, index) => new RankingEntryDto(x.UserId, x.DisplayName, x.Score, index + 1, x.EquippedNameColor, x.Look))
             .ToList();
+
+    /// <summary>Quem esta logo acima de <paramref name="current"/> (Fase 72, cartao "Proximo alvo") - null pra quem e o 1o ou nao esta no curso.</summary>
+    internal static RankingEntryDto? EntryAhead(IReadOnlyList<RankingEntryDto> ranked, RankingEntryDto? current) =>
+        current is null || current.Position <= 1 ? null : ranked[current.Position - 2];
 }
 
 internal readonly record struct ScoredEnrollment(
-    Guid UserId, string DisplayName, double Score, DateTime EnrolledAt, string? EquippedNameColor = null);
+    Guid UserId, string DisplayName, double Score, DateTime EnrolledAt, string? EquippedNameColor = null, AgentLookDto? Look = null);
 
-public record RankingEntryDto(Guid UserId, string DisplayName, double Score, int Position, string? EquippedNameColor = null);
+/// <param name="Look">Fase 72: o agente em pixel art da pessoa (podio e placar), nulo sem agente criado.</param>
+public record RankingEntryDto(Guid UserId, string DisplayName, double Score, int Position, string? EquippedNameColor = null, AgentLookDto? Look = null);
 
 /// <summary>CurrentUserEntry e null so quando o usuario chamador nao tem Enrollment neste Course.</summary>
-public record RankingResultDto(IReadOnlyCollection<RankingEntryDto> TopEntries, RankingEntryDto? CurrentUserEntry);
+/// <param name="AheadEntry">Fase 72: quem esta logo acima do usuario, mesmo fora do top 10 ("Proximo alvo").</param>
+/// <param name="TotalEntries">Fase 72: quantos matriculados o ranking tem.</param>
+/// <param name="CurrentWeekNumber">Fase 72: a semana atual do usuario (recorte Semana).</param>
+/// <param name="CurrentWeekScored">Fase 72: a semana atual do usuario ja fechou (Dailies + projeto avaliado) e pontua - senao o recorte Semana mostra um aviso.</param>
+public record RankingResultDto(
+    IReadOnlyCollection<RankingEntryDto> TopEntries, RankingEntryDto? CurrentUserEntry,
+    RankingEntryDto? AheadEntry = null, int TotalEntries = 0, int? CurrentWeekNumber = null, bool CurrentWeekScored = false);

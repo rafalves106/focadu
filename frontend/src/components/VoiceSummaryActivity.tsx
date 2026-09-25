@@ -222,7 +222,7 @@ export function VoiceSummaryActivity({
     <SessionLayout notesLocked={busy} hideBack={busy}>
       {state !== 'answered' && (
         <>
-          <p className="font-pixel text-2xl leading-[1.15] text-primary lg:text-[26px]">
+          <p className="font-pixel text-2xl leading-[1.15] text-primary lg:text-[26px] lg:short:text-[22px] lg:tight:text-xl">
             <VoicedPrompt text={activity.prompt ?? ''} spokenChars={spokenChars} highlight={voiceSupported} />
           </p>
           <div className="flex flex-wrap gap-2">
@@ -236,11 +236,11 @@ export function VoiceSummaryActivity({
             onClick={recording ? handleStop : handleStart}
             disabled={state === 'submitting'}
             aria-label={recording ? 'Parar e enviar' : 'Começar a gravar'}
-            className={`flex min-h-[190px] flex-1 flex-col items-center justify-center gap-3 border-2 bg-surface px-6 py-6 ${
+            className={`flex min-h-[190px] flex-1 flex-col items-center justify-center gap-3 border-2 bg-surface px-6 py-6 lg:short:min-h-[112px] lg:short:gap-2 lg:short:py-3 lg:tight:min-h-[96px] ${
               recording ? 'border-alert' : 'border-stroke hover:border-accent'
             }`}
           >
-            <PixelMic recording={recording} className="size-24" />
+            <PixelMic recording={recording} className="size-24 lg:short:size-16" />
             {recording && (
               <span className="flex h-9 items-end gap-1" aria-hidden="true">
                 {Array.from({ length: 16 }, (_, i) => (

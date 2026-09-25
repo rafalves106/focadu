@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 72 - Perfil "tela do agente" e QG do Squad**.
+> Ultima fase que atualizou este documento: **Fase 73 - Ranking em pixel art (placar de fliperama)**.
 
 ## Visao geral do projeto
 
@@ -560,6 +560,18 @@ Weekly.CalculateScore()  = 0.7 * media(Daily.CalculateScore() das Dailies origin
 Score do Course (Ranking) = soma cumulativa (snowball) de Weekly.CalculateScore() de cada Weekly
                             completa da Enrollment - so no escopo "course" (ver abaixo).
 ```
+
+**Tela do Ranking em pixel art (Fase 73, Figma "Ranking — v2", nodes 133:4503/134:6707).** "Placar de
+fliperama": podio com os 3 primeiros (agente de frente em cima dos blocos) + recorte e a regra do Score
+a esquerda; a direita o placar HIGH SCORE (top 10, mini agente, linha pontilhada, 1º em ambar, a linha
+do aluno em verde com cursor) e os cartoes "Proximo alvo" e "Como subir". Quem esta fora do top 10
+aparece preso no pe do placar, depois de "· · ·". `RankingResultDto` ganhou `AheadEntry` (quem esta
+logo acima do aluno, mesmo fora do top 10 - `GetCourseRankingUseCase.EntryAhead`), `TotalEntries`,
+`CurrentWeekNumber` e `CurrentWeekScored`: com o recorte Semana e a semana do aluno ainda aberta, a
+tela avisa que ela so entra no placar quando o projeto for avaliado (decisao tomada na implementacao:
+manter o recorte e avisar, em vez de trocar por "semana passada"). `RankingEntryDto` ganhou `Look`
+(`AgentLookDto`, `Application/Shared/AgentLooks.cs`, o mesmo do QG do Squad), preenchido tambem no
+ranking do squad.
 
 **`WeeklyProject` ganhou `Score`/`Feedback`.** Antes da Fase 16, `WeeklyProject.Evaluate()` nao
 tinha parametro nenhum (so aprovar por status). Passou a exigir `Evaluate(int score, string?
@@ -1310,7 +1322,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 POST | `/api/weeklies/{weeklyId}/project/submit` | `SubmitWeeklyProjectUseCase` (Fase 7) | 200, 400/404 - `WeeklyProject.Submit` existia desde a Fase 1, so faltava endpoint |
 | 🔒 POST | `/api/users/me/forgejo-token` | `GenerateForgejoTokenUseCase` (Fase 60) | 200 `ForgejoTokenDto` - gera token novo do Forgejo e revoga o anterior; unico lugar onde o token inteiro aparece (nao e persistido). 404 `conta_git_inexistente` sem conta no Forgejo |
 | 🔒 POST | `/api/weeklies/{weeklyId}/project/evaluate` | `EvaluateWeeklyProjectUseCase` (Fase 11) | 200, 400/404 - `WeeklyProject.Evaluate` existia desde a Fase 1, so faltava endpoint (so backend, sem tela propria). Fase 16: virou PUT com corpo `{score, feedback}` obrigatorio. Fase 21: voltou a ser POST sem corpo - nota/feedback agora vem da IA (GitHub + Groq, ver secao acima). Fase 27b: `SubmitWeeklyProjectUseCase` passou a chamar isso sozinho (composicao) logo apos o submit - nenhum chamador HTTP direto novo, o endpoint continua existindo do mesmo jeito |
-| 🔒 GET | `/api/courses/{courseId}/ranking?scope=` | `GetCourseRankingUseCase` (Fase 16) | 200 (`RankingResultDto`) - `scope` = `weekly`\|`monthly`\|`course`, default `course` se omitido. Fase 18: `RankingEntryDto` ganhou `EquippedNameColor` (Name do cosmetico equipado, nao hex - ver secao abaixo) |
+| 🔒 GET | `/api/courses/{courseId}/ranking?scope=` | `GetCourseRankingUseCase` (Fase 16) | 200 (`RankingResultDto`) - `scope` = `weekly`\|`monthly`\|`course`, default `course` se omitido. Fase 18: `RankingEntryDto` ganhou `EquippedNameColor` (Name do cosmetico equipado, nao hex - ver secao abaixo). Fase 73: `RankingEntryDto.Look` e `RankingResultDto.AheadEntry`/`TotalEntries`/`CurrentWeekNumber`/`CurrentWeekScored` |
 | 🔒 GET | `/api/users/me/badges` | `GetUserBadgesUseCase` (Fase 17) | 200 (`UserBadgesDto`, 5 badges calculados sob demanda) |
 | 🔒 GET | `/api/users/me/referral` | `GetReferralInfoUseCase` (Fase 17) | 200 (`ReferralInfoDto`) - gera o `ReferralCode` na 1a consulta |
 | 🔒 GET | `/api/marketplace/catalog` | `GetMarketplaceCatalogUseCase` (Fase 17) | 200 (`MarketplaceCatalogDto`) |
@@ -2956,10 +2968,8 @@ frontend/
                                    (Fase 17). Fase 39: `findCurrentWeekId` destaca (borda accent) a
                                    1a semana acessivel e ainda incompleta em `WeekSummaryCard`, no
                                    lugar do emoji ▶️/🔒 fixo por semana (🔒 continua so quando bloqueada)
-      RankingPage.tsx            <- /start?course=&ranking=1 (Fase 16, tela 13 do inventario
-                                   original) - abas Semana/Mes/Curso (RankingScopeTabs), top 10
-                                   (RankingTable) + posicao do usuario sempre visivel
-                                   (CurrentUserRankingCard)
+      RankingPage.tsx            <- /start?course=&ranking=1 (Fase 16; Fase 73: placar de fliperama
+                                   em pixel art, sem rolagem externa a partir de lg)
       MarketplacePage.tsx        <- /loja (Fase 17, tela 14 do inventario original). Fase 25: "em
                                    breve" (pedido do Falves - vai montar um kit inicial de pixel
                                    art pros cosmeticos) - so `GemBadge` + `ComingSoon` (novo,
@@ -3036,13 +3046,9 @@ frontend/
       ReinforcementIntroScreen.tsx  <- Fase 15 - transicao pra Daily de reforco, reaproveita IntroCard
       WeeklyReinforcementBadge.tsx   <- Fase 15 - so apresentacao ("📋 Revisao semanal disponivel"),
                                    sem link embutido, sem bloquear nada
-      ranking/                     <- Fase 16
-        RankingScopeTabs.tsx              <- abas Semana/Mes/Curso, mesmo padrao das abas Entrar/
-                                   Criar Conta do LoginPage
-        RankingTable.tsx                   <- top N (medalha nos 3 primeiros), destaca o proprio
-                                   usuario quando ele aparece na lista
-        CurrentUserRankingCard.tsx           <- posicao do usuario sempre visivel, mesmo fora do
-                                   top N; null quando o usuario nao tem matricula no curso
+      ranking/                     <- Fase 16; Fase 73 trocou RankingScopeTabs/RankingTable/
+                                   CurrentUserRankingCard por Scoreboard.tsx
+        Scoreboard.tsx                    <- PodiumPanel, ScoreBoard (HIGH SCORE), NextTarget, HowToClimb
       agent/                        <- Fase 71 (substitui marketplace/, cujos CosmeticItemCard e
                                    CosmeticSlotFilter sairam - sem uso desde a Fase 25)
         AgentSprite.tsx                   <- agente em camadas (corpo + pecas) recortado das folhas
@@ -3426,6 +3432,20 @@ lg:overflow-y-auto">`. Consequencias:
 - `min-h-screen` das telas da sessao diaria (`SessionShell`, `IntroCard`, `CompletionSummary`,
   `ActivityScreen`, `Centered`, `ErrorLayout`) ainda nao foi trocado - passam da altura do `<main>`
   pelo tamanho do nav e rolam nele; sao tratados tela a tela (ver `docs/fase-67/`).
+
+**Telas baixas e desktop estreito (ajuste da Fase 72, pedido do dono: "evitar ao maximo o scroll
+vertical").** `index.css` define as variantes `short:` (janela abaixo de 880px de altura) e `tight:`
+(abaixo de 760px), usadas sempre junto com `lg:`. Elas compactam espacamento, fontes e sprites (2x no
+lugar de 3x nos cartoes da Loja e no podio do Squad, calendario do Perfil em 1 linha, microfone e
+enunciado menores no Resumo Falado). Entre 1024 e 1279px as colunas laterais afinam: sessao 208px
+em vez de 256px, Projeto Semanal 210px em vez de 250px, Loja 240px/208px, margem lateral 32px em vez
+de 64px. A regra: o layout cabe na janela, e so conteudo de tamanho livre rola dentro do proprio
+cartao (texto da Leitura, especificacao do projeto, feed do squad, lista de dias da semana, tabela de
+certificacoes). Conferido com Playwright no mock em 1440x900, 1366x768, 1280x720 e 1024x768: nenhuma
+tela rola a pagina, e o unico layout que ainda passava era o Resumo Falado com enunciado longo (15px).
+A visao da semana (`WeeklyDetailPage`, ainda no estilo antigo) ganhou a mesma casca: a lista de dias
+rola por dentro e o resumo fica fixo. No QG do Squad, o lider gerencia o top 3 pelo "⋯" no nome do
+podio (a lista nao repete mais o top 3).
 
 ### Sessao diaria em pixel art (Fase 68)
 

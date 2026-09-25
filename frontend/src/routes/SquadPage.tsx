@@ -34,7 +34,7 @@ export function SquadPage() {
   if (error && !noSquad) return <ApiErrorScreen error={error} onRetry={retry} />;
 
   return (
-    <div className="flex flex-col gap-4 bg-base px-4 pt-5 pb-10 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:px-16 lg:pt-8 lg:pb-10">
+    <div className="flex flex-col gap-4 bg-base px-4 pt-5 pb-10 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:px-8 lg:pt-8 lg:pb-10 xl:px-16 lg:short:gap-3 lg:short:pt-5 lg:short:pb-6 lg:tight:pt-4 lg:tight:pb-4">
       <header className="flex items-center justify-between gap-3 lg:shrink-0">
         <Link to="/start" className="flex w-fit items-center gap-2 font-pixel-label text-[9px] text-secondary hover:text-accent">
           <img src={backArrow} alt="" className="size-4 pixelated" />
@@ -52,7 +52,7 @@ export function SquadPage() {
           <div className="lg:shrink-0">
             <SquadHero hq={hq} userId={user.id} onInvite={() => setInviting(true)} />
           </div>
-          <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:flex-row">
+          <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:flex-row lg:short:gap-3">
             <SquadFeed feed={hq.feed} members={hq.members} userId={user.id} />
             <SquadRanking members={hq.members} ownerUserId={hq.ownerUserId} coLeaderUserId={hq.coLeaderUserId} userId={user.id} onChanged={retry} />
           </div>

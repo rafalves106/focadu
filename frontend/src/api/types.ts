@@ -414,10 +414,18 @@ export interface RankingEntryDto {
   score: number;
   position: number;
   equippedNameColor: string | null;
+  /** Fase 72: o agente em pixel art da pessoa (podio/placar), nulo sem agente criado. */
+  look: AgentLookDto | null;
 }
 
 /** currentUserEntry e null so quando o usuario logado nao tem matricula neste curso. */
 export interface RankingResultDto {
+  /** Fase 72: quem esta logo acima do usuario, mesmo fora do top 10 ("Proximo alvo"). */
+  aheadEntry: RankingEntryDto | null;
+  totalEntries: number;
+  /** Fase 72: semana atual do usuario e se ela ja fechou (senao o recorte Semana avisa). */
+  currentWeekNumber: number | null;
+  currentWeekScored: boolean;
   topEntries: RankingEntryDto[];
   currentUserEntry: RankingEntryDto | null;
 }

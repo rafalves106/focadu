@@ -24,14 +24,14 @@ export function NoSquadView({ look, onDone }: { look: AgentLook | null; onDone: 
   return (
     <div className="flex flex-col gap-4 lg:gap-4">
       <section className="flex flex-col border-2 border-accent/60 bg-base shadow-[6px_6px_0_0_#1c9e3e] lg:flex-row">
-        <div className="flex shrink-0 flex-col gap-3 p-5 lg:w-[340px] lg:border-r-2 lg:border-stroke">
+        <div className="flex shrink-0 flex-col gap-3 p-5 lg:w-[300px] lg:border-r-2 lg:border-stroke xl:w-[340px] lg:short:gap-2 lg:short:p-4">
           <PanelLabel>QG do squad</PanelLabel>
           <h1 className="font-pixel-label text-3xl leading-none text-primary uppercase">Sem squad</h1>
           <p className="font-pixel text-[22px] leading-none text-secondary">Quem estuda junto segura a ofensiva.</p>
           <p className="text-[13px] text-secondary">Monte o seu ou entre no de alguém. Dá pra ter um squad por vez.</p>
         </div>
         <PixelStage className="min-w-0 flex-1 border-y-2 border-stroke lg:border-y-0 lg:border-r-2" floor="bottom-[34px]" steps={9}>
-          <ul className="flex items-end justify-center gap-2 px-4 pt-10 pb-3 sm:gap-4" aria-hidden="true">
+          <ul className="flex items-end justify-center gap-2 px-4 pt-10 pb-3 sm:gap-4 lg:short:pt-5 lg:short:pb-2" aria-hidden="true">
             {[0, 1, 2, 3, 4, 5].map((i) =>
               i === 2 ? (
                 <li key={i} className="flex w-16 flex-col items-center gap-2">
@@ -47,7 +47,7 @@ export function NoSquadView({ look, onDone }: { look: AgentLook | null; onDone: 
             )}
           </ul>
         </PixelStage>
-        <div className="flex shrink-0 flex-col gap-3 p-5 lg:w-[300px]">
+        <div className="flex shrink-0 flex-col gap-3 p-5 lg:w-[260px] xl:w-[300px] lg:short:gap-2 lg:short:p-4">
           <PanelLabel>Num squad você tem</PanelLabel>
           <ul className="flex flex-col gap-3">
             {PERKS.map(([icon, text]) => (
@@ -136,10 +136,10 @@ function SquadForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`flex flex-col gap-3 border-2 bg-base p-5 ${primary ? 'border-accent/60' : 'border-stroke'}`}>
+    <form onSubmit={handleSubmit} className={`flex flex-col gap-3 border-2 bg-base p-5 lg:short:gap-2 lg:short:p-4 ${primary ? 'border-accent/60' : 'border-stroke'}`}>
       <PanelLabel>{title}</PanelLabel>
       <p className="font-pixel text-xl leading-none text-secondary">{hint}</p>
-      <label className="mt-2 flex flex-col gap-1.5">
+      <label className="mt-2 flex flex-col gap-1.5 lg:short:mt-0">
         <span className="font-pixel-label text-[8px] text-muted">{label}</span>
         <input
           value={value}

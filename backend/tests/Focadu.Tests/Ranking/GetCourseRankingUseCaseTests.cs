@@ -164,6 +164,31 @@ public class GetCourseRankingUseCaseTests
         return weekly;
     }
 
+    [Fact]
+    public void EntryAhead_IsThePositionRightAbove_NullForFirstOrMissing()
+    {
+        var ranked = GetCourseRankingUseCase.RankEntries(
+        [
+            new ScoredEnrollment(Guid.NewGuid(), "A", 90, DateTime.UtcNow),
+            new ScoredEnrollment(Guid.NewGuid(), "B", 70, DateTime.UtcNow),
+            new ScoredEnrollment(Guid.NewGuid(), "C", 50, DateTime.UtcNow),
+        ]);
+
+        Assert.Equal("B", GetCourseRankingUseCase.EntryAhead(ranked, ranked[2])?.DisplayName);
+        Assert.Null(GetCourseRankingUseCase.EntryAhead(ranked, ranked[0]));
+        Assert.Null(GetCourseRankingUseCase.EntryAhead(ranked, null));
+    }
+
+    [Fact]
+    public void RankEntries_CarriesTheAgentLook()
+    {
+        var look = new Focadu.Application.Shared.AgentLookDto(3, "parte-de-cima/moletom", "parte-de-baixo/calca", null, "tenis/tenis");
+
+        var ranked = GetCourseRankingUseCase.RankEntries([new ScoredEnrollment(Guid.NewGuid(), "A", 10, DateTime.UtcNow, null, look)]);
+
+        Assert.Equal(look, ranked[0].Look);
+    }
+
     /// <summary>Weekly com 1 Daily (1 Quiz) + Projeto, ambos avaliados com o mesmo "score" - Weekly.CalculateScore() = score (0.7*score + 0.3*score = score).</summary>
     private static Weekly CompleteWeeklyWithScore(Guid enrollmentId, Guid monthlyId, int number, DateOnly date, int score)
     {

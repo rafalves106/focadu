@@ -41,7 +41,7 @@ export function MaterialSidebar({
   onSelect?: (contentId: string) => void;
 }) {
   return (
-    <aside className="flex shrink-0 flex-col gap-3 pixel-box bg-base p-5">
+    <aside className="flex shrink-0 flex-col gap-3 pixel-box bg-base p-5 lg:short:gap-2 lg:short:p-4">
       <CardLabel pixel>Material de hoje</CardLabel>
 
       {([0, 1] as const).map((type) => {
@@ -85,7 +85,7 @@ export function MaterialSidebar({
                       className="flex w-full flex-col gap-1.5 text-left enabled:hover:brightness-110 disabled:cursor-default"
                     >
                       <div
-                        className={`relative flex h-[104px] w-full items-center justify-center overflow-hidden border-2 bg-surface-alt ${
+                        className={`relative flex h-[104px] w-full items-center lg:short:h-20 lg:tight:h-16 justify-center overflow-hidden border-2 bg-surface-alt ${
                           isActive ? 'border-accent' : 'border-stroke'
                         }`}
                       >

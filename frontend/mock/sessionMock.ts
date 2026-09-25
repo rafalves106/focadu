@@ -155,6 +155,85 @@ function squadHqDto() {
   };
 }
 
+function courseDetailDto() {
+  const TITLES = ['Fundamentos da Web', 'Injeção e XSS', 'Autenticação e sessão', 'Nuvem e APIs'];
+  const monthlies = TITLES.map((title, mi) => ({
+    id: mi === 0 ? MOCK_IDS.monthly : `m-${mi + 1}`,
+    number: mi + 1,
+    title,
+    certifications: [],
+    weeklies: [0, 1, 2].map((wi) => {
+      const number = mi * 3 + wi + 1;
+      const days = Array.from({ length: 6 }, (_, di) => {
+        const dayNumber = (number - 1) * 6 + di + 1;
+        const done = dayNumber <= 10;
+        return {
+          id: number === 1 && di === 0 ? MOCK_IDS.daily : `d-${dayNumber}`,
+          dayNumber,
+          date: localIso(Math.max(0, 11 - dayNumber)),
+          status: done ? 3 : dayNumber === 11 ? 1 : 0,
+          isReinforcement: false,
+          totalActivities: 8,
+          completedActivities: done ? 8 : 0,
+          title: `Dia ${dayNumber}`,
+          isNext: dayNumber === 11,
+          reinforcementDailyId: null,
+          completedToday: false,
+        };
+      });
+      return {
+        id: number === 1 ? MOCK_IDS.weekly : `w-${number}`,
+        number,
+        title: `Semana ${number}`,
+        theme: null,
+        totalDailies: 6,
+        completedDailies: days.filter((d) => d.status === 3).length,
+        weakDailies: 0,
+        hasWeeklyReinforcement: false,
+        days,
+        requiresPublicationToUnlock: false,
+        isLocked: number > 2,
+        projectStatus: number === 1 ? 2 : number === 2 ? 0 : null,
+      };
+    }),
+  }));
+  return {
+    id: MOCK_IDS.course,
+    name: 'Web Security',
+    status: 1,
+    progress: { totalDailies: 72, completedDailies: 10, reinforcementDailies: 0, completionPercentage: 13.9 },
+    monthlies,
+    dailyReinforcements: [],
+    weeklyReinforcements: [],
+  };
+}
+
+// Ranking (Fase 72): top 10 com agentes; no recorte Mes o aluno do mock fica fora do top 10 (27º) e na
+// Semana a semana dele ainda nao fechou.
+const RANKING_NAMES = ['Marina', 'Diego', 'Falves (mock)', 'Bia', 'Rafa', 'Caio', 'Jess', 'Lu', 'Téo', 'Nina', 'Ana'];
+function courseRankingDto(scope: string) {
+  const looks = Object.values(LOOKS);
+  const base = scope === 'weekly' ? 12 : scope === 'monthly' ? 33 : 96.2;
+  const entries = RANKING_NAMES.map((name, i) => {
+    const [skinTone, top, bottom, hair, shoes] = looks[i % looks.length];
+    const isMe = name === 'Falves (mock)';
+    return {
+      userId: isMe ? MOCK_IDS.user : `r-${i}`,
+      displayName: name,
+      score: Math.round((base - i * base * 0.08) * 10) / 10,
+      position: i + 1,
+      equippedNameColor: null,
+      look: { skinTone, top, bottom, hair, shoes },
+    };
+  });
+  const others = entries.filter((e) => e.userId !== MOCK_IDS.user);
+  const ranked = scope === 'monthly' ? others.map((e, i) => ({ ...e, position: i + 1 })) : entries;
+  const me = scope === 'monthly' ? { ...entries[2], position: 27, score: 4.2 } : entries[2];
+  const top = ranked.slice(0, 10);
+  const ahead = scope === 'monthly' ? { ...top[9], position: 26, displayName: 'Rui', score: 4.9 } : entries[1];
+  return { topEntries: top, currentUserEntry: me, aheadEntry: ahead, totalEntries: 31, currentWeekNumber: 2, currentWeekScored: scope !== 'weekly' };
+}
+
 function studyCalendarDto() {
   const pattern = ['studied', 'studied', 'missed', 'studied', 'studied', 'paused', 'paused', 'studied', 'studied', 'rest', 'studied', 'studied', 'studied', 'today'];
   return {
@@ -516,10 +595,7 @@ export function sessionMock(): Plugin {
             ],
           });
         if (path === '/api/users/me/referral') return send(res, 200, { referralCode: 'K7Q2M9XA', confirmedReferralCount: 0 });
-        if (path === `/api/courses/${ids.course}/ranking`) {
-          const me = { userId: ids.user, displayName: 'Falves (mock)', score: 87.4, position: 3, equippedNameColor: null };
-          return send(res, 200, { topEntries: [me], currentUserEntry: me });
-        }
+        if (path === `/api/courses/${ids.course}/ranking`) return send(res, 200, courseRankingDto(url.searchParams.get('scope') ?? 'course'));
         if (path === '/api/squads/me/hq')
           return squadRole === 'nenhum'
             ? send(res, 404, { error: 'squad_nao_encontrado', message: 'Você ainda não tem squad.' })
@@ -536,18 +612,9 @@ export function sessionMock(): Plugin {
           hideScores = !!body.hideScores;
           return send(res, 200, { id: ids.user, email: 'mock@focadu.local', displayName: 'Falves (mock)', profileCompletedAt: now, interests: ['Motos esportivas', 'Jogos competitivos'], additionalProfileNotes: null, preferredLanguages: [1, 2], createdAt: '2026-09-02T12:00:00Z', hideScoresInSquadFeed: hideScores });
         }
-        // Perfil (Fase 72): so o que a tela do agente le do curso (progresso e a regiao atual). A trilha
-        // (/start?course=) do mock continua sem suporte - esse DTO nao tem o resto dos campos dela.
-        if (path === `/api/courses/${ids.course}`)
-          return send(res, 200, {
-            id: ids.course,
-            name: 'Web Security',
-            status: 1,
-            progress: { totalDailies: 72, completedDailies: 10, reinforcementDailies: 1, completionPercentage: 13.9 },
-            monthlies: [{ id: ids.monthly, number: 1, title: 'Fundamentos', certifications: [], weeklies: [{ id: ids.weekly, number: 2, completedDailies: 4, totalDailies: 6 }] }],
-            dailyReinforcements: [],
-            weeklyReinforcements: [],
-          });
+        // Fase 72: detalhe do curso (trilha, Perfil) - 72 dias em 4 regioes, os 10 primeiros concluidos e o
+        // Dia 11 como proximo (Semana 1 fechada com o projeto avaliado).
+        if (path === `/api/courses/${ids.course}`) return send(res, 200, courseDetailDto());
         if (path === '/api/squads/me/ranking')
           return squadRole === 'nenhum'
             ? send(res, 404, { error: 'squad_nao_encontrado', message: 'Você ainda não tem squad.' })

@@ -1,6 +1,7 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
 using Focadu.Application.Ranking;
+using Focadu.Application.Shared;
 using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
 using Focadu.Domain.Weeklies;
@@ -80,7 +81,7 @@ public class GetSquadRankingUseCase
 
         var members = await _squadRepository.GetMembersAsync(squad.Id, cancellationToken);
         var today = _clock.Today();
-        var itemNameById = (await _cosmeticItemRepository.GetAllAsync(cancellationToken)).ToDictionary(i => i.Id, i => i.Name);
+        var itemsById = (await _cosmeticItemRepository.GetAllAsync(cancellationToken)).ToDictionary(i => i.Id);
 
         var scored = new List<ScoredEnrollment>();
         var totalGems = 0;
@@ -94,14 +95,15 @@ public class GetSquadRankingUseCase
             var user = await _userRepository.GetByIdAsync(membership.UserId, cancellationToken);
             var gemBalance = await _gemBalanceRepository.GetByUserIdAsync(membership.UserId, cancellationToken);
             var equipped = await _equippedCosmeticsRepository.GetByUserIdAsync(membership.UserId, cancellationToken);
-            var nameColor = equipped?.EquippedNameColorId is { } colorId && itemNameById.TryGetValue(colorId, out var name)
-                ? name
+            var nameColor = equipped?.EquippedNameColorId is { } colorId && itemsById.TryGetValue(colorId, out var colorItem)
+                ? colorItem.Name
                 : null;
 
             totalGems += gemBalance?.TotalGems ?? 0;
             scored.Add(new ScoredEnrollment(
                 membership.UserId, user?.DisplayName ?? "Usuario",
-                GetCourseRankingUseCase.ComputeScore(weeklies, scope, today), membership.JoinedAt, nameColor));
+                GetCourseRankingUseCase.ComputeScore(weeklies, scope, today), membership.JoinedAt, nameColor,
+                AgentLooks.Resolve(equipped, itemsById)));
         }
 
         var ranked = GetCourseRankingUseCase.RankEntries(scored);

@@ -74,7 +74,7 @@ export function MarketplacePage() {
   const line = focadaLine(catalog, showcase);
 
   return (
-    <div className="flex flex-col gap-5 bg-base px-4 pt-5 pb-10 lg:min-h-0 lg:flex-1 lg:gap-6 lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12 lg:[@media(max-height:820px)]:gap-4 lg:[@media(max-height:820px)]:py-6">
+    <div className="flex flex-col gap-5 bg-base px-4 pt-5 pb-10 lg:min-h-0 lg:flex-1 lg:gap-6 lg:overflow-hidden lg:px-8 lg:pt-[45px] lg:pb-12 xl:px-16 lg:[@media(max-height:820px)]:gap-4 lg:[@media(max-height:820px)]:py-6">
       <header className="flex flex-wrap items-end justify-between gap-3 lg:shrink-0">
         <div className="flex min-w-0 flex-col gap-1.5">
           <Link to="/start" className="flex w-fit items-center gap-2 font-pixel-label text-[9px] text-secondary hover:text-accent">
@@ -100,7 +100,7 @@ export function MarketplacePage() {
 
       <div className="flex flex-col gap-6 lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-6">
         {look && (
-          <aside className="flex lg:w-[304px] lg:shrink-0 lg:min-h-0">
+          <aside className="flex lg:w-[240px] lg:shrink-0 lg:min-h-0 xl:w-[304px]">
             <ScrollArea className="min-w-0 flex-1 lg:min-h-0" contentClassName="flex min-h-full min-w-0 flex-col gap-3">
               <div className="flex shrink-0 flex-col gap-3.5 border-2 border-secondary bg-base p-[18px]">
                 <p className="font-pixel-label text-[9px] text-accent">// Seu agente</p>
@@ -142,7 +142,7 @@ export function MarketplacePage() {
           </aside>
         )}
 
-        <section className="flex min-w-0 flex-col gap-[18px] border-2 border-accent bg-base px-4 py-4 lg:min-h-0 lg:flex-1 lg:px-7 lg:py-[22px]">
+        <section className="flex min-w-0 flex-col gap-4 border-2 border-accent bg-base px-4 py-4 lg:min-h-0 lg:flex-1 lg:px-7 lg:py-5 lg:short:gap-3 lg:short:px-5 lg:short:py-4">
           <div className="flex items-center justify-between gap-3 lg:shrink-0">
             <p className="font-pixel-label text-[10px] text-accent">{catalog.agent ? '// Vitrine da semana' : '// Crie seu agente'}</p>
             {catalog.agent && <p className="font-pixel-label text-[8px] text-muted">Só sua · troca toda segunda</p>}
@@ -156,7 +156,7 @@ export function MarketplacePage() {
             ) : (
               <div className="flex flex-col gap-4">
                 {buyError && <p className="font-pixel-label text-[9px] text-alert">{buyError}</p>}
-                <ul className="grid grid-cols-1 gap-3 p-0.5 sm:grid-cols-2 xl:grid-cols-3">
+                <ul className="grid grid-cols-1 gap-3 p-0.5 sm:grid-cols-2 lg:grid-cols-3">
                   {showcase.map((item) => (
                     <ShowcaseCard
                       key={item.id}
@@ -176,15 +176,15 @@ export function MarketplacePage() {
           </ScrollArea>
         </section>
 
-        <aside className="flex lg:w-64 lg:shrink-0 lg:min-h-0">
-          <ScrollArea className="min-w-0 flex-1 lg:min-h-0" contentClassName="flex min-h-full min-w-0 flex-col gap-6">
-            <div className="flex shrink-0 flex-col gap-3 border-2 border-secondary bg-base p-[18px]">
+        <aside className="flex lg:w-52 lg:shrink-0 lg:min-h-0 xl:w-64">
+          <ScrollArea className="min-w-0 flex-1 lg:min-h-0" contentClassName="flex min-h-full min-w-0 flex-col gap-6 lg:short:gap-4">
+            <div className="flex shrink-0 flex-col gap-3 border-2 border-secondary bg-base p-[18px] lg:short:p-4">
               <p className="font-pixel-label text-[9px] text-accent">// Focada</p>
               <FocadaSays expression={line.expression} size="md" stacked>
                 {line.text}
               </FocadaSays>
             </div>
-            <div className="flex shrink-0 flex-col gap-3 border-2 border-secondary bg-base p-[18px]">
+            <div className="flex shrink-0 flex-col gap-3 border-2 border-secondary bg-base p-[18px] lg:short:gap-2 lg:short:p-4">
               <p className="font-pixel-label text-[9px] text-accent">// Como funciona</p>
               <p className="text-[13px] text-secondary">
                 A vitrine é sorteada só pra você e troca toda segunda. Peça que saiu volta num sorteio futuro. Pagou, é sua pra sempre.
@@ -231,27 +231,29 @@ function ShowcaseCard({
   const rarity = RARITY_STYLE[item.rarity];
   const missing = item.priceGems - gems;
   return (
-    <li className={`flex flex-col gap-3 border-2 p-3.5 ${selected ? 'border-project' : rarity.border}`}>
-      <button type="button" onClick={onTry} aria-pressed={selected} aria-label={`Provar ${item.name}`} className="flex justify-center border-2 border-stroke bg-surface py-3 hover:border-secondary">
-        {preview && <AgentSprite look={preview} scale={3} />}
+    <li className={`flex flex-col gap-2.5 border-2 p-3 lg:short:gap-2 lg:short:p-2.5 ${selected ? 'border-project' : rarity.border}`}>
+      <button type="button" onClick={onTry} aria-pressed={selected} aria-label={`Provar ${item.name}`} className="flex justify-center border-2 border-stroke bg-surface py-2 hover:border-secondary lg:short:py-1.5">
+        {/* Telas baixas (Fase 72): o agente cai pra 2x, pras 6 pecas caberem sem rolar. */}
+        {preview && <AgentSprite look={preview} scale={3} className="lg:short:hidden" />}
+        {preview && <AgentSprite look={preview} scale={2} className="hidden lg:short:block" />}
       </button>
       <div className="flex flex-col gap-1">
         <span className="flex items-center justify-between gap-2">
           <span className={`font-pixel-label text-[8px] ${rarity.text}`}>{rarity.label}</span>
           <span className="font-pixel-label text-[8px] text-muted">{SLOT_LABEL[item.slot]}</span>
         </span>
-        <p className="font-pixel text-xl leading-tight text-primary">{item.name}</p>
+        <p className="font-pixel text-xl leading-tight text-primary lg:short:truncate lg:short:text-lg" title={item.name}>{item.name}</p>
       </div>
       {item.owned ? (
         item.equipped ? (
-          <span className="border-2 border-stroke py-3 text-center font-pixel-label text-[10px] text-secondary">Já é sua · vestindo</span>
+          <span className="border-2 border-stroke py-3 text-center font-pixel-label text-[10px] text-secondary lg:short:py-2 lg:short:text-[9px]">Já é sua · vestindo</span>
         ) : (
-          <PixelButton ghost onClick={onWear} disabled={busy}>
+          <PixelButton ghost onClick={onWear} disabled={busy} className={SHORT_BUTTON}>
             Já é sua · vestir
           </PixelButton>
         )
       ) : (
-        <PixelButton onClick={onBuy} disabled={busy || missing > 0}>
+        <PixelButton onClick={onBuy} disabled={busy || missing > 0} className={SHORT_BUTTON}>
           <img src={gemIcon} alt="" className="size-4 pixelated" />
           {missing > 0 ? `Faltam ${missing}` : `Comprar · ${item.priceGems}`}
         </PixelButton>
@@ -259,6 +261,9 @@ function ShowcaseCard({
     </li>
   );
 }
+
+/** Botao do cartao em tela baixa (Fase 72): uma linha so, pra 2 fileiras de vitrine caberem sem rolar. */
+const SHORT_BUTTON = 'whitespace-nowrap lg:short:gap-1.5 lg:short:px-2 lg:short:py-2 lg:short:text-[9px]';
 
 /** Dias corridos ate a proxima segunda (yyyy-MM-dd, data local do servidor). */
 function daysUntil(isoDate: string): number {

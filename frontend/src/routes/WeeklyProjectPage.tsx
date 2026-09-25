@@ -138,7 +138,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   // cartao rola por dentro com <ScrollArea>. Abaixo de `lg` (3 colunas nao cabem) volta pro fluxo
   // normal empilhado, com rolagem da pagina - ver docs/fase-61.
   return (
-    <div className="flex flex-col gap-6 bg-base px-4 pt-6 pb-8 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12">
+    <div className="flex flex-col gap-6 bg-base px-4 pt-6 pb-8 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:px-8 lg:pt-[45px] lg:pb-12 xl:px-16 lg:short:gap-4 lg:short:pt-6 lg:short:pb-6">
       {/* Topo: "voltar" a esquerda e a barra de progresso CENTRALIZADA (250px), como no Figma. Fase 64
           (pedido do dono): some com o dialogo da Focada - a tela fica so com as 3 colunas; volta-se pelo
           menu (Trilhas) ou pelo navegador. */}
@@ -168,11 +168,11 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col gap-8 lg:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col gap-8 lg:flex-row lg:gap-5 xl:gap-8">
         {/* Coluna esquerda (Fase 63): repositorio em cima (altura do conteudo) e referencias ocupando
             o resto - so depois do projeto disponibilizado. */}
         {released && (project.submissionUrl || project.references.length > 0) && (
-          <div className="flex min-h-0 flex-col gap-8 lg:w-[250px] lg:shrink-0">
+          <div className="flex min-h-0 flex-col gap-8 lg:w-[210px] lg:shrink-0 xl:w-[250px] lg:short:gap-5">
             {project.submissionUrl && (
               <RepositoryPanel
                 submissionUrl={project.submissionUrl}
@@ -328,7 +328,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
 
         {/* Coluna direita (Fase 63): anotacao rapida (264px - 240px do Figma + 10%, pedido do dono 23/09/2026 - presa ao PROJETO, nao a uma Daily) + chat
             ocupando o resto da altura. */}
-        <div className="flex min-h-0 flex-col gap-8 lg:w-[250px] lg:shrink-0">
+        <div className="flex min-h-0 flex-col gap-8 lg:w-[210px] lg:shrink-0 xl:w-[250px] lg:short:gap-5">
           <QuickNotePanel fill target={{ weeklyId }} courseId={weekly.courseId} className="h-[264px]" />
           <StudyAssistantPanel tall className="h-[480px] lg:h-auto lg:min-h-0 lg:flex-1" />
         </div>

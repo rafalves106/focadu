@@ -30,9 +30,9 @@ export function SquadHero({ hq, userId, onInvite }: { hq: SquadHqDto; userId: st
 
   return (
     <section className="flex flex-col border-2 border-accent/60 bg-base shadow-[6px_6px_0_0_#1c9e3e] lg:flex-row">
-      <div className="flex shrink-0 flex-col gap-3 p-5 lg:w-[340px] lg:border-r-2 lg:border-stroke">
+      <div className="flex shrink-0 flex-col gap-3 p-5 lg:w-[300px] lg:border-r-2 lg:border-stroke xl:w-[340px] lg:short:gap-2 lg:short:p-4">
         <PanelLabel>QG do squad</PanelLabel>
-        <h1 className="font-pixel-label text-3xl leading-none break-words text-primary uppercase">{hq.name}</h1>
+        <h1 className="font-pixel-label text-3xl leading-none break-words text-primary uppercase lg:short:text-2xl">{hq.name}</h1>
         <p className="font-pixel text-[22px] leading-none text-secondary">
           {hq.members.length} {hq.members.length === 1 ? 'agente' : 'agentes'} · desde {monthYear(hq.createdAt)}
         </p>
@@ -42,9 +42,9 @@ export function SquadHero({ hq, userId, onInvite }: { hq: SquadHqDto; userId: st
             {leadLine}
           </p>
         )}
-        <p className="mt-1 font-pixel-label text-[8px] text-muted">Código de convite</p>
+        <p className="mt-1 font-pixel-label text-[8px] text-muted lg:short:mt-0">Código de convite</p>
         <div className="flex gap-2">
-          <span className="flex flex-1 items-center justify-center border-2 border-accent/60 bg-surface px-3 py-2 font-pixel text-[30px] leading-none tracking-[4px] text-accent">
+          <span className="flex flex-1 items-center justify-center border-2 border-accent/60 bg-surface px-3 py-2 font-pixel text-[30px] leading-none tracking-[4px] text-accent lg:short:py-1 lg:short:text-[26px]">
             {hq.joinCode}
           </span>
           <button
@@ -67,7 +67,7 @@ export function SquadHero({ hq, userId, onInvite }: { hq: SquadHqDto; userId: st
 function Lineup({ members, ownerUserId, coLeaderUserId, userId }: { members: SquadMemberDto[]; ownerUserId: string; coLeaderUserId: string | null; userId: string }) {
   return (
     <PixelStage className="min-w-0 flex-1 border-y-2 border-stroke lg:border-y-0 lg:border-r-2" floor="bottom-[58px]" steps={9}>
-      <ul className="scrollbar-none flex items-end justify-center-safe gap-1 overflow-x-auto px-2 pt-6 pb-3 sm:gap-2 lg:pt-10 min-[1400px]:gap-4">
+      <ul className="scrollbar-none flex items-end justify-center-safe gap-1 overflow-x-auto px-2 pt-6 pb-3 sm:gap-2 lg:pt-10 min-[1400px]:gap-4 lg:short:pt-4 lg:short:pb-2">
         {members.map((m) => (
           <LineupMember key={m.userId} member={m} you={m.userId === userId} leader={m.userId === ownerUserId} coLeader={m.userId === coLeaderUserId} />
         ))}
@@ -129,10 +129,10 @@ function WeeklyGoal({ goal, memberCount }: { goal: SquadHqDto['weeklyGoal']; mem
   const left = Math.max(0, goal.target - goal.completed);
   const done = left === 0;
   return (
-    <div className="flex shrink-0 flex-col gap-3 p-5 lg:w-[300px]">
+    <div className="flex shrink-0 flex-col gap-3 p-5 lg:w-[260px] xl:w-[300px] lg:short:gap-2 lg:short:p-4">
       <PanelLabel>Meta da semana</PanelLabel>
       <p className="flex items-end gap-3">
-        <span className={`font-pixel text-[56px] leading-[0.8] ${done ? 'text-accent' : 'text-primary'}`}>
+        <span className={`font-pixel text-[56px] leading-[0.8] lg:short:text-[44px] ${done ? 'text-accent' : 'text-primary'}`}>
           {goal.completed}/{goal.target}
         </span>
         <span className="font-pixel-label text-[8px] leading-tight text-secondary">
@@ -141,7 +141,7 @@ function WeeklyGoal({ goal, memberCount }: { goal: SquadHqDto['weeklyGoal']; mem
           juntos
         </span>
       </p>
-      <SegmentedBar percentage={(goal.completed / goal.target) * 100} label="Meta da semana do squad" segments={15} heightClass="h-[18px]" />
+      <SegmentedBar percentage={(goal.completed / goal.target) * 100} label="Meta da semana do squad" segments={15} heightClass="h-[18px] lg:short:h-3" />
       <p className="font-pixel text-xl leading-none text-secondary">{done ? 'Meta batida! Bora passar dela.' : `Faltam ${left} até domingo.`}</p>
       <span className="h-0.5 bg-stroke" aria-hidden="true" />
       <p className="flex items-center gap-2 font-pixel-label text-[7px] text-muted">

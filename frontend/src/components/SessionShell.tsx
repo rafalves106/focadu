@@ -133,7 +133,7 @@ export function SessionLayout({
   const notes = weekly && (
     <div className="relative shrink-0">
       <div className={notesLocked ? 'pointer-events-none opacity-30' : ''} aria-hidden={notesLocked}>
-        <QuickNotePanel target={{ dailyId: daily.id }} courseId={weekly.courseId} fill className="h-60" />
+        <QuickNotePanel target={{ dailyId: daily.id }} courseId={weekly.courseId} fill className="h-60 lg:tight:h-56" />
       </div>
       {notesLocked && (
         <div className="absolute inset-x-4 top-12 flex items-center gap-2 border-2 border-stroke bg-base px-3 py-2">
@@ -145,7 +145,7 @@ export function SessionLayout({
   );
 
   return (
-    <div className="flex flex-col gap-5 bg-base px-4 pt-5 pb-20 lg:min-h-0 lg:flex-1 lg:gap-6 lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12 lg:[@media(max-height:820px)]:gap-4 lg:[@media(max-height:820px)]:py-6">
+    <div className="flex flex-col gap-5 bg-base px-4 pt-5 pb-20 lg:min-h-0 lg:flex-1 lg:gap-6 lg:overflow-hidden lg:px-8 lg:pt-[45px] lg:pb-12 xl:px-16 lg:[@media(max-height:820px)]:gap-4 lg:[@media(max-height:820px)]:py-6">
       <header className="flex items-end justify-between gap-3 lg:shrink-0">
         <div className="flex min-w-0 flex-col gap-1.5">
           {weekly && (
@@ -171,12 +171,12 @@ export function SessionLayout({
         )}
       </header>
 
-      <div className="flex flex-col gap-6 lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-8">
+      <div className="flex flex-col gap-6 lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-5 xl:gap-8 xl:short:gap-6">
         {isDesktop && (
-          <aside className="flex w-64 shrink-0 lg:min-h-0">
-            <ScrollArea className="min-h-0 min-w-0 flex-1" contentClassName="flex min-h-full min-w-0 flex-col gap-6">
+          <aside className="flex w-52 shrink-0 lg:min-h-0 xl:w-64">
+            <ScrollArea className="min-h-0 min-w-0 flex-1" contentClassName="flex min-h-full min-w-0 flex-col gap-6 lg:short:gap-4">
               {material}
-              <PomodoroWidget className="min-h-[260px] flex-1" />
+              <PomodoroWidget className="min-h-[260px] flex-1 lg:short:min-h-0" />
             </ScrollArea>
           </aside>
         )}
@@ -215,10 +215,10 @@ export function SessionLayout({
         </section>
 
         {isDesktop && (
-          <aside className="flex w-64 shrink-0 lg:min-h-0">
-            <ScrollArea className="min-h-0 min-w-0 flex-1" contentClassName="flex min-h-full min-w-0 flex-col gap-6">
+          <aside className="flex w-52 shrink-0 lg:min-h-0 xl:w-64">
+            <ScrollArea className="min-h-0 min-w-0 flex-1" contentClassName="flex min-h-full min-w-0 flex-col gap-6 lg:short:gap-4">
               {notes}
-              <StudyAssistantPanel tall className="min-h-[280px] flex-1" />
+              <StudyAssistantPanel tall className="min-h-[280px] flex-1 lg:short:min-h-[180px]" />
             </ScrollArea>
           </aside>
         )}

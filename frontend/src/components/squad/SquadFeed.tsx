@@ -61,7 +61,7 @@ export function SquadFeed({ feed, members, userId }: { feed: SquadActivityDto[];
   }
 
   return (
-    <section className="flex min-w-0 flex-col gap-3 border-2 border-stroke bg-base p-5 lg:min-h-0 lg:flex-1">
+    <section className="flex min-w-0 flex-col gap-3 border-2 border-stroke bg-base p-5 lg:min-h-0 lg:flex-1 lg:short:p-4">
       <PanelLabel
         aside={
           <div className="flex flex-wrap justify-end gap-1.5" role="tablist" aria-label="Filtrar atividades">

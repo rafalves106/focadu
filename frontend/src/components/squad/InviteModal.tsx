@@ -88,13 +88,13 @@ export function ReferralStrip() {
   const { copied, copy } = useCopy();
   const { data: referral } = useApiResource(() => api.getReferralInfo(), []);
   return (
-    <section className="flex flex-col gap-4 border-2 border-stroke bg-base p-5 lg:flex-row lg:items-center">
+    <section className="flex flex-col gap-4 border-2 border-stroke bg-base p-5 lg:flex-row lg:items-center lg:short:gap-3 lg:short:p-4">
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         <p className="flex items-center gap-2 font-pixel-label text-[10px] text-accent">
           <img src={flagIcon} alt="" className="size-4 pixelated" />
           // Indique um amigo
         </p>
-        <p className="font-pixel text-[22px] leading-tight text-primary">
+        <p className="font-pixel text-[22px] leading-tight text-primary lg:short:text-xl">
           Ainda não conhece ninguém aqui? Chama um amigo: quando ele se matricular num curso, conta pro badge Embaixador.
         </p>
         {referral && (

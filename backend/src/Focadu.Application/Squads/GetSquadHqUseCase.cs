@@ -1,5 +1,6 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
+using Focadu.Application.Shared;
 using Focadu.Domain.Cosmetics;
 using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
@@ -115,14 +116,7 @@ public class GetSquadHqUseCase
         var equipped = await _equippedCosmeticsRepository.GetByUserIdAsync(member.UserId, cancellationToken);
         return new MemberFacts(
             member.UserId, user?.DisplayName ?? "Agente", user?.HideScoresInSquadFeed ?? false, member.Id, member.JoinedAt,
-            ResolveLook(equipped, itemsById), completions, projects, acquisitions);
-    }
-
-    internal static AgentLookDto? ResolveLook(UserEquippedCosmetics? equipped, IReadOnlyDictionary<Guid, CosmeticItem> itemsById)
-    {
-        if (equipped?.SkinTone is not { } skinTone) return null;
-        string? Code(Guid? id) => id is { } value && itemsById.TryGetValue(value, out var item) ? item.Code : null;
-        return new AgentLookDto(skinTone, Code(equipped.EquippedTopId), Code(equipped.EquippedBottomId), Code(equipped.EquippedHairId), Code(equipped.EquippedShoesId));
+            AgentLooks.Resolve(equipped, itemsById), completions, projects, acquisitions);
     }
 
     /// <summary>Lider primeiro, depois o co-lider, depois por ordem de entrada - a mesma ordem da escalacao no Figma.</summary>
@@ -224,9 +218,6 @@ internal record CompletionFact(Guid DailyId, int DayNumber, bool IsReinforcement
 internal record ProjectFact(Guid ProjectId, int WeekNumber, DateTime EvaluatedAt, int? Score);
 
 internal record AcquisitionFact(Guid InventoryId, CosmeticItem Item, DateTime AcquiredAt);
-
-/// <summary>Agente em pixel art de um membro (Fase 71): pele de 1 a 5 e o Code da peca vestida em cada camada (cabelo pode ser nulo).</summary>
-public record AgentLookDto(int SkinTone, string? Top, string? Bottom, string? Hair, string? Shoes);
 
 /// <param name="LastStudiedOn">Ultimo dia com Daily concluida - "ontem" na escalacao quando nao estudou hoje.</param>
 public record SquadMemberDto(Guid UserId, string DisplayName, AgentLookDto? Look, bool StudiedToday, DateOnly? LastStudiedOn, DateTime JoinedAt);
