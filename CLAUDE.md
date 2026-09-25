@@ -87,9 +87,17 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 71 — Loja em pixel art, agente e vitrine semanal** (24/09/2026).
+Última fase concluída: **Fase 72 — Perfil "tela do agente" e QG do Squad** (24/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Perfil sem abas + QG do Squad (Fase 72, Figma "Perfil + Squad — v2", pedido do dono)**: `/perfil`
+  virou a "tela do agente" - o agente em pixel art num palco com os slots do que está vestindo, e ao
+  lado ofensiva/score/posição/Gems, estante de troféus, atalho do squad, últimos 14 dias e dossiê;
+  guarda-roupa e conquistas em modal. O Squad virou tela própria, `/squad`: escalação com os agentes,
+  **meta da semana** (Dailies somadas; recompensa em Gems ainda a decidir), **feed de atividades**
+  derivado das datas que já existem (não persistido) com **GG** de um toque (`SquadCheers`), ranking
+  com pódio e o "Indique um amigo" no modal Convidar. Configurações ganhou "esconder minhas notas no
+  feed do squad". Ver `docs/fase-72/`.
 - **Loja em pixel art + agente (Fase 71, Figma "Personagens — corpo, roupas e loja")**: cada aluno cria
   um agente em pixel art (5 tons de pele, 1 cabelo natural e o kit básico moletom/calça/tênis, tudo grátis;
   `POST /api/agent`) que veste roupas em camadas (slots `Top`/`Bottom`/`Hair`/`Shoes`). A Loja reabriu

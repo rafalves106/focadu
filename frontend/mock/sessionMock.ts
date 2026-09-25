@@ -14,6 +14,7 @@
  *   /__mock/reset?at=ponte                    (Fase 69: a Daily de hoje e a ponte, falta escolher a linguagem)
  *   /__mock/reset?at=Quiz&pausa=1             (Fase 69: streak pausado - projeto da semana aberto)
  *   /__mock/loja?agente=0|1&gemas=60          (Fase 71: loja e agente, ver shopMock.ts)
+ *   /__mock/squad?as=membro|lider|nenhum      (Fase 72: QG do Squad em /squad; Perfil em /perfil)
  * Erros: /start?course=erro-500 | erro-offline | erro-lento (timeout do cliente, ~10s).
  * Ids fixos (MOCK_IDS) pra os links continuarem valendo depois de reiniciar o Vite.
  */
@@ -49,7 +50,7 @@ export const MOCK_IDS = {
 };
 const ids = MOCK_IDS;
 
-// Perfil (Fase 70): squad do aluno do mock - `/__mock/squad?as=membro|lider|nenhum` troca e abre a aba.
+// Squad (Fases 70/72): squad do aluno do mock - `/__mock/squad?as=membro|lider|nenhum` troca e abre o QG.
 type SquadRole = 'membro' | 'lider' | 'nenhum';
 let squadRole: SquadRole = 'membro';
 let squadCoLeader: string | null = 'u-marina';
@@ -84,6 +85,81 @@ function squadRankingDto() {
     page: 1,
     pageSize: 20,
     totalMembers: members.length,
+  };
+}
+
+// QG do Squad (Fase 72): escalacao com os agentes, meta da semana e feed com GGs em memoria.
+let hideScores = false;
+const cheers = new Map<string, { count: number; mine: boolean }>();
+const LOOKS: Record<string, [number, string, string, string | null, string]> = {
+  'u-marina': [4, 'parte-de-cima/camiseta', 'parte-de-baixo/saia', 'cabelo/black-power', 'tenis/cano-alto'],
+  'u-diego': [2, 'parte-de-cima/jaqueta', 'parte-de-baixo/jogger', 'cabelo/bone', 'tenis/bota'],
+  [MOCK_IDS.user]: [3, 'parte-de-cima/moletom', 'parte-de-baixo/calca', 'cabelo/curto', 'tenis/tenis'],
+  'u-bia': [1, 'parte-de-cima/camisa-social', 'parte-de-baixo/calca', 'cabelo/longo', 'tenis/preto'],
+  'u-caio': [5, 'parte-de-cima/moletom', 'parte-de-baixo/bermuda', 'cabelo/capacete', 'tenis/tenis'],
+  'u-lu': [2, 'parte-de-cima/camiseta', 'parte-de-baixo/jogger', 'cabelo/curto', 'tenis/preto'],
+};
+const STUDIED_TODAY = new Set(['u-marina', 'u-diego', 'u-bia', 'u-caio']);
+
+function ago(minutes: number): string {
+  return new Date(Date.now() - minutes * 60_000).toISOString();
+}
+
+function localIso(daysAgo: number): string {
+  const d = new Date(Date.now() - daysAgo * 86_400_000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function squadHqDto() {
+  const ranking = squadRankingDto();
+  const members = squadMembers.map((m, i) => {
+    const [skinTone, top, bottom, hair, shoes] = LOOKS[m.userId];
+    return {
+      userId: m.userId,
+      displayName: m.displayName,
+      look: { skinTone, top, bottom, hair, shoes },
+      studiedToday: STUDIED_TODAY.has(m.userId),
+      lastStudiedOn: STUDIED_TODAY.has(m.userId) ? localIso(0) : localIso(m.userId === 'u-lu' ? 3 : 1),
+      joinedAt: new Date(Date.now() - (40 - i) * 86_400_000).toISOString(),
+    };
+  });
+  members.sort((a, b) => (a.userId === ranking.ownerUserId ? -1 : b.userId === ranking.ownerUserId ? 1 : a.userId === ranking.coLeaderUserId ? -1 : b.userId === ranking.coLeaderUserId ? 1 : 0));
+  const act = (type: string, userId: string, minutesAgo: number, extra: Json = {}) => {
+    const key = `${type}:${userId}:${minutesAgo}`;
+    const c = cheers.get(key) ?? { count: (minutesAgo % 5) + 1, mine: false };
+    if (!cheers.has(key)) cheers.set(key, c);
+    const name = squadMembers.find((m) => m.userId === userId)?.displayName ?? '?';
+    return { key, type, userId, displayName: name, occurredAt: ago(minutesAgo), dayNumber: null, weekNumber: null, score: null, itemName: null, itemRarity: null, cheers: c.count, cheeredByMe: c.mine, ...extra };
+  };
+  const feed = [
+    act('daily', 'u-marina', 8, { dayNumber: 12, score: 94 }),
+    act('project', 'u-diego', 62, { weekNumber: 1, score: 92 }),
+    act('reinforcement', 'u-caio', 190, { dayNumber: 9 }),
+    act('purchase', 'u-bia', 60 * 26, { itemName: 'Camisa social + gravata', itemRarity: 1 }),
+    act('daily', MOCK_IDS.user, 60 * 27, { dayNumber: 10, score: 88 }),
+    act('joined', 'u-lu', 60 * 30),
+    act('agent', 'u-lu', 60 * 30 - 5),
+    act('daily', 'u-bia', 60 * 50, { dayNumber: 11, score: null }),
+  ].filter((a) => squadMembers.some((m) => m.userId === a.userId));
+  const studiedToday = members.filter((m) => m.studiedToday).length;
+  return {
+    squadId: 'squad-1',
+    name: ranking.squadName,
+    joinCode: ranking.joinCode,
+    ownerUserId: ranking.ownerUserId,
+    coLeaderUserId: ranking.coLeaderUserId,
+    createdAt: '2026-08-12T12:00:00Z',
+    members,
+    weeklyGoal: { completed: 21, target: members.length * 5, studiedToday, weekStart: localIso(3) },
+    feed,
+  };
+}
+
+function studyCalendarDto() {
+  const pattern = ['studied', 'studied', 'missed', 'studied', 'studied', 'paused', 'paused', 'studied', 'studied', 'rest', 'studied', 'studied', 'studied', 'today'];
+  return {
+    days: pattern.map((status, i) => ({ date: localIso(13 - i), status })),
+    lastSession: { dayNumber: 10, isReinforcement: false, completedAt: ago(60 * 27), score: 88 },
   };
 }
 
@@ -381,7 +457,7 @@ export function sessionMock(): Plugin {
           squadMembers = [...SQUAD_MEMBERS];
           squadCoLeader = 'u-marina';
           res.statusCode = 302;
-          res.setHeader('Location', '/perfil?tab=squad');
+          res.setHeader('Location', '/squad');
           return res.end();
         }
         if (path === '/__mock/loja') {
@@ -411,6 +487,8 @@ export function sessionMock(): Plugin {
             interests: ['Motos esportivas', 'Jogos competitivos'],
             additionalProfileNotes: null,
             preferredLanguages: [1, 2],
+            createdAt: '2026-09-02T12:00:00Z',
+            hideScoresInSquadFeed: hideScores,
           });
         if (path === '/api/auth/logout') return send(res, 204);
         if (path === '/api/courses') return send(res, 200, [{ id: ids.course, name: 'Web Security', status: 1, monthlyCount: 4 }]);
@@ -442,6 +520,34 @@ export function sessionMock(): Plugin {
           const me = { userId: ids.user, displayName: 'Falves (mock)', score: 87.4, position: 3, equippedNameColor: null };
           return send(res, 200, { topEntries: [me], currentUserEntry: me });
         }
+        if (path === '/api/squads/me/hq')
+          return squadRole === 'nenhum'
+            ? send(res, 404, { error: 'squad_nao_encontrado', message: 'Você ainda não tem squad.' })
+            : send(res, 200, squadHqDto());
+        if (path === '/api/squads/me/cheers' && method === 'POST') {
+          const key = String(body.activityKey ?? '');
+          const current = cheers.get(key) ?? { count: 0, mine: false };
+          const next = { count: current.count + (current.mine ? -1 : 1), mine: !current.mine };
+          cheers.set(key, next);
+          return send(res, 200, { activityKey: key, cheers: next.count, cheeredByMe: next.mine });
+        }
+        if (path === '/api/users/me/study-calendar') return send(res, 200, studyCalendarDto());
+        if (path === '/api/users/me/squad-feed-privacy' && method === 'PUT') {
+          hideScores = !!body.hideScores;
+          return send(res, 200, { id: ids.user, email: 'mock@focadu.local', displayName: 'Falves (mock)', profileCompletedAt: now, interests: ['Motos esportivas', 'Jogos competitivos'], additionalProfileNotes: null, preferredLanguages: [1, 2], createdAt: '2026-09-02T12:00:00Z', hideScoresInSquadFeed: hideScores });
+        }
+        // Perfil (Fase 72): so o que a tela do agente le do curso (progresso e a regiao atual). A trilha
+        // (/start?course=) do mock continua sem suporte - esse DTO nao tem o resto dos campos dela.
+        if (path === `/api/courses/${ids.course}`)
+          return send(res, 200, {
+            id: ids.course,
+            name: 'Web Security',
+            status: 1,
+            progress: { totalDailies: 72, completedDailies: 10, reinforcementDailies: 1, completionPercentage: 13.9 },
+            monthlies: [{ id: ids.monthly, number: 1, title: 'Fundamentos', certifications: [], weeklies: [{ id: ids.weekly, number: 2, completedDailies: 4, totalDailies: 6 }] }],
+            dailyReinforcements: [],
+            weeklyReinforcements: [],
+          });
         if (path === '/api/squads/me/ranking')
           return squadRole === 'nenhum'
             ? send(res, 404, { error: 'squad_nao_encontrado', message: 'Você ainda não tem squad.' })

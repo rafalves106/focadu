@@ -32,6 +32,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         // Fase 17: nulo ate a 1a consulta gerar (lazy, ver GetReferralInfoUseCase).
         builder.Property(u => u.ReferralCode).HasMaxLength(16);
 
+        // Fase 72: "nao mostrar minhas notas no feed do squad" - desligado por padrao.
+        builder.Property(u => u.HideScoresInSquadFeed).IsRequired().HasDefaultValue(false);
+
         builder.HasIndex(u => u.Email).IsUnique();
         builder.HasIndex(u => u.ReferralCode).IsUnique();
     }

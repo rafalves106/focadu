@@ -1,7 +1,6 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
 using Focadu.Application.Ranking;
-using Focadu.Application.Shared;
 using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
 using Focadu.Domain.Weeklies;
@@ -77,13 +76,7 @@ public class GetSquadRankingUseCase
         var squad = await _squadRepository.GetByIdAsync(requesterMembership.SquadId, cancellationToken)
             ?? throw new NotFoundException("squad_nao_encontrado", "Voce nao esta em nenhum squad.");
 
-        if (squad.JoinCode is null)
-        {
-            var code = await UniqueCodeGenerator.GenerateAsync(
-                async candidate => await _squadRepository.GetByJoinCodeAsync(candidate, cancellationToken) is not null);
-            squad.AssignJoinCode(code);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-        }
+        await SquadJoinCode.EnsureAsync(squad, _squadRepository, _unitOfWork, cancellationToken);
 
         var members = await _squadRepository.GetMembersAsync(squad.Id, cancellationToken);
         var today = _clock.Today();

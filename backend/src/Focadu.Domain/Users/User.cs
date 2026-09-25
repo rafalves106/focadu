@@ -45,6 +45,13 @@ public class User : Entity
     /// <summary>Codigo de indicacao unico (Fase 17) - nulo ate a 1a consulta gerar (lazy, ver GetReferralInfoUseCase; unicidade checada na Application, que consulta o repositorio antes de atribuir).</summary>
     public string? ReferralCode { get; private set; }
 
+    /// <summary>
+    /// Fase 72 (decisao do dono, 24/09/2026): esconde as notas deste usuario (Daily, Projeto Semanal)
+    /// no feed do QG do Squad - o evento continua aparecendo pros colegas, so sem o numero. O proprio
+    /// usuario sempre ve as proprias notas. Alterado nas Configuracoes.
+    /// </summary>
+    public bool HideScoresInSquadFeed { get; private set; }
+
     private User()
     {
         Email = string.Empty;
@@ -113,6 +120,9 @@ public class User : Entity
 
         ReferralCode = code;
     }
+
+    /// <summary>Liga/desliga "nao mostrar minhas notas no feed do squad" (Fase 72) - idempotente.</summary>
+    public void SetSquadFeedPrivacy(bool hideScores) => HideScoresInSquadFeed = hideScores;
 
     /// <summary>Troca o hash da senha (Fase 41, redefinicao de senha) - a Application ja validou o token de reset e a forca da nova senha antes de chamar isso; o dominio so garante que o hash recebido nao chegue vazio (mesma checagem de User.Create).</summary>
     public void SetPasswordHash(string newPasswordHash)

@@ -1,7 +1,7 @@
 import type { BadgeDto } from '../../api/types';
 import { knownBadges } from '../../lib/badgeInfo';
 import { SegmentedBar } from '../SegmentedBar';
-import { Section } from './InformationTab';
+import { Section } from './Section';
 import checkIcon from '../../assets/pixel/check.png';
 import lockIcon from '../../assets/pixel/cadeado-bloqueado.png';
 

@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 71 - Loja em pixel art, agente e vitrine semanal**.
+> Ultima fase que atualizou este documento: **Fase 72 - Perfil "tela do agente" e QG do Squad**.
 
 ## Visao geral do projeto
 
@@ -731,6 +731,25 @@ empilhado com rolagem normal e abas em 2x2. Conquistas virou lista com barra em 
 Squad mostra o selo LIDER pra todos e as acoes do dono ficam na linha de cada membro. Mock:
 `npm run dev:mock` + `/perfil`, squad por `/__mock/squad?as=membro|lider|nenhum`.
 
+**Fase 72 - "tela do agente" (Figma "Perfil + Squad — v2", node 120:4503; o dono nao gostou das
+abas da Fase 70).** `/perfil` nao tem mais abas: a esquerda o **palco** (`AgentStage`: agente em 8x no
+desktop largo e alto, 6x no resto, holofote e piso, os 4 slots do que esta vestindo - clicar abre o
+guarda-roupa -, nome, curso ativo com a regiao e o progresso em blocos, "Trocar visual" e
+Configuracoes); a direita, rolando por dentro a partir de `lg` (`ProfileCards`): ofensiva/score/
+posicao/gems, **estante de trofeus** (era a aba Conquistas), atalho do QG do Squad, **ultimos 14 dias**
+(`GET /api/users/me/study-calendar`) e **dossie** (era a aba Informacoes). Guarda-roupa
+(`CustomizationTab`) e a lista de conquistas (`ConquestsTab`) viraram modais abertos por
+`?abrir=guarda-roupa|conquistas`; os `?tab=` antigos continuam valendo (`tab=squad` redireciona pra
+`/squad`). A Focada e o "Indique um amigo" sairam do Perfil (o segundo foi pro QG). A pagina busca
+gamificacao, catalogo, badges, cursos e, do curso ativo, `GET /api/courses/{id}` (progresso/regiao) +
+ranking; o atalho do squad e o calendario buscam o proprio dado. Mock: `npm run dev:mock` + `/perfil`.
+**Sem rolagem nas telas de desktop comuns (ajuste da Fase 72, pedido do dono).** Duas variantes de
+altura em `index.css`: `short:` (janela abaixo de 880px) e `tight:` (abaixo de 760px), sempre junto
+com `lg:`. Elas compactam espacamentos, numeros e nichos, e o calendario vira uma linha de 14 dias.
+Os cartoes usam 2 colunas ja a partir de `lg`. O agente fica em 8x/6x/5x (`useStageScale`, 5x e slots
+de 56px entre 1024 e 1279px). Medido com Playwright: 1920x1080, 1536x864, 1440x900, 1366x768,
+1280x800, 1280x720 e 1024x768 sem rolagem (pagina e coluna direita). No celular a pagina rola.
+
 **`UserDto` ganhou `Interests`/`AdditionalProfileNotes`** (Fase 18) - a aba Informacoes le direto do
 `user` do `AuthContext` (ja carregado via `GET /api/auth/me`), sem precisar de uma chamada nova.
 `PUT /api/users/me/profile` (`CompleteProfileUseCase`) ja aceitava ser chamado de novo desde a Fase
@@ -917,6 +936,29 @@ Clash of Clans, decisao do usuario): `Squad.CoLeaderUserId` (opcional, promovido
 herda primeiro; sem Co-Leader, o membro com `SquadMembership.JoinedAt` mais antigo (selecao pura
 em `LeaveSquadUseCase.ResolveSuccessor`, testada sem repositorio). Owner sozinho: o squad e
 deletado junto (`ISquadRepository.RemoveAsync`) - nunca mais fica orfao no banco.
+
+**QG do Squad (Fase 72, Figma "Perfil + Squad — v2", nodes 121:6971/125:9441/125:12224/126:14410).**
+O squad saiu da aba do Perfil e virou tela propria, `/squad` (`SquadPage`), destino do botao Squad do
+menu e do mapa. `GET /api/squads/me/hq` (`GetSquadHqUseCase`) devolve numa chamada: cabecalho (nome,
+`JoinCode` - gerado aqui tambem, `SquadJoinCode.EnsureAsync`, extraido do ranking -, lider/co-lider,
+`CreatedAt`), **escalacao** (cada membro com o agente em pixel art, `AgentLookDto` = pele + `Code` da
+peca por camada; se ja estudou hoje e o ultimo dia que estudou; ordem lider, co-lider, entrada),
+**meta da semana** (`SquadWeeklyGoal`: Dailies originais concluidas por todos de segunda a domingo,
+meta = 5 por membro; a recompensa em Gems NAO existe ainda - valor a decidir pelo dono) e o **feed**.
+O feed nao e persistido: `BuildFeed` deriva as atividades dos ultimos 14 dias (max 40) de datas que ja
+existem - `Daily.CompletedAt` (daily/reforco, com a nota de `Daily.CalculateScore`),
+`WeeklyProject.EvaluatedAt` (nota), `UserCosmeticInventory.AcquiredAt` (compra na loja; o kit basico +
+o 1o cabelo natural da criacao viram 1 atividade "agente novo") e `SquadMembership.JoinedAt`. Badges
+(sem data de conquista) e marcos de ofensiva (UserStreak so guarda o valor atual) nao entram. Chave
+de cada atividade: `"tipo:autor:id"`. **GG** (`SquadCheer`, tabela `SquadCheers`, unico por
+squad+atividade+usuario): `POST /api/squads/me/cheers {activityKey}` e toggle; `ToggleSquadCheerUseCase`
+confere que o autor da chave e do mesmo squad e nao e quem pede. **Privacidade**:
+`User.HideScoresInSquadFeed` (Configuracoes, `PUT /api/users/me/squad-feed-privacy`) tira a nota das
+atividades da pessoa pros colegas - ela continua vendo as proprias. O ranking continua no
+`GET /api/squads/me/ranking` (podio + lista no front, recorte Semana/Mes/Curso; o lider gerencia pelo
+"⋯" de cada linha, sair pede confirmacao da Focada e avisa quem assume). "Convidar" abre o modal com o
+codigo do squad + o link de indicacao (o "Indique um amigo" veio do Perfil pra ca, decisao do dono).
+Mock: `/__mock/squad?as=membro|lider|nenhum` abre `/squad`.
 
 **Fora de escopo, confirmado no prompt da Fase 24 (Co-Leader adicionado na 24b e a unica excecao)**:
 papeis alem de owner/co-leader/member, aprovacao de convite, um usuario em N squads ao mesmo
@@ -1286,6 +1328,10 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 POST | `/api/squads/join` | `JoinSquadUseCase` (Fase 24) | 200 (`SquadDto`), 404 `codigo_invalido`, 409 `ja_esta_em_squad` |
 | 🔒 DELETE | `/api/squads/members/{userId}` | `LeaveSquadUseCase` (se `{userId}` = usuario logado) ou `RemoveMemberUseCase` (Fase 24) | 204, 404 `squad_nao_encontrado`/`membro_nao_encontrado`, 409 `dono_nao_pode_sair`/`dono_nao_pode_se_remover` |
 | 🔒 GET | `/api/squads/me/ranking?scope=&page=` | `GetSquadRankingUseCase` (Fase 24) | 200 (`SquadRankingResultDto`) - gera `JoinCode` na 1a consulta (lazy), `Members` paginado (Fase 24c), 404 `squad_nao_encontrado` |
+| 🔒 GET | `/api/squads/me/hq` | `GetSquadHqUseCase` (Fase 72) | 200 (`SquadHqDto`: cabecalho, escalacao com agentes, meta da semana, feed dos ultimos 14 dias com GGs), 404 `squad_nao_encontrado` (= sem squad) |
+| 🔒 POST | `/api/squads/me/cheers` | `ToggleSquadCheerUseCase` (Fase 72) | 200 (`SquadCheerResultDto`) - toggle do GG; 400 `atividade_invalida`/`gg_proprio`, 404 `squad_nao_encontrado`/`atividade_nao_encontrada` |
+| 🔒 GET | `/api/users/me/study-calendar` | `GetStudyCalendarUseCase` (Fase 72) | 200 (`StudyCalendarDto`: 14 dias com status studied/rest/paused/missed/today/before + ultima sessao) |
+| 🔒 PUT | `/api/users/me/squad-feed-privacy` | `UpdateSquadFeedPrivacyUseCase` (Fase 72) | 200 (`UserDto`) - corpo `{hideScores}` |
 | 🔒 GET | `/api/system/ai-status` | `GetAiProviderStatusUseCase` (Fase 28) | 200 (array de `AiProviderStatusDto` - hoje so Groq), nunca 404/erro (a checagem em si nunca lanca, ver secao Groq abaixo) |
 | 🔒 POST | `/api/weeklies/{weeklyId}/project/notes` | `CreateWeeklyProjectNoteUseCase` (Fase 63) | 201 (`NoteDto` com `weeklyProjectId`), 404 `semana_nao_encontrada`/`projeto_nao_encontrado`, mesmos 400 de validacao da nota |
 | 🔒 POST | `/api/dailies/{dailyId}/notes` | `CreateNoteUseCase` (Fase 29) | 201 (`NoteDto`), 404 `daily_nao_encontrada`, 400 `nota_vazia`/`nota_muito_longa`/`tag_muito_longa`/`notas_tags_demais` |
@@ -1714,6 +1760,11 @@ fetch novo em 3 dos 4):
 (`completedDailies`/`totalDailies`) - sem campo novo no backend so pra isso.
 
 ## Persistencia (EF Core + Postgres)
+
+**Fase 72: `SquadHqCheersAndFeedPrivacy`** - tabela `SquadCheers` (GG do feed do QG: `SquadId`,
+`ActivityKey` texto ate 120, `FromUserId`, `CreatedAt`; indice unico `(SquadId, ActivityKey,
+FromUserId)`; cascade com `Squads` e `Users`) e coluna `Users.HideScoresInSquadFeed` (bool, default
+false). Aplica sozinha no boot da Api como as outras.
 
 **Fase 14: `AddGamification`** - 2a migration desde o squash da Fase 13 (`InitialCreate` +
 `AddGamification`), cria `UserGemBalances`/`UserStreaks` (1:1 com `Users`, indice unico em
@@ -2917,11 +2968,11 @@ frontend/
                                    repo, sem uso); `purchaseCosmeticItem`/`equipCosmetic`/
                                    `unequipCosmetic` (api/client.ts) intactos, so nao exercitados
                                    aqui mais
-      ProfilePage.tsx            <- /perfil (Fase 18) - 4 abas via ?tab= (Informacoes/Conquistas/
-                                   Customizacao/Squad, default Informacoes). Fase 70: pixel art em 3
-                                   colunas sem rolagem externa - AgentSheet | abas | Focada +
-                                   ReferralPanel, HUD de Gems/streak no topo; fala da Focada por aba
-                                   (`focadaLine`, a do Squad vem do SquadTab)
+      ProfilePage.tsx            <- /perfil (Fase 18). Fase 72: "tela do agente", sem abas - palco
+                                   (AgentStage) | cartoes (ProfileCards); guarda-roupa e conquistas
+                                   em modal via ?abrir= (os ?tab= antigos ainda valem)
+      SquadPage.tsx              <- /squad (Fase 72): QG do Squad - SquadHero, feed + ranking; 404 =
+                                   NoSquadView
       WeeklyProjectPage.tsx      <- projeto pratico da semana (Fase 7; a especificacao
                                    renderiza via MarkdownBlock desde a Fase 58, antes era
                                    texto corrido com a sintaxe crua; escolha de linguagem
@@ -2997,22 +3048,24 @@ frontend/
         AgentSprite.tsx                   <- agente em camadas (corpo + pecas) recortado das folhas
                                    de sprite em escala inteira; WalkingAgent = mini andando
         AgentCreator.tsx                  <- criacao: pele, 1 cabelo natural, kit basico gratis
-      profile/                      <- Fase 18; pixel art na Fase 70 (BadgeGrid, ReferralCard e
-                                   ProfileHeader removidos)
-        AgentSheet.tsx                    <- ficha do agente (coluna esquerda, todas as abas) +
-                                   AgentAvatar (sprite do agente de frente, ou iniciais sem agente;
-                                   borda = raridade da moldura)
-        ReferralPanel.tsx                 <- Indique um amigo (codigo, copiar link, confirmadas)
-        ProfileTabs.tsx                     <- abas pixel, 2x2 no celular (selo "Em breve" da
-                                   Customizacao saiu na Fase 71)
-        InformationTab.tsx                   <- conta so leitura, interesses/notas e linguagem dos
-                                   projetos (editar -> /onboarding/perfil?edit=1); exporta Section
+      profile/                      <- Fase 18; pixel art na Fase 70; Fase 72 tirou as abas (AgentSheet,
+                                   ReferralPanel, ProfileTabs, InformationTab e SquadTab removidos)
+        AgentStage.tsx                    <- palco do agente: sprite 8x/6x, 4 slots recortados da
+                                   folha da peca, curso ativo, "Trocar visual"/Configuracoes
+        ProfileCards.tsx                  <- ProfileStats, TrophyShelf, SquadShortcut,
+                                   StudyCalendarCard, DossierCard
+        Section.tsx                       <- bloco "// TITULO" (guarda-roupa e conquistas)
         CustomizationTab.tsx                  <- guarda-roupa do agente (Fase 71): vistas, troca de
                                    pele e pecas possuidas por slot; sem agente, o AgentCreator
-        ConquestsTab.tsx                       <- badges em lista com barra ate a meta
-        SquadTab.tsx                           <- Squad (Fase 24): cabecalho com codigo, recorte,
-                                   ranking com medalhas e acoes do dono na linha; sem squad =
-                                   criar/entrar
+        ConquestsTab.tsx                       <- badges em lista com barra ate a meta (modal
+                                   "Ver todas" desde a Fase 72)
+      squad/                        <- Fase 72, QG do Squad
+        pixelStage.tsx                    <- PixelStage (holofote em degraus + piso) e PanelLabel
+        SquadHero.tsx                     <- nome/codigo/convidar | escalacao | meta da semana
+        SquadFeed.tsx                     <- feed por dia, filtros, GG
+        SquadRanking.tsx                  <- podio + lista, recortes, menu do lider, sair
+        InviteModal.tsx                   <- codigo do squad + link de indicacao; ReferralStrip
+        NoSquadView.tsx                   <- sem squad: vagas, criar/entrar, indique um amigo
       activities/                 <- primitivas visuais das atividades avaliaveis (Fase 9)
         IntroCard.tsx                <- tela de intro (badge/titulo/descricao/regras/CTA) - gate local (`started`), nao e passo novo no Step do TodayPage
         OptionCard.tsx                <- card de opcao (neutro/selecionado/correto/errado/esmaecido) - Quiz, Roleplay, e (Fase 23) os 2

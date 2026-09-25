@@ -30,6 +30,9 @@ import {
   type ResetPasswordRequest,
   type SquadDto,
   type SquadRankingResultDto,
+  type SquadHqDto,
+  type SquadCheerResultDto,
+  type StudyCalendarDto,
   type StudyAssistantAnswerDto,
   type SubmitActivityResponseResult,
   type UserBadgesDto,
@@ -256,6 +259,16 @@ export const api = {
   clearSquadCoLeader: () => request<void>('/api/squads/co-leader', { method: 'DELETE' }),
   getSquadRanking: (scope: RankingScope, page = 1) =>
     request<SquadRankingResultDto>(`/api/squads/me/ranking?scope=${scope}&page=${page}`),
+  // QG do Squad (Fase 72) - cabecalho, escalacao, meta da semana e feed; 404 squad_nao_encontrado = sem squad.
+  getSquadHq: () => request<SquadHqDto>('/api/squads/me/hq'),
+  // GG numa atividade do feed - toggle (dar de novo tira).
+  toggleSquadCheer: (activityKey: string) =>
+    request<SquadCheerResultDto>('/api/squads/me/cheers', { method: 'POST', body: JSON.stringify({ activityKey }) }),
+  // Perfil (Fase 72): ultimos 14 dias de estudo + ultima sessao.
+  getStudyCalendar: () => request<StudyCalendarDto>('/api/users/me/study-calendar'),
+  // Configuracoes (Fase 72): esconder as proprias notas no feed do squad. Devolve o usuario atualizado.
+  updateSquadFeedPrivacy: (hideScores: boolean) =>
+    request<UserDto>('/api/users/me/squad-feed-privacy', { method: 'PUT', body: JSON.stringify({ hideScores }) }),
   // Marketplace de Cosméticos (Fase 17) - toda ação (compra/equipar/desequipar) devolve o
   // catálogo inteiro recalculado, mesmo shape do GET.
   getMarketplaceCatalog: () => request<MarketplaceCatalogDto>('/api/marketplace/catalog'),

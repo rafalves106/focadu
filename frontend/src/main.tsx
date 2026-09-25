@@ -13,6 +13,7 @@ import { MarketplacePage } from './routes/MarketplacePage';
 import { OnboardingWelcomePage } from './routes/OnboardingWelcomePage';
 import { ProfileInterviewPage } from './routes/ProfileInterviewPage';
 import { ProfilePage } from './routes/ProfilePage';
+import { SquadPage } from './routes/SquadPage';
 import { ResetPasswordPage } from './routes/ResetPasswordPage';
 import { SplashPage } from './routes/SplashPage';
 import { StartRoute } from './routes/StartPage';
@@ -48,9 +49,11 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="hoje" element={<TodayPage />} />
                 <Route path="loja" element={<MarketplacePage />} />
                 <Route path="perfil" element={<ProfilePage />} />
+                {/* Fase 72: o Squad saiu da aba do Perfil e virou o QG, tela propria. */}
+                <Route path="squad" element={<SquadPage />} />
                 {/* Fase 18: /conquistas virou a aba "Conquistas" do Perfil - redirect em vez de
                     quebrar links/favoritos antigos (decisao documentada em docs/fase-18). */}
-                <Route path="conquistas" element={<Navigate to="/perfil?tab=conquistas" replace />} />
+                <Route path="conquistas" element={<Navigate to="/perfil?abrir=conquistas" replace />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

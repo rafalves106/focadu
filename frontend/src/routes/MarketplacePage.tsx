@@ -133,7 +133,7 @@ export function MarketplacePage() {
                 )}
               </div>
               <Link
-                to="/perfil?tab=customizacao"
+                to="/perfil?abrir=guarda-roupa"
                 className="flex items-center justify-center border-2 border-secondary bg-base px-4 py-3.5 font-pixel-label text-[11px] text-primary hover:border-accent lg:mt-auto"
               >
                 Guarda-roupa ›

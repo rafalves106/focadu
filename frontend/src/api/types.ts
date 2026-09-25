@@ -460,6 +460,80 @@ export interface SquadRankingResultDto {
   totalMembers: number;
 }
 
+/** Fase 72: agente em pixel art de um membro do squad - pele e o Code da peca por camada. */
+export interface AgentLookDto {
+  skinTone: number;
+  top: string | null;
+  bottom: string | null;
+  hair: string | null;
+  shoes: string | null;
+}
+
+export interface SquadMemberDto {
+  userId: string;
+  displayName: string;
+  /** Nulo enquanto o membro nao criou o agente. */
+  look: AgentLookDto | null;
+  studiedToday: boolean;
+  lastStudiedOn: string | null;
+  joinedAt: string;
+}
+
+/** Meta da semana do squad (Fase 72): Dailies somadas de segunda a domingo; recompensa ainda nao definida. */
+export interface SquadWeeklyGoalDto {
+  completed: number;
+  target: number;
+  studiedToday: number;
+  weekStart: string;
+}
+
+export type SquadActivityType = 'daily' | 'reinforcement' | 'project' | 'purchase' | 'agent' | 'joined';
+
+/**
+ * Atividade do feed do QG (Fase 72) - derivada no backend, nao persistida. `key` identifica a atividade
+ * pro GG. `score` nulo quando o autor esconde as notas (ou no reforco).
+ */
+export interface SquadActivityDto {
+  key: string;
+  type: SquadActivityType;
+  userId: string;
+  displayName: string;
+  occurredAt: string;
+  dayNumber: number | null;
+  weekNumber: number | null;
+  score: number | null;
+  itemName: string | null;
+  itemRarity: CosmeticRarity | null;
+  cheers: number;
+  cheeredByMe: boolean;
+}
+
+export interface SquadHqDto {
+  squadId: string;
+  name: string;
+  joinCode: string;
+  ownerUserId: string;
+  coLeaderUserId: string | null;
+  createdAt: string;
+  members: SquadMemberDto[];
+  weeklyGoal: SquadWeeklyGoalDto;
+  feed: SquadActivityDto[];
+}
+
+export interface SquadCheerResultDto {
+  activityKey: string;
+  cheers: number;
+  cheeredByMe: boolean;
+}
+
+/** Fase 72: status de um dia no cartao "Últimos 14 dias" do Perfil. */
+export type StudyDayStatus = 'studied' | 'rest' | 'paused' | 'missed' | 'today' | 'before';
+
+export interface StudyCalendarDto {
+  days: { date: string; status: StudyDayStatus }[];
+  lastSession: { dayNumber: number; isReinforcement: boolean; completedAt: string; score: number | null } | null;
+}
+
 // Marketplace de Cosmeticos (Fase 17) - catalogo fixo via seed, sem autoria via Api ainda.
 // Fase 71: Top/Bottom/Hair/Shoes sao as camadas do agente em pixel art (mesmos numeros do enum C#).
 export const CosmeticSlot = { AvatarFrame: 0, NameColor: 1, ProfileBanner: 2, Top: 3, Bottom: 4, Hair: 5, Shoes: 6 } as const;
@@ -569,6 +643,10 @@ export interface UserDto {
   additionalProfileNotes: string | null;
   /** Fase 59: linguagens que o aluno topa usar nos Projetos Semanais, marcadas na Entrevista de Perfil. Vazio ate ele marcar. */
   preferredLanguages: ProjectLanguage[];
+  /** Fase 72: o "desde set/2026" do Perfil. */
+  createdAt: string;
+  /** Fase 72: Configuracoes > "nao mostrar minhas notas no feed do squad". */
+  hideScoresInSquadFeed: boolean;
 }
 
 // referralCode (Fase 17): opcional - codigo invalido/de ninguem so e ignorado no backend, nunca bloqueia o registro.

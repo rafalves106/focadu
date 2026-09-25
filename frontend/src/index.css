@@ -119,6 +119,12 @@ body {
   }
 }
 
+/* Telas baixas (Fase 72, Perfil "sem rolagem"): `short:` abaixo de 880px de altura (1366x768,
+   1536x864, 1280x800) e `tight:` abaixo de 760px (1280x720) - compactam espacamento e tamanhos pra a
+   tela caber na janela sem rolar. So valem com `lg:` junto (no celular a pagina rola normalmente). */
+@custom-variant short (@media (max-height: 880px));
+@custom-variant tight (@media (max-height: 760px));
+
 /* Altura do GlobalNav, borda inclusa (Fase 62, Figma node 178:143: 73px no desktop). Desde a Fase 67
    as telas nao descontam mais isso (a casca do App faz o <main> ocupar o resto da janela); so o
    proprio nav le daqui. */

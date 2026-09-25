@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../api/client';
+import { useAuth } from '../contexts/useAuth';
 import {
   RECORDING_LIMIT_OPTIONS,
   getRecordingLimitMinutes,
@@ -21,6 +23,38 @@ function Toggle({ on }: { on: boolean }) {
     <span className={`flex h-6 w-11 items-center border-2 p-0.5 ${on ? 'justify-end border-accent' : 'justify-start border-stroke'}`}>
       <span className={`size-4 ${on ? 'bg-accent' : 'bg-muted'}`} />
     </span>
+  );
+}
+
+/**
+ * "Não mostrar minhas notas no feed do squad" (Fase 72, decisao do dono) - diferente das outras
+ * preferencias daqui (localStorage), vale pros colegas, entao mora no backend (User.HideScoresInSquadFeed).
+ */
+function SquadFeedPrivacyRow() {
+  const { user, setCurrentUser } = useAuth();
+  const [busy, setBusy] = useState(false);
+  if (!user) return null;
+  const hidden = user.hideScoresInSquadFeed;
+
+  async function toggle() {
+    setBusy(true);
+    try {
+      setCurrentUser(await api.updateSquadFeedPrivacy(!hidden));
+    } catch {
+      // Falhou - o interruptor so continua como estava.
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border-t-2 border-stroke pt-4">
+      <button type="button" role="switch" aria-checked={hidden} disabled={busy} onClick={toggle} className="flex items-center justify-between gap-4 text-left disabled:opacity-60">
+        <RowLabel>Esconder minhas notas no feed do squad</RowLabel>
+        <Toggle on={hidden} />
+      </button>
+      <p className="font-pixel-label text-[8px] leading-relaxed text-muted">O squad continua vendo que você estudou, só sem a nota.</p>
+    </div>
   );
 }
 
@@ -167,6 +201,8 @@ export function SettingsMenu({
             </div>
           </div>
         </div>
+
+        <SquadFeedPrivacyRow />
 
         <div className="flex flex-col gap-4 border-t-2 border-stroke pt-4">
           <div className="flex items-center justify-between">

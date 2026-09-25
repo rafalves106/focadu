@@ -42,4 +42,21 @@ public class SquadRepository : ISquadRepository
         _context.SquadMemberships.Remove(membership);
         return Task.CompletedTask;
     }
+
+    public async Task<IReadOnlyCollection<SquadCheer>> GetCheersAsync(Guid squadId, IReadOnlyCollection<string> activityKeys, CancellationToken cancellationToken = default) =>
+        activityKeys.Count == 0
+            ? []
+            : await _context.SquadCheers.Where(c => c.SquadId == squadId && activityKeys.Contains(c.ActivityKey)).ToListAsync(cancellationToken);
+
+    public async Task<SquadCheer?> GetCheerAsync(Guid squadId, string activityKey, Guid fromUserId, CancellationToken cancellationToken = default) =>
+        await _context.SquadCheers.FirstOrDefaultAsync(c => c.SquadId == squadId && c.ActivityKey == activityKey && c.FromUserId == fromUserId, cancellationToken);
+
+    public async Task AddCheerAsync(SquadCheer cheer, CancellationToken cancellationToken = default) =>
+        await _context.SquadCheers.AddAsync(cheer, cancellationToken);
+
+    public Task RemoveCheerAsync(SquadCheer cheer, CancellationToken cancellationToken = default)
+    {
+        _context.SquadCheers.Remove(cheer);
+        return Task.CompletedTask;
+    }
 }

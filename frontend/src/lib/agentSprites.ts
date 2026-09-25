@@ -1,4 +1,4 @@
-import { CosmeticSlot, type CosmeticItemDto, type MarketplaceCatalogDto } from '../api/types';
+import { CosmeticSlot, type AgentLookDto, type CosmeticItemDto, type MarketplaceCatalogDto } from '../api/types';
 
 /**
  * Folhas de sprite do agente em pixel art (Fase 71). Cada camada (corpo numa pele, ou uma peca de
@@ -58,4 +58,13 @@ export function agentLook(catalog: MarketplaceCatalogDto, tryOn?: CosmeticItemDt
   ) as Record<LayerSlot, string | null>;
   if (tryOn?.code && isAgentSlot(tryOn.slot)) layers[tryOn.slot] = tryOn.code;
   return { skinTone: catalog.agent.skinTone, layers };
+}
+
+/** Agente de outra pessoa (Fase 72, squad) - o backend manda o Code de cada camada; null = ainda sem agente. */
+export function lookFromDto(dto: AgentLookDto | null): AgentLook | null {
+  if (!dto) return null;
+  return {
+    skinTone: dto.skinTone,
+    layers: { [CosmeticSlot.Bottom]: dto.bottom, [CosmeticSlot.Shoes]: dto.shoes, [CosmeticSlot.Top]: dto.top, [CosmeticSlot.Hair]: dto.hair } as Record<LayerSlot, string | null>,
+  };
 }

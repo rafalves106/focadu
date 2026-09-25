@@ -95,7 +95,7 @@ export function GlobalNav() {
 
         {/* Desktop (md+): grupo direito. */}
         <div className="hidden flex-1 items-center justify-around pl-4 md:flex xl:pl-10">
-          <NavItem to="/perfil?tab=squad" icon={navSquad} label="Squad" />
+          <NavItem to="/squad" icon={navSquad} label="Squad" />
           <AiStatusMenu />
           <NavButton onClick={settings.open} icon={navConfig} label="Configurações" />
           <UserMenu />
@@ -123,7 +123,7 @@ export function GlobalNav() {
           <MobileNavItem to={rankingHref} icon={navRanking} onNavigate={closeMobileMenu}>
             Ranking
           </MobileNavItem>
-          <MobileNavItem to="/perfil?tab=squad" icon={navSquad} onNavigate={closeMobileMenu}>
+          <MobileNavItem to="/squad" icon={navSquad} onNavigate={closeMobileMenu}>
             Squad
           </MobileNavItem>
           <button

@@ -326,6 +326,18 @@ api.MapPut("/users/me/gamification/streak/acknowledge-broken", async (ClaimsPrin
     .RequireAuthorization()
     .WithName("AcknowledgeStreakBreak");
 
+// Ultimos 14 dias de estudo + ultima sessao (Fase 72, cartao do Perfil) - leitura pura.
+api.MapGet("/users/me/study-calendar", async (ClaimsPrincipal principal, GetStudyCalendarUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
+    .RequireAuthorization()
+    .WithName("GetStudyCalendar");
+
+// "Nao mostrar minhas notas no feed do squad" (Fase 72, Configuracoes) - PUT idempotente, devolve o UserDto novo.
+api.MapPut("/users/me/squad-feed-privacy", async (ClaimsPrincipal principal, SquadFeedPrivacyRequest? request, UpdateSquadFeedPrivacyUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), request?.HideScores ?? false, ct)))
+    .RequireAuthorization()
+    .WithName("UpdateSquadFeedPrivacy");
+
 // Badges/Troféus (Fase 17) - todos calculados sob demanda, ver GetUserBadgesUseCase.
 api.MapGet("/users/me/badges", async (ClaimsPrincipal principal, GetUserBadgesUseCase useCase, CancellationToken ct) =>
         Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
@@ -400,6 +412,19 @@ api.MapGet("/squads/me/ranking", async (ClaimsPrincipal principal, string? scope
     })
     .RequireAuthorization()
     .WithName("GetSquadRanking");
+
+// QG do Squad (Fase 72) - cabecalho + escalacao + meta da semana + feed com GGs numa chamada; o
+// ranking continua em /squads/me/ranking. 404 "squad_nao_encontrado" = estado "sem squad".
+api.MapGet("/squads/me/hq", async (ClaimsPrincipal principal, GetSquadHqUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
+    .RequireAuthorization()
+    .WithName("GetSquadHq");
+
+// GG numa atividade do feed (Fase 72) - toggle: dar de novo tira. Devolve a contagem nova.
+api.MapPost("/squads/me/cheers", async (ClaimsPrincipal principal, SquadCheerRequest? request, ToggleSquadCheerUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), request?.ActivityKey ?? string.Empty, ct)))
+    .RequireAuthorization()
+    .WithName("ToggleSquadCheer");
 
 // --- Marketplace de Cosmeticos (Fase 17) -----------------------------------------------------
 // Catalogo fixo via seed, sem autoria via Api nesta fase. Comprar/equipar/desequipar sempre

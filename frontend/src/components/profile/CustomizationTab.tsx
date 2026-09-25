@@ -6,7 +6,7 @@ import { agentLook, LAYER_SLOTS, SKIN_SWATCH, SKIN_TONES, type AgentLook, type A
 import { RARITY_STYLE, SLOT_LABEL } from '../../lib/cosmeticStyle';
 import { AgentCreator } from '../agent/AgentCreator';
 import { AgentSprite, WalkingAgent } from '../agent/AgentSprite';
-import { Section } from './InformationTab';
+import { Section } from './Section';
 import shopIcon from '../../assets/pixel/nav-loja.png';
 
 const VIEWS: AgentView[] = ['frente', 'costas', 'lado-esq', 'lado-dir'];

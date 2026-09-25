@@ -42,5 +42,5 @@ export const WORLD_TRIGGER_ZONES: WorldTriggerZone[] = [
   // Celeiro/fazenda (baixo-direita) -> loja de cosmeticos.
   { id: 'loja', label: 'Loja', x: 1820, y: 1118, radius: 46, to: () => '/loja' },
   // Campo de treino (topo-centro) -> squad.
-  { id: 'squad', label: 'Squad', x: 806, y: 346, radius: 40, to: () => '/perfil?tab=squad' },
+  { id: 'squad', label: 'Squad', x: 806, y: 346, radius: 40, to: () => '/squad' },
 ];
