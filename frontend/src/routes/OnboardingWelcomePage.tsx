@@ -1,22 +1,18 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
-import { OnboardingStepper } from '../components/onboarding/OnboardingStepper';
+import { EntryScreen } from '../components/entry/Entry';
+import { FocadaSays } from '../components/session/FocadaSays';
+import { PixelButton } from '../components/session/PixelButton';
+import pontoIcon from '../assets/pixel/mapa/ponto-em-andamento.png';
+import casteloIcon from '../assets/pixel/mapa/castelo-pendente.png';
+import bandeiraIcon from '../assets/pixel/bandeira.png';
 import { useAuth } from '../contexts/useAuth';
 
 /**
- * `/onboarding` - passo 1/3 (Fase 13b, design Figma "Onboarding — Boas-vindas", node 19-303).
- *
- * Divergências deliberadas do Figma (nenhuma tem dado real por trás, mesmo criterio ja usado em
- * StartDashboard pros cards de Gems/XP/streak):
- * - Nav de topo do mockup (Painel/Cursos/Analytics/Ranking + badge "Indie Dev" + avatar) não
- *   existe no app - essas rotas não existem ainda. Mantido só o wordmark FOCADU, mesmo cabeçalho
- *   minimalista de LoginPage/SplashPage.
- * - Painel decorativo "SEC_PILOT_HUD_V1" (CPU Load/Shielding/barra de instalação) é puro mockup
- *   sem dado nenhum por trás - omitido.
- * - Texto de marketing trocado por uma variação do que já existe em LoginPage ("sem atalho de IA
- *   respondendo por você") em vez do original do Figma, que promete XP/rankings/certificações que
- *   não existem ainda (gamificação real é Fase 14).
+ * `/onboarding` - passo 1/3 (Fase 13b; pixel art na Fase 74, Figma "Entrada e onboarding — v2", node
+ * 145:6207): a Focada se apresenta e os 3 pilares (Daily, Projeto, Trilha). "Pular tour" completa o
+ * perfil vazio e vai direto pra escolha do curso.
  */
 export function OnboardingWelcomePage() {
   const { user } = useAuth();
@@ -40,40 +36,40 @@ export function OnboardingWelcomePage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-base">
-      <header className="border-b border-surface-alt px-8 py-5">
-        <p className="text-lg font-black tracking-[0.3em] text-primary">FOCADU</p>
-      </header>
-
-      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 p-8">
-        <OnboardingStepper step={1} />
-
-        <div>
-          <h1 className="text-4xl font-black text-primary">Bem-vindo ao seu cockpit de aprendizado</h1>
-          <p className="mt-4 text-base leading-relaxed text-secondary">
-            Focadu transforma o estudo de segurança ofensiva e defensiva numa jornada guiada e prática - sessões
-            diárias, avaliação real e um currículo estruturado, sem atalho de IA respondendo por você.
-          </p>
+    <EntryScreen step={1}>
+      <div className="mx-auto flex w-full max-w-[1000px] flex-1 flex-col justify-center gap-8 px-4 py-10">
+        <div className="flex flex-col gap-3">
+          <p className="font-pixel-label text-[10px] text-accent">// Bem-vindo, agente</p>
+          <h1 className="font-pixel text-[40px] leading-none text-primary sm:text-[48px]">Seu cockpit de estudo de segurança</h1>
         </div>
 
-        <div className="flex items-center justify-between pt-2">
-          <button
-            type="button"
-            onClick={handleSkip}
-            disabled={skipping}
-            className="text-sm text-secondary underline-offset-2 hover:text-primary hover:underline disabled:opacity-50"
-          >
+        <FocadaSays size="lg">
+          Eu sou a Focada, e vou te acompanhar nas 12 semanas. Aqui ninguém responde por você: você lê, pratica e explica em voz alta. Eu só aponto o caminho (e cobro).
+        </FocadaSays>
+
+        <ul className="grid gap-5 sm:grid-cols-3">
+          {PILLARS.map((p) => (
+            <li key={p.label} className="flex flex-col gap-3 border-2 border-stroke px-5 py-[18px]">
+              <img src={p.icon} alt="" className="size-12 pixelated" aria-hidden="true" />
+              <span className={`font-pixel-label text-[11px] ${p.tone}`}>{p.label}</span>
+              <span className="font-pixel text-[22px] leading-tight text-secondary">{p.text}</span>
+            </li>
+          ))}
+        </ul>
+
+        <div className="flex items-center justify-between gap-3">
+          <PixelButton ghost tone="muted" onClick={handleSkip} disabled={skipping}>
             Pular tour
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/onboarding/perfil')}
-            className="rounded-xl bg-accent px-6 py-3 text-sm font-bold tracking-wide text-base"
-          >
-            Próximo Passo →
-          </button>
+          </PixelButton>
+          <PixelButton onClick={() => navigate('/onboarding/perfil')}>Próximo passo ›</PixelButton>
         </div>
       </div>
-    </div>
+    </EntryScreen>
   );
 }
+
+const PILLARS = [
+  { icon: pontoIcon, label: 'Daily', tone: 'text-accent', text: 'Uma sessão por dia: leitura, exercícios e um resumo falado avaliado.' },
+  { icon: casteloIcon, label: 'Projeto', tone: 'text-project', text: 'No fim da semana, um projeto de verdade no seu repositório git.' },
+  { icon: bandeiraIcon, label: 'Trilha', tone: 'text-accent', text: '12 semanas no mapa. Cada castelo derrubado abre a próxima.' },
+];

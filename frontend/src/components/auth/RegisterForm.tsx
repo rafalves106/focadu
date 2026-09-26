@@ -3,6 +3,8 @@ import { ApiError } from '../../api/client';
 import type { UserDto } from '../../api/types';
 import { useAuth } from '../../contexts/useAuth';
 import { isValidEmail, MIN_PASSWORD_LENGTH } from '../../lib/validation';
+import { PixelButton } from '../session/PixelButton';
+import { PixelFormError, PixelPasswordField, PixelTextField } from './PixelFields';
 
 export function RegisterForm({
   onSuccess,
@@ -55,65 +57,29 @@ export function RegisterForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-      <label className="flex flex-col gap-2">
-        <span className="font-display text-[11px] font-bold tracking-[1.5px] text-secondary uppercase">Nome</span>
-        <input
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          autoComplete="name"
-          className="font-display rounded-xl border-[1.5px] border-surface-alt bg-surface p-4 text-[15px] text-primary outline-none focus:border-accent"
-        />
-      </label>
-
-      <label className="flex flex-col gap-2">
-        <span className="font-display text-[11px] font-bold tracking-[1.5px] text-secondary uppercase">Endereço de e-mail</span>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="seu@email.com"
-          autoComplete="email"
-          className="font-display rounded-xl border-[1.5px] border-surface-alt bg-surface p-4 text-[15px] text-primary outline-none focus:border-accent"
-        />
-      </label>
-
-      <label className="flex flex-col gap-2">
-        <span className="font-display text-[11px] font-bold tracking-[1.5px] text-secondary uppercase">Senha de acesso</span>
-        <div className="flex items-center justify-between rounded-xl border-[1.5px] border-surface-alt bg-surface p-4 focus-within:border-accent">
-          <input
-            type={showPassword ? 'text' : 'password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-            className="font-mono min-w-0 flex-1 bg-transparent text-[15px] text-primary outline-none"
-          />
-          <button type="button" onClick={() => setShowPassword((v) => !v)} className="font-mono shrink-0 text-xs font-semibold text-accent underline">
-            {showPassword ? 'OCULTAR' : 'MOSTRAR'}
-          </button>
-        </div>
-      </label>
-
-      <label className="flex flex-col gap-2">
-        <span className="font-display text-[11px] font-bold tracking-[1.5px] text-secondary uppercase">Confirmar senha</span>
-        <input
-          type={showPassword ? 'text' : 'password'}
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          autoComplete="new-password"
-          className="font-mono rounded-xl border-[1.5px] border-surface-alt bg-surface p-4 text-[15px] text-primary outline-none focus:border-accent"
-        />
-      </label>
-
-      {error && <p className="font-display text-sm text-alert">{error}</p>}
-
-      <button
-        type="submit"
-        disabled={busy}
-        className="font-display mt-2 rounded-xl bg-accent p-4 text-sm font-bold tracking-[1px] text-base uppercase disabled:opacity-50"
-      >
-        {busy ? 'CRIANDO CONTA...' : 'CRIAR CONTA'}
-      </button>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <PixelTextField label="Nome" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoComplete="name" />
+      <PixelTextField label="Endereço de e-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" autoComplete="email" />
+      <PixelPasswordField
+        label="Senha de acesso"
+        value={password}
+        onChange={setPassword}
+        autoComplete="new-password"
+        shown={showPassword}
+        onToggle={() => setShowPassword((v) => !v)}
+      />
+      <PixelPasswordField
+        label="Confirmar senha"
+        value={confirmPassword}
+        onChange={setConfirmPassword}
+        autoComplete="new-password"
+        shown={showPassword}
+        onToggle={() => setShowPassword((v) => !v)}
+      />
+      <PixelFormError>{error}</PixelFormError>
+      <PixelButton type="submit" disabled={busy} className="mt-1 w-full">
+        {busy ? 'Criando conta...' : 'Criar conta'}
+      </PixelButton>
     </form>
   );
 }

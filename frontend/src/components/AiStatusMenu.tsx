@@ -40,7 +40,7 @@ export function AiStatusMenu() {
       onClick={status.refresh}
       disabled={status.checking}
       title={label}
-      className="block rounded-lg p-1.5 opacity-80 transition hover:scale-110 hover:opacity-100 focus-visible:opacity-100 disabled:cursor-progress disabled:hover:scale-100"
+      className="block p-1.5 opacity-80 transition hover:scale-110 hover:opacity-100 focus-visible:opacity-100 disabled:cursor-progress disabled:hover:scale-100"
     >
       <SheetFrame frame={frame} scale={2} className="xl:hidden" />
       <SheetFrame frame={frame} scale={3} className="hidden xl:block" />

@@ -5,21 +5,16 @@ import { useApiResource } from '../api/useApiResource';
 import type { AvailableCourseDto } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
-import { OnboardingStepper } from '../components/onboarding/OnboardingStepper';
+import { PixelFormError } from '../components/auth/PixelFields';
+import { EntryScreen } from '../components/entry/Entry';
+import { FocadaSays } from '../components/session/FocadaSays';
+import { PixelButton } from '../components/session/PixelButton';
+import casteloIcon from '../assets/pixel/mapa/castelo-pendente.png';
 
 /**
- * `/selecionar-curso` - passo 3/3 (Fase 13b, design Figma "Seleção de Curso Inicial", node
- * 19-370).
- *
- * Divergências deliberadas do Figma (mesmo mockup por natureza - so 1 Course real existe hoje, ver
- * SeedWebSecurityCourseUseCase):
- * - Grade de 4 cursos fixos do mockup virou uma grade dinâmica sobre GetAvailableCoursesUseCase -
- *   hoje renderiza so 1 card ("Web Security"), mas suporta N cursos reais no futuro sem mudar
- *   nada aqui.
- * - Badges "Recomendado"/"Iniciante"/"Intermediário"/"Avançado" e "5.1K alunos" não têm campo
- *   nenhum em AvailableCourseDto (Id/Title/Description/EstimatedDuration) - inventar esses
- *   números quebraria a mesma regra que StartDashboard já segue pra Gems/XP/streak. Omitidos.
- * - Nav de topo do mockup (mesma observação de OnboardingWelcomePage) - so o wordmark FOCADU.
+ * `/selecionar-curso` - passo 3/3 (Fase 13b; pixel art na Fase 74, Figma "Entrada e onboarding — v2",
+ * node 145:7045): os cursos disponiveis como "save slots" com o castelo (mesma linguagem do start). Ao
+ * matricular, vai pro /start.
  */
 export function CourseSelectionPage() {
   const navigate = useNavigate();
@@ -44,47 +39,48 @@ export function CourseSelectionPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-base">
-      <header className="border-b border-surface-alt px-8 py-5">
-        <p className="text-lg font-black tracking-[0.3em] text-primary">FOCADU</p>
-      </header>
-
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-8">
-        <OnboardingStepper step={3} />
-
-        <div>
-          <h1 className="text-3xl font-black text-primary">Escolha sua primeira missão</h1>
-          <p className="mt-2 text-sm text-secondary">Escolha um curso pra começar sua jornada.</p>
+    <EntryScreen step={3}>
+      <div className="mx-auto flex w-full max-w-[1248px] flex-1 flex-col gap-7 px-4 py-10 lg:py-14">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-2">
+            <p className="font-pixel-label text-[10px] text-accent">// Escolha sua primeira missão</p>
+            <h1 className="font-pixel text-[40px] leading-none text-primary sm:text-[48px]">Onde você começa?</h1>
+          </div>
+          <FocadaSays size="sm" className="sm:max-w-[340px]">
+            Um curso de cada vez, agente. Dá pra entrar em outro depois.
+          </FocadaSays>
         </div>
 
-        {enrollError && <p className="text-sm text-alert">{enrollError}</p>}
+        <PixelFormError>{enrollError}</PixelFormError>
 
         {courses.length === 0 ? (
-          <p className="text-secondary">Você já está matriculado em todos os cursos disponíveis.</p>
+          <p className="font-pixel text-2xl text-secondary">Você já está matriculado em todos os cursos disponíveis.</p>
         ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {courses.map((course) => (
-              <div key={course.id} className="flex flex-col justify-between gap-4 rounded-2xl border border-surface-alt bg-surface p-6">
-                <div>
-                  <h2 className="text-xl font-bold text-primary">{course.title}</h2>
-                  <p className="mt-2 text-sm leading-relaxed text-secondary">{course.description}</p>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {courses.map((course, i) => (
+              <div
+                key={course.id}
+                className={`flex flex-col gap-3.5 border-2 bg-base px-6 py-[22px] ${i === 0 ? 'border-accent shadow-[6px_6px_0_0_#1c9e3e]' : 'border-stroke'}`}
+              >
+                <div className="flex items-center gap-4">
+                  <img src={casteloIcon} alt="" className="size-24 shrink-0 pixelated" aria-hidden="true" />
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <span className="font-pixel-label text-[9px] text-secondary">Curso {String(i + 1).padStart(2, '0')}</span>
+                    <h2 className="font-pixel text-[36px] leading-none text-primary">{course.title}</h2>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-muted">{course.estimatedDuration}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleEnroll(course)}
-                    disabled={enrollingId === course.id}
-                    className="rounded-xl bg-accent px-5 py-2.5 text-xs font-bold tracking-wide text-base disabled:opacity-50"
-                  >
-                    {enrollingId === course.id ? 'MATRICULANDO...' : 'INICIAR MISSÃO'}
-                  </button>
+                <p className="font-pixel text-[22px] leading-tight text-secondary">{course.description}</p>
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
+                  <span className="font-pixel-label text-[9px] text-muted">{course.estimatedDuration}</span>
+                  <PixelButton ghost={i !== 0} onClick={() => handleEnroll(course)} disabled={enrollingId !== null}>
+                    {enrollingId === course.id ? 'Matriculando...' : 'Iniciar missão'}
+                  </PixelButton>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
-    </div>
+    </EntryScreen>
   );
 }

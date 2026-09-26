@@ -2,14 +2,17 @@ import { DailyStatus } from '../api/types';
 
 export type StatusBadgeTone = 'muted' | 'accent' | 'project' | 'alert';
 
-/** DailyStatus -> props de StatusBadge (Fase 8) - reaproveitado por StartDashboard, WeeklyDetailPage e CourseDetailPage. */
-export function dailyStatusBadgeProps(status: DailyStatus): { icon: string; label: string; tone: StatusBadgeTone } {
+/** Sprite do selo (Fase 74: os emojis ✅/🔄/⭕/🔒 sairam - so sprite, ou nenhum). */
+export type StatusBadgeIcon = 'check' | 'lock' | 'shield' | null;
+
+/** DailyStatus -> props de StatusBadge (Fase 8) - hoje so a missao do dia (DailyMissionCard) usa. */
+export function dailyStatusBadgeProps(status: DailyStatus): { icon: StatusBadgeIcon; label: string; tone: StatusBadgeTone } {
   switch (status) {
     case DailyStatus.Completed:
-      return { icon: '✅', label: 'Concluído', tone: 'accent' };
+      return { icon: 'check', label: 'Concluído', tone: 'accent' };
     case DailyStatus.InProgress:
-      return { icon: '🔄', label: 'Em andamento', tone: 'accent' };
+      return { icon: null, label: 'Em andamento', tone: 'accent' };
     default:
-      return { icon: '⭕', label: 'Não iniciado', tone: 'muted' };
+      return { icon: null, label: 'Não iniciado', tone: 'muted' };
   }
 }

@@ -67,13 +67,13 @@ export function DailyMissionCard({
   const closurePending = daily.accessMode === DailyAccessMode.WeekPendingClosure;
   const blocked = daily.accessMode === DailyAccessMode.Blocked;
   const badge = closurePending
-    ? { icon: '🔒', label: weekly.requiresPublicationToUnlock ? 'Publicação pendente' : 'Projeto pendente', tone: 'project' as const }
+    ? { icon: 'lock' as const, label: weekly.requiresPublicationToUnlock ? 'Publicação pendente' : 'Projeto pendente', tone: 'project' as const }
     : blocked
-      ? { icon: '🔒', label: 'Volta amanhã', tone: 'muted' as const }
+      ? { icon: 'lock' as const, label: 'Volta amanhã', tone: 'muted' as const }
       : dailyStatusBadgeProps(daily.status);
 
   return (
-    <Shell label="// Missão do dia" badge={<StatusBadge {...badge} pixel />}>
+    <Shell label="// Missão do dia" badge={<StatusBadge {...badge} />}>
       <div className="flex flex-col gap-1">
         <p className="font-pixel-label text-[9px] text-secondary">
           {course.name} · Semana {weekly.number} · Dia {daily.dayNumber}
@@ -86,7 +86,7 @@ export function DailyMissionCard({
           <p className="font-pixel text-lg leading-snug text-secondary">
             {weekly.requiresPublicationToUnlock
               ? 'Os dias e o projeto desta semana estão feitos. Falta validar a publicação do módulo para liberar a próxima semana.'
-              : 'Os cinco dias estão feitos. O castelo da semana está aberto: entregue o projeto para liberar a próxima.'}
+              : 'Os seis dias estão feitos. O castelo da semana está aberto: entregue o projeto para liberar a próxima.'}
           </p>
           <CtaLink
             to={

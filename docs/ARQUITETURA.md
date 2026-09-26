@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 73 - Ranking em pixel art (placar de fliperama)**.
+> Ultima fase que atualizou este documento: **Fase 74 - Visao da semana em pixel art (trilha da semana)**.
 
 ## Visao geral do projeto
 
@@ -2642,8 +2642,8 @@ caminho ate a area que rola precisa de `min-h-0`. Abaixo de `lg`, fluxo empilhad
 Plano do dono: levar pro sistema inteiro - abordagem e armadilhas em `docs/fase-61/`.
 `WeeklyProjectPage` segue o Figma node `178:132` (2a versao, Fase 63): esquerda REPOSITORIO (clone
 + credenciais com icone de copiar) e REFERENCIAS; centro DESAFIO SEMANAL com entrega fixa no
-rodape; direita ANOTACAO RAPIDA (`QuickNotePanel fill`, nota presa ao projeto) e TIRA DUVIDAS
-(`StudyAssistantPanel tall`). Rotulos via `CardLabel`. O botao flutuante `QuickQuestionOrb` nao e
+rodape; direita ANOTACAO RAPIDA (`QuickNotePanel`, nota presa ao projeto) e TIRA DUVIDAS
+(`StudyAssistantPanel`; as variantes antigas sem `fill`/`tall` sairam na Fase 74). Rotulos via `CardLabel`. O botao flutuante `QuickQuestionOrb` nao e
 mais usado em nenhuma tela. **Cartoes laterais em pixel art (ajustes da Fase 65, 23/09/2026):**
 repositorio, referencias, anotacao rapida (264px, 240 do Figma + 10%) e tira-duvidas usam a mesma
 linguagem dos cartoes da trilha - `pixel-box`, rotulos/botoes em Silkscreen (`CardLabel pixel`, com
@@ -2825,14 +2825,14 @@ frontend/
     routes/
       SplashPage.tsx             <- "/" (Fase 12) - checa sessao (AuthProvider) e redireciona pra
                                    /login, ou resolveLandingPath(user) (onboarding/selecao de
-                                   curso/start - Fase 13b), duracao minima de 700ms
+                                   curso/start - Fase 13b), duracao minima de 700ms. Fase 74: logo
+                                   pixel grande + barra de 16 blocos
       LoginPage.tsx                <- "/login" (Fase 12) - abas Entrar/Criar Conta; onSuccess de
                                    ambos os forms passa pelo mesmo resolveLandingPath (Fase 13b).
-                                   Fase 41: link "Esqueci minha senha" -> /esqueci-senha (antes
-                                   deliberadamente ausente, sem backend pra sustentar)
-      ForgotPasswordPage.tsx      <- /esqueci-senha (Fase 41) - fora do <ProtectedRoute/>, layout
-                                   proprio (cartao centralizado, nao reproduz o painel de marca
-                                   dividido da LoginPage - sem node de Figma pra esta tela).
+                                   Fase 41: link "Esqueci minha senha" -> /esqueci-senha. Fase 74:
+                                   pixel art (EntryPitch a esquerda a partir de `lg` + EntryCard)
+      ForgotPasswordPage.tsx      <- /esqueci-senha (Fase 41) - fora do <ProtectedRoute/>. Fase 74:
+                                   EntryScreen + EntryCard; depois do envio a Focada confirma.
                                    POST /api/auth/forgot-password sempre "sucesso", mesma tela pra
                                    email cadastrado ou nao
       ResetPasswordPage.tsx       <- /redefinir-senha?token= (Fase 41) - token vem da query string
@@ -2842,14 +2842,16 @@ frontend/
                                    perfil com interesses vazios (User.CompleteProfile aceita lista
                                    vazia) e pula direto pra /selecionar-curso
       ProfileInterviewPage.tsx    <- /onboarding/perfil (Fase 13b, passo 2/3) - Entrevista de
-                                   Perfil, InterestChip multi-select + notas livres, salva via
+                                   Perfil, ChoiceChip multi-select + notas livres, salva via
                                    PUT /api/users/me/profile (CompleteProfileUseCase). `?edit=1`
                                    (Fase 18): mesma tela reaproveitada pra editar depois do
                                    onboarding (pre-popula com UserDto.interests/
                                    additionalProfileNotes, volta pro /perfil ao salvar em vez de
                                    seguir pra /selecionar-curso)
       CourseSelectionPage.tsx     <- /selecionar-curso (Fase 13b, passo 3/3) - GET
-                                   /api/courses/available, matricula via POST /api/enrollments
+                                   /api/courses/available, matricula via POST /api/enrollments.
+                                   Fase 74: cursos como "save slots" com o castelo
+                                   (as 3 telas de onboarding usam components/entry/Entry.tsx)
       EmptyStateStartPage.tsx     <- guarda de seguranca em /start (Fase 13b) - renderizada por
                                    StartDashboard quando GET /api/today devolve 404
                                    `nenhuma_matricula_ativa`; StreakIndicator fixo em 0 (Fase 14,
@@ -2951,13 +2953,10 @@ frontend/
                                    cursos em "save slots" + cartao do agente | missao do dia, rumo ao
                                    castelo e fala da Focada do curso escolhido (`?curso=`). Pecas em
                                    components/start/, derivacoes em lib/startScreen.ts
-      WeeklyDetailPage.tsx        <- /start?weekly= - dias da semana + projeto + navegacao entre semanas
-                                   (Fase 8); banner + trigger do PublicationModal quando
-                                   `requiresPublicationToUnlock` (Fase 11); WeeklyReinforcementBadge
-                                   no cabecalho quando `hasPendingWeeklyReinforcement` (Fase 15).
-                                   Fase 39: `DayCard` mostra `day.title` (titulo do material do dia)
-                                   em vez de so "Dia N"; container alargado (`max-w-6xl`/`px-6 py-8`,
-                                   mesmo ajuste ja feito em `SessionShell.tsx`)
+      WeeklyDetailPage.tsx        <- /start?weekly= - visao da semana (Fase 8; pixel art na Fase 74):
+                                   trilha da semana (components/week/WeekTrail.tsx) + coluna com a
+                                   Focada, resumo, certificacoes e regras; faixa + PublicationModal
+                                   quando `requiresPublicationToUnlock` (Fase 11)
       CourseDetailPage.tsx        <- /start?course= - Fase 65: mapa da trilha em pixel art (CourseMap +
                                    fala da Focada + HUD do curso + Resumo com atalhos), 3 colunas com
                                    altura da tela; lista de semanas so no celular/curso sem mapa (ver
@@ -3009,7 +3008,10 @@ frontend/
                                    selo) - resumo + nome/status/erro por provedor; estado vem de
                                    `lib/useAiStatus.ts` (GET /api/system/ai-status, polling 45s)
       auth/
-        LoginForm.tsx                <- email + senha (Fase 12); onSuccess recebe o UserDto (Fase 13b)
+        PixelFields.tsx              <- Fase 74 - PixelTextField/PixelPasswordField/PixelFormError dos 4 forms
+        BackToLogin.tsx              <- Fase 74 - "‹ Voltar pro login" das telas de senha
+        LoginForm.tsx                <- email + senha (Fase 12); onSuccess recebe o UserDto (Fase 13b);
+                                   so pixel art desde a Fase 74 (login e SessionExpiredModal)
         RegisterForm.tsx              <- nome + email + senha + confirmacao (Fase 12); onSuccess
                                    recebe o UserDto (Fase 13b); `referralCode` opcional (Fase 17,
                                    vem de /login?ref=, ver LoginPage)
@@ -3018,17 +3020,18 @@ frontend/
         ResetPasswordForm.tsx        <- Fase 41 - nova senha + confirmacao (mesmo padrao de
                                    RegisterForm), recebe `token` por prop (vem da query string de
                                    ResetPasswordPage), onSuccess() sem payload
-      onboarding/                  <- Fase 13b
-        InterestChip.tsx                <- chip de interesse multi-select (Entrevista de Perfil)
-        OnboardingStepper.tsx             <- "Passo X de 3" + pontinhos, compartilhado pelas 3 telas
+      entry/Entry.tsx              <- Fase 74 - pecas das telas fora do app: PixelLogo, OnboardingStepper
+                                   ("Passo N de 3" em blocos), EntryTopBar, EntryScreen, EntryCard,
+                                   ChoiceChip (substituiu o InterestChip) e EntryPitch (login)
+      onboarding/                  <- Fase 13b (so o LanguagePreferenceModal sobrou aqui)
       gamification/                 <- Fase 14
-        GemBadge.tsx                     <- icone + contador de Gems, mesmo padrao pill de StatusBadge
-        StreakIndicator.tsx               <- "🔥 N dias" - perfil e EmptyStateStartPage (fixo em 0)
+        GemBadge.tsx                     <- gema + total (caixa reta pixel desde a Fase 74)
+        StreakIndicator.tsx               <- "Ofensiva de N dias" - EmptyStateStartPage (fixo em 0), pixel desde a Fase 74
         (PenaltyHeaderBadge.tsx removido na Fase 68 - virou session/ErrorGauge.tsx)
       pomodoro/                     <- Fase 36 (ver secret/rascunhos/timer-pomodoro-sessao.md)
         PomodoroWidget.tsx                 <- versao "design exclusivo" do Timer Pomodoro, empilhada
                                    no sidebar esquerdo da sessao (SessionLayout, Fase 68: pixel art) -
-                                   digitos grandes, ProgressBar (tone accent=foco/project=pausa),
+                                   digitos grandes, barra de progresso (accent=foco/project=pausa),
                                    pills de preset (25/5, 50/10, 15/3), play/pausar/zerar. Fase 37:
                                    ganhou `flex-1` (cresce pra preencher a coluna esquerda inteira,
                                    pedido explicito - antes sobrava vao vazio empilhado acima dele)
@@ -3044,8 +3047,6 @@ frontend/
                                    scroll proprio) - pedido explicito de "tamanho similar ao
                                    Pomodoro" pros 2 lados do sidebar ficarem equilibrados
       ReinforcementIntroScreen.tsx  <- Fase 15 - transicao pra Daily de reforco, reaproveita IntroCard
-      WeeklyReinforcementBadge.tsx   <- Fase 15 - so apresentacao ("📋 Revisao semanal disponivel"),
-                                   sem link embutido, sem bloquear nada
       ranking/                     <- Fase 16; Fase 73 trocou RankingScopeTabs/RankingTable/
                                    CurrentUserRankingCard por Scoreboard.tsx
         Scoreboard.tsx                    <- PodiumPanel, ScoreBoard (HIGH SCORE), NextTarget, HowToClimb
@@ -3134,9 +3135,8 @@ frontend/
       SettingsMenu.tsx            <- menu de configuracoes (overlay), Fase 7 - so o componente
                                    visual (props open/onClose/onExit/onLogout, sem estado proprio);
                                    montado em SettingsProvider desde a Fase 25 (era TodayPage direto)
-      StatusBadge.tsx              <- badge de status generico, so apresentacao (Fase 8)
-      ProgressBar.tsx               <- barra de progresso generica, extraida de SessionTopBar (Fase 8)
-      WeeklyProjectCard.tsx          <- card do projeto semanal, usado pela WeeklyDetailPage (Fase 8; saiu do StartDashboard na Fase 66)
+      StatusBadge.tsx              <- selo de status (Fase 8); so pixel art e sprite desde a Fase 74 (sem emoji)
+      week/WeekTrail.tsx             <- trilha da semana em pe da visao da semana (Fase 74)
       SegmentedBar.tsx               <- barra de progresso pixel art em blocos (Fase 66; a trilha ainda tem a copia local dela)
       start/                         <- pecas da tela de start (Fase 66): CourseSlots, AgentCard,
                                    DailyMissionCard, WeekPathCard
@@ -3157,7 +3157,9 @@ frontend/
         TimeoutError.tsx                  <- AbortSignal.timeout() disparou
         GenericError.tsx                   <- 5xx/404/excecao inesperada - tambem usado pelo ErrorBoundary
         ApiErrorScreen.tsx                  <- dispatcher: escolhe a tela certa a partir de ApiFailure.type
-      Layout.tsx                  <- PageShell, Centered, ActivityScreen (shells compartilhados)
+      Layout.tsx                  <- Centered (o PageShell saiu na Fase 74)
+      PixelPage.tsx               <- Fase 74 - PixelPageHeader ("‹ Voltar pra trilha" + rotulo) e
+                                   PixelPanel ("// ROTULO" com borda de 2px), das telas internas
 ```
 
 Roteamento exatamente como documentado (nao espelha as rotas REST da Api, que sao um recurso
@@ -3181,7 +3183,7 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/loja` | `GET /api/marketplace/catalog` + `POST .../purchase`\|`/equip` + `POST /api/agent` | `MarketplacePage` (Fase 17; pixel art na Fase 71) - vitrine da semana + criador de agente |
 | `/perfil` (`?tab=info`\|`customizacao`\|`conquistas`) | `GET /api/users/me/gamification` + `GET /api/marketplace/catalog` (+ `GET /api/courses`/`.../ranking` na aba Informacoes, `GET /api/users/me/badges`/`referral` na aba Conquistas) | `ProfilePage` (Fase 18) - 3 abas, ver secao "Perfil, 3 Abas" acima |
 | `/conquistas` | - (so redireciona) | `<Navigate to="/perfil?tab=conquistas"/>` (Fase 18, era `AchievementsPage` na Fase 17 - mantido como redirect pra nao quebrar links/favoritos antigos) |
-| `/start?course=&weekly=` | `GET /api/weeklies/{weeklyId}` (+ `GET /api/courses/{courseId}` pra navegacao entre semanas) | `WeeklyDetailPage` (Fase 8) - dias da semana + projeto |
+| `/start?course=&weekly=` | `GET /api/weeklies/{weeklyId}` (+ `GET /api/courses/{courseId}` pra modulo, navegacao, reforco por dia e trava da semana) | `WeeklyDetailPage` (Fase 8, pixel art na Fase 74) - trilha da semana + castelo do projeto |
 | `/start?course=&weekly=&daily=` | `GET /api/dailies/{dailyId}` | Estado de uma Daily especifica (somente leitura) |
 | `/start?course=&weekly=&project=1` | `GET /api/weeklies/{weeklyId}` | Projeto pratico da semana (`WeeklyProjectPage`, Fase 7 - submissao via `POST .../project/submit`) |
 | `/admin/conteudo` | `GET /api/courses` | Autoria (Fase 6) - lista de cursos |
@@ -3425,8 +3427,8 @@ lg:overflow-y-auto">`. Consequencias:
   lg:overflow-hidden` e os cartoes rolando por dentro com `ScrollArea` (abordagem da Fase 61).
   Nenhuma tela desconta mais `--nav-height` (so o `GlobalNav` le essa variavel).
 - **Tela ainda nao adaptada** rola dentro do `<main>`, nunca a janela, no desktop.
-- **`PageShell`** (Ranking, Perfil, Loja, Certificacoes, Caderninho): margens das telas pixel art
-  (`lg:px-16 lg:pt-[45px] lg:pb-12`), largura cheia, cabecalho fixo e conteudo num `ScrollArea`.
+- **`PageShell`** saiu na Fase 74: Certificacoes e Caderninho, as ultimas telas nele, viraram pixel art
+  com as mesmas margens do Ranking e da visao da semana (`PixelPageHeader` + colunas com `ScrollArea`).
 - **Abaixo de `lg`** a janela volta a rolar (`min-h-dvh`, sem altura fixa) - rolagem interna no
   celular atrapalha a barra de endereco.
 - `min-h-screen` das telas da sessao diaria (`SessionShell`, `IntroCard`, `CompletionSummary`,
@@ -3443,9 +3445,69 @@ de 64px. A regra: o layout cabe na janela, e so conteudo de tamanho livre rola d
 cartao (texto da Leitura, especificacao do projeto, feed do squad, lista de dias da semana, tabela de
 certificacoes). Conferido com Playwright no mock em 1440x900, 1366x768, 1280x720 e 1024x768: nenhuma
 tela rola a pagina, e o unico layout que ainda passava era o Resumo Falado com enunciado longo (15px).
-A visao da semana (`WeeklyDetailPage`, ainda no estilo antigo) ganhou a mesma casca: a lista de dias
-rola por dentro e o resumo fica fixo. No QG do Squad, o lider gerencia o top 3 pelo "⋯" no nome do
+A visao da semana ganhou a mesma casca e, na Fase 74, o redesenho em pixel art (ver "Visao da semana
+em pixel art (Fase 74)"). A Fase 74 tambem criou a variante `tall:` (janela com 960px de altura ou
+mais), pra cartoes extras que so cabem em tela alta. No QG do Squad, o lider gerencia o top 3 pelo "⋯" no nome do
 podio (a lista nao repete mais o top 3).
+
+### Visao da semana em pixel art (Fase 74)
+
+Desenho aprovado no Figma "Focadu — Pixel Art", pagina "Visao da semana — v2 (proposta)" (`137:5236`:
+semana em andamento `137:5237`, semana fechada com publicacao pendente `138:6537`, celular `138:8081`,
+notas `138:92002`). `/start?course=&weekly=` (`routes/WeeklyDetailPage.tsx`):
+
+- **Trilha da semana em pe (`components/week/WeekTrail.tsx`)**: os dias (sem os de reforco) como
+  linhas com os sprites de ponto do mapa (`assets/pixel/mapa/ponto-*`), ligadas por uma linha vertical
+  verde ate o ultimo dia concluido. Dia concluido: aprovadas/total, erros (`penaltyPoints`) e check; dia
+  em andamento: destaque verde, barra de etapas (`SegmentedBar`) e "Continuar"; proximo dia: "Entrar";
+  o resto trancado. O 6º dia da semana leva o selo PONTE (so pela posicao, o DTO nao marca a ponte).
+  Reforco pendente vira selo no dia de origem, com link pra sessao de reforco (vem de
+  `WeeklyOverviewDto.days[].reinforcementDailyId`, do `GET /api/courses/{id}`). A linha inteira e um
+  link pra `/hoje?daily=` (menos trancada). O castelo do Projeto Semanal fecha a lista (BOSS, estado
+  trancado/aberto/em avaliacao/avaliado com a nota); trancado continua levando a tela do projeto pra
+  ler o briefing (decisao do dono). Semana trancada (`WeeklyOverviewDto.isLocked`) tranca todos os dias.
+- **Cabecalho**: "Semana NN · Modulo N · titulo do modulo", o tema em VT323 grande e ‹ Semana anterior
+  / proxima › (a proxima fica apagada se trancada).
+- **Publicacao do modulo pendente**: faixa ambar acima da lista com "Publicar agora" (abre o
+  `PublicationModal`, pixel art desde 24/09); nesse estado as linhas ficam compactas (`compact`).
+- **Coluna lateral**: a Focada (`buildFocadaWeekLine` em `lib/focadaMapLines.ts` - as falas do mapa
+  olhando so a semana + 3 novas: publicacao pendente, semana fechada, semana trancada), Resumo da
+  semana (dias em blocos, aprovacao sobre o que ja foi respondido, erros, nota do projeto, aviso de
+  revisao semanal com a contagem de dias fracos), certificacoes do modulo ("cobre topicos", nunca
+  "equivalente") e "Como a semana fecha" (so com a semana aberta e em tela `tall:`).
+- **Layout**: sem rolagem de pagina a partir de `lg`; a trilha e a coluna lateral rolam por dentro se
+  nao couberem. No celular empilha e a Focada vai pra antes da lista.
+- **Mock**: `/__mock/semana?estado=andamento|publicacao|trancada` (Semana 2; trancada abre a 3), servido
+  por `GET /api/weeklies/w-N` no `mock/sessionMock.ts`.
+
+Saíram (sem outro uso): `WeeklyProjectCard`, `WeeklyReinforcementBadge` e `ProgressBar`.
+
+### Certificacoes, Caderninho e telas fora do app em pixel art (Fase 74)
+
+Desenhos aprovados no Figma "Focadu — Pixel Art": pagina "Certificacoes + Caderninho — v2" (`142:5236`)
+e "Entrada e onboarding — v2" (`144:4502`). Com eles, o plano `telas-pixel-art-antes-da-0-1-0.md`
+fecha: nenhuma tela ativa usa mais o estilo antigo (a unica que sobra e o `WorldMapPage`, desativado
+desde a Fase 25).
+
+- **Certificacoes** (`routes/CertificationsPage.tsx`): matriz modulo × certificacao (check = cobre e ja
+  estudado, escudo = cobre e pela frente, "—" = nao cobre); clicar numa celula mostra o
+  `coveredDomains` embaixo. Modulo "estudado" = `isMonthlyComplete`; "estudando" = ja tem Daily feita ou
+  vem logo depois de um estudado. A esquerda, "Ao seu alcance" (modulos estudados / modulos que cobrem
+  cada exame) e a Focada. No celular a matriz rola na horizontal.
+- **Caderninho** (`routes/NotebookPage.tsx`, o `NotebookTab` saiu): filtros a esquerda (busca, periodo
+  e tags em chips - clicar de novo solta), notas agrupadas por dia (ponto) ou projeto (castelo) com o
+  Markdown em `PIXEL_PROSE`, e a direita a Focada + resumo (notas, dias com nota / dias do curso, tag
+  mais usada - da lista sem filtro).
+- **Fora do app**: Splash, Login/Criar conta (apresentacao + agente do kit basico a esquerda a partir de
+  `lg`), Esqueci/Redefinir senha, Boas-vindas (a Focada e os 3 pilares), Entrevista (chips) e Escolha
+  do curso ("save slots"). Pecas em `components/entry/Entry.tsx` e `components/auth/PixelFields.tsx`.
+- **Celular**: menu suspenso do `GlobalNav` em pixel art (hamburguer em blocos, item atual em destaque)
+  e a trilha em lista (`WeekSummaryCard`) com os pontos do dia, o castelo e o status.
+- **Sobras**: `StatusBadge`, `GemBadge`, `StreakIndicator`, avatar de iniciais, seletor de linguagem do
+  Projeto Semanal e `Centered` em pixel art; variantes antigas de `QuickNotePanel`/`StudyAssistantPanel`
+  removidas; `/start?...&daily=` (recapitulacao sem nenhum link) redireciona pra `/hoje?daily=`.
+- **Mock**: `/__mock/caderninho` (notas de exemplo), `/__mock/sair` (sem sessao, abre `/login`),
+  `/__mock/onboarding` (perfil sem entrevista); o detalhe do curso ganhou certificacoes de exemplo.
 
 ### Sessao diaria em pixel art (Fase 68)
 

@@ -3,26 +3,24 @@ import { ApiError } from '../../api/client';
 import type { UserDto } from '../../api/types';
 import { useAuth } from '../../contexts/useAuth';
 import { isValidEmail } from '../../lib/validation';
-import { pixelField } from '../PixelModal';
 import { PixelButton } from '../session/PixelButton';
+import { PixelFormError, PixelPasswordField, PixelTextField } from './PixelFields';
 
+/**
+ * Login (Fase 12). Pixel art desde 24/09/2026 no SessionExpiredModal e, na Fase 74, tambem na tela de
+ * login (a variante antiga saiu). Reautenticar so atualiza `user` no AuthContext, nunca navega.
+ */
 export function LoginForm({
   onSuccess,
-  submitLabel = 'ENTRAR NO COCKPIT',
-  pixel = false,
+  submitLabel = 'Entrar no cockpit',
 }: {
   onSuccess: (user: UserDto) => void;
-  // Fase 22 (SessionExpiredModal): mesmo form, CTA "Retomar Sessão" - className ja tem `uppercase`,
-  // entao o texto passado aqui nao precisa vir em caixa alta.
+  /** Fase 22 (SessionExpiredModal): mesmo form, CTA "Retomar sessão". */
   submitLabel?: string;
-  /** Variante pixel art (24/09/2026, SessionExpiredModal): rotulos em Silkscreen, campos em VT323 com
-   * borda reta, `PixelButton`. A tela de login continua na versao antiga ate ser redesenhada. */
-  pixel?: boolean;
 }) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -51,85 +49,14 @@ export function LoginForm({
     }
   }
 
-  if (pixel) {
-    return (
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-2">
-          <span className="font-pixel-label text-[9px] text-secondary">Endereço de e-mail</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="seu@email.com"
-            autoComplete="email"
-            className={pixelField}
-          />
-        </label>
-
-        <label className="flex flex-col gap-2">
-          <span className="font-pixel-label text-[9px] text-secondary">Senha de acesso</span>
-          <div className="flex items-center gap-3 border-2 border-stroke bg-surface px-3 py-2 focus-within:border-accent">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              className="min-w-0 flex-1 bg-transparent font-pixel text-xl leading-snug text-primary outline-none"
-            />
-            <button type="button" onClick={() => setShowPassword((v) => !v)} className="shrink-0 font-pixel-label text-[9px] text-accent hover:brightness-110">
-              {showPassword ? 'Ocultar' : 'Mostrar'}
-            </button>
-          </div>
-        </label>
-
-        {error && <p className="font-pixel text-lg leading-snug text-alert">{error}</p>}
-
-        <PixelButton type="submit" disabled={busy} className="mt-1 w-full">
-          {busy ? 'Entrando...' : submitLabel}
-        </PixelButton>
-      </form>
-    );
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-      <label className="flex flex-col gap-2">
-        <span className="font-display text-[11px] font-bold tracking-[1.5px] text-secondary uppercase">Endereço de e-mail</span>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="seu@email.com"
-          autoComplete="email"
-          className="font-display rounded-xl border-[1.5px] border-surface-alt bg-surface p-4 text-[15px] text-primary outline-none focus:border-accent"
-        />
-      </label>
-
-      <label className="flex flex-col gap-2">
-        <span className="font-display text-[11px] font-bold tracking-[1.5px] text-secondary uppercase">Senha de acesso</span>
-        <div className="flex items-center justify-between rounded-xl border-[1.5px] border-surface-alt bg-surface p-4 focus-within:border-accent">
-          <input
-            type={showPassword ? 'text' : 'password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            className="font-mono min-w-0 flex-1 bg-transparent text-[15px] text-primary outline-none"
-          />
-          <button type="button" onClick={() => setShowPassword((v) => !v)} className="font-mono shrink-0 text-xs font-semibold text-accent underline">
-            {showPassword ? 'OCULTAR' : 'MOSTRAR'}
-          </button>
-        </div>
-      </label>
-
-      {error && <p className="font-display text-sm text-alert">{error}</p>}
-
-      <button
-        type="submit"
-        disabled={busy}
-        className="font-display mt-2 rounded-xl bg-accent p-4 text-sm font-bold tracking-[1px] text-base uppercase disabled:opacity-50"
-      >
-        {busy ? 'ENTRANDO...' : submitLabel}
-      </button>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <PixelTextField label="Endereço de e-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" autoComplete="email" />
+      <PixelPasswordField label="Senha de acesso" value={password} onChange={setPassword} autoComplete="current-password" />
+      <PixelFormError>{error}</PixelFormError>
+      <PixelButton type="submit" disabled={busy} className="mt-1 w-full">
+        {busy ? 'Entrando...' : submitLabel}
+      </PixelButton>
     </form>
   );
 }

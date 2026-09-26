@@ -2,8 +2,12 @@ import { useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
 import { PROJECT_LANGUAGE_NAMES, ProjectLanguage } from '../api/types';
-import { InterestChip } from '../components/onboarding/InterestChip';
-import { OnboardingStepper } from '../components/onboarding/OnboardingStepper';
+import { PixelFormError } from '../components/auth/PixelFields';
+import { ChoiceChip, EntryCard, EntryScreen } from '../components/entry/Entry';
+import { pixelField } from '../components/PixelModal';
+import { FocadaSays } from '../components/session/FocadaSays';
+import { PixelButton } from '../components/session/PixelButton';
+import backArrow from '../assets/pixel/voltar.png';
 import { useAuth } from '../contexts/useAuth';
 
 // Hobbies/referencias culturais, nao topicos de curriculo - User.Interests e "fonte de futuras
@@ -20,15 +24,9 @@ const INTEREST_OPTIONS = [
 const LANGUAGE_OPTIONS = [ProjectLanguage.Python, ProjectLanguage.JavaScript];
 
 /**
- * `/onboarding/perfil` - passo 2/3 (Fase 13b). Sem node Figma proprio validado nesta fase (so
- * Boas-vindas/Seleção/Empty State foram conferidos) - segue a mesma estética das outras 2 telas
- * de onboarding.
- *
- * `?edit=1` (Fase 18): mesma tela reaproveitada pra editar depois do onboarding, a partir da aba
- * "Informações" do Perfil - PUT /api/users/me/profile ja aceita ser chamado de novo (sem guarda
- * de "so uma vez", ver CompleteProfileUseCase), so faltava a UI de edicao. Pre-popula com o que ja
- * foi salvo (UserDto.interests/additionalProfileNotes) e volta pro Perfil ao salvar, em vez de
- * seguir pra Selecao de Curso.
+ * `/onboarding/perfil` - passo 2/3 (Fase 13b; pixel art na Fase 74, Figma "Entrada e onboarding — v2",
+ * node 145:6677): interesses (personalizam as analogias da IA) e as linguagens dos Projetos Semanais
+ * (Fase 59) em chips, mais um texto livre opcional. `?edit` reabre a mesma tela pelo Perfil, sem o passo.
  */
 export function ProfileInterviewPage() {
   const { user, setCurrentUser } = useAuth();
@@ -66,40 +64,31 @@ export function ProfileInterviewPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-base">
-      <header className="border-b border-surface-alt px-8 py-5">
-        <p className="text-lg font-black tracking-[0.3em] text-primary">FOCADU</p>
-      </header>
-
-      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 p-8">
-        {!isEditing && <OnboardingStepper step={2} />}
-
-        <div>
-          <h1 className="text-3xl font-black text-primary">{isEditing ? 'Editar seus interesses' : 'Conte um pouco sobre você'}</h1>
-          <p className="mt-3 text-sm leading-relaxed text-secondary">
-            Sem certo ou errado aqui - isso ajuda a montar analogias que fazem sentido pra você mais pra frente. Fica
-            à vontade pra pular, se preferir.
-          </p>
+    <EntryScreen step={isEditing ? undefined : 2}>
+      <div className="mx-auto flex w-full max-w-[1248px] flex-1 flex-col gap-8 px-4 py-10 lg:flex-row lg:items-start lg:gap-16 lg:py-14">
+        <div className="flex flex-col gap-6 lg:w-[420px] lg:shrink-0">
+          <p className="font-pixel-label text-[10px] text-accent">{isEditing ? '// Editar seus interesses' : '// Conte um pouco sobre você'}</p>
+          <h1 className="font-pixel text-[40px] leading-none text-primary sm:text-[44px]">Sem certo ou errado aqui.</h1>
+          <FocadaSays size="md">Com os seus interesses eu monto analogias que fazem sentido pra você. Pode pular, se preferir.</FocadaSays>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {INTEREST_OPTIONS.map((interest) => (
-            <InterestChip key={interest} label={interest} selected={interests.includes(interest)} onToggle={() => toggleInterest(interest)} />
-          ))}
-        </div>
+        <EntryCard className="min-w-0 flex-1">
+          <p className="font-pixel-label text-[10px] text-accent">// Interesses</p>
+          <div className="flex flex-wrap gap-2">
+            {INTEREST_OPTIONS.map((interest) => (
+              <ChoiceChip key={interest} label={interest} selected={interests.includes(interest)} onToggle={() => toggleInterest(interest)} />
+            ))}
+          </div>
 
-        {/* Fase 59 (piloto Semana 1): so os Projetos Semanais ja curados por linguagem usam isso -
-            marcar aqui nao afeta o resto do curso. Pode deixar sem marcar nenhuma agora; a tela do
-            projeto avisa e pede pra voltar aqui quando isso passar a importar de verdade. */}
-        <div>
-          <p className="text-sm font-semibold text-primary">Linguagem dos Projetos Semanais</p>
-          <p className="mt-1 text-sm leading-relaxed text-secondary">
-            Alguns Projetos Semanais têm repositório pronto e referências próprias por linguagem. Marque em qual (ou quais) você
-            topa fazê-los - dá pra mudar depois, mas a escolha feita para um projeto específico não volta atrás.
+          {/* Fase 59 (piloto Semana 1): so os Projetos Semanais ja curados por linguagem usam isso -
+              marcar aqui nao afeta o resto do curso. */}
+          <p className="font-pixel-label text-[10px] text-accent">// Linguagem dos projetos semanais</p>
+          <p className="font-pixel text-xl leading-tight text-secondary">
+            Alguns projetos têm repositório pronto por linguagem. Marque em qual topa fazer: dá pra mudar depois, mas a escolha de um projeto não volta atrás.
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             {LANGUAGE_OPTIONS.map((language) => (
-              <InterestChip
+              <ChoiceChip
                 key={language}
                 label={PROJECT_LANGUAGE_NAMES[language]}
                 selected={languages.includes(language)}
@@ -107,39 +96,29 @@ export function ProfileInterviewPage() {
               />
             ))}
           </div>
-        </div>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-secondary">Mais alguma coisa? (opcional)</span>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            placeholder="Referências, hobbies, o que quiser..."
-            className="rounded-lg border border-surface-alt bg-surface p-3 text-sm text-primary outline-none focus:border-accent"
-          />
-        </label>
+          <label className="flex flex-col gap-2">
+            <span className="font-pixel-label text-[9px] text-secondary">Mais alguma coisa? (opcional)</span>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Referências, hobbies, o que quiser..." className={pixelField} />
+          </label>
 
-        {error && <p className="text-sm text-alert">{error}</p>}
+          <PixelFormError>{error}</PixelFormError>
 
-        <div className="flex items-center justify-between pt-2">
-          <button
-            type="button"
-            onClick={() => navigate(isEditing ? '/perfil' : '/onboarding')}
-            className="text-sm text-secondary hover:text-primary"
-          >
-            ← Voltar
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={saving}
-            className="rounded-xl bg-accent px-6 py-3 text-sm font-bold tracking-wide text-base disabled:opacity-50"
-          >
-            {saving ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Próximo Passo →'}
-          </button>
-        </div>
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => navigate(isEditing ? '/perfil' : '/onboarding')}
+              className="flex items-center gap-2 font-pixel-label text-[9px] text-secondary hover:text-primary"
+            >
+              <img src={backArrow} alt="" className="size-4 pixelated" />
+              Voltar
+            </button>
+            <PixelButton onClick={handleSubmit} disabled={saving}>
+              {saving ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Próximo passo ›'}
+            </PixelButton>
+          </div>
+        </EntryCard>
       </div>
-    </div>
+    </EntryScreen>
   );
 }

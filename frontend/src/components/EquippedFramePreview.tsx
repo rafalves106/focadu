@@ -23,12 +23,12 @@ export function EquippedFramePreview({
     .map((part) => part[0]?.toUpperCase())
     .join('');
 
-  const sizeClass = { sm: 'size-9 text-sm', md: 'size-14 text-lg', lg: 'size-20 text-2xl' }[size];
-  const ringClass = frameRarity !== null ? `border-2 ${RARITY_STYLE[frameRarity].border}` : 'border border-stroke';
+  const sizeClass = { sm: 'size-9 text-[10px]', md: 'size-14 text-sm', lg: 'size-20 text-lg' }[size];
+  const ringClass = frameRarity !== null ? `border-2 ${RARITY_STYLE[frameRarity].border}` : 'border-2 border-stroke';
 
   return (
     <div
-      className={`flex shrink-0 items-center justify-center rounded-full bg-surface-alt font-bold text-primary ${sizeClass} ${ringClass}`}
+      className={`flex shrink-0 items-center justify-center bg-surface-alt font-pixel-label text-primary ${sizeClass} ${ringClass}`}
       aria-hidden="true"
     >
       {initials || '?'}

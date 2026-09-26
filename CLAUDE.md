@@ -87,9 +87,17 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 73 — Ranking em pixel art (placar de fliperama)** (25/09/2026).
+Última fase concluída: **Fase 74 — Telas restantes em pixel art (visão da semana, Certificações, Caderninho e entrada)** (26/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Visão da semana em pixel art (Fase 74, Figma "Visão da semana — v2")**: a semana virou um trecho da
+  trilha em pé - os 6 dias com os pontos do mapa, selo PONTE no 6º, selo de reforço no dia de origem e o
+  castelo do Projeto Semanal fechando a lista; faixa âmbar pra publicação do módulo pendente; ao lado, a
+  Focada (falas da semana em `buildFocadaWeekLine`), resumo, certificações e regras. Na mesma fase:
+  Certificações (matriz módulo × certificação), Caderninho (filtros em chips, notas por dia/projeto) e as
+  telas fora do app (Splash, Login/Criar conta, senha, onboarding), mais menu e trilha no celular - o
+  plano das telas em pixel art antes da v0.1.0 fechou. Sem endpoint novo. Regra do dono a partir daqui:
+  toda tela é desenhada no Figma e aprovada antes do código. Ver `docs/fase-74/`.
 - **Ranking em pixel art + telas sem rolagem (Fase 73, Figma "Ranking — v2")**: pódio com os agentes,
   placar HIGH SCORE do top 10 (quem está fora aparece preso no pé), "Próximo alvo" (quem está logo
   acima, `RankingResultDto.AheadEntry`) e aviso quando a semana do aluno ainda não fechou. Antes dela,

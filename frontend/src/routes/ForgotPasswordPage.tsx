@@ -1,39 +1,41 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { BackToLogin } from '../components/auth/BackToLogin';
+import { EntryCard, EntryScreen } from '../components/entry/Entry';
+import { FocadaSays } from '../components/session/FocadaSays';
 import { ForgotPasswordForm } from '../components/auth/ForgotPasswordForm';
 
 /**
- * /esqueci-senha (Fase 41) - fora do node de Figma da LoginPage (nao existia quando ela foi
- * desenhada, ver comentario em LoginPage.tsx); layout simples em cartao centralizado, reaproveitando
- * so os tokens visuais (cores/fontes) do resto do app, sem tentar reproduzir o painel de marca
- * dividido da LoginPage.
+ * /esqueci-senha (Fase 41; pixel art na Fase 74, Figma "Entrada e onboarding — v2", node 145:5869) -
+ * a mensagem de sucesso e a mesma pra email cadastrado ou nao (o backend nunca revela isso).
  */
 export function ForgotPasswordPage() {
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
 
+  // Pixel art (Fase 74, Figma 145:5869): cartao "Esqueci minha senha" e, depois do envio, a Focada confirmando.
   return (
-    <div className="flex min-h-screen items-center justify-center bg-base p-8">
-      <div className="flex w-full max-w-md flex-col gap-8">
-        <div className="flex flex-col gap-2 text-center">
-          <h1 className="font-display text-3xl font-extrabold tracking-[-1px] text-primary">FOCADU</h1>
-          <p className="font-display text-[15px] text-secondary">Esqueceu sua senha? Sem problema.</p>
-        </div>
-
-        {submittedEmail ? (
-          <p className="font-display rounded-xl border border-surface-alt bg-surface p-6 text-center text-sm text-secondary">
-            Se <strong className="text-primary">{submittedEmail}</strong> estiver cadastrado, você vai receber um email com um link
-            para redefinir sua senha em instantes.
-          </p>
-        ) : (
-          <ForgotPasswordForm onSubmitted={setSubmittedEmail} />
-        )}
-
-        <p className="font-display text-center text-sm text-secondary">
-          <Link to="/login" className="font-semibold text-accent hover:underline">
-            Voltar para o login
-          </Link>
-        </p>
+    <EntryScreen>
+      <div className="flex flex-1 items-start justify-center px-4 py-10 sm:py-20">
+        <EntryCard className="w-full max-w-[440px]">
+          {submittedEmail ? (
+            <>
+              <p className="font-pixel-label text-[10px] text-accent">// Link enviado</p>
+              <FocadaSays expression="comemorando" size="sm">
+                Se {submittedEmail} estiver cadastrado, o link já está a caminho (vale 1 hora). Confere o spam também.
+              </FocadaSays>
+            </>
+          ) : (
+            <>
+              <p className="font-pixel-label text-[10px] text-accent">// Esqueci minha senha</p>
+              <h1 className="font-pixel text-[34px] leading-none text-primary">Sem problema, agente.</h1>
+              <p className="font-pixel text-[22px] leading-tight text-secondary">
+                Diga o e-mail da conta. Se ele existir, chega um link pra criar uma senha nova.
+              </p>
+              <ForgotPasswordForm onSubmitted={setSubmittedEmail} />
+            </>
+          )}
+          <BackToLogin />
+        </EntryCard>
       </div>
-    </div>
+    </EntryScreen>
   );
 }

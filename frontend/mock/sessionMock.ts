@@ -15,6 +15,10 @@
  *   /__mock/reset?at=Quiz&pausa=1             (Fase 69: streak pausado - projeto da semana aberto)
  *   /__mock/loja?agente=0|1&gemas=60          (Fase 71: loja e agente, ver shopMock.ts)
  *   /__mock/squad?as=membro|lider|nenhum      (Fase 72: QG do Squad em /squad; Perfil em /perfil)
+ *   /__mock/semana?estado=andamento|publicacao|trancada   (Fase 74: visao da Semana 2; trancada abre a 3)
+ *   /__mock/caderninho                        (Fase 74: Caderninho com notas de exemplo)
+ *   /__mock/sair                              (Fase 74: sem sessao - abre o /login; entrar/criar conta loga de novo)
+ *   /__mock/onboarding                        (Fase 74: perfil sem entrevista - abre /onboarding)
  * Erros: /start?course=erro-500 | erro-offline | erro-lento (timeout do cliente, ~10s).
  * Ids fixos (MOCK_IDS) pra os links continuarem valendo depois de reiniciar o Vite.
  */
@@ -155,45 +159,84 @@ function squadHqDto() {
   };
 }
 
+// Visao da semana (Fase 74): `/__mock/semana?estado=` muda a Semana 2 no detalhe do curso e em
+// GET /api/weeklies/w-2 - andamento (dia 11 pela metade, reforco pendente do dia 8) ou publicacao
+// (semana fechada com o projeto avaliado e a publicacao do modulo pendente).
+// Entrada (Fase 74): sem sessao (/__mock/sair) ou com o perfil ainda sem a entrevista (/__mock/onboarding).
+let loggedOut = false;
+let profilePending = false;
+
+// Caderninho (Fase 74): notas de exemplo de dias e de projeto, com tags.
+function sampleNotes(now: string) {
+  const note = (id: string, weekNumber: number, dayNumber: number | null, content: string, tags: string[]) => ({
+    id, dailyId: dayNumber === null ? null : `d-${dayNumber}`, weeklyProjectId: dayNumber === null ? `p-${weekNumber}` : null,
+    weekNumber, dayNumber, dailyDate: now.slice(0, 10), content, tags, createdAt: now, updatedAt: now,
+  });
+  return [
+    note('n-1', 2, 8, '`alg: none` só passa se o servidor confiar no header. Validar **sempre** com a chave e o algoritmo fixos do lado do servidor.', ['jwt', 'validação']),
+    note('n-2', 2, 8, 'Payload não é segredo: é base64, qualquer um lê. Nada de dado sensível no token.', ['jwt']),
+    note('n-3', 2, 7, 'HttpOnly bloqueia JS de ler o cookie, mas não impede o navegador de enviar. Contra CSRF quem ajuda é SameSite.', ['cookies', 'csrf']),
+    note('n-4', 1, null, 'Scapy: `rdpcap` lê o pcap inteiro; pra arquivo grande usar `PcapReader` (vai pacote a pacote).', ['python', 'projeto']),
+  ];
+}
+
+type WeekMode = 'padrao' | 'andamento' | 'publicacao';
+let weekMode: WeekMode = 'padrao';
+const WEEK2_TITLES = ['Cookies, sessões e flags', 'JWT: tokens autocontidos', 'RBAC vs. ABAC', 'Same-Origin Policy e CORS', 'Headers de segurança: CSP e HSTS', 'Do token ao código (PyJWT)'];
+
+const MOCK_CERTS = [
+  { certificationCode: 'SEC+', certificationName: 'CompTIA Security+', certifier: 'CompTIA' },
+  { certificationCode: 'EJPT', certificationName: 'eJPT', certifier: 'INE Security' },
+  { certificationCode: 'CEH', certificationName: 'CEH', certifier: 'EC-Council' },
+  { certificationCode: 'PNPT', certificationName: 'PNPT', certifier: 'TCM Security' },
+];
+
 function courseDetailDto() {
   const TITLES = ['Fundamentos da Web', 'Injeção e XSS', 'Autenticação e sessão', 'Nuvem e APIs'];
   const monthlies = TITLES.map((title, mi) => ({
     id: mi === 0 ? MOCK_IDS.monthly : `m-${mi + 1}`,
     number: mi + 1,
     title,
-    certifications: [],
+    certifications: MOCK_CERTS.filter((_, ci) => !(mi === 1 && ci === 3) && !(mi === 2 && ci === 1) && !(mi === 3 && ci === 2)).map((c) => ({
+      ...c,
+      coveredDomains: `${c.certificationName}: tópicos do Módulo ${mi + 1} (${title}) que caem no exame - texto de exemplo do mock.`,
+    })),
     weeklies: [0, 1, 2].map((wi) => {
       const number = mi * 3 + wi + 1;
       const days = Array.from({ length: 6 }, (_, di) => {
         const dayNumber = (number - 1) * 6 + di + 1;
-        const done = dayNumber <= 10;
+        const done = dayNumber <= (weekMode === 'publicacao' ? 12 : 10);
+        const inProgress = weekMode === 'andamento' && dayNumber === 11;
         return {
           id: number === 1 && di === 0 ? MOCK_IDS.daily : `d-${dayNumber}`,
           dayNumber,
           date: localIso(Math.max(0, 11 - dayNumber)),
-          status: done ? 3 : dayNumber === 11 ? 1 : 0,
+          status: done ? 3 : inProgress ? 2 : dayNumber === 11 ? 1 : 0,
           isReinforcement: false,
           totalActivities: 8,
-          completedActivities: done ? 8 : 0,
-          title: `Dia ${dayNumber}`,
-          isNext: dayNumber === 11,
-          reinforcementDailyId: null,
+          completedActivities: done ? 8 : inProgress ? 3 : 0,
+          title: number === 2 ? WEEK2_TITLES[di] : `Dia ${dayNumber}`,
+          isNext: dayNumber === 11 && weekMode !== 'publicacao',
+          reinforcementDailyId: weekMode === 'andamento' && dayNumber === 8 ? 'r-8' : null,
           completedToday: false,
         };
       });
+      if (weekMode === 'andamento' && number === 2) {
+        days.push({ ...days[1], id: 'r-8', status: 1, isReinforcement: true, completedActivities: 0, reinforcementDailyId: null, title: 'Reforço do dia 8' });
+      }
       return {
         id: number === 1 ? MOCK_IDS.weekly : `w-${number}`,
         number,
         title: `Semana ${number}`,
-        theme: null,
+        theme: number === 2 ? 'Autenticação e autorização' : null,
         totalDailies: 6,
         completedDailies: days.filter((d) => d.status === 3).length,
         weakDailies: 0,
         hasWeeklyReinforcement: false,
         days,
-        requiresPublicationToUnlock: false,
+        requiresPublicationToUnlock: weekMode === 'publicacao' && number === 2,
         isLocked: number > 2,
-        projectStatus: number === 1 ? 2 : number === 2 ? 0 : null,
+        projectStatus: number === 1 || (number === 2 && weekMode === 'publicacao') ? 2 : number === 2 ? 0 : null,
       };
     }),
   }));
@@ -205,6 +248,59 @@ function courseDetailDto() {
     monthlies,
     dailyReinforcements: [],
     weeklyReinforcements: [],
+  };
+}
+
+/** GET /api/weeklies/w-N (Fase 74): a semana N do detalhe do curso, no formato da visao da semana. */
+function weekViewDto(weekId: string) {
+  const course = courseDetailDto();
+  const monthly = course.monthlies.find((m) => m.weeklies.some((w) => w.id === weekId));
+  const week = monthly?.weeklies.find((w) => w.id === weekId);
+  if (!monthly || !week) return null;
+  const publicacao = weekMode === 'publicacao' && week.number === 2;
+  const weak = (dayNumber: number) => publicacao && (dayNumber === 8 || dayNumber === 9);
+  const errors: Record<number, number> = { 8: 1, 9: 2 };
+  return {
+    id: week.id,
+    monthlyId: monthly.id,
+    courseId: course.id,
+    number: week.number,
+    title: week.title,
+    theme: week.theme,
+    dailies: week.days.map((d) => ({
+      id: d.id,
+      dayNumber: d.dayNumber,
+      date: d.date,
+      status: d.status,
+      isReinforcement: d.isReinforcement,
+      penaltyPoints: d.status === 3 ? errors[d.dayNumber] ?? 0 : 0,
+      isWeakDay: weak(d.dayNumber),
+      isNext: d.isNext,
+      title: d.title,
+      totalActivities: 18,
+      completedActivities: d.status === 3 ? 18 : d.status === 2 ? 7 : 0,
+      passedActivities: d.status === 3 ? 18 - (errors[d.dayNumber] ?? 0) : 0,
+    })),
+    curatedContents: [],
+    project:
+      week.projectStatus === null
+        ? { ...projectDto({ mode: 'normal', pendingReinforcement: false, project: 'pendente' }), id: `p-${week.number}`, isLocked: true }
+        : {
+            ...projectDto({ mode: 'normal', pendingReinforcement: false, project: week.projectStatus === 2 ? 'avaliado' : 'pendente' }),
+            id: `p-${week.number}`,
+            isLocked: week.days.some((d) => !d.isReinforcement && d.status !== 3),
+            score: week.projectStatus === 2 ? 88 : null,
+          },
+    reinforcements: [],
+    requiresPublicationToUnlock: week.requiresPublicationToUnlock,
+    hasPendingWeeklyReinforcement: publicacao,
+    moduleCertifications:
+      monthly.number === 1
+        ? [
+            { certificationCode: 'SECPLUS', certificationName: 'CompTIA Security+', certifier: 'CompTIA', coveredDomains: 'Domínio 1' },
+            { certificationCode: 'EJPT', certificationName: 'eJPT', certifier: 'INE', coveredDomains: 'Redes' },
+          ]
+        : [],
   };
 }
 
@@ -531,6 +627,26 @@ export function sessionMock(): Plugin {
           );
           return res.end();
         }
+        if (path === '/__mock/caderninho') {
+          state.notes = sampleNotes(new Date().toISOString());
+          res.statusCode = 302;
+          res.setHeader('Location', `/start?course=${ids.course}&caderninho=1`);
+          return res.end();
+        }
+        if (path === '/__mock/sair' || path === '/__mock/onboarding') {
+          loggedOut = path === '/__mock/sair';
+          profilePending = path === '/__mock/onboarding';
+          res.statusCode = 302;
+          res.setHeader('Location', loggedOut ? '/login' : '/onboarding');
+          return res.end();
+        }
+        if (path === '/__mock/semana') {
+          const estado = url.searchParams.get('estado') ?? 'andamento';
+          weekMode = estado === 'publicacao' ? 'publicacao' : estado === 'trancada' ? 'padrao' : 'andamento';
+          res.statusCode = 302;
+          res.setHeader('Location', `/start?course=${ids.course}&weekly=${estado === 'trancada' ? 'w-3' : 'w-2'}`);
+          return res.end();
+        }
         if (path === '/__mock/squad') {
           squadRole = (url.searchParams.get('as') as SquadRole | null) ?? 'membro';
           squadMembers = [...SQUAD_MEMBERS];
@@ -557,12 +673,22 @@ export function sessionMock(): Plugin {
         const now = new Date().toISOString();
         let m: RegExpMatchArray | null;
 
-        if (path === '/api/auth/me')
+        if (path === '/api/auth/me' && loggedOut) return send(res, 401, { error: 'nao_autenticado', message: 'Faça login.' });
+        if ((path === '/api/auth/login' || path === '/api/auth/register') && method === 'POST') loggedOut = false;
+        if (path === '/api/auth/forgot-password' || path === '/api/auth/reset-password') return send(res, 204);
+        if (path === '/api/users/me/profile' && method === 'PUT') profilePending = false;
+        if (path === '/api/courses/available')
+          return send(res, 200, [
+            { id: 'c-web', title: 'Web Security', description: 'Do HTTP ao pentest de aplicação: cookies, JWT, injeção, XSS, CORS, nuvem e APIs. Uma Daily por dia e um projeto por semana.', estimatedDuration: '12 semanas · 72 dias' },
+            { id: 'c-cloud', title: 'Cloud Security', description: 'IAM, redes na nuvem, containers e detecção. Mesmo formato: Daily, projeto e castelo.', estimatedDuration: '12 semanas · 72 dias' },
+          ]);
+        if (path === '/api/enrollments' && method === 'POST') return send(res, 200, { id: 'e-1', courseId: body.courseId });
+        if (path === '/api/auth/me' || path === '/api/auth/login' || path === '/api/auth/register' || path === '/api/users/me/profile')
           return send(res, 200, {
             id: ids.user,
             email: 'mock@focadu.local',
             displayName: 'Falves (mock)',
-            profileCompletedAt: now,
+            profileCompletedAt: profilePending ? null : now,
             interests: ['Motos esportivas', 'Jogos competitivos'],
             additionalProfileNotes: null,
             preferredLanguages: [1, 2],
@@ -640,6 +766,10 @@ export function sessionMock(): Plugin {
           return send(res, 200, dailyDto(target, scenario, m[1], m[1] === ids.reinforcement));
         }
         if (path === `/api/weeklies/${ids.weekly}`) return send(res, 200, weeklyDto(state, scenario));
+        if ((m = path.match(/^\/api\/weeklies\/(w-\d+)$/))) {
+          const week = weekViewDto(m[1]);
+          return week ? send(res, 200, week) : send(res, 404, { error: 'Semana não encontrada.' });
+        }
         if (path === `/api/weeklies/${ids.weekly}/project/language` && method === 'POST') {
           // Fase 69: escolher a linguagem libera a ponte (no mock, a sessao do Dia 1 faz o papel dela).
           scenario = { ...scenario, mode: 'normal' };
@@ -696,7 +826,11 @@ export function sessionMock(): Plugin {
           if (note && method === 'PUT') Object.assign(note, { content: body.content, tags: body.tags ?? [], updatedAt: now });
           return note ? send(res, 200, note) : send(res, 404, { error: 'nota_nao_encontrada', message: 'Nota não encontrada.' });
         }
-        if (path === `/api/courses/${ids.course}/notes`) return send(res, 200, state.notes);
+        if (path === `/api/courses/${ids.course}/notes`) {
+          const tag = url.searchParams.get('tag');
+          const q = url.searchParams.get('q')?.toLowerCase();
+          return send(res, 200, state.notes.filter((n) => (!tag || n.tags.includes(tag)) && (!q || n.content.toLowerCase().includes(q))));
+        }
         if (path === `/api/courses/${ids.course}/notes/tags`) return send(res, 200, [...new Set(state.notes.flatMap((n) => n.tags))]);
         if (path === '/api/study-assistant/ask')
           return send(res, 200, { answer: '(mock) O three-way handshake é a troca SYN, SYN-ACK e ACK que confirma que os dois lados estão prontos antes de mandar dados.' });

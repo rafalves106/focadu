@@ -19,6 +19,7 @@ import { PIXEL_PROSE } from '../lib/pixelProse';
 import { DialogueBox } from '../components/DialogueBox';
 import { PixelConfirmDialog } from '../components/PixelConfirmDialog';
 import { buildFocadaLines } from '../lib/focadaLines';
+import { PixelButton } from '../components/session/PixelButton';
 
 const STATUS_BADGE: Record<number, { label: string; className: string }> = {
   [WeeklyProjectStatus.Pending]: { label: 'Pendente', className: 'border-alert text-alert' },
@@ -329,8 +330,8 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
         {/* Coluna direita (Fase 63): anotacao rapida (264px - 240px do Figma + 10%, pedido do dono 23/09/2026 - presa ao PROJETO, nao a uma Daily) + chat
             ocupando o resto da altura. */}
         <div className="flex min-h-0 flex-col gap-8 lg:w-[210px] lg:shrink-0 xl:w-[250px] lg:short:gap-5">
-          <QuickNotePanel fill target={{ weeklyId }} courseId={weekly.courseId} className="h-[264px]" />
-          <StudyAssistantPanel tall className="h-[480px] lg:h-auto lg:min-h-0 lg:flex-1" />
+          <QuickNotePanel target={{ weeklyId }} courseId={weekly.courseId} className="h-[264px]" />
+          <StudyAssistantPanel className="h-[480px] lg:h-auto lg:min-h-0 lg:flex-1" />
         </div>
       </div>
 
@@ -548,13 +549,13 @@ function ReferencesPanel({ references, languageName }: { references: ProjectRefe
 /** Fase 59: semana com variantes de linguagem, mas o aluno ainda nao marcou nenhuma delas no perfil - so isso, ate ele marcar. */
 function LanguagePreferenceNeeded() {
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-alert/40 bg-surface-alt px-4 py-3">
-      <p className="text-sm text-secondary">
+    <div className="flex flex-col gap-2 border-2 border-alert px-4 py-3">
+      <p className="font-pixel text-lg leading-snug text-secondary">
         Esse projeto tem repositório-modelo e referências próprias por linguagem, mas você ainda não marcou nenhuma linguagem
         no seu perfil.
       </p>
-      <Link to="/onboarding/perfil?edit=1" className="w-fit text-sm font-semibold text-accent hover:underline">
-        Marcar no meu perfil →
+      <Link to="/onboarding/perfil?edit=1" className="w-fit font-pixel-label text-[9px] text-accent hover:brightness-125">
+        Marcar no meu perfil ›
       </Link>
     </div>
   );
@@ -584,10 +585,10 @@ function LanguagePicker({
   error: string | null;
 }) {
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-project/40 bg-surface-alt p-5">
-      <div className="flex flex-col gap-1">
-        <p className="text-sm font-semibold text-primary">Escolha a linguagem deste projeto</p>
-        <p className="text-sm text-secondary">
+    <div className="flex flex-col gap-4 border-2 border-project p-5">
+      <div className="flex flex-col gap-1.5">
+        <p className="font-pixel-label text-[10px] text-project">Escolha a linguagem deste projeto</p>
+        <p className="font-pixel text-lg leading-snug text-secondary">
           Esse projeto tem repositório-modelo e referências próprias por linguagem. Depois de confirmar, não dá mais pra
           trocar.
         </p>
@@ -600,31 +601,26 @@ function LanguagePicker({
               key={language}
               type="button"
               onClick={() => onPick(language)}
-              className="rounded-xl border border-project bg-surface px-6 py-3 text-sm font-bold text-primary hover:bg-project/10"
+              className="border-2 border-project px-6 py-3 font-pixel-label text-[11px] leading-none text-project hover:bg-project/10"
             >
               {PROJECT_LANGUAGE_NAMES[language]}
             </button>
           ))}
         </div>
       ) : (
-        <div className="flex flex-col gap-3 rounded-xl border border-alert/40 bg-base p-4">
-          <p className="text-sm text-primary">
+        <div className="flex flex-col gap-3 border-2 border-alert p-4">
+          <p className="font-pixel text-lg leading-snug text-primary">
             Confirma <strong>{PROJECT_LANGUAGE_NAMES[pendingLanguage]}</strong> pra este projeto? Depois de confirmar, não dá
             mais pra trocar de linguagem aqui.
           </p>
-          {error && <p className="text-sm text-alert">{error}</p>}
+          {error && <p className="font-pixel text-lg leading-snug text-alert">{error}</p>}
           <div className="flex items-center justify-end gap-3">
-            <button type="button" onClick={onCancel} disabled={submitting} className="text-sm text-secondary hover:text-primary disabled:opacity-40">
+            <PixelButton ghost tone="muted" onClick={onCancel} disabled={submitting}>
               Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={submitting}
-              className="rounded-xl bg-project px-6 py-3 text-sm font-bold text-base disabled:opacity-40"
-            >
-              {submitting ? 'CONFIRMANDO...' : `CONFIRMAR ${PROJECT_LANGUAGE_NAMES[pendingLanguage].toUpperCase()}`}
-            </button>
+            </PixelButton>
+            <PixelButton tone="project" onClick={onConfirm} disabled={submitting}>
+              {submitting ? 'Confirmando...' : `Confirmar ${PROJECT_LANGUAGE_NAMES[pendingLanguage]}`}
+            </PixelButton>
           </div>
         </div>
       )}

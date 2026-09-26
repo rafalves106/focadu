@@ -1,13 +1,9 @@
 import gemIcon from '../../assets/pixel/gema.png';
 
-/**
- * Badge de saldo de Gems (Fase 14) - icone + contador, mesmo padrao pill de StatusBadge (Fase 8).
- * Usado no header do StartDashboard. Icone trocado de emoji (💎) por PNG pixel art (pedido do
- * Falves) - mesmo arquivo reaproveitado em CosmeticItemCard/CompletionSummary.
- */
+/** Gems (Fase 14) - caixa reta de 2px com a gema pixel e o total em VT323 (pixel art na Fase 74). */
 export function GemBadge({ totalGems }: { totalGems: number }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-alt px-2.5 py-1 text-xs font-semibold text-primary">
+    <span className="inline-flex items-center gap-1.5 border-2 border-stroke px-2 py-1 font-pixel text-xl leading-none text-primary">
       <img src={gemIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
       {totalGems}
     </span>

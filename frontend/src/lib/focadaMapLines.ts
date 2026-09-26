@@ -1,4 +1,4 @@
-import { DailyStatus, WeeklyProjectStatus, type CourseDetailDto, type DailyStatusSummaryDto, type WeeklyOverviewDto } from '../api/types';
+import { DailyStatus, WeeklyProjectStatus, type CourseDetailDto, type DailyStatusSummaryDto, type WeeklyDetailDto, type WeeklyOverviewDto } from '../api/types';
 import type { FocadaLine } from './focadaLines';
 
 /**
@@ -22,9 +22,9 @@ export type FocadaMapLineKey =
   | 'padrao';
 
 export const DEFAULT_MAP_LINES: Record<FocadaMapLineKey, string> = {
-  cursoConcluido: 'Sessenta dias, doze projetos, uma bandeira. Você terminou o curso, agente. Eu diria que estou surpresa, mas vi cada commit.',
+  cursoConcluido: 'Setenta e dois dias, doze projetos, uma bandeira. Você terminou o curso, agente. Eu diria que estou surpresa, mas vi cada commit.',
   reforcoPendente: 'Tem um reforço esperando no dia {dia}, agente. Ele não some se você fingir que não viu. Eu já testei.',
-  projetoLiberado: 'Os cinco dias da Semana {semana} estão feitos. O castelo está aberto, agente, e a próxima semana não abre enquanto ele não cair.',
+  projetoLiberado: 'Os seis dias da Semana {semana} estão feitos. O castelo está aberto, agente, e a próxima semana não abre enquanto ele não cair.',
   projetoEntregue: 'Projeto da Semana {semana} entregue. A avaliação está lendo seu código. O mapa espera, eu também.',
   dailyEmAndamento: 'Você deixou o dia {dia} pela metade, agente. Termine antes que eu comece a cobrar juros.',
   diaFeitoHoje: 'Dia {dia} feito. Por hoje acabou, agente: o próximo ponto só abre amanhã. Descansar também é treino.',
@@ -109,4 +109,48 @@ export function buildFocadaMapLine(course: CourseDetailDto, monthTitles: Map<num
 
   const faltam = weekDays.filter((d) => d.status !== DailyStatus.Completed).length;
   return line('padrao', { dia: next.day.dayNumber, faltam, semana: next.week.number });
+}
+
+/**
+ * Falas da Focada na visao da semana (Figma "Visao da semana — v2", aprovada em 26/09/2026): as do mapa
+ * olhando so esta semana, mais tres que o mapa nao tem - publicacao do modulo pendente, semana fechada e
+ * semana ainda trancada. `overview` e a mesma semana vista pelo curso (traz o reforco de cada dia e o
+ * "concluida hoje"); sem ele, essas duas situacoes ficam de fora.
+ */
+export const WEEK_LINES = {
+  publicacaoPendente: 'Castelo derrubado, agente! Agora mostra pro mundo: publique a prova do módulo e a Semana {proxima} abre.',
+  semanaFechada: 'Semana {semana} fechada com {nota} no castelo. Pode revisar o que quiser, agente: aqui nada tranca de novo.',
+  semanaTrancada: 'Essa semana ainda está na névoa, agente. Ela abre quando a semana anterior fechar.',
+} as const;
+
+export function buildFocadaWeekLine(weekly: WeeklyDetailDto, overview: WeeklyOverviewDto | null): FocadaLine {
+  const days = weekly.dailies.filter((d) => !d.isReinforcement).sort((a, b) => a.dayNumber - b.dayNumber);
+  const project = weekly.project;
+  const line = (text: string, values: Record<string, string | number> = {}, expression: FocadaLine['expression'] = 'neutra'): FocadaLine => ({
+    text: fill(text, values),
+    expression,
+  });
+
+  if (weekly.requiresPublicationToUnlock) return line(WEEK_LINES.publicacaoPendente, { proxima: weekly.number + 1 }, 'comemorando');
+  if (project?.status === WeeklyProjectStatus.Evaluated) {
+    return line(WEEK_LINES.semanaFechada, { semana: weekly.number, nota: project.score ?? '-' }, 'comemorando');
+  }
+  if (overview?.isLocked) return line(WEEK_LINES.semanaTrancada);
+
+  if (overview) {
+    const withReinforcement = primaryDays(overview).find((d) => pendingReinforcementOf(overview, d));
+    if (withReinforcement) return line(DEFAULT_MAP_LINES.reforcoPendente, { dia: withReinforcement.dayNumber });
+  }
+  if (project?.status === WeeklyProjectStatus.Submitted) return line(DEFAULT_MAP_LINES.projetoEntregue, { semana: weekly.number });
+  if (days.length > 0 && days.every((d) => d.status === DailyStatus.Completed)) return line(DEFAULT_MAP_LINES.projetoLiberado, { semana: weekly.number });
+
+  const inProgress = days.find((d) => d.status === DailyStatus.InProgress);
+  if (inProgress) return line(DEFAULT_MAP_LINES.dailyEmAndamento, { dia: inProgress.dayNumber });
+  const doneToday = overview && primaryDays(overview).find((d) => d.completedToday);
+  if (doneToday) return line(DEFAULT_MAP_LINES.diaFeitoHoje, { dia: doneToday.dayNumber }, 'comemorando');
+
+  const next = days.find((d) => d.isNext);
+  const faltam = days.filter((d) => d.status !== DailyStatus.Completed).length;
+  if (next && next.id === days[days.length - 1]?.id) return line(DEFAULT_MAP_LINES.ultimoDiaAntesDoCastelo, { semana: weekly.number });
+  return line(DEFAULT_MAP_LINES.padrao, { dia: (next ?? days.find((d) => d.status !== DailyStatus.Completed))?.dayNumber ?? '-', faltam, semana: weekly.number });
 }

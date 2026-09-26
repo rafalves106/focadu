@@ -2,13 +2,13 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
-import { CourseStatus, WeeklyProjectStatus, type DailyStatusSummaryDto, type WeeklyOverviewDto } from '../api/types';
+import { CourseStatus, WeeklyProjectStatus, type WeeklyOverviewDto } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { EmptyStateError } from '../components/errors/EmptyStateError';
-import { dailyStatusBadgeProps } from '../lib/statusBadge';
 import { CourseMap } from '../components/courseMap/CourseMap';
 import { ScrollArea } from '../components/ScrollArea';
+import { SegmentedBar } from '../components/SegmentedBar';
 import { findCourseMap } from '../lib/courseMaps';
 import { buildFocadaMapLine } from '../lib/focadaMapLines';
 import { useIsMobile } from '../lib/useIsMobile';
@@ -18,12 +18,20 @@ import notebookIcon from '../assets/pixel/terminal.png';
 import shieldIcon from '../assets/pixel/escudo.png';
 import checkIcon from '../assets/pixel/check.png';
 import lockIcon from '../assets/pixel/cadeado-bloqueado.png';
+import pontoConcluido from '../assets/pixel/mapa/ponto-concluido.png';
+import pontoEmAndamento from '../assets/pixel/mapa/ponto-em-andamento.png';
+import pontoDisponivel from '../assets/pixel/mapa/ponto-disponivel.png';
+import pontoTrancado from '../assets/pixel/mapa/ponto-trancado.png';
+import casteloTrancado from '../assets/pixel/mapa/castelo-trancado.png';
+import casteloPendente from '../assets/pixel/mapa/castelo-pendente.png';
+import casteloConcluido from '../assets/pixel/mapa/castelo-concluido.png';
+import badgeReforco from '../assets/pixel/mapa/badge-reforco.png';
 
-const DAY_MINI_TONE: Record<number, string> = {
-  0: 'border-transparent bg-surface-alt text-muted', // Locked
-  1: 'border-transparent bg-surface-alt text-muted', // Available
-  2: 'border-accent bg-accent/10 text-accent', // InProgress
-  3: 'border-accent/40 bg-accent/20 text-accent', // Completed
+const DAY_POINT: Record<number, string> = {
+  0: pontoTrancado, // Locked
+  1: pontoDisponivel, // Available
+  2: pontoEmAndamento, // InProgress
+  3: pontoConcluido, // Completed
 };
 
 /**
@@ -92,7 +100,7 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
               <span className="text-secondary">Progresso do treinamento</span>
               <span className="text-accent">{course.progress.completionPercentage}% completo</span>
             </div>
-            <SegmentedBar percentage={course.progress.completionPercentage} />
+            <SegmentedBar percentage={course.progress.completionPercentage} label="Progresso do treinamento" />
           </div>
         </div>
       </div>
@@ -152,26 +160,6 @@ function SideLink({ to, icon, label }: { to: string; icon: string; label: string
   );
 }
 
-/** Barra de progresso do HUD: 30 segmentos (1 segmento = 2 dias num curso de 60). */
-function SegmentedBar({ percentage }: { percentage: number }) {
-  const SEGMENTS = 30;
-  const filled = Math.floor((percentage / 100) * SEGMENTS);
-  return (
-    <div
-      role="progressbar"
-      aria-valuenow={percentage}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-label="Progresso do treinamento"
-      className="flex gap-1"
-    >
-      {Array.from({ length: SEGMENTS }, (_, i) => (
-        <span key={i} className={`h-2.5 flex-1 ${i < filled ? 'bg-accent' : 'bg-stroke'}`} />
-      ))}
-    </div>
-  );
-}
-
 /** A 1a semana acessivel (nao bloqueada por uma semana anterior ainda nao fechada - projeto/publicacao pendente, ver `isLocked`) que ainda nao esta completa - so ela ganha o destaque visual de "semana atual" em WeekSummaryCard. */
 function findCurrentWeekId(weeks: WeeklyOverviewDto[]): string | null {
   for (const week of weeks) {
@@ -190,6 +178,11 @@ function Stat({ label, value, tone = 'text-primary' }: { label: string; value: s
   );
 }
 
+/**
+ * Semana na trilha em lista (celular e curso sem mapa; pixel art na Fase 74, Figma 146:7461): tema da
+ * semana, os pontos dos dias (mesmos sprites do mapa), o castelo do projeto e o status. A semana atual
+ * ganha a borda verde; trancada fica apagada e sem link.
+ */
 function WeekSummaryCard({
   weekly,
   courseId,
@@ -203,36 +196,39 @@ function WeekSummaryCard({
 }) {
   const isComplete = weekly.totalDailies > 0 && weekly.completedDailies === weekly.totalDailies;
   const primaryDays = weekly.days.filter((d) => !d.isReinforcement).sort((a, b) => a.dayNumber - b.dayNumber);
+  const castle =
+    weekly.projectStatus === WeeklyProjectStatus.Evaluated ? casteloConcluido : isComplete ? casteloPendente : casteloTrancado;
+  const status = isLocked
+    ? 'Trancada'
+    : weekly.projectStatus === WeeklyProjectStatus.Evaluated
+      ? `${weekly.completedDailies}/${weekly.totalDailies} · castelo caído`
+      : `${weekly.completedDailies}/${weekly.totalDailies} dias`;
 
   const body = (
     <div
-      className={`rounded-xl border-[1.5px] bg-surface p-5 ${isLocked ? 'opacity-50' : 'hover:border-accent'} ${isCurrent ? 'border-accent' : 'border-surface-alt'}`}
+      className={`flex flex-col gap-2.5 border-2 bg-base px-3.5 py-3 ${isLocked ? 'border-stroke opacity-55' : isCurrent ? 'border-accent' : 'border-stroke hover:border-secondary'}`}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-3">
-          {isComplete && !isLocked ? (
-            <img src={checkIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
-          ) : isLocked ? (
-            <img src={lockIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
-          ) : null}
-          <p className="font-bold text-primary">
-            Semana {weekly.number}: {weekly.theme ?? weekly.title}
-          </p>
+      <div className="flex items-center gap-2.5">
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="font-pixel-label text-[8px] text-secondary">Semana {String(weekly.number).padStart(2, '0')}</span>
+          <span className="font-pixel text-[22px] leading-tight text-primary">{weekly.theme ?? weekly.title}</span>
         </div>
-        {isLocked ? (
-          <span className="text-sm font-semibold text-project">Bloqueado</span>
-        ) : (
-          <span className="text-sm text-secondary">
-            {weekly.completedDailies} de {weekly.totalDailies} dias
-          </span>
-        )}
+        <img
+          src={isLocked ? lockIcon : isComplete ? checkIcon : pontoEmAndamento}
+          alt={isLocked ? 'Trancada' : isComplete ? 'Concluída' : 'Em andamento'}
+          className="size-8 shrink-0 pixelated"
+        />
       </div>
-
-      <div className="mt-3 flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {primaryDays.map((day) => (
-          <DayMiniCard key={day.id} day={day} />
+          <img key={day.id} src={DAY_POINT[day.status] ?? pontoTrancado} alt="" title={`Dia ${day.dayNumber}`} className="size-4 pixelated" />
         ))}
-        {weekly.hasWeeklyReinforcement && <span className="ml-2 text-xs text-alert">+ reforço</span>}
+        <span className="font-pixel text-xl leading-none text-muted" aria-hidden="true">
+          ›
+        </span>
+        <img src={castle} alt="" className="size-4 pixelated" aria-hidden="true" />
+        {weekly.hasWeeklyReinforcement && <img src={badgeReforco} alt="Reforço" className="size-4 pixelated" />}
+        <span className={`ml-auto font-pixel-label text-[8px] ${isCurrent && !isLocked ? 'text-accent' : 'text-secondary'}`}>{status}</span>
       </div>
     </div>
   );
@@ -242,18 +238,5 @@ function WeekSummaryCard({
     <Link to={`/start?course=${courseId}&weekly=${weekly.id}`} className="block">
       {body}
     </Link>
-  );
-}
-
-function DayMiniCard({ day }: { day: DailyStatusSummaryDto }) {
-  const badge = dailyStatusBadgeProps(day.status);
-
-  return (
-    <div
-      title={`Dia ${day.dayNumber} - ${badge.label}`}
-      className={`flex size-8 shrink-0 items-center justify-center rounded-lg border text-xs font-bold ${DAY_MINI_TONE[day.status]}`}
-    >
-      {day.dayNumber}
-    </div>
   );
 }

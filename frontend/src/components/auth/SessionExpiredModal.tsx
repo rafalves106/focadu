@@ -24,7 +24,7 @@ export function SessionExpiredModal({ onClose }: { onClose: () => void }) {
       <FocadaSays expression="acolhedora">
         Sua sessão expirou, agente. Entra de novo pra continuar: o que você já preencheu nesta tela não foi perdido.
       </FocadaSays>
-      <LoginForm onSuccess={onClose} submitLabel="Retomar sessão" pixel />
+      <LoginForm onSuccess={onClose} submitLabel="Retomar sessão" />
     </PixelModal>
   );
 }

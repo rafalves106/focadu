@@ -1,10 +1,6 @@
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { api } from '../api/client';
-import { useApiResource } from '../api/useApiResource';
+import { Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { App } from '../App';
-import { Centered, PageShell } from '../components/Layout';
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { WeeklyProjectPage } from './WeeklyProjectPage';
 // WorldMapPage (Fase 25, mapa/personagem) desativado por enquanto - ver comentario de StartPage
 // abaixo. Import removido so por ficar sem uso (o arquivo world/WorldMapPage.tsx nao foi tocado).
@@ -42,7 +38,7 @@ export function StartRoute() {
  * `/start` cobre 7 telas via query string (nao path params - ver docs/ARQUITETURA.md):
  * sem params -> StartDashboard (hub de cards, Fase 8); ?course= -> CourseDetailPage; ?course=&
  * ranking= -> RankingPage (Fase 16); ?course=&certifications= -> CertificationsPage (Fase 45);
- * ?course=&weekly= -> WeeklyDetailPage; ?course=&weekly=&daily= -> estado de uma Daily especifica
+ * ?course=&weekly= -> WeeklyDetailPage; ?course=&weekly=&daily= -> redireciona pra /hoje?daily= (Fase 74)
  * (recapitulacao simples, sem polimento - fora do escopo da Fase 8); ?course=&weekly=&project= ->
  * projeto pratico da semana (Fase 7).
  *
@@ -96,13 +92,7 @@ function StartPage() {
       </App>
     );
   }
-  if (dailyId) {
-    return (
-      <App>
-        <DailyView dailyId={dailyId} weeklyId={weeklyId} courseId={courseId} />
-      </App>
-    );
-  }
+  if (dailyId) return <DailyRedirect dailyId={dailyId} />;
   // key={weeklyId}: sem isso, "Proximo Modulo" no PublicationModal (Fase 11) so troca a query
   // string - o componente continuaria montado com o modal ainda aberto (mostrando o sucesso da
   // semana anterior por cima da semana nova). Mesmo truque de App.tsx (key={location.pathname}).
@@ -129,44 +119,10 @@ function StartPage() {
   );
 }
 
-/** Recapitulacao simples de uma Daily especifica - sem o polimento das telas de navegacao da Fase 8, fora de escopo aqui. */
-function DailyView({
-  dailyId,
-  weeklyId,
-  courseId,
-}: {
-  dailyId: string;
-  weeklyId: string | null;
-  courseId: string | null;
-}) {
-  const { data: daily, error, loading, retry } = useApiResource(() => api.getDaily(dailyId), [dailyId]);
-
-  if (loading) return <Centered text="Carregando dia..." />;
-  if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
-  if (!daily) return null;
-
-  const backTo = `/start?course=${courseId ?? ''}&weekly=${weeklyId ?? daily.weeklyId}`;
-
-  return (
-    <PageShell title={`Dia ${daily.dayNumber}`} backTo={backTo}>
-      <p className="text-secondary">{daily.date}</p>
-
-      <ul className="mt-4 flex flex-col gap-2">
-        {daily.activities.map((activity) => (
-          <li key={activity.id} className="rounded-xl border border-surface-alt bg-surface px-4 py-3">
-            <p className="text-primary">{activity.prompt ?? `Atividade tipo ${activity.type}`}</p>
-            <p className="text-sm text-secondary">
-              {activity.responses.length > 0
-                ? `Ultima nota: ${activity.responses.at(-1)?.score}`
-                : 'Ainda nao respondida'}
-            </p>
-          </li>
-        ))}
-      </ul>
-
-      <Link to={`/hoje?daily=${dailyId}`} className="mt-4 inline-block text-sm text-accent hover:underline">
-        Abrir sessão completa →
-      </Link>
-    </PageShell>
-  );
+/**
+ * `?daily=` antigo: a recapitulacao simples de uma Daily (Fase 8) nao tinha mais nenhum link apontando
+ * pra ela; desde a Fase 74 so redireciona pra sessao do dia, que ja permite rever cada etapa.
+ */
+function DailyRedirect({ dailyId }: { dailyId: string }) {
+  return <Navigate to={`/hoje?daily=${dailyId}`} replace />;
 }

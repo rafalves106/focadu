@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { CourseStatus } from '../api/types';
@@ -86,9 +86,16 @@ export function GlobalNav() {
           onClick={() => setMobileMenuOpen((v) => !v)}
           aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
           aria-expanded={mobileMenuOpen}
-          className="flex size-9 shrink-0 items-center justify-center rounded-lg text-lg text-secondary hover:text-primary md:hidden"
+          className={`flex size-9 shrink-0 flex-col items-center justify-center gap-[3px] border-2 md:hidden ${mobileMenuOpen ? 'border-accent' : 'border-stroke hover:border-secondary'}`}
         >
-          {mobileMenuOpen ? '✕' : '☰'}
+          {/* Hamburguer/X desenhado em blocos (Fase 74, Figma 146:7461) - no lugar dos glifos ☰/✕. */}
+          {mobileMenuOpen ? (
+            <span className="font-pixel-label text-[12px] leading-none text-accent" aria-hidden="true">
+              X
+            </span>
+          ) : (
+            [0, 1, 2].map((i) => <span key={i} className="h-[3px] w-4 bg-secondary" aria-hidden="true" />)
+          )}
         </button>
 
         <MapButton />
@@ -110,7 +117,7 @@ export function GlobalNav() {
 
       {/* Mobile: menu suspenso com todos os itens em lista - fecha sozinho ao navegar. */}
       {mobileMenuOpen && (
-        <div className="flex flex-col gap-1 border-t border-surface-alt p-2 md:hidden">
+        <div className="m-2 flex flex-col gap-1.5 border-2 border-stroke bg-base p-2.5 md:hidden">
           <MobileNavItem to="/hoje" icon={navHoje} onNavigate={closeMobileMenu}>
             Hoje
           </MobileNavItem>
@@ -132,7 +139,7 @@ export function GlobalNav() {
               closeMobileMenu();
               settings.open();
             }}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-secondary hover:bg-surface-alt hover:text-primary"
+            className="flex items-center gap-3 border-2 border-transparent px-2.5 py-2 text-left font-pixel-label text-[10px] text-secondary hover:border-stroke hover:text-primary"
           >
             <img src={navConfig} alt="" className="size-8 pixelated" aria-hidden="true" />
             Configurações
@@ -148,7 +155,7 @@ function NavItem({ to, icon, label }: { to: string; icon: string; label: string 
     <Link
       to={to}
       title={label}
-      className="rounded-lg p-1.5 opacity-80 transition hover:scale-110 hover:opacity-100 focus-visible:opacity-100"
+      className="p-1.5 opacity-80 transition hover:scale-110 hover:opacity-100 focus-visible:opacity-100"
     >
       <img src={icon} alt="" className="size-8 pixelated xl:size-12" aria-hidden="true" />
       <span className="sr-only">{label}</span>
@@ -162,7 +169,7 @@ function NavButton({ onClick, icon, label }: { onClick: () => void; icon: string
       type="button"
       onClick={onClick}
       title={label}
-      className="rounded-lg p-1.5 opacity-80 transition hover:scale-110 hover:opacity-100 focus-visible:opacity-100"
+      className="p-1.5 opacity-80 transition hover:scale-110 hover:opacity-100 focus-visible:opacity-100"
     >
       <img src={icon} alt="" className="size-8 pixelated xl:size-12" aria-hidden="true" />
       <span className="sr-only">{label}</span>
@@ -171,11 +178,18 @@ function NavButton({ onClick, icon, label }: { onClick: () => void; icon: string
 }
 
 function MobileNavItem({ to, icon, onNavigate, children }: { to: string; icon: string; onNavigate: () => void; children: ReactNode }) {
+  const location = useLocation();
+  // Item da tela atual em destaque (Figma 146:7461): mesmo caminho e, com query (trilha/ranking), a mesma query.
+  const [path, query] = to.split('?');
+  const current = location.pathname === path && (!query || location.search === `?${query}`);
   return (
     <Link
       to={to}
       onClick={onNavigate}
-      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-secondary hover:bg-surface-alt hover:text-primary"
+      aria-current={current ? 'page' : undefined}
+      className={`flex items-center gap-3 border-2 px-2.5 py-2 font-pixel-label text-[10px] ${
+        current ? 'border-accent bg-accent/[0.08] text-accent' : 'border-transparent text-secondary hover:border-stroke hover:text-primary'
+      }`}
     >
       <img src={icon} alt="" className="size-8 pixelated" aria-hidden="true" />
       {children}

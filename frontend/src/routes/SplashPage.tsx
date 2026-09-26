@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
 import { resolveLandingPath } from '../lib/onboarding';
+import { PixelLogo } from '../components/entry/Entry';
 
 // Sugerido no prompt: mesmo com a checagem de sessao instantanea, uma duracao minima evita o
 // "flash" desconfortavel de uma tela que aparece e some quase no mesmo frame.
@@ -48,19 +49,23 @@ export function SplashPage() {
     };
   }, [isLoading, user, navigate, mountedAt]);
 
+  // Pixel art (Fase 74, Figma 144:4503): logo grande e a barra em 16 blocos enchendo de uma vez.
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-base p-6">
-      <div className="rounded-xl border-2 border-accent px-8 py-4 shadow-[0_0_24px_-4px_var(--color-accent)]">
-        <p className="text-2xl font-black tracking-[0.3em] text-primary">FOCADU</p>
-      </div>
-
-      <div className="flex w-56 flex-col items-center gap-2">
-        <div className="h-1 w-full overflow-hidden rounded-full bg-surface-alt">
-          <div
-            className={`h-full rounded-full bg-accent transition-all duration-700 ease-out ${barStarted ? 'w-full' : 'w-0'}`}
-          />
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-7 bg-base p-6">
+      <PixelLogo scale={10} className="max-w-full" />
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex gap-1" aria-hidden="true">
+          {Array.from({ length: 16 }, (_, i) => (
+            <span
+              key={i}
+              className={`h-3 w-3.5 transition-colors ${barStarted ? 'bg-accent' : 'bg-stroke'}`}
+              style={{ transitionDelay: `${i * 40}ms` }}
+            />
+          ))}
         </div>
-        <p className="text-xs text-secondary">Preparando seu cockpit...</p>
+        <p className="font-pixel text-[22px] text-secondary" role="status">
+          Carregando o mapa, agente...
+        </p>
       </div>
     </div>
   );

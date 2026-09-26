@@ -1,38 +1,37 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
-import { DailyStatus, type DailyOverviewDto } from '../api/types';
+import { DailyStatus, WeeklyProjectStatus, type WeeklyDetailDto } from '../api/types';
 import { Centered } from '../components/Layout';
+import { PixelPageHeader, PixelPanel } from '../components/PixelPage';
 import { ScrollArea } from '../components/ScrollArea';
+import { SegmentedBar } from '../components/SegmentedBar';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
-import { StatusBadge } from '../components/StatusBadge';
-import { dailyStatusBadgeProps } from '../lib/statusBadge';
-import { ProgressBar } from '../components/ProgressBar';
-import { WeeklyProjectCard } from '../components/WeeklyProjectCard';
-import { WeeklyReinforcementBadge } from '../components/WeeklyReinforcementBadge';
 import { PublicationModal } from '../components/publication/PublicationModal';
-import lockIcon from '../assets/pixel/cadeado-bloqueado.png';
+import { FocadaSays } from '../components/session/FocadaSays';
+import { PixelButton } from '../components/session/PixelButton';
+import { WeekTrail } from '../components/week/WeekTrail';
+import { buildFocadaWeekLine } from '../lib/focadaMapLines';
+import flagIcon from '../assets/pixel/bandeira.png';
 import shieldIcon from '../assets/pixel/escudo.png';
+import badgeReforco from '../assets/pixel/mapa/badge-reforco.png';
 
 /**
- * Visao Semanal (Fase 8, design Figma "visao-semanal") - os dias da semana em lista + card do
- * projeto + navegacao entre semanas. Reaproveita GET /api/weeklies/{id} (WeeklyDetailDto ja tem
- * tudo: Dailies com Status/PenaltyPoints/IsWeakDay/atividades, Project) - nenhum endpoint novo.
+ * Visao da semana (Fase 8; pixel art na Fase 74, Figma "Visao da semana — v2", nodes 137:5237/138:6537/
+ * 138:8081) - a semana como um trecho da trilha em pe: os 6 dias com os pontos do mapa e o castelo do
+ * Projeto Semanal no fim (WeekTrail). A direita, a Focada comentando a semana, o resumo, as
+ * certificacoes do modulo e as regras de fechamento. Publicacao do modulo pendente vira uma faixa
+ * ambar acima da lista. Nenhum endpoint novo: GET /api/weeklies/{id} + GET /api/courses/{id} (nome do
+ * modulo, navegacao entre semanas, reforco por dia e trava da semana).
  *
- * O mockup mostra titulo por dia (ex: "SQL Injection") e nota (ex: "92/100") que o dominio nao
- * tem (Daily nao tem titulo proprio, so Weekly tem Theme; nao ha nota media por dia) - o rotulo do
- * dia mostra "Dia N" e "{aprovadas}/{total} atividades" em vez de uma nota inventada.
- *
- * Fase 38b: o card de cada dia usava Daily.Date (comparado ao calendario real) pra decidir se o
- * dia estava bloqueado/e-hoje - Date e fixado de uma vez so na matricula (calendario hipotetico,
- * 1 dia util por Daily) e podia divergir do ritmo real do aluno, pulando Dailies inteiras (ver
- * Weekly.EvaluateDailyAccess no backend). Agora usa `day.isNext` (a Daily nao-reforco de menor
- * DayNumber ainda nao concluida em toda a matricula, resolvida no backend).
+ * A partir de `lg`, sem rolagem externa: so a trilha e a coluna lateral rolam por dentro se nao
+ * couberem. No celular empilha. O cartao de regras so aparece em tela alta (`tall:`) e com a semana
+ * ainda aberta.
  */
 export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; courseId: string | null }) {
   const { data: weekly, error, loading, retry } = useApiResource(() => api.getWeekly(weeklyId), [weeklyId]);
-  // So pra breadcrumb + navegacao entre semanas - se nao tiver courseId na URL, essas partes somem sem quebrar a tela.
+  // Opcional: sem courseId na URL, modulo/navegacao/reforco por dia somem sem quebrar a tela.
   const { data: course } = useApiResource(() => (courseId ? api.getCourse(courseId) : Promise.resolve(null)), [courseId]);
   const [showPublicationModal, setShowPublicationModal] = useState(false);
 
@@ -40,147 +39,90 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
   if (error) return <ApiErrorScreen error={error} onRetry={retry} />;
   if (!weekly) return null;
 
-  const days = weekly.dailies.filter((d) => !d.isReinforcement).sort((a, b) => a.dayNumber - b.dayNumber);
-  const daysCompleted = days.filter((d) => d.status === DailyStatus.Completed).length;
-  const penaltyPoints = days.reduce((sum, d) => sum + d.penaltyPoints, 0);
-  const totalActivities = days.reduce((sum, d) => sum + d.totalActivities, 0);
-  const passedActivities = days.reduce((sum, d) => sum + d.passedActivities, 0);
-  const approvalRate = totalActivities > 0 ? Math.round((100 * passedActivities) / totalActivities) : null;
-  const hasWeakDay = days.some((d) => d.isWeakDay);
-
   const allWeeks = course?.monthlies.flatMap((m) => m.weeklies) ?? [];
   const weekIndex = allWeeks.findIndex((w) => w.id === weeklyId);
+  const overview = weekIndex >= 0 ? allWeeks[weekIndex] : null;
   const prevWeek = weekIndex > 0 ? allWeeks[weekIndex - 1] : null;
   const nextWeek = weekIndex >= 0 && weekIndex < allWeeks.length - 1 ? allWeeks[weekIndex + 1] : null;
+  const monthly = course?.monthlies.find((m) => m.weeklies.some((w) => w.id === weeklyId)) ?? null;
+  const weekLocked = overview?.isLocked ?? false;
+  const focada = buildFocadaWeekLine(weekly, overview);
+  // Regras de fechamento so importam enquanto a semana nao fechou.
+  const weekClosed = weekly.requiresPublicationToUnlock || weekly.project?.status === WeeklyProjectStatus.Evaluated;
+  const weekLink = (id: string) => `/start?course=${courseId}&weekly=${id}`;
+
+  const label = [`Semana ${String(weekly.number).padStart(2, '0')}`, monthly && `Módulo ${monthly.number}`, monthly?.title].filter(Boolean);
 
   return (
-    // max-w-5xl/p-8 -> max-w-6xl/px-6 py-8 (pedido explicito): mesmo ajuste ja feito em
-    // SessionShell.tsx pra sessao diaria - padding lateral menor + teto mais largo devolvem
-    // espaco pro conteudo em vez de sobrar como margem morta nas laterais.
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:short:gap-4 lg:short:py-5">
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2 text-xs font-medium">
-          <Link to="/start" className="text-accent hover:underline">
-            INÍCIO
-          </Link>
-          {course && (
-            <>
-              <span className="text-muted">/</span>
-              <span className="uppercase text-secondary">{course.name}</span>
-            </>
-          )}
-        </div>
-        <h1 className="text-3xl font-bold text-primary">
-          Semana {weekly.number}
-          {allWeeks.length > 0 ? ` de ${allWeeks.length}` : ''}
-        </h1>
-        {weekly.theme && <p className="text-secondary">{weekly.theme}</p>}
-        {weekly.hasPendingWeeklyReinforcement && (
-          <div className="mt-1">
-            <WeeklyReinforcementBadge />
+    <div className="flex flex-col gap-4 bg-base px-4 pt-5 pb-10 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:px-8 lg:pt-8 lg:pb-10 xl:px-16 lg:short:gap-3 lg:short:pt-5 lg:short:pb-6 lg:tight:pt-4 lg:tight:pb-4">
+      <PixelPageHeader
+        backTo={courseId ? `/start?course=${courseId}` : '/start'}
+        crumb={`Semana ${weekly.number}${allWeeks.length > 0 ? ` de ${allWeeks.length}` : ''}${course ? ` · ${course.name}` : ''}`}
+      />
+
+      <div className="flex flex-col gap-6 lg:min-h-0 lg:flex-1 lg:flex-row">
+        <section className="flex min-w-0 flex-col gap-4 border-2 border-accent/60 bg-base p-4 shadow-[6px_6px_0_0_#1c9e3e] sm:px-6 sm:pt-5 lg:min-h-0 lg:flex-1 lg:short:gap-3 lg:short:pt-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between lg:shrink-0">
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <p className="font-pixel-label text-[10px] text-accent">// {label.join(' · ')}</p>
+              <h1 className="font-pixel text-[32px] leading-none text-primary sm:text-[40px] lg:short:text-[34px]">{weekly.theme ?? weekly.title}</h1>
+            </div>
+            {(prevWeek || nextWeek) && (
+              <nav className="grid shrink-0 grid-cols-2 gap-2" aria-label="Outras semanas">
+                <WeekNavLink to={prevWeek ? weekLink(prevWeek.id) : null}>‹ Semana {prevWeek?.number ?? weekly.number - 1}</WeekNavLink>
+                <WeekNavLink to={nextWeek ? weekLink(nextWeek.id) : null} dim={!nextWeek || nextWeek.isLocked}>
+                  Semana {nextWeek?.number ?? weekly.number + 1} ›
+                </WeekNavLink>
+              </nav>
+            )}
           </div>
-        )}
-      </div>
 
-      {weekly.requiresPublicationToUnlock && (
-        <div className="flex flex-col items-start gap-3 rounded-2xl border border-project/40 bg-project/10 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="flex items-center gap-2 font-semibold text-primary">
-              <img src={lockIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
-              Publique sua conclusão para liberar a próxima semana</p>
-            <p className="text-sm text-secondary">
-              Você completou os dias e o projeto desta semana. Publique uma prova no LinkedIn ou GitHub para continuar.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowPublicationModal(true)}
-            className="shrink-0 rounded-xl bg-project px-4 py-2 text-sm font-semibold text-base hover:opacity-90"
-          >
-            Publicar agora
-          </button>
-        </div>
-      )}
+          {/* Celular: a Focada vem antes da lista (Figma 138:8081); no desktop ela fica na coluna lateral. */}
+          <FocadaSays expression={focada.expression} size="sm" className="lg:hidden">
+            {focada.text}
+          </FocadaSays>
 
-      {weekly.moduleCertifications.length > 0 && (
-        <div className="flex flex-col gap-2 rounded-2xl border border-surface-alt bg-surface p-5">
-          <p className="flex items-center gap-2 text-sm font-semibold text-primary">
-            <img src={shieldIcon} alt="" className="size-4 pixelated" aria-hidden="true" />
-            Este módulo te aproxima de:</p>
-          <div className="flex flex-wrap gap-2">
-            {weekly.moduleCertifications.map((cert) => (
-              <StatusBadge
-                key={cert.certificationCode}
-                icon="🛡️"
-                label={`${cert.certificationName} (${cert.certifier})`}
-                tone="accent"
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {(prevWeek || nextWeek) && (
-        <div className="flex items-center justify-between text-sm">
-          {prevWeek ? (
-            <Link to={`/start?course=${courseId}&weekly=${prevWeek.id}`} className="text-secondary hover:text-accent">
-              ← Semana {prevWeek.number}
-            </Link>
-          ) : (
-            <span />
+          {weekly.requiresPublicationToUnlock && (
+            <PublicationBanner nextWeek={weekly.number + 1} onPublish={() => setShowPublicationModal(true)} />
           )}
-          {nextWeek ? (
-            <Link to={`/start?course=${courseId}&weekly=${nextWeek.id}`} className="text-secondary hover:text-accent">
-              Semana {nextWeek.number} →
-            </Link>
-          ) : (
-            <span />
-          )}
-        </div>
-      )}
 
-      {/* Fase 72: a partir de `lg`, sem rolagem externa - so a lista de dias rola por dentro; o resumo fica fixo ao lado. */}
-      <div className="flex flex-col gap-8 lg:min-h-0 lg:flex-1 lg:flex-row lg:items-start">
-        <ScrollArea className="min-w-0 flex-1 lg:h-full lg:min-h-0" contentClassName="flex flex-col gap-3 lg:pr-4">
-          {days.map((day) => (
-            <DayCard key={day.id} day={day} />
-          ))}
-          <WeeklyProjectCard project={weekly.project} weeklyId={weeklyId} courseId={courseId} />
+          <ScrollArea className="lg:min-h-0 lg:flex-1" contentClassName="lg:pr-3">
+            <WeekTrail weekly={weekly} overview={overview} courseId={courseId} weekLocked={weekLocked} compact={weekly.requiresPublicationToUnlock} />
+          </ScrollArea>
+        </section>
+
+        <ScrollArea className="w-full shrink-0 lg:h-full lg:min-h-0 lg:w-[320px] xl:w-[352px]" contentClassName="flex flex-col gap-4 lg:pr-2 lg:short:gap-3">
+          <FocadaSays expression={focada.expression} size="md" className="hidden lg:flex">
+            {focada.text}
+          </FocadaSays>
+          <WeekSummary weekly={weekly} />
+          {weekly.moduleCertifications.length > 0 && (
+            <PixelPanel label="Este módulo te aproxima de">
+              <ul className="flex flex-col gap-2">
+                {weekly.moduleCertifications.map((cert) => (
+                  <li key={cert.certificationCode} className="flex items-center gap-2.5">
+                    <img src={shieldIcon} alt="" className="size-8 pixelated" aria-hidden="true" />
+                    <span className="font-pixel text-[22px] leading-tight text-primary">
+                      {cert.certificationName} <span className="text-secondary">({cert.certifier})</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="font-pixel-label text-[7px] text-muted">Cobre tópicos do exame, não é equivalência.</p>
+            </PixelPanel>
+          )}
+          {!weekClosed && (
+          <div className="hidden lg:tall:block">
+            <PixelPanel label="Como a semana fecha">
+              <ul className="flex flex-col gap-1.5 font-pixel text-[19px] leading-tight text-secondary">
+                <li>· 1 Daily por dia. Reforço não gasta a cota.</li>
+                <li>· O 6º dia é a ponte: prática, na sua linguagem.</li>
+                <li>· O castelo abre depois da ponte. A Semana {weekly.number + 1} só abre com ele avaliado.</li>
+              </ul>
+            </PixelPanel>
+          </div>
+          )}
         </ScrollArea>
-
-        <div className="flex w-full flex-col gap-5 rounded-2xl border border-stroke bg-surface p-6 lg:w-[360px]">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Resumo da Semana</p>
-
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-secondary">Progresso de Dias</span>
-              <span className="font-semibold text-primary">
-                {daysCompleted} / {days.length} dias
-              </span>
-            </div>
-            <ProgressBar progress={days.length ? daysCompleted / days.length : 0} />
-          </div>
-
-          {penaltyPoints > 0 && (
-            <div className="flex items-center justify-between border-t border-stroke pt-3 text-sm">
-              <span className="text-secondary">Penalidades ativas</span>
-              <span className="font-semibold text-alert">{penaltyPoints} ponto(s)</span>
-            </div>
-          )}
-
-          {approvalRate !== null && (
-            <div className="flex items-center justify-between border-t border-stroke pt-3 text-sm">
-              <span className="text-secondary">Taxa de aprovação</span>
-              <span className="font-semibold text-accent">{approvalRate}%</span>
-            </div>
-          )}
-
-          {hasWeakDay && (
-            <div className="rounded-xl border border-alert/40 bg-alert/10 p-3 text-sm text-secondary">
-              ⚠️ Essa semana teve pelo menos um dia com penalidade - vale revisar antes de seguir.
-            </div>
-          )}
-        </div>
       </div>
 
       {showPublicationModal && (
@@ -201,48 +143,71 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
   );
 }
 
-function DayCard({ day }: { day: DailyOverviewDto }) {
-  const notStarted = day.status === DailyStatus.Locked || day.status === DailyStatus.Available;
-  const isLocked = notStarted && !day.isNext;
-  const isCurrent = day.status === DailyStatus.InProgress || (notStarted && day.isNext);
-  const badge = isLocked ? { icon: '🔒', label: 'Bloqueado', tone: 'muted' as const } : dailyStatusBadgeProps(day.status);
+function WeekNavLink({ to, dim = false, children }: { to: string | null; dim?: boolean; children: ReactNode }) {
+  const cls = `flex items-center justify-center border-2 px-4 py-3 font-pixel-label text-[10px] leading-none lg:short:py-2.5 ${
+    dim ? 'border-stroke text-muted' : 'border-secondary text-secondary hover:text-primary'
+  }`;
+  if (!to) return <span className={`${cls} invisible`} aria-hidden="true">{children}</span>;
+  return (
+    <Link to={to} className={cls}>
+      {children}
+    </Link>
+  );
+}
 
-  const body = (
-    <div
-      className={[
-        'flex items-center gap-4 rounded-2xl bg-surface p-5',
-        isCurrent ? 'border-[1.5px] border-accent' : 'border border-stroke',
-        isLocked ? 'opacity-50' : '',
-      ].join(' ')}
-    >
-      <div className="min-w-0 flex-1">
-        {day.title && (
-          <p className="text-xs font-medium uppercase tracking-wide text-secondary">Dia {day.dayNumber}</p>
-        )}
-        <p className="truncate font-semibold text-primary">{day.title ?? `Dia ${day.dayNumber}`}</p>
-        {day.status === DailyStatus.InProgress && day.totalActivities > 0 && (
-          <div className="mt-1.5 flex flex-col gap-1">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-accent">
-              Etapa {day.completedActivities} de {day.totalActivities} — em andamento
-            </p>
-            <div className="w-40">
-              <ProgressBar progress={day.completedActivities / day.totalActivities} heightClass="h-1" />
-            </div>
-          </div>
-        )}
+function PublicationBanner({ nextWeek, onPublish }: { nextWeek: number; onPublish: () => void }) {
+  return (
+    <div className="flex flex-col gap-3 border-2 border-project bg-project/[0.08] p-4 sm:flex-row sm:items-center sm:gap-4 lg:shrink-0 lg:short:py-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <img src={flagIcon} alt="" className="size-8 shrink-0 pixelated" aria-hidden="true" />
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="font-pixel-label text-[9px] text-project">Próxima semana trancada</p>
+          <p className="font-pixel text-[21px] leading-tight text-primary">
+            Publique a prova do módulo no LinkedIn ou no GitHub pra liberar a Semana {nextWeek}.
+          </p>
+        </div>
       </div>
-      {day.status === DailyStatus.Completed ? (
-        <StatusBadge icon="✅" label={`${day.passedActivities}/${day.totalActivities} aprovadas`} tone="accent" />
-      ) : (
-        <StatusBadge {...badge} />
-      )}
+      <PixelButton tone="project" onClick={onPublish} className="shrink-0">
+        Publicar agora
+      </PixelButton>
     </div>
   );
+}
 
-  if (isLocked) return body;
+function WeekSummary({ weekly }: { weekly: WeeklyDetailDto }) {
+  const days = weekly.dailies.filter((d) => !d.isReinforcement);
+  const done = days.filter((d) => d.status === DailyStatus.Completed).length;
+  const errors = days.reduce((sum, d) => sum + d.penaltyPoints, 0);
+  // Aprovacao so sobre o que ja foi respondido - dia ainda nao feito nao derruba a taxa.
+  const answered = days.reduce((sum, d) => sum + d.completedActivities, 0);
+  const passed = days.reduce((sum, d) => sum + d.passedActivities, 0);
+  const approval = answered > 0 ? Math.min(100, Math.round((100 * passed) / answered)) : null;
+  const weakDays = days.filter((d) => d.isWeakDay).length;
+  const project = weekly.project;
   return (
-    <Link to={`/hoje?daily=${day.id}`} className="block">
-      {body}
-    </Link>
+    <PixelPanel label="Resumo da semana">
+      <Stat label="Dias" value={`${done}/${days.length}`} />
+      <SegmentedBar percentage={days.length ? (100 * done) / days.length : 0} segments={Math.max(days.length, 1)} heightClass="h-3" label="Dias concluídos da semana" />
+      {approval !== null && <Stat label="Aprovação" value={`${approval}%`} tone="text-accent" />}
+      <Stat label="Erros na semana" value={`${errors}`} tone={errors > 0 ? 'text-alert' : 'text-primary'} />
+      {project?.status === WeeklyProjectStatus.Evaluated && project.score !== null && <Stat label="Projeto" value={`${project.score}/100`} tone="text-project" />}
+      {weekly.hasPendingWeeklyReinforcement && (
+        <div className="flex items-center gap-2.5 border-2 border-alert px-3 py-2.5">
+          <img src={badgeReforco} alt="" className="size-4 shrink-0 pixelated" aria-hidden="true" />
+          <p className="font-pixel text-[19px] leading-tight text-primary">
+            Revisão semanal disponível{weakDays > 0 ? `: ${weakDays} ${weakDays === 1 ? 'dia fraco' : 'dias fracos'}` : ''}.
+          </p>
+        </div>
+      )}
+    </PixelPanel>
+  );
+}
+
+function Stat({ label, value, tone = 'text-primary' }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="font-pixel-label text-[9px] text-secondary">{label}</span>
+      <span className={`font-pixel text-[28px] leading-none lg:short:text-2xl ${tone}`}>{value}</span>
+    </div>
   );
 }

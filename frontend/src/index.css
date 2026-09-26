@@ -124,6 +124,9 @@ body {
    tela caber na janela sem rolar. So valem com `lg:` junto (no celular a pagina rola normalmente). */
 @custom-variant short (@media (max-height: 880px));
 @custom-variant tight (@media (max-height: 760px));
+/* Telas altas (Fase 74): `tall:` a partir de 960px de altura - so ai cabem cartoes extras que nao sao
+   essenciais (ex.: "Como a semana fecha" na visao da semana), sem empurrar o resto pra rolagem. */
+@custom-variant tall (@media (min-height: 960px));
 
 /* Altura do GlobalNav, borda inclusa (Fase 62, Figma node 178:143: 73px no desktop). Desde a Fase 67
    as telas nao descontam mais isso (a casca do App faz o <main> ocupar o resto da janela); so o

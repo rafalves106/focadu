@@ -133,7 +133,7 @@ export function SessionLayout({
   const notes = weekly && (
     <div className="relative shrink-0">
       <div className={notesLocked ? 'pointer-events-none opacity-30' : ''} aria-hidden={notesLocked}>
-        <QuickNotePanel target={{ dailyId: daily.id }} courseId={weekly.courseId} fill className="h-60 lg:tight:h-56" />
+        <QuickNotePanel target={{ dailyId: daily.id }} courseId={weekly.courseId} className="h-60 lg:tight:h-56" />
       </div>
       {notesLocked && (
         <div className="absolute inset-x-4 top-12 flex items-center gap-2 border-2 border-stroke bg-base px-3 py-2">
@@ -218,7 +218,7 @@ export function SessionLayout({
           <aside className="flex w-52 shrink-0 lg:min-h-0 xl:w-64">
             <ScrollArea className="min-h-0 min-w-0 flex-1" contentClassName="flex min-h-full min-w-0 flex-col gap-6 lg:short:gap-4">
               {notes}
-              <StudyAssistantPanel tall className="min-h-[280px] flex-1 lg:short:min-h-[180px]" />
+              <StudyAssistantPanel className="min-h-[280px] flex-1 lg:short:min-h-[180px]" />
             </ScrollArea>
           </aside>
         )}
@@ -229,7 +229,7 @@ export function SessionLayout({
           panels={{
             material,
             notas: notes,
-            duvida: <StudyAssistantPanel tall className="h-[60dvh]" />,
+            duvida: <StudyAssistantPanel className="h-[60dvh]" />,
             pomodoro: <PomodoroWidget />,
           }}
         />
