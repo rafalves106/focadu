@@ -120,6 +120,10 @@ function seedJoinRequests(): MockEntry[] {
   ];
 }
 let joinRequests = seedJoinRequests();
+// Fase 78: revisao por IA do Caderninho - resposta fixa (sem IA), guardada por dia com o numero de notas
+// revisadas (as notas do dia mudaram = desatualizada). Limite de 10 por dia, como no backend.
+const notesReviews = new Map<string, { strengths: string; missing: string; materialCheck: string; noteCount: number; createdAt: string }>();
+let reviewsToday = 0;
 let myRequest: { status: 'pending' | 'rejected'; createdAt: string } | null = null;
 function entryDto(e: MockEntry) {
   const [skinTone, top, bottom, hair, shoes] = e.look;
@@ -649,7 +653,9 @@ export function sessionMock(): Plugin {
           return res.end();
         }
         if (path === '/__mock/caderninho') {
-          state.notes = sampleNotes(new Date().toISOString());
+          state.notes = url.searchParams.get('vazio') === '1' ? [] : sampleNotes(new Date().toISOString());
+          notesReviews.clear();
+          reviewsToday = 0;
           res.statusCode = 302;
           res.setHeader('Location', `/start?course=${ids.course}&caderninho=1`);
           return res.end();
@@ -884,7 +890,11 @@ export function sessionMock(): Plugin {
           });
         }
         if ((m = path.match(/^\/api\/(dailies\/[^/]+|weeklies\/[^/]+\/project)\/notes$/)) && method === 'POST') {
-          const note = { id: randomUUID(), dailyId: ids.daily, weeklyProjectId: null, weekNumber: 1, dayNumber: 1, dailyDate: now.slice(0, 10), content: body.content ?? '', tags: body.tags ?? [], createdAt: now, updatedAt: now };
+          // Fase 78: a nota vai pro dia pedido (as de exemplo usam `d-N`), pra revisao do Caderninho ver a mudanca.
+          const pathDaily = m[1].startsWith('dailies/') ? m[1].slice('dailies/'.length) : ids.daily;
+          const sampleDay = /^d-(\d+)$/.exec(pathDaily);
+          const dayNumber = sampleDay ? Number(sampleDay[1]) : 1;
+          const note = { id: randomUUID(), dailyId: pathDaily, weeklyProjectId: null, weekNumber: sampleDay ? Math.ceil(dayNumber / 6) : 1, dayNumber, dailyDate: now.slice(0, 10), content: body.content ?? '', tags: body.tags ?? [], createdAt: now, updatedAt: now };
           state.notes.unshift(note);
           return send(res, 200, note);
         }
@@ -902,6 +912,28 @@ export function sessionMock(): Plugin {
           const q = url.searchParams.get('q')?.toLowerCase();
           return send(res, 200, state.notes.filter((n) => (!tag || n.tags.includes(tag)) && (!q || n.content.toLowerCase().includes(q))));
         }
+        if ((m = path.match(/^\/api\/dailies\/([^/]+)\/notes\/review$/)) && method === 'POST') {
+          const dailyId = m[1];
+          const count = state.notes.filter((n) => n.dailyId === dailyId).length;
+          if (count === 0) return send(res, 400, { error: 'sem_notas', message: 'Esse dia ainda nao tem notas pra revisar.' });
+          if (reviewsToday >= 10) return send(res, 409, { error: 'limite_revisoes', message: 'Voce ja usou as 10 revisoes de hoje. Volta amanha.' });
+          reviewsToday++;
+          const review = {
+            strengths: 'Você pegou o essencial: o payload é só base64 e o servidor tem que fixar o algoritmo.',
+            missing: 'Faltou a expiração: sem `exp` (e sem checar), um token vazado vale pra sempre. Releia "Claims registradas".',
+            materialCheck: 'Quase: "alg: none" não depende de confiar no header, e sim de a biblioteca aceitar token sem assinatura. Confira a seção "Ataques comuns".',
+            noteCount: count,
+            createdAt: new Date().toISOString(),
+          };
+          notesReviews.set(dailyId, review);
+          return void setTimeout(() => send(res, 200, { dailyId, ...review, upToDate: true }), 1500);
+        }
+        if (path === `/api/courses/${ids.course}/notes/reviews`)
+          return send(res, 200, {
+            reviews: [...notesReviews.entries()].map(([dailyId, r]) => ({ dailyId, ...r, upToDate: state.notes.filter((n) => n.dailyId === dailyId).length === r.noteCount })),
+            remainingToday: Math.max(0, 10 - reviewsToday),
+            dailyLimit: 10,
+          });
         if (path === `/api/courses/${ids.course}/notes/tags`) return send(res, 200, [...new Set(state.notes.flatMap((n) => n.tags))]);
         if (path === '/api/study-assistant/ask')
           return send(res, 200, { answer: '(mock) O three-way handshake é a troca SYN, SYN-ACK e ACK que confirma que os dois lados estão prontos antes de mandar dados.' });

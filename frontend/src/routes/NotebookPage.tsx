@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api/client';
+import { api, ApiError } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import type { NoteDto } from '../api/types';
 import { MarkdownBlock } from '../components/activities/MarkdownBlock';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { NoteEditorModal } from '../components/notebook/NoteEditorModal';
+import { NotesReviewCard, NotesReviewLoading } from '../components/notebook/NotesReviewCard';
 import { PixelPageHeader, PixelPanel } from '../components/PixelPage';
 import { ScrollArea } from '../components/ScrollArea';
 import { FocadaSays } from '../components/session/FocadaSays';
@@ -27,6 +28,11 @@ const PERIODS: { value: Period; label: string }[] = [
  * agrupadas por dia (ponto do mapa) ou projeto (castelo), e a direita a Focada + um resumo (total de
  * notas, dias com nota e tag mais usada, calculados da lista sem filtro). Clicar numa nota abre o
  * editor (NoteEditorModal). Mesmas rotas de notas e tags de antes.
+ *
+ * Fase 78 (Figma "Caderninho: revisao por IA — v2"): cada dia com nota tem "Revisar com a IA" - a
+ * revisao (o que esta bom, o que falta, se confere com o material) abre embaixo das notas do dia. A
+ * ultima revisao de cada dia fica guardada ("Ver revisao"); "Revisar de novo" so libera quando as notas
+ * mudaram. Limite diario do backend. Nota de Projeto Semanal nao tem revisao.
  */
 export function NotebookPage({ courseId }: { courseId: string }) {
   const [period, setPeriod] = useState<Period>('all');
@@ -34,6 +40,9 @@ export function NotebookPage({ courseId }: { courseId: string }) {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [tag, setTag] = useState('');
   const [editingNote, setEditingNote] = useState<NoteDto | null>(null);
+  const [openReviews, setOpenReviews] = useState<Set<string>>(new Set());
+  const [reviewing, setReviewing] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<{ dailyId: string; message: string } | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchInput.trim()), 300);
@@ -48,6 +57,32 @@ export function NotebookPage({ courseId }: { courseId: string }) {
   const { data: allNotes, retry: retryAll } = useApiResource(() => api.listNotes(courseId), [courseId]);
   const { data: knownTags } = useApiResource(() => api.listNoteTags(courseId), [courseId]);
   const { data: course } = useApiResource(() => api.getCourse(courseId), [courseId]);
+  const { data: reviewsData, retry: retryReviews } = useApiResource(() => api.listNotesReviews(courseId), [courseId]);
+  const reviews = new Map((reviewsData?.reviews ?? []).map((r) => [r.dailyId, r]));
+  const limitReached = reviewsData ? reviewsData.remainingToday <= 0 : false;
+
+  async function review(dailyId: string) {
+    setReviewing(dailyId);
+    setReviewError(null);
+    setOpenReviews((prev) => new Set(prev).add(dailyId));
+    try {
+      await api.reviewDailyNotes(dailyId);
+    } catch (err) {
+      setReviewError({ dailyId, message: err instanceof ApiError ? err.message : 'A revisão não respondeu agora. Tenta de novo.' });
+    } finally {
+      setReviewing(null);
+      retryReviews();
+    }
+  }
+
+  function toggleReview(dailyId: string) {
+    setOpenReviews((prev) => {
+      const next = new Set(prev);
+      if (next.has(dailyId)) next.delete(dailyId);
+      else next.add(dailyId);
+      return next;
+    });
+  }
 
   const groups = groupByContext(notes ?? []);
   const filtered = period !== 'all' || !!debouncedSearch || !!tag;
@@ -55,6 +90,7 @@ export function NotebookPage({ courseId }: { courseId: string }) {
     setEditingNote(null);
     retry();
     retryAll();
+    retryReviews();
   };
 
   return (
@@ -137,15 +173,37 @@ export function NotebookPage({ courseId }: { courseId: string }) {
               <p className="font-pixel text-xl text-secondary">Carregando notas...</p>
             ) : groups.length === 0 ? (
               <p className="border-2 border-dashed border-stroke px-4 py-6 font-pixel text-xl leading-snug text-secondary">
-                {filtered ? 'Nenhuma nota encontrada com esse filtro.' : 'Nenhuma nota ainda. Use a Anotação rápida durante uma Daily ou no Projeto Semanal pra começar.'}
+                {filtered
+                  ? 'Nenhuma nota encontrada com esse filtro.'
+                  : 'Nenhuma nota ainda, agente. Anote pela Anotação rápida durante a Daily. Depois, aqui, cada dia com nota ganha o botão "Revisar com a IA": ela compara o que você escreveu com o material do dia e aponta o que falta.'}
               </p>
             ) : (
-              groups.map((group) => (
+              groups.map((group) => {
+                const dailyId = group.dailyId;
+                const existing = dailyId ? reviews.get(dailyId) : undefined;
+                const isOpen = !!dailyId && openReviews.has(dailyId);
+                const busy = !!dailyId && reviewing === dailyId;
+                return (
                 <div key={group.key} className="flex flex-col gap-2.5 pb-2">
-                  <p className={`flex items-center gap-2 font-pixel-label text-[9px] ${group.project ? 'text-project' : 'text-secondary'}`}>
-                    <img src={group.project ? casteloPendente : pontoConcluido} alt="" className="size-4 pixelated" aria-hidden="true" />
-                    {group.label}
-                  </p>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className={`flex items-center gap-2 font-pixel-label text-[9px] ${group.project ? 'text-project' : 'text-secondary'}`}>
+                      <img src={group.project ? casteloPendente : pontoConcluido} alt="" className="size-4 pixelated" aria-hidden="true" />
+                      {group.label}
+                    </p>
+                    {dailyId && (
+                      <button
+                        type="button"
+                        disabled={busy || (!existing && (limitReached || reviewing !== null))}
+                        title={!existing && limitReached ? 'Você já usou as revisões de hoje. Volta amanhã.' : undefined}
+                        onClick={() => (existing ? toggleReview(dailyId) : review(dailyId))}
+                        className={`border-2 px-2.5 py-1.5 font-pixel-label text-[8px] leading-none disabled:border-muted disabled:text-muted ${
+                          busy ? 'border-muted text-muted' : 'border-[#1c9e3e] text-accent hover:bg-accent/10'
+                        }`}
+                      >
+                        {busy ? 'Revisando...' : existing ? (isOpen ? 'Fechar revisão' : 'Ver revisão ›') : 'Revisar com a IA ›'}
+                      </button>
+                    )}
+                  </div>
                   {group.notes.map((note) => (
                     <button
                       key={note.id}
@@ -166,18 +224,35 @@ export function NotebookPage({ courseId }: { courseId: string }) {
                       </div>
                     </button>
                   ))}
+                  {dailyId && busy && !existing && <NotesReviewLoading dayNumber={group.dayNumber} />}
+                  {dailyId && reviewError?.dailyId === dailyId && <p className="font-pixel text-lg leading-tight text-alert">{reviewError.message}</p>}
+                  {dailyId && existing && isOpen && (
+                    <NotesReviewCard
+                      review={existing}
+                      dayLabel={`Dia ${String(group.dayNumber).padStart(2, '0')}`}
+                      canReviewAgain={!existing.upToDate && !limitReached && reviewing === null}
+                      limitReached={limitReached}
+                      busy={busy}
+                      onReviewAgain={() => review(dailyId)}
+                    />
+                  )}
                 </div>
-              ))
+                );
+              })
             )}
           </ScrollArea>
         </section>
 
         <ScrollArea className="hidden shrink-0 lg:block lg:h-full lg:min-h-0 lg:w-[300px] xl:w-[324px]" contentClassName="flex flex-col gap-4 lg:pr-2">
-          <FocadaSays size="md">Anotação boa é a que você entende daqui a um mês, agente. Escreva com as suas palavras, não copie o texto.</FocadaSays>
+          <FocadaSays size="md">
+            {allNotes && allNotes.length === 0
+              ? 'Caderninho vazio. Anote com as suas palavras e depois eu mando a IA conferir com o material.'
+              : 'Anotação boa é a que você entende daqui a um mês, agente. Escreva com as suas palavras, não copie o texto.'}
+          </FocadaSays>
           <NotebookSummary notes={allNotes ?? []} totalDays={course?.progress.totalDailies ?? null} />
           <PixelPanel label="Como anotar">
             <p className="font-pixel text-[19px] leading-tight text-secondary">
-              Pela Anotação rápida, na coluna direita da Daily e do Projeto Semanal. A nota fica presa ao dia (ou ao projeto) em que foi escrita.
+              Pela Anotação rápida, na Daily e no Projeto Semanal. Toda nota de um dia pode ser revisada pela IA: ela compara com o material e aponta o que falta. Não vale nota.
             </p>
           </PixelPanel>
         </ScrollArea>
@@ -214,6 +289,9 @@ interface NoteGroup {
   key: string;
   label: string;
   project: boolean;
+  /** Fase 78: a Daily do grupo (nulo no projeto) - a revisao por IA e por dia. */
+  dailyId: string | null;
+  dayNumber: number | null;
   notes: NoteDto[];
 }
 
@@ -228,7 +306,7 @@ function groupByContext(notes: NoteDto[]): NoteGroup[] {
       last.notes.push(note);
     } else {
       const label = project ? `Semana ${note.weekNumber} · Projeto` : `Semana ${note.weekNumber} · Dia ${String(note.dayNumber).padStart(2, '0')}`;
-      groups.push({ key, label, project, notes: [note] });
+      groups.push({ key, label, project, dailyId: note.dailyId, dayNumber: note.dayNumber, notes: [note] });
     }
   }
   return groups;

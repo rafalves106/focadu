@@ -74,6 +74,7 @@ public class FocaduDbContext : DbContext
 
     // Caderninho de Anotacoes (Fase 29) - anotacao livre do aluno, vinculada a uma Daily especifica.
     public DbSet<Note> Notes => Set<Note>();
+    public DbSet<NotesReview> NotesReviews => Set<NotesReview>();
 
     // Forgejo interno (Projeto Semanal) - 1:1 com User, lazy-created (ver EnrollUserInCourseUseCase).
     public DbSet<UserForgejoAccount> UserForgejoAccounts => Set<UserForgejoAccount>();

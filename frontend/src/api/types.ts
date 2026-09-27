@@ -520,6 +520,23 @@ export interface SquadActivityDto {
  * Pedido pra entrar num squad (Fase 77) visto por quem pediu: "pending" (aguardando o lider/colider,
  * vence em `expiresAt`) ou "rejected" (recusado - nao pode pedir de novo pra este squad).
  */
+/** Revisao por IA das notas de um dia (Fase 78). `upToDate` falso = as notas mudaram depois (libera "Revisar de novo"). */
+export interface NotesReviewDto {
+  dailyId: string;
+  strengths: string;
+  missing: string;
+  materialCheck: string;
+  noteCount: number;
+  createdAt: string;
+  upToDate: boolean;
+}
+
+export interface NotesReviewsDto {
+  reviews: NotesReviewDto[];
+  remainingToday: number;
+  dailyLimit: number;
+}
+
 export interface SquadJoinRequestDto {
   id: string;
   squadId: string;

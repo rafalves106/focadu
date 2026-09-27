@@ -87,9 +87,13 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 77 — Squad com pedidos de entrada** (27/09/2026).
+Última fase concluída: **Fase 78 — Revisão por IA do Caderninho** (27/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Revisão por IA do Caderninho (Fase 78, Figma "Caderninho: revisão por IA — v2")**: cada dia com nota tem
+  "Revisar com a IA" - o que está bom, o que falta (com onde reler) e se confere com o material; não vale
+  nota, fica guardada e só libera de novo quando as notas mudam. 10 por dia. Tabela `NotesReviews`,
+  `GroqNotesReviewService`. Ver `docs/fase-78/`.
 - **Squad com pedidos de entrada (Fase 77, Figma "Squad: pedidos de entrada — v2")**: o código de convite
   vira um pedido que o líder ou o colíder aceita na aba "Notificações" do QG; recusar impede pedir de novo
   (dá pra desfazer), o pedido vence em 7 dias e é um por vez. Contador no Squad do menu. Tabela

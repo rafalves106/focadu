@@ -873,6 +873,17 @@ api.MapGet("/courses/{courseId}/notes/tags", async (ClaimsPrincipal principal, s
     .RequireAuthorization()
     .WithName("ListNoteTags");
 
+// Revisao por IA das notas de um dia (Fase 78, Caderninho) - por botao, sem nota; limite diario.
+api.MapPost("/dailies/{dailyId}/notes/review", async (ClaimsPrincipal principal, string dailyId, ReviewDailyNotesUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), RouteParsing.RequireGuid(dailyId, "dailyId"), ct)))
+    .RequireAuthorization()
+    .WithName("ReviewDailyNotes");
+
+api.MapGet("/courses/{courseId}/notes/reviews", async (ClaimsPrincipal principal, string courseId, ListNotesReviewsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), RouteParsing.RequireGuid(courseId, "courseId"), ct)))
+    .RequireAuthorization()
+    .WithName("ListNotesReviews");
+
 // --- Suporte Rapido de IA (Fase 32) -----------------------------------------------------------
 // Botao flutuante durante a sessao (ver secret/rascunhos/visual-ui-ux.md) - pergunta avulsa, sem
 // historico de conversa nem Daily/Weekly/dailyId na rota: Context vem pronto do frontend (o que ja

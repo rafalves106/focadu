@@ -63,6 +63,7 @@ public static class DependencyInjection
         services.AddScoped<ISquadRepository, SquadRepository>();
         services.AddScoped<IPersonalizedAnalogyRepository, PersonalizedAnalogyRepository>();
         services.AddScoped<INoteRepository, NoteRepository>();
+        services.AddScoped<INotesReviewRepository, NotesReviewRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IUserForgejoAccountRepository, UserForgejoAccountRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -110,6 +111,9 @@ public static class DependencyInjection
         // historico (ver AskStudyAssistantUseCase) - mesmo cliente/chave do Groq, timeout padrao
         // (chamada unica, sem retry, mesma categoria de Draft/ProjectEvaluation/Analogy acima).
         services.AddHttpClient<IStudyAssistantService, GroqStudyAssistantService>(
+            client => ConfigureGroqClient(client, GroqDefaultTimeout));
+        // Revisao por IA das notas de um dia (Fase 78, Caderninho) - mesmo cliente/chave do Groq.
+        services.AddHttpClient<INotesReviewService, GroqNotesReviewService>(
             client => ConfigureGroqClient(client, GroqDefaultTimeout));
         // Status da IA (Fase 28): badge do GlobalNav no frontend - GroqHealthCheckService e
         // Singleton (guarda cache em memoria, ver comentario na classe), entao usa

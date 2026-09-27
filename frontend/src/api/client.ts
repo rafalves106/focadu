@@ -28,6 +28,8 @@ import {
   type ReferralInfoDto,
   type RegisterRequest,
   type ResetPasswordRequest,
+  type NotesReviewDto,
+  type NotesReviewsDto,
   type SquadDto,
   type SquadJoinRequestDto,
   type SquadJoinRequestsDto,
@@ -319,6 +321,9 @@ export const api = {
     return request<NoteDto[]>(`/api/courses/${courseId}/notes${query ? `?${query}` : ''}`);
   },
   listNoteTags: (courseId: string) => request<string[]>(`/api/courses/${courseId}/notes/tags`),
+  // Fase 78: revisao por IA das notas de um dia (Caderninho) - chamada a IA, pode levar alguns segundos.
+  reviewDailyNotes: (dailyId: string) => request<NotesReviewDto>(`/api/dailies/${dailyId}/notes/review`, { method: 'POST', timeoutMs: 60_000 }),
+  listNotesReviews: (courseId: string) => request<NotesReviewsDto>(`/api/courses/${courseId}/notes/reviews`),
   // Suporte Rapido de IA (Fase 32, historico curto na Fase 33 - ver AskStudyAssistantUseCase.
   // MaxHistoryMessages) - botao flutuante durante a sessao (QuickQuestionOrb). `context` e o que ja
   // esta na tela (ver lib/studyAssistantContext.ts), null quando nao ha nenhum disponivel. `history`

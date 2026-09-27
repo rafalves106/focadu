@@ -197,6 +197,10 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
     items: [
       { title: 'Filtros', text: 'Período, busca e as suas tags.', anchor: 'caderninho-filtros' },
       { title: 'Por dia', text: 'As notas de cada Daily e do projeto de cada semana. Clique numa nota pra editar; Markdown leve funciona.' },
+      {
+        title: 'Revisar com a IA',
+        text: 'Cada dia com nota tem o botão: a IA compara o que você anotou com o material do dia e aponta o que falta. Não vale nota. Até 10 por dia.',
+      },
     ],
   },
 };
@@ -244,6 +248,10 @@ export const FAQ: { q: string; a: string }[] = [
     a: 'Pede o código pra quem já está nele e usa em "Entrar com código". Vira um pedido: o líder ou o colíder aceita. O pedido vence em 7 dias e dá pra cancelar.',
   },
   { q: 'Qual a nota pra passar numa atividade?', a: '80 de 100.' },
+  {
+    q: 'A IA revisa minhas anotações?',
+    a: 'Sim, se você pedir: no Caderninho, cada dia com nota tem "Revisar com a IA". Ela diz o que está bom, o que falta e se confere com o material. Não vale nota nem Gems.',
+  },
   { q: 'Perdi a ofensiva. E agora?', a: 'Recomeça do 1, e os troféus que você já ganhou ficam. A folga existe justamente pra um dia ruim.' },
 ];
 

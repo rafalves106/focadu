@@ -95,6 +95,8 @@ public static class DependencyInjection
         services.AddScoped<EditNoteUseCase>();
         services.AddScoped<DeleteNoteUseCase>();
         services.AddScoped<ListNotesUseCase>();
+        services.AddScoped<ReviewDailyNotesUseCase>();
+        services.AddScoped<ListNotesReviewsUseCase>();
         services.AddScoped<ListNoteTagsUseCase>();
         // Suporte Rapido de IA (Fase 32) - botao flutuante durante a sessao.
         services.AddScoped<AskStudyAssistantUseCase>();

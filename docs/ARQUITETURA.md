@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 77 - Squad com pedidos de entrada**.
+> Ultima fase que atualizou este documento: **Fase 78 - Revisao por IA do Caderninho**.
 
 ## Visao geral do projeto
 
@@ -1340,6 +1340,8 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 POST | `/api/squads/join` | `JoinSquadUseCase` (Fase 24; pedido desde a Fase 77) | 200 (`SquadJoinRequestDto` pendente - o mesmo se ja havia um aberto pra este squad), 404 `codigo_invalido`, 409 `ja_esta_em_squad`/`pedido_recusado` |
 | 🔒 DELETE | `/api/squads/members/{userId}` | `LeaveSquadUseCase` (se `{userId}` = usuario logado) ou `RemoveMemberUseCase` (Fase 24) | 204, 404 `squad_nao_encontrado`/`membro_nao_encontrado`, 409 `dono_nao_pode_sair`/`dono_nao_pode_se_remover` |
 | 🔒 GET | `/api/squads/me/ranking?scope=&page=` | `GetSquadRankingUseCase` (Fase 24) | 200 (`SquadRankingResultDto`) - gera `JoinCode` na 1a consulta (lazy), `Members` paginado (Fase 24c), 404 `squad_nao_encontrado` |
+| 🔒 POST | `/api/dailies/{dailyId}/notes/review` | `ReviewDailyNotesUseCase` (Fase 78) | 200 (`NotesReviewDto`); 400 `sem_notas`, 404 `daily_nao_encontrada`, 409 `limite_revisoes` (10/dia), 502/503 da IA |
+| 🔒 GET | `/api/courses/{courseId}/notes/reviews` | `ListNotesReviewsUseCase` (Fase 78) | 200 (`NotesReviewsDto`: ultima revisao de cada dia com `upToDate`, `remainingToday`, `dailyLimit`) |
 | 🔒 GET | `/api/squads/requests/me` | `GetMySquadJoinRequestUseCase` (Fase 77) | 200 (`SquadJoinRequestDto`, status `pending`/`rejected`) ou 204 sem pedido pra mostrar |
 | 🔒 DELETE | `/api/squads/requests/me` | `CancelMySquadJoinRequestUseCase` (Fase 77) | 204 (idempotente) |
 | 🔒 GET | `/api/squads/me/requests` | `GetSquadJoinRequestsUseCase` (Fase 77) | 200 (`SquadJoinRequestsDto`: pendentes + decididos em 30 dias + recusados) - so lider/colider, senao 404 `squad_nao_encontrado` |
@@ -1778,6 +1780,10 @@ fetch novo em 3 dos 4):
 (`completedDailies`/`totalDailies`) - sem campo novo no backend so pra isso.
 
 ## Persistencia (EF Core + Postgres)
+
+**Fase 78: `NotesReviews`** - tabela `NotesReviews` (`UserId`, `DailyId` sem FK como em `Notes`, `NotesHash`
+64, `NoteCount`, `Strengths`/`Missing`/`MaterialCheck` ate 1200, `CreatedAt`; indices `(UserId, DailyId)` e
+`(UserId, CreatedAt)`; cascade com `Users`). Aditiva.
 
 **Fase 77: `SquadJoinRequests`** - tabela `SquadJoinRequests` (`SquadId`, `UserId`, `Status` em texto ate 32,
 `CreatedAt`, `DecidedAt`, `DecidedByUserId`; indices `(SquadId, Status)` e `UserId`; cascade com `Squads` e
@@ -3462,6 +3468,17 @@ A visao da semana ganhou a mesma casca e, na Fase 74, o redesenho em pixel art (
 em pixel art (Fase 74)"). A Fase 74 tambem criou a variante `tall:` (janela com 960px de altura ou
 mais), pra cartoes extras que so cabem em tela alta. No QG do Squad, o lider gerencia o top 3 pelo "⋯" no nome do
 podio (a lista nao repete mais o top 3).
+
+### Revisao por IA do Caderninho (Fase 78)
+
+Figma "Caderninho: revisao por IA — v2 (proposta)" (`166:4503`...). "Revisar com a IA" por dia com nota
+(Daily original ou reforco; projeto nao) no `NotebookPage`; cartao `NotesReviewCard` (bom / falta / confere
+com o material, "nao vale nota"). `ReviewDailyNotesUseCase` junta as notas do dia e o material
+(`NotesReviewRules.Material`: leituras + pedidos de resumo falado da Daily, ou da de origem no reforco) e chama
+`INotesReviewService` (`GroqNotesReviewService`, JSON mode, formativo: nao reescreve nem entrega a resposta).
+Cada revisao vira uma linha em `NotesReviews`; a tela mostra a mais recente, `upToDate` compara o hash das
+notas (`NotesReviewRules.Hash`) e libera "Revisar de novo". Limite `NotesReviewRules.DailyLimit` = 10 por dia
+(provisorio ate o orcamento de IA). Mock: `/__mock/caderninho` (resposta fixa), `?vazio=1`.
 
 ### Squad com pedidos de entrada (Fase 77)
 
