@@ -29,6 +29,8 @@ import {
   type RegisterRequest,
   type ResetPasswordRequest,
   type SquadDto,
+  type SquadJoinRequestDto,
+  type SquadJoinRequestsDto,
   type SquadRankingResultDto,
   type SquadHqDto,
   type SquadCheerResultDto,
@@ -250,7 +252,14 @@ export const api = {
   getReferralInfo: () => request<ReferralInfoDto>('/api/users/me/referral'),
   // Squad (Fase 24) - so owner/member, sem aprovacao (quem tem o joinCode entra direto).
   createSquad: (name: string) => request<SquadDto>('/api/squads', { method: 'POST', body: JSON.stringify({ name }) }),
-  joinSquad: (joinCode: string) => request<SquadDto>('/api/squads/join', { method: 'POST', body: JSON.stringify({ joinCode }) }),
+  // Fase 77: o codigo de convite vira um pedido que o lider/colider aceita.
+  joinSquad: (joinCode: string) => request<SquadJoinRequestDto>('/api/squads/join', { method: 'POST', body: JSON.stringify({ joinCode }) }),
+  getMySquadJoinRequest: async () => (await request<SquadJoinRequestDto | undefined>('/api/squads/requests/me')) ?? null,
+  cancelMySquadJoinRequest: () => request<void>('/api/squads/requests/me', { method: 'DELETE' }),
+  getSquadJoinRequests: () => request<SquadJoinRequestsDto>('/api/squads/me/requests'),
+  getSquadJoinRequestCount: () => request<{ count: number }>('/api/squads/me/requests/count'),
+  decideSquadJoinRequest: (requestId: string, action: 'accept' | 'reject' | 'undo-reject') =>
+    request<void>(`/api/squads/me/requests/${requestId}/${action}`, { method: 'POST' }),
   // Mesma rota serve "sair" (userId = o proprio usuario) e "remover" (dono removendo outro membro) - ver Program.cs.
   leaveSquad: (userId: string) => request<void>(`/api/squads/members/${userId}`, { method: 'DELETE' }),
   removeSquadMember: (userId: string) => request<void>(`/api/squads/members/${userId}`, { method: 'DELETE' }),

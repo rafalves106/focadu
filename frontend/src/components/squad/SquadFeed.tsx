@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { api } from '../../api/client';
 import type { SquadActivityDto, SquadActivityType, SquadMemberDto } from '../../api/types';
 import { lookFromDto } from '../../lib/agentSprites';
@@ -37,9 +37,24 @@ const ICON: Record<SquadActivityType, string> = {
  *
  * Filtros do Figma eram Tudo/Estudos/Conquistas/Loja; "Conquistas" virou "Squad" porque badge nao tem
  * data de conquista e nao entra no feed (ver GetSquadHqUseCase) - sobrou entrada no squad e agente novo.
+ *
+ * Fase 77: com `notifications` (so lider e colider), o cartao ganha as abas "Atividades | Notificacoes"
+ * com o contador de pedidos abertos (Figma "Squad: pedidos de entrada — v2", 162:4503).
  */
-export function SquadFeed({ feed, members, userId }: { feed: SquadActivityDto[]; members: SquadMemberDto[]; userId: string }) {
+export function SquadFeed({
+  feed,
+  members,
+  userId,
+  notifications,
+}: {
+  feed: SquadActivityDto[];
+  members: SquadMemberDto[];
+  userId: string;
+  notifications?: { count: number; content: ReactNode };
+}) {
   const [filter, setFilter] = useState<Filter>('tudo');
+  const [tab, setTab] = useState<'atividades' | 'notificacoes'>(notifications && notifications.count > 0 ? 'notificacoes' : 'atividades');
+  const showNotifications = !!notifications && tab === 'notificacoes';
   const [cheers, setCheers] = useState<Record<string, { cheers: number; cheeredByMe: boolean }>>({});
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const looks = new Map(members.map((m) => [m.userId, lookFromDto(m.look)]));
@@ -62,6 +77,28 @@ export function SquadFeed({ feed, members, userId }: { feed: SquadActivityDto[];
 
   return (
     <section data-guia="squad-feed" className="flex min-w-0 flex-col gap-3 border-2 border-stroke bg-base p-5 lg:min-h-0 lg:flex-1 lg:short:p-4">
+      {notifications && (
+        <div className="flex gap-2" role="tablist" aria-label="Seções do QG">
+          {(['atividades', 'notificacoes'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => setTab(t)}
+              className={`flex items-center gap-2 border-2 px-3 py-2 font-pixel-label text-[9px] leading-none ${
+                tab === t ? 'border-accent bg-accent text-base' : 'border-stroke text-secondary hover:text-primary'
+              }`}
+            >
+              {t === 'atividades' ? 'Atividades' : 'Notificações'}
+              {t === 'notificacoes' && notifications.count > 0 && (
+                <span className="bg-alert px-1.5 py-0.5 text-[8px] text-primary">{notifications.count}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+      {!showNotifications && (
       <PanelLabel
         aside={
           <div className="flex flex-wrap justify-end gap-1.5" role="tablist" aria-label="Filtrar atividades">
@@ -84,10 +121,13 @@ export function SquadFeed({ feed, members, userId }: { feed: SquadActivityDto[];
       >
         Últimas atividades
       </PanelLabel>
+      )}
       <span className="h-0.5 shrink-0 bg-stroke" aria-hidden="true" />
 
       <ScrollArea className="lg:min-h-0 lg:flex-1" contentClassName="lg:pr-4">
-        {groups.length === 0 ? (
+        {showNotifications ? (
+          notifications.content
+        ) : groups.length === 0 ? (
           <p className="py-6 font-pixel text-xl leading-tight text-secondary">
             {filter === 'tudo' ? 'Nada nos últimos 14 dias. A primeira Daily de alguém aparece aqui.' : 'Nada disso nos últimos 14 dias.'}
           </p>

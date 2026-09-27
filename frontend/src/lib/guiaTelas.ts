@@ -154,6 +154,10 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
         anchor: 'squad-hero',
       },
       { title: 'Feed', text: 'O que os colegas fizeram. A única reação é o GG. Dá pra esconder suas notas nas Configurações.', anchor: 'squad-feed' },
+      {
+        title: 'Notificações (líder e colíder)',
+        text: 'Quem pediu pra entrar e os avisos das decisões. Recusar impede a pessoa de pedir de novo pra este squad; dá pra desfazer.',
+      },
       { title: 'Ranking do squad', text: 'Mesmo Score do ranking do curso, só entre vocês.', anchor: 'squad-ranking' },
     ],
   },
@@ -235,6 +239,10 @@ export const FAQ: { q: string; a: string }[] = [
   { q: 'Como o ranking pontua?', a: 'Pelo Score de Estudo: a média das suas respostas (o resumo falado pesa mais) e a nota do projeto. Gems não contam.' },
   { q: 'O que a vitrine da Loja sorteia?', a: '6 itens por semana, só pra você, renovados toda segunda. Não dá pra rerolar e todo item volta um dia.' },
   { q: 'Pra que serve o Squad?', a: 'Estudar junto: meta da semana em grupo, feed de atividades com GG e ranking próprio.' },
+  {
+    q: 'Como eu entro num squad?',
+    a: 'Pede o código pra quem já está nele e usa em "Entrar com código". Vira um pedido: o líder ou o colíder aceita. O pedido vence em 7 dias e dá pra cancelar.',
+  },
   { q: 'Qual a nota pra passar numa atividade?', a: '80 de 100.' },
   { q: 'Perdi a ofensiva. E agora?', a: 'Recomeça do 1, e os troféus que você já ganhou ficam. A folga existe justamente pra um dia ruim.' },
 ];

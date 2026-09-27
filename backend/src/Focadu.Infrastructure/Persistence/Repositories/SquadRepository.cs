@@ -1,3 +1,4 @@
+using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
 using Focadu.Domain.Squads;
 using Microsoft.EntityFrameworkCore;
@@ -59,4 +60,18 @@ public class SquadRepository : ISquadRepository
         _context.SquadCheers.Remove(cheer);
         return Task.CompletedTask;
     }
+
+    public async Task<SquadJoinRequest?> GetJoinRequestByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        await _context.SquadJoinRequests.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyCollection<SquadJoinRequest>> GetJoinRequestsByUserIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        await _context.SquadJoinRequests.Where(r => r.UserId == userId).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyCollection<SquadJoinRequest>> GetJoinRequestsBySquadIdAsync(Guid squadId, DateTime sinceUtc, CancellationToken cancellationToken = default) =>
+        await _context.SquadJoinRequests
+            .Where(r => r.SquadId == squadId && (r.CreatedAt >= sinceUtc || r.DecidedAt >= sinceUtc || r.Status == SquadJoinRequestStatus.Rejected))
+            .ToListAsync(cancellationToken);
+
+    public async Task AddJoinRequestAsync(SquadJoinRequest request, CancellationToken cancellationToken = default) =>
+        await _context.SquadJoinRequests.AddAsync(request, cancellationToken);
 }

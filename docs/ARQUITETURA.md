@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 76 - A Focada no Ranking, no Perfil e no QG do Squad**.
+> Ultima fase que atualizou este documento: **Fase 77 - Squad com pedidos de entrada**.
 
 ## Visao geral do projeto
 
@@ -1337,9 +1337,14 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 POST | `/api/weeklies/{weeklyId}/publication/submit` | `SubmitPublicationUseCase` (Fase 11) | 200, 400/404 - LinkedIn valida por regex, GitHub chama a API real |
 | 🔒 GET | `/api/github/repositories` | `GetGitHubRepositoriesUseCase` (Fase 11) | 200, 502 (GitHub) - exige login, sem filtro por usuario (1 token global do GitHub) |
 | 🔒 POST | `/api/squads` | `CreateSquadUseCase` (Fase 24) | 201 (`SquadDto`), 409 `ja_esta_em_squad` |
-| 🔒 POST | `/api/squads/join` | `JoinSquadUseCase` (Fase 24) | 200 (`SquadDto`), 404 `codigo_invalido`, 409 `ja_esta_em_squad` |
+| 🔒 POST | `/api/squads/join` | `JoinSquadUseCase` (Fase 24; pedido desde a Fase 77) | 200 (`SquadJoinRequestDto` pendente - o mesmo se ja havia um aberto pra este squad), 404 `codigo_invalido`, 409 `ja_esta_em_squad`/`pedido_recusado` |
 | 🔒 DELETE | `/api/squads/members/{userId}` | `LeaveSquadUseCase` (se `{userId}` = usuario logado) ou `RemoveMemberUseCase` (Fase 24) | 204, 404 `squad_nao_encontrado`/`membro_nao_encontrado`, 409 `dono_nao_pode_sair`/`dono_nao_pode_se_remover` |
 | 🔒 GET | `/api/squads/me/ranking?scope=&page=` | `GetSquadRankingUseCase` (Fase 24) | 200 (`SquadRankingResultDto`) - gera `JoinCode` na 1a consulta (lazy), `Members` paginado (Fase 24c), 404 `squad_nao_encontrado` |
+| 🔒 GET | `/api/squads/requests/me` | `GetMySquadJoinRequestUseCase` (Fase 77) | 200 (`SquadJoinRequestDto`, status `pending`/`rejected`) ou 204 sem pedido pra mostrar |
+| 🔒 DELETE | `/api/squads/requests/me` | `CancelMySquadJoinRequestUseCase` (Fase 77) | 204 (idempotente) |
+| 🔒 GET | `/api/squads/me/requests` | `GetSquadJoinRequestsUseCase` (Fase 77) | 200 (`SquadJoinRequestsDto`: pendentes + decididos em 30 dias + recusados) - so lider/colider, senao 404 `squad_nao_encontrado` |
+| 🔒 GET | `/api/squads/me/requests/count` | `GetSquadJoinRequestCountUseCase` (Fase 77) | 200 (`{count}`; 0 pra quem nao lidera) |
+| 🔒 POST | `/api/squads/me/requests/{requestId}/{accept\|reject\|undo-reject}` | `DecideSquadJoinRequestUseCase` (Fase 77) | 204; 404 `pedido_nao_encontrado`, 409 `pedido_indisponivel`/`pedido_nao_recusado`/`ja_esta_em_squad`, 400 `acao_invalida` |
 | 🔒 GET | `/api/squads/me/hq` | `GetSquadHqUseCase` (Fase 72) | 200 (`SquadHqDto`: cabecalho, escalacao com agentes, meta da semana, feed dos ultimos 14 dias com GGs), 404 `squad_nao_encontrado` (= sem squad) |
 | 🔒 POST | `/api/squads/me/cheers` | `ToggleSquadCheerUseCase` (Fase 72) | 200 (`SquadCheerResultDto`) - toggle do GG; 400 `atividade_invalida`/`gg_proprio`, 404 `squad_nao_encontrado`/`atividade_nao_encontrada` |
 | 🔒 GET | `/api/users/me/study-calendar` | `GetStudyCalendarUseCase` (Fase 72) | 200 (`StudyCalendarDto`: 14 dias com status studied/rest/paused/missed/today/before + ultima sessao) |
@@ -1773,6 +1778,10 @@ fetch novo em 3 dos 4):
 (`completedDailies`/`totalDailies`) - sem campo novo no backend so pra isso.
 
 ## Persistencia (EF Core + Postgres)
+
+**Fase 77: `SquadJoinRequests`** - tabela `SquadJoinRequests` (`SquadId`, `UserId`, `Status` em texto ate 32,
+`CreatedAt`, `DecidedAt`, `DecidedByUserId`; indices `(SquadId, Status)` e `UserId`; cascade com `Squads` e
+`Users`). Aditiva.
 
 **Fase 75: `GuideSeenKeys`** - coluna `Users.SeenGuides` (`text[]`, default vazio): chaves do guia das
 telas ja vistas (`tour:app`, `tela:<tela>`). Aditiva; aplica sozinha no boot da Api.
@@ -3453,6 +3462,17 @@ A visao da semana ganhou a mesma casca e, na Fase 74, o redesenho em pixel art (
 em pixel art (Fase 74)"). A Fase 74 tambem criou a variante `tall:` (janela com 960px de altura ou
 mais), pra cartoes extras que so cabem em tela alta. No QG do Squad, o lider gerencia o top 3 pelo "⋯" no nome do
 podio (a lista nao repete mais o top 3).
+
+### Squad com pedidos de entrada (Fase 77)
+
+Figma "Squad: pedidos de entrada — v2 (proposta)" (`162:4503`...). O codigo de convite vira um
+`SquadJoinRequest` (Pending/Accepted/Rejected/Cancelled/RejectionUndone) que o lider ou o colider decide;
+recusado nao pede de novo pro mesmo squad ate alguem desfazer; vence em 7 dias (`IsOpen`, na leitura);
+1 pedido aberto por pessoa (pedir pra outro squad ou criar um cancela o anterior). Regras puras em
+`SquadJoinRules`. Front: abas "Atividades | Notificacoes" no `SquadFeed` (prop `notifications`, so
+lider/colider, conteudo em `SquadRequests.tsx`), "Pedido enviado"/recusado no `NoSquadView`, contador no
+Squad do `GlobalNav` (`GET /api/squads/me/requests/count`, rebuscado a cada tela e pelo evento
+`lib/squadRequestsEvents.ts`). Mock: `/__mock/squad?as=lider`, `?as=nenhum&pedido=pendente|recusado`.
 
 ### A Focada no Ranking, no Perfil e no QG (Fase 76)
 

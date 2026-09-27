@@ -32,4 +32,15 @@ public interface ISquadRepository
     Task AddCheerAsync(SquadCheer cheer, CancellationToken cancellationToken = default);
 
     Task RemoveCheerAsync(SquadCheer cheer, CancellationToken cancellationToken = default);
+
+    // Pedidos de entrada (Fase 77).
+    Task<SquadJoinRequest?> GetJoinRequestByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>Todos os pedidos que este usuario ja fez (qualquer squad, qualquer status).</summary>
+    Task<IReadOnlyCollection<SquadJoinRequest>> GetJoinRequestsByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Pedidos pra este squad criados ou decididos desde <paramref name="sinceUtc"/>, mais os recusados (de qualquer data, pra poder desfazer).</summary>
+    Task<IReadOnlyCollection<SquadJoinRequest>> GetJoinRequestsBySquadIdAsync(Guid squadId, DateTime sinceUtc, CancellationToken cancellationToken = default);
+
+    Task AddJoinRequestAsync(SquadJoinRequest request, CancellationToken cancellationToken = default);
 }

@@ -82,6 +82,11 @@ public static class DependencyInjection
         services.AddScoped<GetSquadRankingUseCase>();
         services.AddScoped<GetSquadHqUseCase>();
         services.AddScoped<ToggleSquadCheerUseCase>();
+        services.AddScoped<GetMySquadJoinRequestUseCase>();
+        services.AddScoped<CancelMySquadJoinRequestUseCase>();
+        services.AddScoped<GetSquadJoinRequestsUseCase>();
+        services.AddScoped<GetSquadJoinRequestCountUseCase>();
+        services.AddScoped<DecideSquadJoinRequestUseCase>();
         // Status de IA (Fase 28) - badge do GlobalNav, agrega todo IAiProviderHealthCheck registrado.
         services.AddScoped<GetAiProviderStatusUseCase>();
         // Caderninho de Anotacoes (Fase 29).

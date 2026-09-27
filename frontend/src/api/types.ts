@@ -516,6 +516,40 @@ export interface SquadActivityDto {
   cheeredByMe: boolean;
 }
 
+/**
+ * Pedido pra entrar num squad (Fase 77) visto por quem pediu: "pending" (aguardando o lider/colider,
+ * vence em `expiresAt`) ou "rejected" (recusado - nao pode pedir de novo pra este squad).
+ */
+export interface SquadJoinRequestDto {
+  id: string;
+  squadId: string;
+  squadName: string;
+  status: 'pending' | 'rejected';
+  createdAt: string;
+  expiresAt: string;
+}
+
+export type SquadJoinRequestStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'rejectionUndone';
+
+/** Um pedido na aba Notificacoes do QG (so lider e colider). `decidedByName` nulo quando foi voce (`decidedByMe`). */
+export interface SquadJoinRequestEntryDto {
+  id: string;
+  userId: string;
+  displayName: string;
+  look: AgentLookDto | null;
+  status: SquadJoinRequestStatus;
+  createdAt: string;
+  expiresAt: string;
+  decidedAt: string | null;
+  decidedByName: string | null;
+  decidedByMe: boolean;
+}
+
+export interface SquadJoinRequestsDto {
+  pending: SquadJoinRequestEntryDto[];
+  decided: SquadJoinRequestEntryDto[];
+}
+
 export interface SquadHqDto {
   squadId: string;
   name: string;

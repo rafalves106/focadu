@@ -12,6 +12,8 @@ import { SquadFeed } from '../components/squad/SquadFeed';
 import { SquadRanking } from '../components/squad/SquadRanking';
 import { InviteModal } from '../components/squad/InviteModal';
 import { NoSquadView } from '../components/squad/NoSquadView';
+import { SquadRequests } from '../components/squad/SquadRequests';
+import { notifySquadRequestsChanged } from '../lib/squadRequestsEvents';
 import backArrow from '../assets/pixel/voltar.png';
 
 /**
@@ -28,6 +30,15 @@ export function SquadPage() {
   const noSquad = error?.code === 'squad_nao_encontrado';
   // O agente de quem ainda nao tem squad (sozinho no palco) - so nesse estado.
   const { data: catalog } = useApiResource(() => (noSquad ? api.getMarketplaceCatalog() : Promise.resolve(null)), [noSquad]);
+
+  // Fase 77: a aba Notificacoes (pedidos de entrada) - so lider e colider.
+  const isManager = !!hq && !!user && (hq.ownerUserId === user.id || hq.coLeaderUserId === user.id);
+  const requests = useApiResource(() => (isManager ? api.getSquadJoinRequests() : Promise.resolve(null)), [isManager]);
+  const onRequestsChanged = () => {
+    requests.retry();
+    retry();
+    notifySquadRequestsChanged();
+  };
 
   if (!user) return null;
   if (loading && !hq) return <Centered text="Abrindo o QG..." />;
@@ -53,7 +64,16 @@ export function SquadPage() {
             <SquadHero hq={hq} userId={user.id} onInvite={() => setInviting(true)} />
           </div>
           <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:flex-row lg:short:gap-3">
-            <SquadFeed feed={hq.feed} members={hq.members} userId={user.id} />
+            <SquadFeed
+              feed={hq.feed}
+              members={hq.members}
+              userId={user.id}
+              notifications={
+                isManager && requests.data
+                  ? { count: requests.data.pending.length, content: <SquadRequests data={requests.data} onChanged={onRequestsChanged} /> }
+                  : undefined
+              }
+            />
             <SquadRanking members={hq.members} ownerUserId={hq.ownerUserId} coLeaderUserId={hq.coLeaderUserId} userId={user.id} onChanged={retry} />
           </div>
           {inviting && <InviteModal squadName={hq.name} joinCode={hq.joinCode} onClose={() => setInviting(false)} />}

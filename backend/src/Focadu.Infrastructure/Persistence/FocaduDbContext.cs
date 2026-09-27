@@ -70,6 +70,7 @@ public class FocaduDbContext : DbContext
     public DbSet<Squad> Squads => Set<Squad>();
     public DbSet<SquadMembership> SquadMemberships => Set<SquadMembership>();
     public DbSet<SquadCheer> SquadCheers => Set<SquadCheer>();
+    public DbSet<SquadJoinRequest> SquadJoinRequests => Set<SquadJoinRequest>();
 
     // Caderninho de Anotacoes (Fase 29) - anotacao livre do aluno, vinculada a uma Daily especifica.
     public DbSet<Note> Notes => Set<Note>();

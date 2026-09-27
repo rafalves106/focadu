@@ -8,7 +8,8 @@ namespace Focadu.Application.Squads;
 /// <summary>
 /// Caso de uso: cria um squad novo, com o usuario logado como Owner e primeiro membro (Fase 24).
 /// JoinCode NAO e gerado aqui - fica nulo ate a 1a vez que for pedido (lazy, ver
-/// GetSquadRankingUseCase, mesmo padrao de GetReferralInfoUseCase).
+/// GetSquadRankingUseCase, mesmo padrao de GetReferralInfoUseCase). Fase 77: criar um squad cancela o
+/// pedido aberto pra entrar em outro (1 pedido por vez, e quem cria ja esta num squad).
 /// </summary>
 public class CreateSquadUseCase
 {
@@ -25,6 +26,11 @@ public class CreateSquadUseCase
     {
         if (await _squadRepository.GetMembershipByUserIdAsync(ownerUserId, cancellationToken) is not null)
             throw new ConflictException("ja_esta_em_squad", "Voce ja esta em um squad - saia antes de criar outro.");
+
+        var now = DateTime.UtcNow;
+        foreach (var pending in (await _squadRepository.GetJoinRequestsByUserIdAsync(ownerUserId, cancellationToken))
+                     .Where(r => r.Status == Domain.Enums.SquadJoinRequestStatus.Pending))
+            pending.Cancel(now);
 
         var squad = new Squad(name, ownerUserId);
         await _squadRepository.AddAsync(squad, cancellationToken);

@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { api, ApiError } from '../../api/client';
+import { useApiResource } from '../../api/useApiResource';
+import type { SquadJoinRequestDto } from '../../api/types';
 import type { AgentLook } from '../../lib/agentSprites';
 import { AgentSprite } from '../agent/AgentSprite';
 import { ReferralStrip } from './InviteModal';
@@ -23,6 +25,11 @@ const PERKS: [string, string][] = [
  * criar ou entrar com codigo, e o "Indique um amigo" (que saiu do Perfil). `onDone` recarrega o QG.
  */
 export function NoSquadView({ look, onDone }: { look: AgentLook | null; onDone: () => void }) {
+  // Fase 77: o codigo vira pedido - aguardando (no lugar do "Entrar com codigo") ou recusado (aviso no cartao).
+  const mine = useApiResource(() => api.getMySquadJoinRequest(), []);
+  const pending = mine.data?.status === 'pending' ? mine.data : null;
+  const rejected = mine.data?.status === 'rejected' ? mine.data : null;
+
   return (
     <div className="flex flex-col gap-4 lg:gap-4">
       <section className="flex flex-col border-2 border-accent/60 bg-base shadow-[6px_6px_0_0_#1c9e3e] lg:flex-row">
@@ -74,21 +81,27 @@ export function NoSquadView({ look, onDone }: { look: AgentLook | null; onDone: 
           busyLabel="Criando..."
           failMessage="Não foi possível criar o squad."
           primary
+          note={pending ? 'Criar um squad cancela o pedido' : undefined}
           onSubmit={(value) => api.createSquad(value)}
           onDone={onDone}
         />
-        <SquadForm
-          title="Entrar com código"
-          hint="Pede o código pra quem já está no squad."
-          label="Código de convite"
-          placeholder="8 letras e números"
-          submitLabel="Entrar ›"
-          busyLabel="Entrando..."
-          failMessage="Não foi possível entrar neste squad."
-          code
-          onSubmit={(value) => api.joinSquad(value)}
-          onDone={onDone}
-        />
+        {pending ? (
+          <PendingRequest request={pending} onChanged={mine.retry} />
+        ) : (
+          <SquadForm
+            title="Entrar com código"
+            hint={rejected ? `O ${rejected.squadName} recusou seu pedido. Tenta outro código ou cria o seu.` : 'Pede o código pra quem já está no squad.'}
+            hintAlert={!!rejected}
+            label="Código de convite"
+            placeholder="8 letras e números"
+            submitLabel="Pedir pra entrar ›"
+            busyLabel="Enviando..."
+            failMessage="Não foi possível pedir pra entrar neste squad."
+            code
+            onSubmit={(value) => api.joinSquad(value)}
+            onDone={mine.retry}
+          />
+        )}
       </div>
 
       <ReferralStrip />
@@ -106,6 +119,8 @@ function SquadForm({
   failMessage,
   primary = false,
   code = false,
+  hintAlert = false,
+  note,
   onSubmit,
   onDone,
 }: {
@@ -118,6 +133,9 @@ function SquadForm({
   failMessage: string;
   primary?: boolean;
   code?: boolean;
+  hintAlert?: boolean;
+  /** Linha pequena no pe do cartao (ex.: "criar um squad cancela o pedido"). */
+  note?: string;
   onSubmit: (value: string) => Promise<unknown>;
   onDone: () => void;
 }) {
@@ -142,7 +160,7 @@ function SquadForm({
   return (
     <form onSubmit={handleSubmit} className={`flex flex-col gap-3 border-2 bg-base p-5 lg:short:gap-2 lg:short:p-4 ${primary ? 'border-accent/60' : 'border-stroke'}`}>
       <PanelLabel>{title}</PanelLabel>
-      <p className="font-pixel text-xl leading-none text-secondary">{hint}</p>
+      <p className={`font-pixel text-xl leading-none ${hintAlert ? 'text-alert' : 'text-secondary'}`}>{hint}</p>
       <label className="mt-2 flex flex-col gap-1.5 lg:short:mt-0">
         <span className="font-pixel-label text-[8px] text-muted">{label}</span>
         <input
@@ -162,6 +180,57 @@ function SquadForm({
       >
         {busy ? busyLabel : submitLabel}
       </button>
+      {note && <p className="font-pixel-label text-[7px] text-muted">{note}</p>}
     </form>
+  );
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function sentAgo(iso: string): string {
+  const minutes = Math.max(1, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+  if (minutes < 60) return `há ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  return hours < 24 ? `há ${hours} h` : `há ${Math.floor(hours / 24)} ${hours < 48 ? 'dia' : 'dias'}`;
+}
+
+function daysLeft(iso: string): number {
+  return Math.max(1, Math.ceil((new Date(iso).getTime() - Date.now()) / DAY_MS));
+}
+
+/** Pedido aguardando o lider/colider (Fase 77, Figma quadro 03) - no lugar do "Entrar com codigo". */
+function PendingRequest({ request, onChanged }: { request: SquadJoinRequestDto; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const days = daysLeft(request.expiresAt);
+
+  async function cancel() {
+    setBusy(true);
+    try {
+      await api.cancelMySquadJoinRequest();
+    } finally {
+      setBusy(false);
+      onChanged();
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 border-2 border-project bg-base p-5 lg:short:gap-2 lg:short:p-4">
+      <p className="font-pixel-label text-[10px] text-project">// Pedido enviado</p>
+      <p className="font-pixel text-xl leading-tight text-primary">
+        Seu pedido pro <span className="text-project uppercase">{request.squadName}</span> está com o líder e o colíder. Quando aceitarem, este QG vira o
+        de vocês.
+      </p>
+      <p className="font-pixel-label text-[8px] text-muted">
+        Aguardando · enviado {sentAgo(request.createdAt)} · vence em {days} {days === 1 ? 'dia' : 'dias'}
+      </p>
+      <button
+        type="button"
+        onClick={cancel}
+        disabled={busy}
+        className="mt-auto border-2 border-stroke px-4 py-3.5 font-pixel-label text-[11px] leading-none text-secondary hover:text-primary disabled:opacity-40"
+      >
+        {busy ? 'Cancelando...' : 'Cancelar pedido'}
+      </button>
+    </div>
   );
 }

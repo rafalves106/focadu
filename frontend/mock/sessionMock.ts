@@ -107,6 +107,25 @@ const LOOKS: Record<string, [number, string, string, string | null, string]> = {
 };
 const STUDIED_TODAY = new Set(['u-marina', 'u-diego', 'u-bia', 'u-caio']);
 
+// Fase 77: pedidos de entrada. `joinRequests` = o que o lider/colider ve; `myRequest` = o pedido de quem
+// esta sem squad (`/__mock/squad?as=nenhum&pedido=pendente|recusado`).
+type MockEntry = { id: string; userId: string; displayName: string; status: string; createdAt: string; decidedAt: string | null; decidedByName: string | null; decidedByMe: boolean; look: [number, string, string, string | null, string] };
+const hoursAgo = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
+function seedJoinRequests(): MockEntry[] {
+  return [
+    { id: 'rq-rafa', userId: 'u-rafa', displayName: 'Rafa', status: 'pending', createdAt: hoursAgo(2), decidedAt: null, decidedByName: null, decidedByMe: false, look: [5, 'parte-de-cima/camiseta', 'parte-de-baixo/bermuda', 'cabelo/bone', 'tenis/tenis'] },
+    { id: 'rq-jess', userId: 'u-jess', displayName: 'Jess', status: 'pending', createdAt: hoursAgo(26), decidedAt: null, decidedByName: null, decidedByMe: false, look: [1, 'parte-de-cima/jaqueta', 'parte-de-baixo/saia', 'cabelo/longo', 'tenis/bota'] },
+    { id: 'rq-caio', userId: 'u-caio', displayName: 'Caio', status: 'accepted', createdAt: hoursAgo(40), decidedAt: hoursAgo(30), decidedByName: null, decidedByMe: true, look: [5, 'parte-de-cima/moletom', 'parte-de-baixo/bermuda', 'cabelo/capacete', 'tenis/tenis'] },
+    { id: 'rq-teo', userId: 'u-teo', displayName: 'Téo', status: 'rejected', createdAt: hoursAgo(90), decidedAt: hoursAgo(80), decidedByName: 'Marina', decidedByMe: false, look: [3, 'parte-de-cima/camisa-social', 'parte-de-baixo/calca', 'cabelo/curto', 'tenis/preto'] },
+  ];
+}
+let joinRequests = seedJoinRequests();
+let myRequest: { status: 'pending' | 'rejected'; createdAt: string } | null = null;
+function entryDto(e: MockEntry) {
+  const [skinTone, top, bottom, hair, shoes] = e.look;
+  return { ...e, look: { skinTone, top, bottom, hair, shoes }, expiresAt: new Date(new Date(e.createdAt).getTime() + 7 * 86400_000).toISOString() };
+}
+
 function ago(minutes: number): string {
   return new Date(Date.now() - minutes * 60_000).toISOString();
 }
@@ -660,6 +679,9 @@ export function sessionMock(): Plugin {
           squadRole = (url.searchParams.get('as') as SquadRole | null) ?? 'membro';
           squadMembers = [...SQUAD_MEMBERS];
           squadCoLeader = 'u-marina';
+          joinRequests = seedJoinRequests();
+          const pedido = url.searchParams.get('pedido');
+          myRequest = pedido === 'pendente' ? { status: 'pending', createdAt: hoursAgo(0.1) } : pedido === 'recusado' ? { status: 'rejected', createdAt: hoursAgo(20) } : null;
           res.statusCode = 302;
           res.setHeader('Location', '/squad');
           return res.end();
@@ -760,9 +782,43 @@ export function sessionMock(): Plugin {
           return squadRole === 'nenhum'
             ? send(res, 404, { error: 'squad_nao_encontrado', message: 'Você ainda não tem squad.' })
             : send(res, 200, squadRankingDto());
-        if ((path === '/api/squads' || path === '/api/squads/join') && method === 'POST') {
-          squadRole = path === '/api/squads' ? 'lider' : 'membro';
+        const myRequestDto = () =>
+          myRequest && { id: 'rq-me', squadId: 'squad-1', squadName: 'Os Firewalls', status: myRequest.status, createdAt: myRequest.createdAt, expiresAt: new Date(new Date(myRequest.createdAt).getTime() + 7 * 86400_000).toISOString() };
+        if (path === '/api/squads' && method === 'POST') {
+          squadRole = 'lider';
+          myRequest = null;
           return send(res, 200, { id: 'squad-1', name: 'Os Firewalls', joinCode: 'X9K2P7QD' });
+        }
+        if (path === '/api/squads/join' && method === 'POST') {
+          if (myRequest?.status === 'rejected') return send(res, 409, { error: 'pedido_recusado', message: 'Este squad recusou seu pedido - tenta outro codigo.' });
+          if (!myRequest) myRequest = { status: 'pending', createdAt: new Date().toISOString() };
+          return send(res, 200, myRequestDto());
+        }
+        if (path === '/api/squads/requests/me') {
+          if (method === 'DELETE') { myRequest = null; return send(res, 204); }
+          return myRequest ? send(res, 200, myRequestDto()) : send(res, 204);
+        }
+        const manages = squadRole === 'lider';
+        if (path === '/api/squads/me/requests/count') return send(res, 200, { count: manages ? joinRequests.filter((r) => r.status === 'pending').length : 0 });
+        if (path === '/api/squads/me/requests') {
+          if (!manages) return send(res, 404, { error: 'squad_nao_encontrado', message: 'So o lider e o colider veem os pedidos.' });
+          return send(res, 200, {
+            pending: joinRequests.filter((r) => r.status === 'pending').map(entryDto),
+            decided: joinRequests.filter((r) => r.status !== 'pending').sort((a, b) => (b.decidedAt ?? '').localeCompare(a.decidedAt ?? '')).map(entryDto),
+          });
+        }
+        if ((m = path.match(/^\/api\/squads\/me\/requests\/([^/]+)\/(accept|reject|undo-reject)$/)) && method === 'POST') {
+          const entry = joinRequests.find((r) => r.id === m![1]);
+          if (!entry) return send(res, 404, { error: 'pedido_nao_encontrado', message: 'Pedido nao encontrado.' });
+          entry.status = m[2] === 'accept' ? 'accepted' : m[2] === 'reject' ? 'rejected' : 'rejectionUndone';
+          entry.decidedAt = new Date().toISOString();
+          entry.decidedByMe = true;
+          entry.decidedByName = null;
+          if (m[2] === 'accept' && !squadMembers.some((x) => x.userId === entry.userId)) {
+            LOOKS[entry.userId] = entry.look;
+            squadMembers = [...squadMembers, { userId: entry.userId, displayName: entry.displayName, score: 0 }];
+          }
+          return send(res, 204);
         }
         if ((m = path.match(/^\/api\/squads\/members\/([^/]+)$/)) && method === 'DELETE') {
           if (m[1] === ids.user) squadRole = 'nenhum';

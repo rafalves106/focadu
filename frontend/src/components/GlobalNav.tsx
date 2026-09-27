@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
@@ -13,6 +13,7 @@ import navConfig from '../assets/pixel/nav-config.png';
 import { useSettings } from '../contexts/useSettings';
 import { UserMenu } from './UserMenu';
 import { AiStatusMenu } from './AiStatusMenu';
+import { onSquadRequestsChanged } from '../lib/squadRequestsEvents';
 
 /**
  * Menu global unico (Fase 25) - substitui o antigo `<nav>` de 2 links (Hoje/Início) do App.tsx.
@@ -69,6 +70,17 @@ export function GlobalNav() {
   const rankingHref = courseId ? `/start?course=${courseId}&ranking=1` : '/start';
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
+  // Fase 77: pedidos de entrada abertos no squad - contador no Squad, so pra lider e colider (0 pro resto).
+  // Busca de novo a cada tela e quando o QG decide um pedido.
+  const { pathname } = useLocation();
+  const [requestsVersion, setRequestsVersion] = useState(0);
+  useEffect(() => onSquadRequestsChanged(() => setRequestsVersion((v) => v + 1)), []);
+  const { data: requestCount } = useApiResource(
+    () => api.getSquadJoinRequestCount().then((r) => r.count).catch(() => 0),
+    [pathname, requestsVersion],
+  );
+  const squadBadge = requestCount ?? 0;
+
   return (
     <nav className="sticky top-0 z-30 border-b border-surface-alt bg-surface">
       <div className="flex h-[calc(var(--nav-height)-1px)] items-center justify-between gap-2 px-4 xl:px-16">
@@ -102,7 +114,7 @@ export function GlobalNav() {
 
         {/* Desktop (md+): grupo direito. */}
         <div data-guia="nav-grupo" className="hidden flex-1 items-center justify-around pl-4 md:flex xl:pl-10">
-          <NavItem to="/squad" icon={navSquad} label="Squad" />
+          <NavItem to="/squad" icon={navSquad} label={squadBadge ? `Squad (${squadBadge} pedidos)` : 'Squad'} badge={squadBadge} />
           <AiStatusMenu />
           <NavButton onClick={settings.open} icon={navConfig} label="Configurações" />
           <UserMenu />
@@ -132,6 +144,7 @@ export function GlobalNav() {
           </MobileNavItem>
           <MobileNavItem to="/squad" icon={navSquad} onNavigate={closeMobileMenu}>
             Squad
+            {squadBadge > 0 && <span className="ml-auto bg-alert px-1.5 py-0.5 text-[8px] text-primary">{squadBadge}</span>}
           </MobileNavItem>
           <button
             type="button"
@@ -150,14 +163,19 @@ export function GlobalNav() {
   );
 }
 
-function NavItem({ to, icon, label }: { to: string; icon: string; label: string }) {
+function NavItem({ to, icon, label, badge = 0 }: { to: string; icon: string; label: string; badge?: number }) {
   return (
     <Link
       to={to}
       title={label}
-      className="p-1.5 opacity-80 transition hover:scale-110 hover:opacity-100 focus-visible:opacity-100"
+      className="relative p-1.5 opacity-80 transition hover:scale-110 hover:opacity-100 focus-visible:opacity-100"
     >
       <img src={icon} alt="" className="size-8 pixelated xl:size-12" aria-hidden="true" />
+      {badge > 0 && (
+        <span className="absolute top-0 right-0 bg-alert px-1 font-pixel-label text-[8px] leading-[14px] text-primary" aria-hidden="true">
+          {badge}
+        </span>
+      )}
       <span className="sr-only">{label}</span>
     </Link>
   );

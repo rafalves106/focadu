@@ -358,7 +358,8 @@ api.MapGet("/users/me/referral", async (ClaimsPrincipal principal, GetReferralIn
     .WithName("GetReferralInfo");
 
 // --- Squad (Fase 24) --------------------------------------------------------------------------
-// So owner/member, sem aprovacao de convite - quem tem o JoinCode entra direto. Sair de/remover
+// Desde a Fase 77 o codigo de convite vira um pedido (POST /squads/join devolve SquadJoinRequestDto)
+// que o lider ou o colider aceita - ver "Pedidos de entrada" abaixo. Sair de/remover
 // de um squad sao a mesma rota (DELETE /squads/members/{userId}): {userId} igual ao usuario
 // logado e "sair" (LeaveSquadUseCase), diferente e "o dono remove alguem" (RemoveMemberUseCase).
 
@@ -374,6 +375,46 @@ api.MapPost("/squads/join", async (ClaimsPrincipal principal, JoinSquadRequest? 
         Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), request?.JoinCode ?? string.Empty, ct)))
     .RequireAuthorization()
     .WithName("JoinSquad");
+
+// --- Pedidos de entrada (Fase 77) - quem pediu ve/cancela o proprio; lider e colider decidem.
+api.MapGet("/squads/requests/me", async (ClaimsPrincipal principal, GetMySquadJoinRequestUseCase useCase, CancellationToken ct) =>
+        await useCase.ExecuteAsync(CurrentUserId(principal), ct) is { } request ? Results.Ok(request) : Results.NoContent())
+    .RequireAuthorization()
+    .WithName("GetMySquadJoinRequest");
+
+api.MapDelete("/squads/requests/me", async (ClaimsPrincipal principal, CancelMySquadJoinRequestUseCase useCase, CancellationToken ct) =>
+    {
+        await useCase.ExecuteAsync(CurrentUserId(principal), ct);
+        return Results.NoContent();
+    })
+    .RequireAuthorization()
+    .WithName("CancelMySquadJoinRequest");
+
+api.MapGet("/squads/me/requests", async (ClaimsPrincipal principal, GetSquadJoinRequestsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
+    .RequireAuthorization()
+    .WithName("GetSquadJoinRequests");
+
+api.MapGet("/squads/me/requests/count", async (ClaimsPrincipal principal, GetSquadJoinRequestCountUseCase useCase, CancellationToken ct) =>
+        Results.Ok(new { count = await useCase.ExecuteAsync(CurrentUserId(principal), ct) }))
+    .RequireAuthorization()
+    .WithName("GetSquadJoinRequestCount");
+
+api.MapPost("/squads/me/requests/{requestId}/{action}", async (
+        ClaimsPrincipal principal, string requestId, string action, DecideSquadJoinRequestUseCase useCase, CancellationToken ct) =>
+    {
+        var decision = action switch
+        {
+            "accept" => SquadJoinDecision.Accept,
+            "reject" => SquadJoinDecision.Reject,
+            "undo-reject" => SquadJoinDecision.UndoRejection,
+            _ => throw new ValidationException("acao_invalida", "Acao invalida (accept, reject ou undo-reject)."),
+        };
+        await useCase.ExecuteAsync(CurrentUserId(principal), RouteParsing.RequireGuid(requestId, "requestId"), decision, ct);
+        return Results.NoContent();
+    })
+    .RequireAuthorization()
+    .WithName("DecideSquadJoinRequest");
 
 api.MapDelete("/squads/members/{userId}", async (
         ClaimsPrincipal principal, string userId, LeaveSquadUseCase leaveUseCase, RemoveMemberUseCase removeUseCase, CancellationToken ct) =>
