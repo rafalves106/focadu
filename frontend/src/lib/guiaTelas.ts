@@ -43,7 +43,7 @@ export interface GuideScreen {
 }
 
 /** Formulario de report do teste fechado (Tally, decisao do dono em 27/09/2026). Vazio = ainda nao criado. */
-export const REPORT_FORM_URL = '';
+export const REPORT_FORM_URL = 'https://tally.so/r/0QX9VB';
 
 export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
   login: {

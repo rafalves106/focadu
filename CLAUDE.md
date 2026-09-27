@@ -92,7 +92,7 @@ Ao final de **toda fase de implementação**:
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
 - **Guia das telas (Fase 75, Figma "Guia das telas — v2", pedido do dono)**: botão "?" flutuante em toda
   tela (e tecla `?`) abre a janela do guia com a Focada - "Esta tela", perguntas frequentes e "Achou um
-  problema?" (formulário do teste fechado no Tally, ainda por criar). No 1º acesso roda um tour pelo app
+  problema?" (formulário do teste fechado no Tally, `tally.so/r/0QX9VB`). No 1º acesso roda um tour pelo app
   inteiro; pelo "?" o aluno chama o tour da tela em que está. "Já visto" no servidor (`User.SeenGuides`,
   `POST /api/users/me/guides/{key}/seen`). Conteúdo em `frontend/src/lib/guiaTelas.ts` - **mudou uma tela,
   atualize o guia dela**. Ver `docs/fase-75/`.

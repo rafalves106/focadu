@@ -3465,7 +3465,8 @@ decisoes em `secret/rascunhos/guia-das-telas-faq.md`. Tudo montado 1x pelo `Guid
   celular sobe acima da barra de ferramentas. Tecla `?` abre/fecha (fora de campo de texto).
 - **Janela** (`GuideModal.tsx`, sobre o `PixelModal`): "Esta tela", "Perguntas frequentes" (so dentro
   do app) e "Achou um problema?" (resumo da tela + formulario do teste fechado no Tally, com os campos
-  ocultos `tela`, `endereco`, `navegador`, `tamanho`, `hora`; `REPORT_FORM_URL` vazio = so copiar).
+  ocultos `tela`, `endereco`, `navegador`, `tamanho`, `hora`; `REPORT_FORM_URL` = `https://tally.so/r/0QX9VB`
+  desde 27/09/2026, vazio = so copiar).
 - **Conteudo** em `lib/guiaTelas.ts`: `GUIDE_SCREENS` (fala da Focada + itens por tela),
   `SESSION_STEP_ITEMS` (item da etapa em tela na sessao, contado pelo `SessionLayout` via
   `useGuide().setSessionDetail`), `FAQ`, `APP_TOUR` e `guideScreenFor(pathname, search)` (as sub-telas de
