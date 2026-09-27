@@ -4,6 +4,8 @@ import { frameRect, itemSheet, SHEET_HEIGHT, SHEET_WIDTH, type AgentLook, type L
 import { AgentSprite } from '../agent/AgentSprite';
 import { SegmentedBar } from '../SegmentedBar';
 import { PixelStage } from '../squad/pixelStage';
+import { FocadaSays } from '../session/FocadaSays';
+import type { FocadaLine } from '../../lib/focadaLines';
 
 const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
@@ -45,6 +47,7 @@ export function AgentStage({
   course,
   onWardrobe,
   onSettings,
+  focada,
 }: {
   displayName: string;
   since: string;
@@ -52,6 +55,8 @@ export function AgentStage({
   course: CourseLine | null;
   onWardrobe: () => void;
   onSettings: () => void;
+  /** Fase 76: a Focada comenta a constancia no alto do palco (some em tela muito baixa). */
+  focada: FocadaLine;
 }) {
   const sinceDate = new Date(since);
   const { scale, slotBox } = useStageScale();
@@ -68,6 +73,11 @@ export function AgentStage({
       </div>
 
       <PixelStage className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:justify-end" floor="bottom-[104px] sm:bottom-3" steps={10}>
+        <div className="px-5 pt-3 lg:mb-auto lg:tight:hidden">
+          <FocadaSays expression={focada.expression} size="sm">
+            {focada.text}
+          </FocadaSays>
+        </div>
         <div className="flex items-center justify-center gap-3 px-4 pt-4 pb-8 sm:gap-6 lg:gap-2 lg:px-2 xl:gap-6 xl:px-4 lg:short:pb-6">
           <div className="hidden flex-col gap-8 sm:flex">
             {left.map((s) => (

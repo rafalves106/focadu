@@ -14,7 +14,7 @@ import { AgentCard } from '../components/start/AgentCard';
 import { DailyMissionCard } from '../components/start/DailyMissionCard';
 import { WeekPathCard } from '../components/start/WeekPathCard';
 import { EmptyStateStartPage } from './EmptyStateStartPage';
-import { findCourseMap } from '../lib/courseMaps';
+import { findCourseMap, findCourseMapLines } from '../lib/courseMaps';
 import { buildFocadaMapLine } from '../lib/focadaMapLines';
 import { studiedToday } from '../lib/startScreen';
 
@@ -84,7 +84,7 @@ export function StartDashboard() {
     const regions = selectedCourse ? findCourseMap(selectedCourse.name) : null;
     return new Map([...(regions?.values() ?? [])].map((r) => [r.monthlyNumber, r.titulo]));
   }, [selectedCourse]);
-  const focadaLine = useMemo(() => (selectedCourse ? buildFocadaMapLine(selectedCourse, monthTitles) : null), [selectedCourse, monthTitles]);
+  const focadaLine = useMemo(() => (selectedCourse ? buildFocadaMapLine(selectedCourse, monthTitles, findCourseMapLines(selectedCourse.name)) : null), [selectedCourse, monthTitles]);
 
   // Derivado direto do fetch (nao um effect) - so precisa "lembrar" um dismiss local pra nao
   // reaparecer no mesmo carregamento depois que StreakLostModal ja chamou acknowledgeStreakBreak.

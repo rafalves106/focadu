@@ -5,8 +5,8 @@ import type { FocadaLine } from './focadaLines';
  * Falas da Focada no mapa da trilha (Fase 65) - aprovadas pelo dono em 23/09/2026, ver
  * secret/rascunhos/mapa-da-trilha-pixel-art.md ("Falas padrao da Focada no mapa"). Voz:
  * secret/curadoria/GUIA-DE-VOZ-FOCADA.md. Ao abrir a trilha ela diz UMA fala: vale a primeira
- * situacao verdadeira na ordem de MAP_LINE_ORDER. A troca por curso na curadoria (decidida no
- * rascunho) ainda nao tem caminho de dado - por ora so as padrao.
+ * situacao verdadeira na ordem de MAP_LINE_ORDER. Fase 76: um curso troca qualquer fala pelo
+ * `falas.json` opcional ao lado do mapa dele (lib/courseMaps.ts#findCourseMapLines); o resto e a padrao.
  */
 export type FocadaMapLineKey =
   | 'cursoConcluido'
@@ -19,6 +19,7 @@ export type FocadaMapLineKey =
   | 'novoMes'
   | 'novaSemana'
   | 'ultimoDiaAntesDoCastelo'
+  | 'publicacaoPendente'
   | 'padrao';
 
 export const DEFAULT_MAP_LINES: Record<FocadaMapLineKey, string> = {
@@ -32,6 +33,8 @@ export const DEFAULT_MAP_LINES: Record<FocadaMapLineKey, string> = {
   novoMes: 'Mês {mes}: {tituloMes}. Terreno novo, agente. A névoa sai conforme você anda.',
   novaSemana: 'Semana {semana} liberada. O castelo anterior caiu; esse aqui é mais alto. O dia {dia} te espera.',
   ultimoDiaAntesDoCastelo: 'Falta um dia pro castelo da Semana {semana}, agente. Depois dele, sem atalho: é projeto de verdade.',
+  // Fase 76: antes o mapa ficava calado com a semana fechada esperando a publicacao - mesma fala da visao da semana.
+  publicacaoPendente: 'Castelo derrubado, agente! Agora mostra pro mundo: publique a prova do módulo e a Semana {proxima} abre.',
   padrao: 'Próxima parada: dia {dia}. Faltam {faltam} dias pro castelo da Semana {semana}. Não é longe, mas também não anda sozinho.',
 };
 
@@ -57,15 +60,19 @@ function fill(text: string, values: Record<string, string | number>): string {
 }
 
 /**
- * A fala do mapa pro estado atual do agente, ou null quando nenhuma situacao se aplica (ex.: semana
- * fechada esperando a publicacao do modulo - sem proxima daily e sem fala aprovada pra isso).
- * `monthTitles`: titulo de cada mes com acento (mapa.json), por numero do Monthly.
+ * A fala do mapa pro estado atual do agente, ou null quando nenhuma situacao se aplica (sem proxima
+ * daily). `monthTitles`: titulo de cada mes com acento (mapa.json), por numero do Monthly.
+ * `courseLines`: falas trocadas pelo curso (falas.json), por chave.
  */
-export function buildFocadaMapLine(course: CourseDetailDto, monthTitles: Map<number, string>): FocadaLine | null {
+export function buildFocadaMapLine(
+  course: CourseDetailDto,
+  monthTitles: Map<number, string>,
+  courseLines: Partial<Record<FocadaMapLineKey, string>> = {},
+): FocadaLine | null {
   const weeks = course.monthlies.flatMap((m) => m.weeklies).sort((a, b) => a.number - b.number);
   if (weeks.length === 0) return null;
   const line = (key: FocadaMapLineKey, values: Record<string, string | number> = {}, expression: FocadaLine['expression'] = 'neutra'): FocadaLine => ({
-    text: fill(DEFAULT_MAP_LINES[key], values),
+    text: fill(courseLines[key] ?? DEFAULT_MAP_LINES[key], values),
     expression,
   });
 
@@ -77,6 +84,9 @@ export function buildFocadaMapLine(course: CourseDetailDto, monthTitles: Map<num
       if (pendingReinforcementOf(week, day)) return line('reforcoPendente', { dia: day.dayNumber });
     }
   }
+
+  const publicar = weeks.find((w) => w.requiresPublicationToUnlock);
+  if (publicar) return line('publicacaoPendente', { proxima: publicar.number + 1 }, 'comemorando');
 
   const liberado = weeks.find(
     (w) => isWeekDailiesDone(w) && w.projectStatus !== WeeklyProjectStatus.Submitted && w.projectStatus !== WeeklyProjectStatus.Evaluated,

@@ -13,8 +13,8 @@ const PORTRAITS: Record<FocadaExpression, string> = {
 const BORDER = { metal: 'border-secondary', accent: 'border-accent', alert: 'border-alert', project: 'border-project' } as const;
 const LABEL = { metal: 'text-accent', accent: 'text-accent', alert: 'text-alert', project: 'text-project' } as const;
 /** Retrato 32x32 sempre em escala inteira (2x, 3x, 4x). */
-const SIZE = { sm: 'size-16', md: 'size-24', lg: 'size-32' } as const;
-const TEXT = { sm: 'text-lg leading-[1.15]', md: 'text-xl leading-[1.15]', lg: 'text-2xl leading-[1.15]' } as const;
+const SIZE = { xs: 'size-8', sm: 'size-16', md: 'size-24', lg: 'size-32' } as const;
+const TEXT = { xs: 'text-lg leading-[1.05]', sm: 'text-lg leading-[1.15]', md: 'text-xl leading-[1.15]', lg: 'text-2xl leading-[1.15]' } as const;
 
 /**
  * Fala estatica da Focada na sessao diaria (Fase 68) - retrato + caixa, mesma linguagem do dialogo do
@@ -56,7 +56,7 @@ export function FocadaSays({
       <div className={`flex shrink-0 items-center justify-center self-start border-2 bg-base p-1 ${BORDER[tone]}`}>
         <img src={PORTRAITS[expression]} alt="Focada" className={`${SIZE[size]} pixelated`} />
       </div>
-      <div className={`flex min-w-0 flex-1 flex-col gap-1.5 border-2 bg-base px-4 py-3 ${BORDER[tone]}`} aria-live="polite">
+      <div className={`flex min-w-0 flex-1 flex-col border-2 bg-base ${size === 'xs' ? 'gap-1 px-3 py-2' : 'gap-1.5 px-4 py-3'} ${BORDER[tone]}`} aria-live="polite">
         <p className={`font-pixel-label text-[9px] ${LABEL[tone]}`}>{label}</p>
         <div className={`font-pixel text-primary ${TEXT[size]}`}>{children}</div>
       </div>

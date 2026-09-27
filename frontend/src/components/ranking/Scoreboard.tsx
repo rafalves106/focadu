@@ -6,6 +6,8 @@ import { AgentSprite } from '../agent/AgentSprite';
 import { ScrollArea } from '../ScrollArea';
 import { SegmentedBar } from '../SegmentedBar';
 import { PixelStage } from '../squad/pixelStage';
+import { FocadaSays } from '../session/FocadaSays';
+import type { FocadaLine } from '../../lib/focadaLines';
 import checkIcon from '../../assets/pixel/check.png';
 import terminalIcon from '../../assets/pixel/terminal.png';
 import shieldIcon from '../../assets/pixel/escudo.png';
@@ -29,7 +31,8 @@ const score = (value: number) => value.toFixed(1);
 
 /**
  * Podio do Ranking (Fase 72, Figma "Ranking — v2", node 133:4503): os 3 primeiros com o agente de
- * frente em cima dos blocos, holofote e piso; embaixo o recorte e a regra do Score. Os agentes caem de
+ * frente em cima dos blocos, holofote e piso; embaixo o recorte. Fase 76: a Focada comenta a posicao no
+ * alto do palco (no lugar da regra do Score, que ja esta em "Como subir"); some em tela muito baixa. Os agentes caem de
  * 4x pra 3x em telas baixas (`short:`), pra tela caber sem rolar.
  */
 export function PodiumPanel({
@@ -38,12 +41,14 @@ export function PodiumPanel({
   scope,
   onScope,
   notice,
+  focada,
 }: {
   top: RankingEntryDto[];
   userId: string;
   scope: RankingScope;
   onScope: (scope: RankingScope) => void;
   notice: ReactNode;
+  focada: FocadaLine;
 }) {
   return (
     <section data-guia="ranking-podio" className="flex flex-col border-2 border-accent/60 bg-base shadow-[6px_6px_0_0_#1c9e3e] lg:min-h-0 lg:w-[42%] lg:max-w-[600px] lg:shrink-0">
@@ -53,6 +58,11 @@ export function PodiumPanel({
       </div>
 
       <PixelStage className="flex flex-col justify-end lg:min-h-0 lg:flex-1" floor="bottom-[70px] lg:short:bottom-[62px]" steps={11}>
+        <div className="mb-auto px-5 pt-3 lg:tight:hidden">
+          <FocadaSays expression={focada.expression} size="sm">
+            {focada.text}
+          </FocadaSays>
+        </div>
         {top.length === 0 ? (
           <p className="px-6 pb-24 text-center font-pixel text-2xl leading-tight text-secondary">Ninguém pontuou neste recorte ainda.</p>
         ) : (
@@ -88,7 +98,6 @@ export function PodiumPanel({
           ))}
         </div>
         {notice}
-        <p className="text-xs text-secondary">Score mede qualidade: 70% média das Dailies + 30% do Projeto Semanal. Semana só pontua depois de fechada.</p>
       </div>
     </section>
   );

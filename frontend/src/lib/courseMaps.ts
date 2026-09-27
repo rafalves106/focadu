@@ -1,3 +1,4 @@
+import type { FocadaMapLineKey } from './focadaMapLines';
 import webSecurity1 from '../assets/mapa/web-security/regiao-1.png';
 import webSecurity2 from '../assets/mapa/web-security/regiao-2.png';
 import webSecurity3 from '../assets/mapa/web-security/regiao-3.png';
@@ -54,6 +55,16 @@ function region(json: RegionJson, image: string): MapRegion {
     pontos,
     ilhas: json.ilhas.map(([x, y, w, h]) => [x, y, w, h]),
   };
+}
+
+/**
+ * Falas do mapa trocadas por curso (Fase 76): `assets/mapa/<curso>/falas.json` opcional, chave ->
+ * texto, copiado da curadoria pelo mesmo script do mapa. Chave que o curso nao troca usa a padrao.
+ */
+const COURSE_LINES = import.meta.glob<Partial<Record<FocadaMapLineKey, string>>>('../assets/mapa/*/falas.json', { eager: true, import: 'default' });
+
+export function findCourseMapLines(courseName: string): Partial<Record<FocadaMapLineKey, string>> {
+  return COURSE_LINES[`../assets/mapa/${courseSlug(courseName)}/falas.json`] ?? {};
 }
 
 /** Chave = nome do curso normalizado (Course nao tem slug no dominio). */

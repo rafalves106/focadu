@@ -87,9 +87,12 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 75 — Guia das telas (botão "?", janela do guia e tour)** (27/09/2026).
+Última fase concluída: **Fase 76 — A Focada no Ranking, no Perfil e no QG do Squad** (27/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **A Focada no Ranking, no Perfil e no QG (Fase 76, Figma "Focada nas telas — v2")**: uma fala por tela,
+  conforme o estado (posição, constância, meta do squad), em `lib/focadaScreenLines.ts`; o mapa fala da
+  publicação pendente e aceita falas por curso (`assets/mapa/<curso>/falas.json`). Ver `docs/fase-76/`.
 - **Guia das telas (Fase 75, Figma "Guia das telas — v2", pedido do dono)**: botão "?" flutuante em toda
   tela (e tecla `?`) abre a janela do guia com a Focada - "Esta tela", perguntas frequentes e "Achou um
   problema?" (formulário do teste fechado no Tally, `tally.so/r/0QX9VB`). No 1º acesso roda um tour pelo app

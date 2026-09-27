@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
-import { CourseStatus, type BadgeDto, type GamificationSummaryDto, type MarketplaceCatalogDto } from '../api/types';
+import { CourseStatus, type BadgeDto, type GamificationSummaryDto, type MarketplaceCatalogDto, type StudyCalendarDto } from '../api/types';
+import { buildProfileLine } from '../lib/focadaScreenLines';
 import { agentLook } from '../lib/agentSprites';
 import { useAuth } from '../contexts/useAuth';
 import { useSettings } from '../contexts/useSettings';
@@ -18,6 +19,8 @@ import backArrow from '../assets/pixel/voltar.png';
 
 interface ProfileData {
   gamification: GamificationSummaryDto;
+  /** Fase 76: pra fala da Focada saber se o aluno ja estudou hoje (nulo se falhar - a fala se vira sem). */
+  calendar: StudyCalendarDto | null;
   catalog: MarketplaceCatalogDto;
   badges: BadgeDto[];
   course: CourseLine | null;
@@ -53,12 +56,19 @@ export function ProfilePage() {
   const [catalogOverride, setCatalogOverride] = useState<MarketplaceCatalogDto | null>(null);
 
   const { data, error, loading, retry } = useApiResource<ProfileData>(async () => {
-    const [gamification, catalog, badges, courses] = await Promise.all([api.getGamification(), api.getMarketplaceCatalog(), api.getUserBadges(), api.getCourses()]);
+    const [gamification, catalog, badges, courses, calendar] = await Promise.all([
+      api.getGamification(),
+      api.getMarketplaceCatalog(),
+      api.getUserBadges(),
+      api.getCourses(),
+      api.getStudyCalendar().catch(() => null),
+    ]);
     const active = courses.find((c) => c.status === CourseStatus.Active) ?? courses[0] ?? null;
     const [detail, ranking] = active ? await Promise.all([api.getCourse(active.id), api.getCourseRanking(active.id, 'course')]) : [null, null];
     const currentMonthly = detail?.monthlies.find((m) => m.weeklies.some((w) => w.completedDailies < w.totalDailies)) ?? null;
     return {
       gamification,
+      calendar,
       catalog,
       badges: badges.badges,
       courseId: active?.id ?? null,
@@ -95,6 +105,7 @@ export function ProfilePage() {
           course={data.course}
           onWardrobe={() => open('guarda-roupa')}
           onSettings={settings.open}
+          focada={buildProfileLine(data.gamification, data.calendar)}
         />
 
         <ScrollArea className="min-w-0 lg:min-h-0 lg:flex-1" contentClassName="flex flex-col gap-4 lg:pr-4 lg:short:gap-3">

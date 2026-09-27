@@ -3,9 +3,11 @@ import { lookFromDto } from '../../lib/agentSprites';
 import { AgentSprite } from '../agent/AgentSprite';
 import { SegmentedBar } from '../SegmentedBar';
 import { PanelLabel, PixelStage } from './pixelStage';
+import { FocadaSays } from '../session/FocadaSays';
+import type { FocadaLine } from '../../lib/focadaLines';
+import { buildSquadLine } from '../../lib/focadaScreenLines';
 import crownIcon from '../../assets/pixel/coroa.png';
 import checkIcon from '../../assets/pixel/check.png';
-import gemIcon from '../../assets/pixel/gema.png';
 
 const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
@@ -59,7 +61,7 @@ export function SquadHero({ hq, userId, onInvite }: { hq: SquadHqDto; userId: st
 
       <Lineup members={hq.members} ownerUserId={hq.ownerUserId} coLeaderUserId={hq.coLeaderUserId} userId={userId} />
 
-      <WeeklyGoal goal={hq.weeklyGoal} memberCount={hq.members.length} />
+      <WeeklyGoal goal={hq.weeklyGoal} focada={buildSquadLine(hq, userId)} />
     </section>
   );
 }
@@ -125,9 +127,12 @@ function lastStudiedLabel(lastStudiedOn: string | null): string {
   return sameDay ? 'Ontem' : `${d}/${m}`;
 }
 
-function WeeklyGoal({ goal, memberCount }: { goal: SquadHqDto['weeklyGoal']; memberCount: number }) {
-  const left = Math.max(0, goal.target - goal.completed);
-  const done = left === 0;
+/**
+ * Meta da semana. Fase 76 (Figma "Focada nas telas — v2"): a Focada fala o que antes eram "Faltam N ate
+ * domingo" e "N de M estudaram hoje"; a linha "recompensa em Gems em breve" saiu ate o valor ser decidido.
+ */
+function WeeklyGoal({ goal, focada }: { goal: SquadHqDto['weeklyGoal']; focada: FocadaLine }) {
+  const done = goal.completed >= goal.target;
   return (
     <div className="flex shrink-0 flex-col gap-3 p-5 lg:w-[260px] xl:w-[300px] lg:short:gap-2 lg:short:p-4">
       <PanelLabel>Meta da semana</PanelLabel>
@@ -142,15 +147,9 @@ function WeeklyGoal({ goal, memberCount }: { goal: SquadHqDto['weeklyGoal']; mem
         </span>
       </p>
       <SegmentedBar percentage={(goal.completed / goal.target) * 100} label="Meta da semana do squad" segments={15} heightClass="h-[18px] lg:short:h-3" />
-      <p className="font-pixel text-xl leading-none text-secondary">{done ? 'Meta batida! Bora passar dela.' : `Faltam ${left} até domingo.`}</p>
-      <span className="h-0.5 bg-stroke" aria-hidden="true" />
-      <p className="flex items-center gap-2 font-pixel-label text-[7px] text-muted">
-        <img src={gemIcon} alt="" className="size-4 pixelated opacity-60" />
-        Recompensa em Gems chegando em breve
-      </p>
-      <p className="font-pixel text-xl leading-none text-primary">
-        {goal.studiedToday} de {memberCount} estudaram hoje
-      </p>
+      <FocadaSays expression={focada.expression} size="xs" className="mt-1">
+        {focada.text}
+      </FocadaSays>
     </div>
   );
 }

@@ -8,6 +8,8 @@ import trophyIcon from '../../assets/pixel/trofeu.png';
 import checkIcon from '../../assets/pixel/check.png';
 import fireIcon from '../../assets/pixel/chama-streak.png';
 import crownIcon from '../../assets/pixel/coroa.png';
+import { FocadaSays } from '../session/FocadaSays';
+import { NO_SQUAD_LINE } from '../../lib/focadaScreenLines';
 
 const PERKS: [string, string][] = [
   [trophyIcon, 'Ranking só entre vocês'],
@@ -27,8 +29,10 @@ export function NoSquadView({ look, onDone }: { look: AgentLook | null; onDone: 
         <div className="flex shrink-0 flex-col gap-3 p-5 lg:w-[300px] lg:border-r-2 lg:border-stroke xl:w-[340px] lg:short:gap-2 lg:short:p-4">
           <PanelLabel>QG do squad</PanelLabel>
           <h1 className="font-pixel-label text-3xl leading-none text-primary uppercase">Sem squad</h1>
-          <p className="font-pixel text-[22px] leading-none text-secondary">Quem estuda junto segura a ofensiva.</p>
-          <p className="text-[13px] text-secondary">Monte o seu ou entre no de alguém. Dá pra ter um squad por vez.</p>
+          {/* Fase 76: a Focada no lugar do texto do QG vazio. */}
+          <FocadaSays expression={NO_SQUAD_LINE.expression} size="sm">
+            {NO_SQUAD_LINE.text}
+          </FocadaSays>
         </div>
         <PixelStage className="min-w-0 flex-1 border-y-2 border-stroke lg:border-y-0 lg:border-r-2" floor="bottom-[34px]" steps={9}>
           <ul className="flex items-end justify-center gap-2 px-4 pt-10 pb-3 sm:gap-4 lg:short:pt-5 lg:short:pb-2" aria-hidden="true">

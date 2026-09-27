@@ -9,7 +9,7 @@ import { EmptyStateError } from '../components/errors/EmptyStateError';
 import { CourseMap } from '../components/courseMap/CourseMap';
 import { ScrollArea } from '../components/ScrollArea';
 import { SegmentedBar } from '../components/SegmentedBar';
-import { findCourseMap } from '../lib/courseMaps';
+import { findCourseMap, findCourseMapLines } from '../lib/courseMaps';
 import { buildFocadaMapLine } from '../lib/focadaMapLines';
 import { useIsMobile } from '../lib/useIsMobile';
 import trophyIcon from '../assets/pixel/trofeu.png';
@@ -58,7 +58,7 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
   // Fase 65: mapa da trilha no desktop quando o curso tem arte desenhada; celular (e curso sem mapa)
   // segue com a lista de semanas - versao vertical do mapa pro celular ficou pra depois (rascunho).
   const showMap = courseMap !== null && !isMobile;
-  const mapLine = showMap ? buildFocadaMapLine(course, new Map([...courseMap.values()].map((r) => [r.monthlyNumber, r.titulo]))) : null;
+  const mapLine = showMap ? buildFocadaMapLine(course, new Map([...courseMap.values()].map((r) => [r.monthlyNumber, r.titulo])), findCourseMapLines(course.name)) : null;
 
   const weekList = (list: WeeklyOverviewDto[]) => (
     <div className="flex flex-col gap-3">

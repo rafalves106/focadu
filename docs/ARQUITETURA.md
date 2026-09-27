@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 75 - Guia das telas (botao "?", janela do guia e tour)**.
+> Ultima fase que atualizou este documento: **Fase 76 - A Focada no Ranking, no Perfil e no QG do Squad**.
 
 ## Visao geral do projeto
 
@@ -3453,6 +3453,17 @@ A visao da semana ganhou a mesma casca e, na Fase 74, o redesenho em pixel art (
 em pixel art (Fase 74)"). A Fase 74 tambem criou a variante `tall:` (janela com 960px de altura ou
 mais), pra cartoes extras que so cabem em tela alta. No QG do Squad, o lider gerencia o top 3 pelo "⋯" no nome do
 podio (a lista nao repete mais o top 3).
+
+### A Focada no Ranking, no Perfil e no QG (Fase 76)
+
+Figma "Focada nas telas — v2 (proposta)" (`159:4503`...). Uma fala por tela, a primeira situacao
+verdadeira, em `lib/focadaScreenLines.ts`: **Ranking** no alto do podio (`PodiumPanel.focada`; substituiu a
+nota "Score mede qualidade"), **Perfil** no alto do palco (`AgentStage.focada`; a `ProfilePage` tambem busca
+o `study-calendar` pra saber se o aluno estudou hoje), **QG** na coluna da meta (`WeeklyGoal`, `FocadaSays`
+tamanho `xs`; sairam "Faltam N", "N de M estudaram hoje" e a linha da recompensa em Gems) e **sem squad** no
+lugar do texto do QG vazio. No podio e no palco a fala some em `lg:tight:`. O **mapa** fala
+`publicacaoPendente` com a semana esperando a publicacao, e cada curso pode trocar qualquer fala com
+`assets/mapa/<curso>/falas.json` (`findCourseMapLines`, copiado da curadoria pelo `exportar-frontend.js`).
 
 ### Guia das telas (Fase 75)
 

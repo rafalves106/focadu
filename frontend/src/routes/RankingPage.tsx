@@ -6,6 +6,7 @@ import type { RankingScope } from '../api/types';
 import { useAuth } from '../contexts/useAuth';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { HowToClimb, NextTarget, PodiumPanel, ScoreBoard } from '../components/ranking/Scoreboard';
+import { buildRankingLine } from '../lib/focadaScreenLines';
 import backArrow from '../assets/pixel/voltar.png';
 
 const SCOPE_SUBTITLE: Record<RankingScope, string> = { weekly: 'semana atual', monthly: 'mês atual', course: 'curso inteiro' };
@@ -48,9 +49,11 @@ export function RankingPage({ courseId }: { courseId: string }) {
             userId={user.id}
             scope={scope}
             onScope={setScope}
+            focada={buildRankingLine(data, scope === 'weekly')}
             notice={
               weekPending && (
-                <p className="border-2 border-project/60 px-3 py-2 font-pixel text-lg leading-tight text-project">
+                // Fase 76: a Focada ja diz isso no alto do podio; o aviso so fica em tela muito baixa, onde ela some.
+                <p className="hidden border-2 border-project/60 px-3 py-2 font-pixel text-lg leading-tight text-project lg:tight:block">
                   Sua Semana {data.currentWeekNumber} ainda não fechou: ela entra no placar quando o projeto for avaliado.
                 </p>
               )
