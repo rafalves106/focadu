@@ -338,6 +338,13 @@ api.MapPut("/users/me/squad-feed-privacy", async (ClaimsPrincipal principal, Squ
     .RequireAuthorization()
     .WithName("UpdateSquadFeedPrivacy");
 
+// Guia das telas (Fase 75): marca o tour do app ou a 1a visita a uma tela como vistos - idempotente,
+// devolve o UserDto novo (o AuthContext troca o usuario em memoria).
+api.MapPost("/users/me/guides/{key}/seen", async (ClaimsPrincipal principal, string key, MarkGuideSeenUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), key, ct)))
+    .RequireAuthorization()
+    .WithName("MarkGuideSeen");
+
 // Badges/Troféus (Fase 17) - todos calculados sob demanda, ver GetUserBadgesUseCase.
 api.MapGet("/users/me/badges", async (ClaimsPrincipal principal, GetUserBadgesUseCase useCase, CancellationToken ct) =>
         Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))

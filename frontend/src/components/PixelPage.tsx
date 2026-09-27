@@ -19,9 +19,9 @@ export function PixelPageHeader({ backTo, backLabel = 'Voltar pra trilha', crumb
 }
 
 /** Cartao "// ROTULO" com borda de 2px (colunas laterais das telas pixel art). */
-export function PixelPanel({ label, children, className = '' }: { label: string; children: ReactNode; className?: string }) {
+export function PixelPanel({ label, children, className = '', guia }: { label: string; children: ReactNode; className?: string; guia?: string }) {
   return (
-    <section className={`flex flex-col gap-3 border-2 border-stroke bg-base px-5 py-[18px] lg:short:py-3.5 ${className}`}>
+    <section data-guia={guia} className={`flex flex-col gap-3 border-2 border-stroke bg-base px-5 py-[18px] lg:short:py-3.5 ${className}`}>
       <h2 className="font-pixel-label text-[10px] text-accent">// {label}</h2>
       {children}
     </section>

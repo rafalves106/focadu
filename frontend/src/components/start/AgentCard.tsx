@@ -33,7 +33,7 @@ export function AgentCard({
         : 'Estude hoje pra começar o streak.';
 
   return (
-    <div className="pixel-box flex shrink-0 flex-col gap-3 bg-base p-4">
+    <div data-guia="start-agente" className="pixel-box flex shrink-0 flex-col gap-3 bg-base p-4">
       {/* Avatar e @ ja estao no menu do topo - aqui so o rotulo (sem avatar, pra tela caber sem rolar). */}
       <div className="flex items-baseline justify-between gap-2">
         <span className="truncate font-pixel-label text-[10px] text-accent">// @{displayName}</span>

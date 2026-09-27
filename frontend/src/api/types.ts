@@ -655,6 +655,8 @@ export interface UserDto {
   createdAt: string;
   /** Fase 72: Configuracoes > "nao mostrar minhas notas no feed do squad". */
   hideScoresInSquadFeed: boolean;
+  /** Fase 75: chaves do guia das telas ja vistas ("tour:app", "tela:loja"...). */
+  seenGuides: string[];
 }
 
 // referralCode (Fase 17): opcional - codigo invalido/de ninguem so e ignorado no backend, nunca bloqueia o registro.

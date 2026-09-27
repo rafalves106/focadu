@@ -49,7 +49,7 @@ export function SquadPage() {
         </ScrollArea>
       ) : (
         <>
-          <div className="lg:shrink-0">
+          <div data-guia="squad-hero" className="lg:shrink-0">
             <SquadHero hq={hq} userId={user.id} onInvite={() => setInviting(true)} />
           </div>
           <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:flex-row lg:short:gap-3">

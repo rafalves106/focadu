@@ -7,6 +7,7 @@ import { stepInfo } from '../lib/sessionSteps';
 import { setStudyAssistantContext } from '../lib/studyAssistantContext';
 import { formatPomodoroTime, usePomodoroTimer } from '../lib/pomodoroTimer';
 import { useIsDesktop } from '../lib/useIsDesktop';
+import { useGuide } from '../contexts/useGuide';
 import { StudyAssistantPanel } from './assistant/StudyAssistantPanel';
 import { MaterialSidebar } from './MaterialSidebar';
 import { PixelConfirmDialog } from './PixelConfirmDialog';
@@ -78,6 +79,14 @@ export function SessionLayout({
 }) {
   const { daily, weekly, activityId, onBack, goToActivity } = useSession();
   const isDesktop = useIsDesktop();
+
+  // Guia das telas (Fase 75): a etapa em tela troca o 1o item de "Esta tela" no "?".
+  const { setSessionDetail } = useGuide();
+  const activityType = daily.activities.find((a) => a.id === activityId)?.type ?? null;
+  useEffect(() => {
+    setSessionDetail({ activityType, isReinforcement: daily.isReinforcement, isBridge: !daily.isReinforcement && daily.dayNumber % 6 === 0 });
+    return () => setSessionDetail(null);
+  }, [setSessionDetail, activityType, daily.isReinforcement, daily.dayNumber]);
   const [footerEl, setFooterEl] = useState<HTMLDivElement | null>(null);
   const [jumpTarget, setJumpTarget] = useState<{ activityId: string; message: string } | null>(null);
 
@@ -167,13 +176,15 @@ export function SessionLayout({
           )}
         </div>
         {showGauge && (
-          <ErrorGauge penaltyPoints={daily.penaltyPoints} penaltyThreshold={daily.penaltyThreshold} compact={!isDesktop} />
+          <div data-guia="sessao-contagiros" className="shrink-0">
+            <ErrorGauge penaltyPoints={daily.penaltyPoints} penaltyThreshold={daily.penaltyThreshold} compact={!isDesktop} />
+          </div>
         )}
       </header>
 
       <div className="flex flex-col gap-6 lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-5 xl:gap-8 xl:short:gap-6">
         {isDesktop && (
-          <aside className="flex w-52 shrink-0 lg:min-h-0 xl:w-64">
+          <aside data-guia="sessao-material" className="flex w-52 shrink-0 lg:min-h-0 xl:w-64">
             <ScrollArea className="min-h-0 min-w-0 flex-1" contentClassName="flex min-h-full min-w-0 flex-col gap-6 lg:short:gap-4">
               {material}
               <PomodoroWidget className="min-h-[260px] flex-1 lg:short:min-h-0" />
@@ -184,7 +195,7 @@ export function SessionLayout({
         <section
           className={`flex min-w-0 flex-col gap-4 border-2 bg-base px-4 py-4 lg:min-h-0 lg:flex-1 lg:px-7 lg:py-5 ${TONE_BORDER[tone]}`}
         >
-          <div className="flex flex-col gap-3 lg:shrink-0">
+          <div data-guia="sessao-etapas" className="flex flex-col gap-3 lg:shrink-0">
             <div className="flex items-center justify-between gap-3">
               <p className={`font-pixel-label text-[9px] ${TONE_TEXT[tone]}`}>// {headerLabel}</p>
               <div className="flex shrink-0 items-center gap-4">
@@ -215,7 +226,7 @@ export function SessionLayout({
         </section>
 
         {isDesktop && (
-          <aside className="flex w-52 shrink-0 lg:min-h-0 xl:w-64">
+          <aside data-guia="sessao-ferramentas" className="flex w-52 shrink-0 lg:min-h-0 xl:w-64">
             <ScrollArea className="min-h-0 min-w-0 flex-1" contentClassName="flex min-h-full min-w-0 flex-col gap-6 lg:short:gap-4">
               {notes}
               <StudyAssistantPanel className="min-h-[280px] flex-1 lg:short:min-h-[180px]" />
@@ -270,7 +281,7 @@ function MobileDrawer({ panels }: { panels: Record<DrawerTab, ReactNode> }) {
           {panels[open]}
         </div>
       )}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex h-12 items-stretch border-t-2 border-stroke bg-surface" aria-label="Ferramentas da sessão">
+      <nav data-guia="sessao-barra" className="fixed inset-x-0 bottom-0 z-40 flex h-12 items-stretch border-t-2 border-stroke bg-surface" aria-label="Ferramentas da sessão">
         {tabs.map((tab) => (
           <button
             key={tab.id}

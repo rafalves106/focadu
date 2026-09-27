@@ -63,7 +63,7 @@ export function RankingPage({ courseId }: { courseId: string }) {
               userId={user.id}
               subtitle={`Top 10 · ${courseName} · ${SCOPE_SUBTITLE[scope]}${data.totalEntries ? ` · ${data.totalEntries} agentes` : ''}`}
             />
-            <div className="grid gap-4 sm:grid-cols-2 lg:shrink-0 lg:short:gap-3">
+            <div data-guia="ranking-dicas" className="grid gap-4 sm:grid-cols-2 lg:shrink-0 lg:short:gap-3">
               <NextTarget me={data.currentUserEntry} ahead={data.aheadEntry} total={data.totalEntries} />
               <HowToClimb />
             </div>

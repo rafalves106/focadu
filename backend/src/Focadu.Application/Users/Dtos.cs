@@ -13,15 +13,17 @@ namespace Focadu.Application.Users;
 /// PreferredLanguages (Fase 59): linguagens marcadas pro Projeto Semanal - vazio ate o aluno marcar
 /// (a tela do projeto avisa e nao mostra o projeto enquanto isso, em semana com escolha de linguagem).
 /// CreatedAt (Fase 72): o "desde set/2026" do Perfil. HideScoresInSquadFeed (Fase 72): a opcao das
-/// Configuracoes "nao mostrar minhas notas no feed do squad".
+/// Configuracoes "nao mostrar minhas notas no feed do squad". SeenGuides (Fase 75): o que o aluno ja
+/// viu do guia das telas (tour do app, 1a visita a cada tela).
 public record UserDto(
     Guid Id, string Email, string DisplayName, DateTime? ProfileCompletedAt,
     IReadOnlyCollection<string> Interests, string? AdditionalProfileNotes,
-    IReadOnlyCollection<ProjectLanguage> PreferredLanguages, DateTime CreatedAt, bool HideScoresInSquadFeed)
+    IReadOnlyCollection<ProjectLanguage> PreferredLanguages, DateTime CreatedAt, bool HideScoresInSquadFeed,
+    IReadOnlyCollection<string> SeenGuides)
 {
     public static UserDto From(User user) => new(
         user.Id, user.Email, user.DisplayName, user.ProfileCompletedAt, user.Interests, user.AdditionalProfileNotes,
-        user.PreferredLanguages, user.CreatedAt, user.HideScoresInSquadFeed);
+        user.PreferredLanguages, user.CreatedAt, user.HideScoresInSquadFeed, user.SeenGuides);
 }
 
 /// <summary>

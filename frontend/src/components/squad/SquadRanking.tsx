@@ -107,7 +107,7 @@ export function SquadRanking({
   }
 
   return (
-    <section className="flex min-w-0 flex-col gap-3 border-2 border-stroke bg-base p-5 lg:min-h-0 lg:w-[400px] lg:shrink-0 xl:w-[472px] lg:short:p-4">
+    <section data-guia="squad-ranking" className="flex min-w-0 flex-col gap-3 border-2 border-stroke bg-base p-5 lg:min-h-0 lg:w-[400px] lg:shrink-0 xl:w-[472px] lg:short:p-4">
       <PanelLabel
         aside={
           <div className="flex gap-1.5">

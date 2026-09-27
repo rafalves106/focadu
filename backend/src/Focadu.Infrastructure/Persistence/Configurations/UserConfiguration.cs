@@ -35,6 +35,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         // Fase 72: "nao mostrar minhas notas no feed do squad" - desligado por padrao.
         builder.Property(u => u.HideScoresInSquadFeed).IsRequired().HasDefaultValue(false);
 
+        // Fase 75: chaves do guia das telas ja vistas - mesmo array nativo de Interests.
+        builder.Property(u => u.SeenGuides).HasColumnType("text[]").IsRequired();
+
         builder.HasIndex(u => u.Email).IsUnique();
         builder.HasIndex(u => u.ReferralCode).IsUnique();
     }

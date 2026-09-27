@@ -24,10 +24,13 @@ export function ScrollArea({
   className = '',
   contentClassName = '',
   scrollRef,
+  guia,
   children,
 }: {
   className?: string;
   contentClassName?: string;
+  /** Ancora do tour do guia das telas (Fase 75, `data-guia`). */
+  guia?: string;
   /** Acesso ao elemento que rola (ex: chat que rola pro fim a cada mensagem nova). */
   scrollRef?: RefObject<HTMLDivElement | null>;
   children: ReactNode;
@@ -75,7 +78,7 @@ export function ScrollArea({
   useEffect(() => () => window.clearTimeout(hideTimer.current), []);
 
   return (
-    <div className={`relative ${className}`}>
+    <div data-guia={guia} className={`relative ${className}`}>
       <div ref={ref} onScroll={handleScroll} className={`scrollbar-none h-full overflow-y-auto ${contentClassName}`}>
         {children}
       </div>

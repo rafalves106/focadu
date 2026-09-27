@@ -64,6 +64,7 @@ public static class DependencyInjection
         services.AddScoped<AcknowledgeStreakBreakUseCase>();
         services.AddScoped<GetStudyCalendarUseCase>();
         services.AddScoped<UpdateSquadFeedPrivacyUseCase>();
+        services.AddScoped<MarkGuideSeenUseCase>();
         services.AddScoped<GetCourseRankingUseCase>();
         services.AddScoped<GetMarketplaceCatalogUseCase>();
         services.AddScoped<CreateAgentUseCase>();

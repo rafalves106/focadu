@@ -59,7 +59,7 @@ export function AgentStage({
   const right = SLOTS.slice(2);
 
   return (
-    <section className="flex flex-col border-2 border-accent/60 bg-base shadow-[6px_6px_0_0_#1c9e3e] lg:min-h-0 lg:w-[36%] lg:max-w-[520px] lg:shrink-0 xl:w-[40%]">
+    <section data-guia="perfil-agente" className="flex flex-col border-2 border-accent/60 bg-base shadow-[6px_6px_0_0_#1c9e3e] lg:min-h-0 lg:w-[36%] lg:max-w-[520px] lg:shrink-0 xl:w-[40%]">
       <div className="flex items-center justify-between gap-3 px-5 pt-4">
         <h2 className="font-pixel-label text-[10px] text-accent">// Agente</h2>
         <span className="border-2 border-stroke px-2.5 py-1 font-pixel-label text-[7px] text-secondary">

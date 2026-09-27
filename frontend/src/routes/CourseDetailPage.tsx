@@ -85,7 +85,7 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
   return (
     <div className="flex flex-col gap-8 bg-base px-4 pt-6 pb-8 lg:min-h-0 lg:flex-1 lg:flex-row lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12">
       <div className={`flex w-full shrink-0 flex-col lg:min-h-0 lg:w-[250px] ${showMap ? 'lg:pt-11' : ''}`}>
-        <div className="pixel-box flex shrink-0 flex-col gap-4 bg-base p-5">
+        <div data-guia="trilha-curso" className="pixel-box flex shrink-0 flex-col gap-4 bg-base p-5">
           <div className="flex flex-wrap items-center gap-3 font-pixel-label text-[10px]">
             {course.status === CourseStatus.Active && (
               <span className="border-2 border-accent px-2 py-1 text-accent">Curso ativo</span>
@@ -106,7 +106,7 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
       </div>
 
       {/* Coluna central: so o mapa da trilha - ou a lista de semanas no celular e em curso sem mapa. */}
-      <ScrollArea className="min-h-0 min-w-0 flex-1" contentClassName="flex flex-col gap-6">
+      <ScrollArea guia="trilha-mapa" className="min-h-0 min-w-0 flex-1" contentClassName="flex flex-col gap-6">
         {showMap ? (
           <CourseMap
             course={course}
@@ -122,7 +122,7 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
 
       {/* Coluna lateral: Resumo do Curso como HUD (numeros + atalhos). */}
       <div className={`flex w-full shrink-0 flex-col lg:min-h-0 lg:w-[250px] ${showMap ? 'lg:pt-11' : ''}`}>
-        <div className="pixel-box flex shrink-0 flex-col gap-4 bg-base p-5">
+        <div data-guia="trilha-resumo" className="pixel-box flex shrink-0 flex-col gap-4 bg-base p-5">
           <p className="font-pixel-label text-[10px] text-accent">// Resumo do Curso</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-3">
             <Stat label="Dailies" value={`${course.progress.completedDailies}/${course.progress.totalDailies}`} />

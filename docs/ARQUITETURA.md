@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 74 - Visao da semana em pixel art (trilha da semana)**.
+> Ultima fase que atualizou este documento: **Fase 75 - Guia das telas (botao "?", janela do guia e tour)**.
 
 ## Visao geral do projeto
 
@@ -1344,6 +1344,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 POST | `/api/squads/me/cheers` | `ToggleSquadCheerUseCase` (Fase 72) | 200 (`SquadCheerResultDto`) - toggle do GG; 400 `atividade_invalida`/`gg_proprio`, 404 `squad_nao_encontrado`/`atividade_nao_encontrada` |
 | 🔒 GET | `/api/users/me/study-calendar` | `GetStudyCalendarUseCase` (Fase 72) | 200 (`StudyCalendarDto`: 14 dias com status studied/rest/paused/missed/today/before + ultima sessao) |
 | 🔒 PUT | `/api/users/me/squad-feed-privacy` | `UpdateSquadFeedPrivacyUseCase` (Fase 72) | 200 (`UserDto`) - corpo `{hideScores}` |
+| 🔒 POST | `/api/users/me/guides/{key}/seen` | `MarkGuideSeenUseCase` (Fase 75) | 200 (`UserDto` com `seenGuides`) - idempotente; 400 `guia_invalido`/`guia_limite` |
 | 🔒 GET | `/api/system/ai-status` | `GetAiProviderStatusUseCase` (Fase 28) | 200 (array de `AiProviderStatusDto` - hoje so Groq), nunca 404/erro (a checagem em si nunca lanca, ver secao Groq abaixo) |
 | 🔒 POST | `/api/weeklies/{weeklyId}/project/notes` | `CreateWeeklyProjectNoteUseCase` (Fase 63) | 201 (`NoteDto` com `weeklyProjectId`), 404 `semana_nao_encontrada`/`projeto_nao_encontrado`, mesmos 400 de validacao da nota |
 | 🔒 POST | `/api/dailies/{dailyId}/notes` | `CreateNoteUseCase` (Fase 29) | 201 (`NoteDto`), 404 `daily_nao_encontrada`, 400 `nota_vazia`/`nota_muito_longa`/`tag_muito_longa`/`notas_tags_demais` |
@@ -1772,6 +1773,9 @@ fetch novo em 3 dos 4):
 (`completedDailies`/`totalDailies`) - sem campo novo no backend so pra isso.
 
 ## Persistencia (EF Core + Postgres)
+
+**Fase 75: `GuideSeenKeys`** - coluna `Users.SeenGuides` (`text[]`, default vazio): chaves do guia das
+telas ja vistas (`tour:app`, `tela:<tela>`). Aditiva; aplica sozinha no boot da Api.
 
 **Fase 72: `SquadHqCheersAndFeedPrivacy`** - tabela `SquadCheers` (GG do feed do QG: `SquadId`,
 `ActivityKey` texto ate 120, `FromUserId`, `CreatedAt`; indice unico `(SquadId, ActivityKey,
@@ -3449,6 +3453,33 @@ A visao da semana ganhou a mesma casca e, na Fase 74, o redesenho em pixel art (
 em pixel art (Fase 74)"). A Fase 74 tambem criou a variante `tall:` (janela com 960px de altura ou
 mais), pra cartoes extras que so cabem em tela alta. No QG do Squad, o lider gerencia o top 3 pelo "⋯" no nome do
 podio (a lista nao repete mais o top 3).
+
+### Guia das telas (Fase 75)
+
+Desenho aprovado no Figma "Focadu — Pixel Art", pagina "Guia das telas — v2 (proposta)" (`151:4502`),
+decisoes em `secret/rascunhos/guia-das-telas-faq.md`. Tudo montado 1x pelo `GuideProvider`
+(`contexts/GuideProvider.tsx`, dentro do `SettingsProvider` em `main.tsx`), como irmao das rotas:
+
+- **Botao "?"** (`components/guide/HelpButton.tsx`, sprite `assets/pixel/ajuda.png`): fixo no canto de
+  baixo em toda tela que o guia conhece - dentro do app e fora (login, senha, onboarding); na sessao no
+  celular sobe acima da barra de ferramentas. Tecla `?` abre/fecha (fora de campo de texto).
+- **Janela** (`GuideModal.tsx`, sobre o `PixelModal`): "Esta tela", "Perguntas frequentes" (so dentro
+  do app) e "Achou um problema?" (resumo da tela + formulario do teste fechado no Tally, com os campos
+  ocultos `tela`, `endereco`, `navegador`, `tamanho`, `hora`; `REPORT_FORM_URL` vazio = so copiar).
+- **Conteudo** em `lib/guiaTelas.ts`: `GUIDE_SCREENS` (fala da Focada + itens por tela),
+  `SESSION_STEP_ITEMS` (item da etapa em tela na sessao, contado pelo `SessionLayout` via
+  `useGuide().setSessionDetail`), `FAQ`, `APP_TOUR` e `guideScreenFor(pathname, search)` (as sub-telas de
+  `/start` vivem na query string). **Mudou uma tela? Atualize o guia dela ali.**
+- **Tour** (`TourOverlay.tsx`): escurece a tela com recorte no elemento `[data-guia="..."]` visivel do
+  passo (`lib/guideAnchors.ts`) e mostra a Focada; espera o elemento ate 2,5s, passo sem elemento vira
+  balao no centro. Esc pula, setas/Enter andam. O **tour do app** roda no 1o acesso ao start (depois do
+  onboarding) e navega por Inicio, trilha, perfil, squad, loja e ranking, terminando no "?". O **tour da
+  tela** ("Tour desta tela" na janela) destaca os itens de "Esta tela" que tem elemento visivel.
+- **Ja visto** fica no servidor: `User.SeenGuides` (`tour:app`, `tela:<tela>`), no `UserDto`, marcado por
+  `POST /api/users/me/guides/{key}/seen`. A 1a visita a cada tela (depois do tour do app) faz o botao
+  piscar com a dica uma vez (conta como vista ao abrir o guia ou apos 7s).
+- **Ancoras**: `data-guia` nos elementos destacados; `ScrollArea` e `PixelPanel` aceitam a prop `guia`.
+- **Mock**: `/__mock/guia?tour=1` zera tudo (tour do app de novo); `/__mock/guia` zera so as 1as visitas.
 
 ### Visao da semana em pixel art (Fase 74)
 

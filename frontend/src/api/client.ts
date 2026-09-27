@@ -269,6 +269,8 @@ export const api = {
   // Configuracoes (Fase 72): esconder as proprias notas no feed do squad. Devolve o usuario atualizado.
   updateSquadFeedPrivacy: (hideScores: boolean) =>
     request<UserDto>('/api/users/me/squad-feed-privacy', { method: 'PUT', body: JSON.stringify({ hideScores }) }),
+  // Guia das telas (Fase 75): marca o tour do app ou a 1a visita a uma tela como vistos. Devolve o usuario atualizado.
+  markGuideSeen: (key: string) => request<UserDto>(`/api/users/me/guides/${encodeURIComponent(key)}/seen`, { method: 'POST' }),
   // Marketplace de Cosméticos (Fase 17) - toda ação (compra/equipar/desequipar) devolve o
   // catálogo inteiro recalculado, mesmo shape do GET.
   getMarketplaceCatalog: () => request<MarketplaceCatalogDto>('/api/marketplace/catalog'),

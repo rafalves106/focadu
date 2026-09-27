@@ -126,7 +126,7 @@ export function DailyMissionCard({
 
 function Shell({ label, badge, children }: { label: string; badge?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="flex shrink-0 flex-col gap-4 border-2 border-accent bg-base px-5 py-4 lg:px-6">
+    <section data-guia="start-missao" className="flex shrink-0 flex-col gap-4 border-2 border-accent bg-base px-5 py-4 lg:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="font-pixel-label text-[10px] text-accent">{label}</p>
         {badge}

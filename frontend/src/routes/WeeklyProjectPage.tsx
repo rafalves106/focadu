@@ -173,7 +173,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
         {/* Coluna esquerda (Fase 63): repositorio em cima (altura do conteudo) e referencias ocupando
             o resto - so depois do projeto disponibilizado. */}
         {released && (project.submissionUrl || project.references.length > 0) && (
-          <div className="flex min-h-0 flex-col gap-8 lg:w-[210px] lg:shrink-0 xl:w-[250px] lg:short:gap-5">
+          <div data-guia="projeto-repo" className="flex min-h-0 flex-col gap-8 lg:w-[210px] lg:shrink-0 xl:w-[250px] lg:short:gap-5">
             {project.submissionUrl && (
               <RepositoryPanel
                 submissionUrl={project.submissionUrl}
@@ -196,6 +196,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
             sem fundo, sem rotulo "Desafio semanal" e sem o recuo interno; o dialogo alinha no topo com os
             cartoes laterais e usa a largura toda da coluna. */}
         <div
+          data-guia="projeto-missao"
           className={`flex min-h-0 min-w-0 flex-1 flex-col ${showDialogue ? '' : 'border-2 border-project bg-base'}`}
         >
           <ScrollArea
@@ -307,7 +308,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
           </ScrollArea>
 
           {canSubmit && project.submissionUrl && !showDialogue && (
-            <div className="flex shrink-0 flex-col gap-3 border-t border-stroke px-6 py-5 lg:px-10">
+            <div data-guia="projeto-entregar" className="flex shrink-0 flex-col gap-3 border-t border-stroke px-6 py-5 lg:px-10">
               {/* Repositorio gerenciado no Forgejo interno e avaliado automaticamente ao entregar
                   (ver EvaluateWeeklyProjectUseCase) - nao ha mais URL pra colar, so confirmar que
                   o trabalho no repositorio ja provisionado esta pronto. */}
@@ -329,7 +330,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
 
         {/* Coluna direita (Fase 63): anotacao rapida (264px - 240px do Figma + 10%, pedido do dono 23/09/2026 - presa ao PROJETO, nao a uma Daily) + chat
             ocupando o resto da altura. */}
-        <div className="flex min-h-0 flex-col gap-8 lg:w-[210px] lg:shrink-0 xl:w-[250px] lg:short:gap-5">
+        <div data-guia="projeto-anotacao" className="flex min-h-0 flex-col gap-8 lg:w-[210px] lg:shrink-0 xl:w-[250px] lg:short:gap-5">
           <QuickNotePanel target={{ weeklyId }} courseId={weekly.courseId} className="h-[264px]" />
           <StudyAssistantPanel className="h-[480px] lg:h-auto lg:min-h-0 lg:flex-1" />
         </div>

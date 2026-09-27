@@ -139,4 +139,39 @@ public class UserTests
 
         Assert.Throws<DomainException>(() => user.SetPasswordHash("   "));
     }
+
+    [Fact]
+    public void MarkGuideSeen_AddsKeyOnce()
+    {
+        var user = User.Create("falves@example.com", "hash123", "Falves");
+
+        user.MarkGuideSeen("tour:app");
+        user.MarkGuideSeen(" tour:app ");
+        user.MarkGuideSeen("tela:loja");
+
+        Assert.Equal(new[] { "tour:app", "tela:loja" }, user.SeenGuides);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("Tour:App")]
+    [InlineData("tela loja")]
+    [InlineData(":tela")]
+    public void MarkGuideSeen_InvalidKey_Throws(string key)
+    {
+        var user = User.Create("falves@example.com", "hash123", "Falves");
+
+        var ex = Assert.Throws<DomainException>(() => user.MarkGuideSeen(key));
+        Assert.Equal("guia_invalido", ex.Code);
+    }
+
+    [Fact]
+    public void MarkGuideSeen_OverLimit_Throws()
+    {
+        var user = User.Create("falves@example.com", "hash123", "Falves");
+        for (var i = 0; i < User.MaxSeenGuides; i++) user.MarkGuideSeen($"tela:t{i}");
+
+        user.MarkGuideSeen("tela:t0"); // repetida continua valendo
+        Assert.Throws<DomainException>(() => user.MarkGuideSeen("tela:nova"));
+    }
 }

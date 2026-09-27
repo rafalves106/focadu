@@ -63,7 +63,7 @@ export function NotebookPage({ courseId }: { courseId: string }) {
 
       <div className="flex flex-col gap-6 lg:min-h-0 lg:flex-1 lg:flex-row">
         <div className="flex w-full shrink-0 flex-col gap-4 lg:w-[260px] xl:w-[300px]">
-          <PixelPanel label="Filtros">
+          <PixelPanel label="Filtros" guia="caderninho-filtros">
             <label className="flex items-center gap-2 border-2 border-stroke px-3 py-2 focus-within:border-accent">
               <span className="font-pixel-label text-[10px] text-accent" aria-hidden="true">
                 &gt;

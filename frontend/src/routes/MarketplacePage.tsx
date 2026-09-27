@@ -100,7 +100,7 @@ export function MarketplacePage() {
 
       <div className="flex flex-col gap-6 lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-6">
         {look && (
-          <aside className="flex lg:w-[240px] lg:shrink-0 lg:min-h-0 xl:w-[304px]">
+          <aside data-guia="loja-agente" className="flex lg:w-[240px] lg:shrink-0 lg:min-h-0 xl:w-[304px]">
             <ScrollArea className="min-w-0 flex-1 lg:min-h-0" contentClassName="flex min-h-full min-w-0 flex-col gap-3">
               <div className="flex shrink-0 flex-col gap-3.5 border-2 border-secondary bg-base p-[18px]">
                 <p className="font-pixel-label text-[9px] text-accent">// Seu agente</p>
@@ -142,7 +142,7 @@ export function MarketplacePage() {
           </aside>
         )}
 
-        <section className="flex min-w-0 flex-col gap-4 border-2 border-accent bg-base px-4 py-4 lg:min-h-0 lg:flex-1 lg:px-7 lg:py-5 lg:short:gap-3 lg:short:px-5 lg:short:py-4">
+        <section data-guia="loja-vitrine" className="flex min-w-0 flex-col gap-4 border-2 border-accent bg-base px-4 py-4 lg:min-h-0 lg:flex-1 lg:px-7 lg:py-5 lg:short:gap-3 lg:short:px-5 lg:short:py-4">
           <div className="flex items-center justify-between gap-3 lg:shrink-0">
             <p className="font-pixel-label text-[10px] text-accent">{catalog.agent ? '// Vitrine da semana' : '// Crie seu agente'}</p>
             {catalog.agent && <p className="font-pixel-label text-[8px] text-muted">Só sua · troca toda segunda</p>}

@@ -55,7 +55,7 @@ export function LoginPage() {
         </div>
 
         <EntryCard className="w-full lg:w-[536px] lg:shrink-0">
-          <div className="grid grid-cols-2" role="tablist" aria-label="Acesso">
+          <div data-guia="login-abas" className="grid grid-cols-2" role="tablist" aria-label="Acesso">
             <TabButton active={mode === 'login'} onClick={() => setMode('login')}>
               Entrar
             </TabButton>
@@ -71,7 +71,7 @@ export function LoginPage() {
             <>
               <LoginForm onSuccess={handleAuthSuccess} />
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <Link to="/esqueci-senha" className="font-pixel-label text-[9px] text-accent hover:brightness-125">
+                <Link data-guia="login-esqueci" to="/esqueci-senha" className="font-pixel-label text-[9px] text-accent hover:brightness-125">
                   Esqueci minha senha
                 </Link>
                 <p className="font-pixel-label text-[9px] text-secondary">

@@ -51,6 +51,14 @@
     0% { translate: 0 0; }
     50% { translate: 0 -2px; }
   }
+
+  /* Fase 75: o botao "?" pisca na 1a visita a cada tela - anel que aparece e some em 2 quadros, 4 vezes. */
+  --animate-guide-pulse: guide-pulse 0.9s steps(1) 4;
+
+  @keyframes guide-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0; }
+  }
 }
 
 body {

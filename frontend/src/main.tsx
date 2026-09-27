@@ -5,6 +5,7 @@ import './index.css';
 import { App } from './App';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
+import { GuideProvider } from './contexts/GuideProvider';
 import { SettingsProvider } from './contexts/SettingsProvider';
 import { CourseSelectionPage } from './routes/CourseSelectionPage';
 import { ForgotPasswordPage } from './routes/ForgotPasswordPage';
@@ -28,6 +29,8 @@ createRoot(document.getElementById('root')!).render(
             app inteiro pra o GlobalNav conseguir abrir o mesmo <SettingsMenu> de qualquer tela
             (Fase 25) - nas telas sem sessao (Login/Splash/onboarding) so fica montado sem uso. */}
         <SettingsProvider>
+          {/* Fase 75: guia das telas (botao "?", janela e tour) - montado 1x, precisa de rota e usuario. */}
+          <GuideProvider>
           <Routes>
             <Route index element={<SplashPage />} />
             <Route path="login" element={<LoginPage />} />
@@ -58,6 +61,7 @@ createRoot(document.getElementById('root')!).render(
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </GuideProvider>
         </SettingsProvider>
       </AuthProvider>
     </BrowserRouter>

@@ -24,7 +24,7 @@ export function WeekPathCard({ week, courseId }: { week: WeeklyOverviewDto; cour
   const focadaDayId = (days.find((d) => d.status === DailyStatus.InProgress) ?? days.find((d) => d.isNext))?.id ?? null;
 
   return (
-    <section className="pixel-box flex shrink-0 flex-col gap-3 bg-base px-5 py-4">
+    <section data-guia="start-castelo" className="pixel-box flex shrink-0 flex-col gap-3 bg-base px-5 py-4">
       <div className="flex items-center justify-between gap-3">
         <p className="font-pixel-label text-[10px] text-accent">// Rumo ao castelo — Semana {week.number}</p>
         <Link to={`/start?course=${courseId}`} className="font-pixel-label text-[9px] text-secondary hover:text-primary">

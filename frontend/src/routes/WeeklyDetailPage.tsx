@@ -61,7 +61,7 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
       />
 
       <div className="flex flex-col gap-6 lg:min-h-0 lg:flex-1 lg:flex-row">
-        <section className="flex min-w-0 flex-col gap-4 border-2 border-accent/60 bg-base p-4 shadow-[6px_6px_0_0_#1c9e3e] sm:px-6 sm:pt-5 lg:min-h-0 lg:flex-1 lg:short:gap-3 lg:short:pt-4">
+        <section data-guia="semana-trilha" className="flex min-w-0 flex-col gap-4 border-2 border-accent/60 bg-base p-4 shadow-[6px_6px_0_0_#1c9e3e] sm:px-6 sm:pt-5 lg:min-h-0 lg:flex-1 lg:short:gap-3 lg:short:pt-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between lg:shrink-0">
             <div className="flex min-w-0 flex-col gap-1.5">
               <p className="font-pixel-label text-[10px] text-accent">// {label.join(' · ')}</p>
@@ -91,7 +91,7 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
           </ScrollArea>
         </section>
 
-        <ScrollArea className="w-full shrink-0 lg:h-full lg:min-h-0 lg:w-[320px] xl:w-[352px]" contentClassName="flex flex-col gap-4 lg:pr-2 lg:short:gap-3">
+        <ScrollArea guia="semana-resumo" className="w-full shrink-0 lg:h-full lg:min-h-0 lg:w-[320px] xl:w-[352px]" contentClassName="flex flex-col gap-4 lg:pr-2 lg:short:gap-3">
           <FocadaSays expression={focada.expression} size="md" className="hidden lg:flex">
             {focada.text}
           </FocadaSays>

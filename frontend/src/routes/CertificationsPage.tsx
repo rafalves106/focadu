@@ -60,7 +60,7 @@ export function CertificationsPage({ courseId }: { courseId: string }) {
       ) : (
         <div className="flex flex-col gap-6 lg:min-h-0 lg:flex-1 lg:flex-row">
           <ScrollArea className="w-full shrink-0 lg:h-full lg:min-h-0 lg:w-[300px] xl:w-[340px]" contentClassName="flex flex-col gap-4 lg:pr-2">
-            <PixelPanel label="Ao seu alcance">
+            <PixelPanel label="Ao seu alcance" guia="cert-alcance">
               <ul className="flex flex-col gap-4">
                 {columns.map((col) => {
                   const covering = course.monthlies.filter((m) => cell(m, col.code));
@@ -91,7 +91,7 @@ export function CertificationsPage({ courseId }: { courseId: string }) {
           </ScrollArea>
 
           <ScrollArea className="min-w-0 flex-1 lg:h-full lg:min-h-0" contentClassName="flex flex-col gap-4 pb-2 lg:pr-3">
-            <section className="border-2 border-accent/60 bg-base p-4 shadow-[6px_6px_0_0_#1c9e3e] sm:px-6 sm:py-5">
+            <section data-guia="cert-matriz" className="border-2 border-accent/60 bg-base p-4 shadow-[6px_6px_0_0_#1c9e3e] sm:px-6 sm:py-5">
               <h1 className="font-pixel-label text-[10px] text-accent">// Módulo × certificação</h1>
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full min-w-[640px] border-collapse text-left">

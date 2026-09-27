@@ -22,7 +22,7 @@ const CARD = 'flex min-w-0 flex-col border-2 bg-base';
 /** 4 "cartuchos" do topo (Fase 72): ofensiva, score e posicao no curso ativo, gems. */
 export function ProfileStats({ gamification, score, position, rankingHref }: { gamification: GamificationSummaryDto; score: number | null; position: number | null; rankingHref: string }) {
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:gap-4 lg:short:gap-3">
+    <div data-guia="perfil-numeros" className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:gap-4 lg:short:gap-3">
       <Stat icon={fireIcon} value={String(gamification.currentStreak)} unit={gamification.currentStreak === 1 ? 'dia' : 'dias'} label={`Ofensiva · recorde ${gamification.longestStreak}`} tone="text-project" border="border-project/60" />
       <Stat icon={trophyIcon} value={score !== null ? score.toFixed(1) : '—'} label="Score no curso" />
       <Stat
@@ -63,7 +63,7 @@ export function TrophyShelf({ badges, onSeeAll }: { badges: BadgeDto[]; onSeeAll
   const achieved = shown.filter((b) => b.badge.achieved).length;
   const next = shown.find((b) => !b.badge.achieved && b.info.goal !== null);
   return (
-    <section className={`${CARD} gap-4 border-stroke p-5 lg:short:gap-3 lg:short:p-4`}>
+    <section data-guia="perfil-trofeus" className={`${CARD} gap-4 border-stroke p-5 lg:short:gap-3 lg:short:p-4`}>
       <PanelLabel
         aside={
           <button type="button" onClick={onSeeAll} className="font-pixel-label text-[8px] text-secondary hover:text-accent">
@@ -159,7 +159,7 @@ export function StudyCalendarCard() {
   const studied = data?.days.filter((d) => d.status === 'studied').length ?? 0;
   const last = data?.lastSession ?? null;
   return (
-    <section className={`${CARD} gap-4 border-stroke p-5 lg:short:gap-3 lg:short:p-4`}>
+    <section data-guia="perfil-dias" className={`${CARD} gap-4 border-stroke p-5 lg:short:gap-3 lg:short:p-4`}>
       <PanelLabel aside={data && <span className="font-pixel-label text-[8px] text-secondary">{studied} de 14</span>}>Últimos 14 dias</PanelLabel>
       {data ? (
         <>

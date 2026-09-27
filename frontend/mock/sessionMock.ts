@@ -94,6 +94,8 @@ function squadRankingDto() {
 
 // QG do Squad (Fase 72): escalacao com os agentes, meta da semana e feed com GGs em memoria.
 let hideScores = false;
+/** Guia das telas (Fase 75): chaves ja vistas - `/__mock/guia` zera (tour do app de novo). */
+let seenGuides: string[] = ['tour:app'];
 const cheers = new Map<string, { count: number; mine: boolean }>();
 const LOOKS: Record<string, [number, string, string, string | null, string]> = {
   'u-marina': [4, 'parte-de-cima/camiseta', 'parte-de-baixo/saia', 'cabelo/black-power', 'tenis/cano-alto'],
@@ -647,6 +649,13 @@ export function sessionMock(): Plugin {
           res.setHeader('Location', `/start?course=${ids.course}&weekly=${estado === 'trancada' ? 'w-3' : 'w-2'}`);
           return res.end();
         }
+        if (path === '/__mock/guia') {
+          // ?tour=1 zera tudo (tour do app no start); sem ele, so as 1as visitas (o "?" pisca em cada tela).
+          seenGuides = url.searchParams.get('tour') === '1' ? [] : ['tour:app'];
+          res.statusCode = 302;
+          res.setHeader('Location', '/start');
+          return res.end();
+        }
         if (path === '/__mock/squad') {
           squadRole = (url.searchParams.get('as') as SquadRole | null) ?? 'membro';
           squadMembers = [...SQUAD_MEMBERS];
@@ -694,6 +703,7 @@ export function sessionMock(): Plugin {
             preferredLanguages: [1, 2],
             createdAt: '2026-09-02T12:00:00Z',
             hideScoresInSquadFeed: hideScores,
+            seenGuides,
           });
         if (path === '/api/auth/logout') return send(res, 204);
         if (path === '/api/courses') return send(res, 200, [{ id: ids.course, name: 'Web Security', status: 1, monthlyCount: 4 }]);
@@ -733,10 +743,15 @@ export function sessionMock(): Plugin {
           cheers.set(key, next);
           return send(res, 200, { activityKey: key, cheers: next.count, cheeredByMe: next.mine });
         }
+        if ((m = path.match(/^\/api\/users\/me\/guides\/([^/]+)\/seen$/)) && method === 'POST') {
+          const key = decodeURIComponent(m[1]);
+          if (!seenGuides.includes(key)) seenGuides = [...seenGuides, key];
+          return send(res, 200, { id: ids.user, email: 'mock@focadu.local', displayName: 'Falves (mock)', profileCompletedAt: now, interests: ['Motos esportivas', 'Jogos competitivos'], additionalProfileNotes: null, preferredLanguages: [1, 2], createdAt: '2026-09-02T12:00:00Z', hideScoresInSquadFeed: hideScores, seenGuides });
+        }
         if (path === '/api/users/me/study-calendar') return send(res, 200, studyCalendarDto());
         if (path === '/api/users/me/squad-feed-privacy' && method === 'PUT') {
           hideScores = !!body.hideScores;
-          return send(res, 200, { id: ids.user, email: 'mock@focadu.local', displayName: 'Falves (mock)', profileCompletedAt: now, interests: ['Motos esportivas', 'Jogos competitivos'], additionalProfileNotes: null, preferredLanguages: [1, 2], createdAt: '2026-09-02T12:00:00Z', hideScoresInSquadFeed: hideScores });
+          return send(res, 200, { id: ids.user, email: 'mock@focadu.local', displayName: 'Falves (mock)', profileCompletedAt: now, interests: ['Motos esportivas', 'Jogos competitivos'], additionalProfileNotes: null, preferredLanguages: [1, 2], createdAt: '2026-09-02T12:00:00Z', hideScoresInSquadFeed: hideScores, seenGuides });
         }
         // Fase 72: detalhe do curso (trilha, Perfil) - 72 dias em 4 regioes, os 10 primeiros concluidos e o
         // Dia 11 como proximo (Semana 1 fechada com o projeto avaliado).

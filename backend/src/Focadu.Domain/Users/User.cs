@@ -18,6 +18,11 @@ public class User : Entity
     // RegisterUserUseCase) + indice unico no banco (UserConfiguration), nao deste regex.
     private static readonly Regex EmailFormat = new(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled);
 
+    // Chave do guia das telas (Fase 75): "tour:app", "tela:loja" etc. - curta e sem espaco, e o
+    // frontend que decide quais existem. O teto so impede um cliente com bug de inflar a coluna.
+    private static readonly Regex GuideKeyFormat = new(@"^[a-z0-9][a-z0-9:-]{0,63}$", RegexOptions.Compiled);
+    public const int MaxSeenGuides = 100;
+
     public string Email { get; private set; }
     public string PasswordHash { get; private set; }
     public string DisplayName { get; private set; }
@@ -51,6 +56,16 @@ public class User : Entity
     /// usuario sempre ve as proprias notas. Alterado nas Configuracoes.
     /// </summary>
     public bool HideScoresInSquadFeed { get; private set; }
+
+    private readonly List<string> _seenGuides = new();
+
+    /// <summary>
+    /// Guia das telas (Fase 75, decisao do dono em 27/09/2026): o que o aluno ja viu do guia - o tour
+    /// do app inteiro ("tour:app") e a 1a visita a cada tela ("tela:&lt;chave&gt;", que faz o botao "?"
+    /// piscar uma vez). Fica no servidor pra trocar de aparelho nao repetir o tour. Rever o tour e
+    /// sempre manual e nao mexe aqui.
+    /// </summary>
+    public IReadOnlyCollection<string> SeenGuides => _seenGuides.AsReadOnly();
 
     private User()
     {
@@ -123,6 +138,20 @@ public class User : Entity
 
     /// <summary>Liga/desliga "nao mostrar minhas notas no feed do squad" (Fase 72) - idempotente.</summary>
     public void SetSquadFeedPrivacy(bool hideScores) => HideScoresInSquadFeed = hideScores;
+
+    /// <summary>Marca uma chave do guia das telas como vista (Fase 75) - idempotente.</summary>
+    public void MarkGuideSeen(string key)
+    {
+        var normalized = key?.Trim() ?? string.Empty;
+        if (!GuideKeyFormat.IsMatch(normalized))
+            throw new DomainException("Chave de guia invalida.", "guia_invalido");
+        if (_seenGuides.Contains(normalized))
+            return;
+        if (_seenGuides.Count >= MaxSeenGuides)
+            throw new DomainException("Limite de guias vistos atingido.", "guia_limite");
+
+        _seenGuides.Add(normalized);
+    }
 
     /// <summary>Troca o hash da senha (Fase 41, redefinicao de senha) - a Application ja validou o token de reset e a forca da nova senha antes de chamar isso; o dominio so garante que o hash recebido nao chegue vazio (mesma checagem de User.Create).</summary>
     public void SetPasswordHash(string newPasswordHash)

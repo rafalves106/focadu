@@ -73,7 +73,7 @@ export function GlobalNav() {
     <nav className="sticky top-0 z-30 border-b border-surface-alt bg-surface">
       <div className="flex h-[calc(var(--nav-height)-1px)] items-center justify-between gap-2 px-4 xl:px-16">
         {/* Desktop (md+): grupo esquerdo. */}
-        <div className="hidden flex-1 items-center justify-around pr-4 md:flex xl:pr-10">
+        <div data-guia="nav-solo" className="hidden flex-1 items-center justify-around pr-4 md:flex xl:pr-10">
           <NavItem to="/hoje" icon={navHoje} label="Hoje" />
           <NavItem to={trilhaHref} icon={navTrilhas} label="Trilhas" />
           <NavItem to="/loja" icon={navLoja} label="Loja" />
@@ -101,7 +101,7 @@ export function GlobalNav() {
         <MapButton />
 
         {/* Desktop (md+): grupo direito. */}
-        <div className="hidden flex-1 items-center justify-around pl-4 md:flex xl:pl-10">
+        <div data-guia="nav-grupo" className="hidden flex-1 items-center justify-around pl-4 md:flex xl:pl-10">
           <NavItem to="/squad" icon={navSquad} label="Squad" />
           <AiStatusMenu />
           <NavButton onClick={settings.open} icon={navConfig} label="Configurações" />

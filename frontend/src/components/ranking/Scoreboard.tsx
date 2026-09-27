@@ -46,7 +46,7 @@ export function PodiumPanel({
   notice: ReactNode;
 }) {
   return (
-    <section className="flex flex-col border-2 border-accent/60 bg-base shadow-[6px_6px_0_0_#1c9e3e] lg:min-h-0 lg:w-[42%] lg:max-w-[600px] lg:shrink-0">
+    <section data-guia="ranking-podio" className="flex flex-col border-2 border-accent/60 bg-base shadow-[6px_6px_0_0_#1c9e3e] lg:min-h-0 lg:w-[42%] lg:max-w-[600px] lg:shrink-0">
       <div className="flex items-center justify-between gap-3 px-5 pt-4">
         <h2 className="font-pixel-label text-[10px] text-accent">// Pódio</h2>
         <span className="border-2 border-stroke px-2.5 py-1 font-pixel-label text-[7px] text-secondary">Recorte: {SCOPE_NAME[scope]}</span>
@@ -127,7 +127,7 @@ function PodiumStep({ entry, height, you }: { entry: RankingEntryDto; height: st
 export function ScoreBoard({ entries, me, userId, subtitle }: { entries: RankingEntryDto[]; me: RankingEntryDto | null; userId: string; subtitle: string }) {
   const meOutside = me && !entries.some((e) => e.userId === me.userId);
   return (
-    <section className="pixel-box flex min-h-0 flex-col bg-base bg-[repeating-linear-gradient(0deg,transparent_0_3px,rgb(42_42_42/0.35)_3px_4px)] px-6 pt-5 pb-4 lg:flex-1 lg:short:pt-3 lg:short:pb-2">
+    <section data-guia="ranking-placar" className="pixel-box flex min-h-0 flex-col bg-base bg-[repeating-linear-gradient(0deg,transparent_0_3px,rgb(42_42_42/0.35)_3px_4px)] px-6 pt-5 pb-4 lg:flex-1 lg:short:pt-3 lg:short:pb-2">
       <p className="text-center font-pixel-label text-[22px] leading-none tracking-[0.2em] text-project lg:short:text-lg lg:tight:text-base">High score</p>
       <p className="mt-2 text-center font-pixel-label text-[8px] tracking-[0.1em] text-secondary">{subtitle}</p>
       <div className="mt-3 flex gap-3 border-b-2 border-stroke px-2 pb-2 font-pixel-label text-[8px] text-muted lg:short:mt-2 lg:short:pb-1">
