@@ -80,6 +80,9 @@ public class SubmitActivityResponseUseCase
             // Score fixo 100 (sempre Passed) so pra marcar a atividade como feita via o mesmo
             // pipeline de ActivityResponse/PenaltyPoints dos outros tipos, nunca penalizando.
             ActivityType.Reading or ActivityType.Video => 100,
+            // CodeStep (Fase 79): avaliado por IA, com codigo + saida - endpoint proprio.
+            ActivityType.CodeStep => throw new ValidationException(
+                "tipo_atividade_invalido", "Passos de codigo usam POST .../responses/code."),
             _ => throw new DomainException($"Tipo de atividade '{activity.Type}' nao tem calculo de Score definido."),
         };
     }

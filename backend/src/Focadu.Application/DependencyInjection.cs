@@ -43,6 +43,8 @@ public static class DependencyInjection
         services.AddScoped<StartOrResumeDailyUseCase>();
         services.AddScoped<SubmitActivityResponseUseCase>();
         services.AddScoped<SubmitVoiceSummaryResponseUseCase>();
+        services.AddScoped<SubmitCodeStepResponseUseCase>();
+        services.AddScoped<LinkDailyCodeRepositoryUseCase>();
         services.AddScoped<CompleteDailyUseCase>();
         services.AddScoped<SeedWebSecurityCourseUseCase>();
         services.AddScoped<SyncBridgeDaysUseCase>();

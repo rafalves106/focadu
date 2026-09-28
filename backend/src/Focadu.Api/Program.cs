@@ -212,7 +212,8 @@ if (args.Contains("seed"))
 
     // Fase 69: pontes curadas depois do seed (e a da Semana 1 nas matriculas que ja existiam).
     var bridgeSync = await scope.ServiceProvider.GetRequiredService<SyncBridgeDaysUseCase>().ExecuteAsync();
-    Console.WriteLine($"Seed: pontes - {bridgeSync.TemplatesCreated} variantes importadas, {bridgeSync.DailiesAdded} Dailies adicionadas.");
+    Console.WriteLine($"Seed: pontes - {bridgeSync.TemplatesCreated} variantes importadas, {bridgeSync.DailiesAdded} Dailies adicionadas, " +
+        $"{bridgeSync.TemplatesRefreshed} trocadas pelo code comigo ({bridgeSync.DailiesReset} Dailies recomecadas).");
     foreach (var skipped in bridgeSync.Skipped)
         Console.WriteLine($"Seed: ponte NAO adicionada - {skipped}");
 
@@ -806,6 +807,30 @@ api.MapPost("/dailies/{dailyId}/activities/{activityId}/responses/audio",
     .RequireAuthorization()
     .WithName("SubmitVoiceSummaryResponse")
     .DisableAntiforgery();
+
+// Fase 79: passo de codigo da ponte ("code comigo") - codigo do passo + saida do terminal,
+// conferidos pela IA contra a rubrica do passo. Nunca conta como erro da sessao.
+api.MapPost("/dailies/{dailyId}/activities/{activityId}/responses/code",
+        async (ClaimsPrincipal principal, string dailyId, string activityId, SubmitCodeStepRequest? request, SubmitCodeStepResponseUseCase useCase, CancellationToken ct) =>
+        {
+            var dId = RouteParsing.RequireGuid(dailyId, "dailyId");
+            var aId = RouteParsing.RequireGuid(activityId, "activityId");
+
+            var result = await useCase.ExecuteAsync(CurrentUserId(principal), dId, aId, request?.Code, request?.Output, ct);
+            return Results.Created($"/api/dailies/{dailyId}/activities/{activityId}/responses/{result.Response.Id}", result);
+        })
+    .RequireAuthorization()
+    .WithName("SubmitCodeStepResponse");
+
+// Fase 79: repositorio (GitHub ou Forgejo) do script da ponte - opcional, depois de concluir o dia.
+api.MapPut("/dailies/{dailyId}/code-repository",
+        async (ClaimsPrincipal principal, string dailyId, LinkCodeRepositoryRequest? request, LinkDailyCodeRepositoryUseCase useCase, CancellationToken ct) =>
+        {
+            var id = RouteParsing.RequireGuid(dailyId, "dailyId");
+            return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, request?.Url, ct));
+        })
+    .RequireAuthorization()
+    .WithName("LinkDailyCodeRepository");
 
 api.MapPost("/dailies/{dailyId}/complete", async (ClaimsPrincipal principal, string dailyId, CompleteDailyUseCase useCase, CancellationToken ct) =>
     {

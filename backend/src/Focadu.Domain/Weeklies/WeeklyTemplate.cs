@@ -116,6 +116,9 @@ public class WeeklyTemplate : Entity
     public DailyTemplate? FindDailyTemplateVariant(int dayNumber, ProjectLanguage language) =>
         _dailyTemplates.FirstOrDefault(d => d.DayNumber == dayNumber && d.Language == language);
 
+    /// <summary>Fase 79: remove um conteudo que nenhuma atividade usa mais (a ponte antiga, trocada pela "code comigo").</summary>
+    public void RemoveCuratedContent(Guid contentId) => _curatedContents.RemoveAll(c => c.Id == contentId);
+
     public CuratedContent AddCuratedContent(CuratedContentType type, string title, string? externalUrl = null, string? bodyText = null)
     {
         var content = new CuratedContent(Id, type, title, externalUrl, bodyText);

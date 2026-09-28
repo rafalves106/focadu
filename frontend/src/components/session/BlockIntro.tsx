@@ -1,4 +1,4 @@
-import type { DailyActivityDto } from '../../api/types';
+import { ActivityType, type DailyActivityDto } from '../../api/types';
 import { blockIntro } from '../../lib/focadaSessionLines';
 import { useSession } from '../../lib/sessionContext';
 import { stepInfo } from '../../lib/sessionSteps';
@@ -16,8 +16,12 @@ import { PixelButton, PixelChip } from './PixelButton';
 export function BlockIntro({ activity, onStart }: { activity: DailyActivityDto; onStart: () => void }) {
   const { daily } = useSession();
   const info = stepInfo(daily, activity.id);
-  const count = info?.stage.activities.length ?? 1;
-  const intro = blockIntro(activity.type, activity.answerMode, count, daily.penaltyThreshold);
+  // Passo de codigo (Fase 79) nao agrupa na cadeia: a Focada apresenta todos os passos de uma vez.
+  const count =
+    activity.type === ActivityType.CodeStep
+      ? daily.activities.filter((a) => a.type === ActivityType.CodeStep).length
+      : (info?.stage.activities.length ?? 1);
+  const intro = blockIntro(activity.type, activity.answerMode, count, daily.penaltyThreshold, activity.codeStep?.maxAttempts);
 
   useSessionKeys((key) => {
     if (key === 'Enter') onStart();

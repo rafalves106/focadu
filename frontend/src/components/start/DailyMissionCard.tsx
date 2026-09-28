@@ -24,6 +24,7 @@ const STEP_LABEL: Record<ActivityType, string> = {
   [ActivityType.VoiceSummary]: 'Resumo',
   [ActivityType.Reading]: 'Leitura',
   [ActivityType.Video]: 'Vídeo',
+  [ActivityType.CodeStep]: 'Código',
 };
 
 /** Gemas por Daily concluida (UserGemBalance.DailyGemAmount no backend). */

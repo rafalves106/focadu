@@ -25,5 +25,14 @@ public enum ActivityType
     Reading = 5,
 
     /// <summary>Etapa de assistir um CuratedContent em video (ContentId obrigatorio) - mesma logica de conclusao do Reading, ver comentario acima.</summary>
-    Video = 6
+    Video = 6,
+
+    /// <summary>
+    /// Passo de codigo da ponte (Fase 79, "code comigo" - secret/rascunhos/ponte-code-comigo.md): o
+    /// aluno escreve um pedaco do script do dia, roda na maquina dele e manda o codigo + a saida; a
+    /// IA confere contra a rubrica do passo (ICodeStepEvaluationService). Nunca conta como erro da
+    /// sessao nem entra na nota (ver Daily); depois de CodeStepProgress.MaxAttempts tentativas sem
+    /// passar, a solucao de referencia aparece e o passo seguinte parte dela.
+    /// </summary>
+    CodeStep = 7
 }

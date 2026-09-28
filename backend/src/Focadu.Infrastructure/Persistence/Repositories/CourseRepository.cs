@@ -29,6 +29,7 @@ public class CourseRepository : ICourseRepository
             .Include(c => c.Monthlies).ThenInclude(m => m.WeeklyTemplates).ThenInclude(w => w.DailyTemplates).ThenInclude(d => d.Activities).ThenInclude(a => a.WordMatchPairs)
             .Include(c => c.Monthlies).ThenInclude(m => m.WeeklyTemplates).ThenInclude(w => w.DailyTemplates).ThenInclude(d => d.Activities).ThenInclude(a => a.RoleplayNodes).ThenInclude(n => n.Options)
             .Include(c => c.Monthlies).ThenInclude(m => m.WeeklyTemplates).ThenInclude(w => w.LanguageVariants)
+            .Include(c => c.Monthlies).ThenInclude(m => m.WeeklyTemplates).ThenInclude(w => w.CuratedContents)
             .AsSplitQuery()
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 

@@ -5,7 +5,7 @@ import playThumbnailActive from '../assets/pixel/play-ativo.png';
 import checkIcon from '../assets/pixel/check.png';
 import { CardLabel } from './CardLabel';
 
-const GROUP_LABEL: Record<number, string> = { 0: 'LEITURA', 1: 'VÍDEO' };
+const GROUP_LABEL: Record<number, string> = { 0: 'LEITURA', 1: 'VÍDEO', 2: 'ARQUIVO DA PONTE' };
 
 /**
  * "Material de hoje" (design Figma sessao-leitura/sessao-video, Fase 7) - a lista de
@@ -44,15 +44,33 @@ export function MaterialSidebar({
     <aside className="flex shrink-0 flex-col gap-3 pixel-box bg-base p-5 lg:short:gap-2 lg:short:p-4">
       <CardLabel pixel>Material de hoje</CardLabel>
 
-      {([0, 1] as const).map((type) => {
+      {([0, 1, 2] as const).map((type) => {
         const items = contents.filter((c) => c.type === type);
         if (items.length === 0) return null;
+        // Ponte "code comigo" (Fase 79): a leitura e o exemplo explicado, e o arquivo vem pra baixar.
+        const label = type === 0 && contents.some((c) => c.type === 2) ? 'O EXEMPLO' : GROUP_LABEL[type];
 
         return (
           <div key={type} className="flex flex-col gap-2">
-            <p className="font-pixel-label text-[8px] text-muted">{GROUP_LABEL[type]}</p>
+            <p className="font-pixel-label text-[8px] text-muted">{label}</p>
 
-            {type === 0
+            {type === 2
+              ? items.map((item) => (
+                  <div key={item.id} className="flex flex-col gap-2">
+                    <div className="flex flex-col items-center gap-2 border-2 border-stroke bg-surface-alt px-3 py-4 lg:short:py-3">
+                      <span className="font-pixel text-2xl leading-none text-primary">{item.title}</span>
+                      <a
+                        href={item.externalUrl ?? '#'}
+                        download={item.title}
+                        className="border-2 border-accent px-3 py-1.5 font-pixel-label text-[9px] font-bold text-accent hover:bg-accent hover:text-base"
+                      >
+                        Baixar ↓
+                      </a>
+                    </div>
+                    <p className="font-pixel text-base leading-tight text-secondary">Rode tudo contra este arquivo.</p>
+                  </div>
+                ))
+              : type === 0
               ? items.map((item) => {
                   const isActive = item.id === activeContentId;
                   const isDone = completedContentIds.has(item.id);

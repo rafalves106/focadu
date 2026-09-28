@@ -21,6 +21,7 @@ public class DailyConfiguration : IEntityTypeConfiguration<Daily>
         builder.Property(d => d.CompletedAt);
         builder.Property(d => d.WeeklyId).IsRequired();
         builder.Property(d => d.DailyTemplateId).IsRequired();
+        builder.Property(d => d.CodeRepositoryUrl).HasMaxLength(Daily.MaxRepositoryUrlLength); // Fase 79
 
         // Propriedades so-leitura, calculadas a partir de outros campos - nunca uma coluna real.
         builder.Ignore(d => d.HasEverCompleted);

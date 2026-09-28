@@ -75,6 +75,13 @@ public class DailyTemplate : Entity
     }
 
     /// <summary>Usado por Weekly.CreateDailyReinforcement (instancia) para copiar uma atividade que falhou na Daily de origem.</summary>
+    /// <summary>
+    /// Fase 79: tira todas as atividades pra reimportar o dia com conteudo novo (a ponte virou "code
+    /// comigo" - ver SyncBridgeDaysUseCase). As respostas antigas das Dailies deste template ficam
+    /// orfas; quem chama decide o que fazer com elas (Daily.ResetAfterTemplateRefresh).
+    /// </summary>
+    public void ClearActivities() => _activities.Clear();
+
     internal DailyActivity AddClonedActivity(DailyActivity source, int orderIndex)
     {
         var clone = source.CloneForReinforcement(Id, orderIndex);

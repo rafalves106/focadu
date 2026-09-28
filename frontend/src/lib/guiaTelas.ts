@@ -217,6 +217,10 @@ export const SESSION_STEP_ITEMS: Record<ActivityType, GuideItem> = {
   [ActivityType.Cloze]: { title: 'Lacuna', text: 'Complete a frase. No texto livre vale a palavra exata, sem diferença de maiúscula.' },
   [ActivityType.WordMatch]: { title: 'Ligar palavras', text: 'Toque num termo e depois na definição. Aprova com 80% dos pares.' },
   [ActivityType.Roleplay]: { title: 'Roleplay', text: 'Você decide o caminho. O melhor final vale 100, o mediano 60, o ruim 20.' },
+  [ActivityType.CodeStep]: {
+    title: 'Passo de código',
+    text: 'Escreva o que o passo pede, rode na sua máquina contra o arquivo do dia e mande o código com a saída. Ajustar não conta como erro; na 3ª tentativa a solução aparece. Sintaxe? Pergunte no "Tire sua dúvida".',
+  },
 };
 
 export const REINFORCEMENT_ITEM: GuideItem = {
@@ -226,7 +230,7 @@ export const REINFORCEMENT_ITEM: GuideItem = {
 
 export const BRIDGE_ITEM: GuideItem = {
   title: 'Ponte',
-  text: 'O 6º dia leva a teoria da semana pro código do projeto. A linguagem escolhida vale pra ponte e pro projeto, sem troca depois.',
+  text: 'O 6º dia leva a teoria da semana pro código do projeto: um exemplo explicado e passos de código com a Focada conferindo, até entregar um script parecido com o projeto. A linguagem escolhida vale pra ponte e pro projeto, sem troca depois.',
 };
 
 export const FAQ: { q: string; a: string }[] = [

@@ -31,11 +31,40 @@ public static class CuratedDayImporter
     /// </param>
     public static void Import(WeeklyTemplate weeklyTemplate, string json, ProjectLanguage? language = null)
     {
-        var day = JsonSerializer.Deserialize<CuratedDayJson>(json, JsonOptions)
-            ?? throw new InvalidOperationException("Conteudo curado vazio ou invalido.");
+        var day = Parse(json);
 
         var dailyTemplate = weeklyTemplate.AddDailyTemplate(day.DayNumber, language);
+        ApplyDay(weeklyTemplate, dailyTemplate, day);
+    }
 
+    /// <summary>
+    /// Fase 79: le um dia-N.json/ponte e troca o conteudo de um DailyTemplate que ja existe - as
+    /// atividades antigas saem, os conteudos e atividades do arquivo entram (mesmo schema de
+    /// Import). Devolve os Ids dos CuratedContents que as atividades antigas usavam, pra quem chama
+    /// remover os que ficaram sem uso.
+    /// </summary>
+    public static IReadOnlyCollection<Guid> ReimportFile(WeeklyTemplate weeklyTemplate, DailyTemplate dailyTemplate, string jsonFilePath)
+    {
+        var day = Parse(File.ReadAllText(jsonFilePath));
+        if (day.DayNumber != dailyTemplate.DayNumber)
+            throw new InvalidOperationException($"{jsonFilePath}: dayNumber {day.DayNumber} nao bate com o dia {dailyTemplate.DayNumber}.");
+
+        var previousContentIds = dailyTemplate.Activities.Where(a => a.ContentId is not null).Select(a => a.ContentId!.Value).ToHashSet();
+        dailyTemplate.ClearActivities();
+        ApplyDay(weeklyTemplate, dailyTemplate, day);
+        return previousContentIds;
+    }
+
+    /// <summary>Fase 79: o arquivo ja traz passos de codigo (a ponte no formato "code comigo").</summary>
+    public static bool FileHasActivityType(string jsonFilePath, ActivityType type) =>
+        Parse(File.ReadAllText(jsonFilePath)).Activities.Any(a => a.Type == type);
+
+    private static CuratedDayJson Parse(string json) =>
+        JsonSerializer.Deserialize<CuratedDayJson>(json, JsonOptions)
+            ?? throw new InvalidOperationException("Conteudo curado vazio ou invalido.");
+
+    private static void ApplyDay(WeeklyTemplate weeklyTemplate, DailyTemplate dailyTemplate, CuratedDayJson day)
+    {
         var contentByRef = new Dictionary<string, Guid>();
         foreach (var content in day.CuratedContents)
         {
@@ -58,6 +87,9 @@ public static class CuratedDayImporter
         }
 
         var activity = dailyTemplate.AddActivity(json.Type, orderIndex, json.AnswerMode, json.Prompt, contentId, json.ExpectedAnswer);
+
+        if (json.Type == ActivityType.CodeStep)
+            activity.ConfigureCodeStep(json.CodeSolution ?? "", json.CodeExpectedOutput ?? "", json.CodeRubric ?? "");
 
         foreach (var option in json.QuizOptions ?? [])
             activity.AddQuizOption(option.Text, option.IsCorrect);
@@ -103,7 +135,8 @@ public static class CuratedDayImporter
     private record ActivityJson(
         ActivityType Type, AnswerMode AnswerMode, string? ContentRef, string? Prompt,
         string? ExpectedAnswer, List<QuizOptionJson>? QuizOptions, List<WordMatchPairJson>? WordMatchPairs,
-        List<RoleplayNodeJson>? RoleplayNodes);
+        List<RoleplayNodeJson>? RoleplayNodes,
+        string? CodeSolution = null, string? CodeExpectedOutput = null, string? CodeRubric = null);
 
     private record QuizOptionJson(string Text, bool IsCorrect);
 

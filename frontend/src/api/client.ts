@@ -186,6 +186,17 @@ export const api = {
       { method: 'POST', body: formData, timeoutMs: VOICE_SUMMARY_TIMEOUT_MS },
     );
   },
+  // Passo de codigo da ponte (Fase 79): codigo do passo + saida do terminal, conferidos pela IA.
+  submitCodeStepResponse: (dailyId: string, activityId: string, code: string, output: string) =>
+    request<SubmitActivityResponseResult>(`/api/dailies/${dailyId}/activities/${activityId}/responses/code`, {
+      method: 'POST',
+      body: JSON.stringify({ code, output }),
+      // Mesma chamada unica ao Groq (60s no backend) da revisao do Caderninho.
+      timeoutMs: 65_000,
+    }),
+  // Fase 79: repositorio do script da ponte (opcional) - vazio desliga.
+  linkDailyCodeRepository: (dailyId: string, url: string) =>
+    request<DailyStateDto>(`/api/dailies/${dailyId}/code-repository`, { method: 'PUT', body: JSON.stringify({ url }) }),
   // Autoria de conteudo curado (Fase 6) - unico tipo de conteudo com endpoint de escrita, ver
   // Projeto semanal (Fase 7): unica escrita do aluno sobre WeeklyProject - Status vira Submitted no dominio (WeeklyProject.Submit).
   submitWeeklyProject: (weeklyId: string, submissionUrl: string) =>

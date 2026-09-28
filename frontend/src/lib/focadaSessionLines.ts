@@ -9,7 +9,7 @@ import { ActivityType, AnswerMode, TerminalQuality } from '../api/types';
  */
 
 /** Apresentacao de um bloco novo de atividades (substitui o antigo IntroCard). */
-export function blockIntro(type: ActivityType, answerMode: AnswerMode, count: number, threshold: number): { title: string; text: string; rules: string[] } {
+export function blockIntro(type: ActivityType, answerMode: AnswerMode, count: number, threshold: number, maxAttempts = 3): { title: string; text: string; rules: string[] } {
   const reinforcementTail = `Errou ${threshold} na sessão? Eu separo essas num reforço curtinho pra você.`;
   switch (type) {
     case ActivityType.Quiz:
@@ -41,6 +41,12 @@ export function blockIntro(type: ActivityType, answerMode: AnswerMode, count: nu
         title: 'Roleplay',
         text: 'Agora é com você no meio da situação. Cada escolha leva pra um caminho diferente e não tem volta — pensa antes de agir.',
         rules: ['Decisões sem volta', 'Vale o desfecho'],
+      };
+    case ActivityType.CodeStep:
+      return {
+        title: 'Code comigo',
+        text: `Agora é mão na massa: ${count === 1 ? 'um passo' : `${count} passos`} de código, um pedaço do script por vez. Você roda na sua máquina contra o arquivo do dia e me manda o código e a saída. Eu confiro o conceito, não o estilo. Sintaxe é por minha conta, é só perguntar.`,
+        rules: ['Código + saída', `${maxAttempts} tentativas por passo`, 'Ajustar não é erro'],
       };
     default:
       return { title: 'Próxima etapa', text: 'Bora pra próxima, agente.', rules: [] };

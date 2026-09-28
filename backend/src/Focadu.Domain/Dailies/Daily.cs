@@ -39,6 +39,12 @@ public class Daily : Entity
     /// <summary>Id da Daily de reforço gerada a partir desta Daily, quando ReinforcementTriggered = true - preenchido junto, nunca separadamente (ver MarkReinforcementTriggered).</summary>
     public Guid? ReinforcementDailyId { get; private set; }
 
+    /// <summary>
+    /// Fase 79: repositorio (GitHub ou Forgejo) onde o aluno guardou o script da ponte "code comigo" -
+    /// opcional, so depois de concluir o dia (o codigo ja fica guardado nas respostas dos passos).
+    /// </summary>
+    public string? CodeRepositoryUrl { get; private set; }
+
     private DailyTemplate? _template;
 
     /// <summary>Definição curricular deste dia (quais atividades existem) - populada via Include pelo repositório; nunca null num objeto carregado do banco ou construído por Weekly.AddDaily.</summary>
@@ -148,7 +154,10 @@ public class Daily : Entity
             activityId, attemptNumber, score, transcript, correctedTranscript, justification, aiFeedback);
         _responses.Add(response);
 
-        if (!HasEverCompleted && !response.Passed)
+        // Fase 79: ajustar um passo de codigo nao e erro da sessao - tentar de novo faz parte do
+        // passo (ver CodeStepProgress), entao nunca soma penalidade nem gera reforco.
+        var isCodeStep = Activities.First(a => a.Id == activityId).Type == ActivityType.CodeStep;
+        if (!HasEverCompleted && !response.Passed && !isCodeStep)
         {
             PenaltyPoints++;
         }
@@ -169,7 +178,7 @@ public class Daily : Entity
     /// <summary>Atividades do Template com ao menos uma resposta reprovada nesta Daily — usadas para montar a Daily de reforço.</summary>
     public IReadOnlyCollection<DailyActivity> GetFailedActivities() =>
         Activities
-            .Where(a => _responses.Any(r => r.ActivityId == a.Id && !r.Passed))
+            .Where(a => a.Type != ActivityType.CodeStep && _responses.Any(r => r.ActivityId == a.Id && !r.Passed))
             .OrderBy(a => a.OrderIndex)
             .ToList();
 
@@ -190,7 +199,8 @@ public class Daily : Entity
     /// recompensa consistência) - média ponderada de ActivityResponse.Score (tentativa MAIS
     /// RECENTE de cada Activity, mesmo critério de AllActivitiesPassed) usando os pesos de
     /// EvaluationPolicy.ActivityScoreWeight. Reading/Video ficam de fora (sempre 100, ruído
-    /// artificial - nunca avaliam nada de verdade). Dailies de reforço nunca pontuam (null) - já
+    /// artificial - nunca avaliam nada de verdade), e CodeStep tambem (Fase 79: o passo de codigo
+    /// da ponte nao vale nota, so "passou / ajuste isto"). Dailies de reforço nunca pontuam (null) - já
     /// têm sua própria recompensa em Gems (Bônus de Superação, Fase 15); incluir no Score
     /// incentivaria errar de propósito pra "score duplo". Null também quando nenhuma atividade
     /// avaliável ainda tem resposta - nunca 0 (evita simular uma nota que ninguém tirou).
@@ -200,7 +210,7 @@ public class Daily : Entity
         if (IsReinforcement) return null;
 
         var scored = Activities
-            .Where(a => a.Type is not (ActivityType.Reading or ActivityType.Video))
+            .Where(a => a.Type is not (ActivityType.Reading or ActivityType.Video or ActivityType.CodeStep))
             .Select(a => _responses.Where(r => r.ActivityId == a.Id).OrderBy(r => r.AttemptNumber).LastOrDefault() is { } latest
                 ? (Weight: EvaluationPolicy.ActivityScoreWeight(a.Type), Score: latest.Score)
                 : ((double Weight, int Score)?)null)
@@ -213,6 +223,74 @@ public class Daily : Entity
         var totalWeight = scored.Sum(x => x.Weight);
         return scored.Sum(x => x.Weight * x.Score) / totalWeight;
     }
+
+    /// <summary>Fase 79: o passo de codigo acabou (passou, ou gastou as tentativas e a solucao apareceu).</summary>
+    public bool IsCodeStepDone(Guid activityId) =>
+        CodeStepProgress.IsDone(_responses.Where(r => r.ActivityId == activityId));
+
+    /// <summary>
+    /// Fase 79: o script do dia ate antes deste passo - o codigo que cada passo de codigo anterior
+    /// entregou (a tentativa aprovada ou a solucao), na ordem. Nulo quando algum passo anterior
+    /// ainda nao acabou: o passo de codigo so abre depois do anterior.
+    /// </summary>
+    public string? PriorCode(Guid activityId)
+    {
+        var target = Activities.First(a => a.Id == activityId);
+        var parts = new List<string>();
+        foreach (var previous in Activities.Where(a => a.Type == ActivityType.CodeStep && a.OrderIndex < target.OrderIndex).OrderBy(a => a.OrderIndex))
+        {
+            var carried = CodeStepProgress.CarriedCode(previous, _responses.Where(r => r.ActivityId == previous.Id));
+            if (carried is null) return null;
+            parts.Add(carried.TrimEnd());
+        }
+
+        return string.Join("\n\n", parts);
+    }
+
+    /// <summary>
+    /// Fase 79: o conteudo do DailyTemplate desta Daily foi trocado (a ponte virou "code comigo") -
+    /// as respostas antigas respondem atividades que nao existem mais. So pra Daily ainda nao
+    /// concluida (SyncBridgeDaysUseCase): a sessao recomeca do zero, sem penalidade herdada.
+    /// </summary>
+    public void ResetAfterTemplateRefresh()
+    {
+        if (HasEverCompleted)
+            throw new DomainException("Uma Daily ja concluida mantem o historico dela.");
+
+        _responses.Clear();
+        PenaltyPoints = 0;
+    }
+
+    /// <summary>
+    /// Fase 79: liga (ou desliga, com nulo/vazio) o repositorio do script da ponte. So em Daily com
+    /// passo de codigo e ja concluida; aceita qualquer endereco http(s) absoluto - o aluno pode usar o
+    /// GitHub dele ou o Forgejo da Focadu.
+    /// </summary>
+    public void LinkCodeRepository(string? url)
+    {
+        if (Activities.All(a => a.Type != ActivityType.CodeStep))
+            throw new DomainException("So a ponte com passos de codigo tem repositorio.", "daily_sem_codigo");
+        if (!HasEverCompleted)
+            throw new DomainException("Conclua o dia antes de linkar o repositorio.", "daily_nao_concluida");
+
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            CodeRepositoryUrl = null;
+            return;
+        }
+
+        var trimmed = url.Trim();
+        if (trimmed.Length > MaxRepositoryUrlLength
+            || !Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+        {
+            throw new DomainException("Use o endereco completo do repositorio (https://...).", "url_repositorio_invalida");
+        }
+
+        CodeRepositoryUrl = trimmed;
+    }
+
+    public const int MaxRepositoryUrlLength = 500;
 
     /// <summary>
     /// Conclui a Daily. Na primeira conclusão, registra CompletedAt (a partir daí a penalidade

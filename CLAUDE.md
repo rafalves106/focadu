@@ -8,7 +8,7 @@
 
 Focadu é uma plataforma pessoal de estudo gamificada e multi-curso. O curso piloto é "Web
 Security" (currículo completo desde a Fase 26: 4 módulos / 12 semanas / 12 projetos; desde a Fase 69,
-72 dias - 6 por semana, o 6º é a ponte pro projeto). A
+72 dias - 6 por semana, o 6º é a ponte pro projeto, "code comigo" desde a Fase 79). A
 missão do produto é forçar compreensão real de fundamentos — não resposta fácil de IA — através de
 sessões diárias com múltiplas etapas, avaliação por voz via Groq (transcrição Whisper + nota/
 feedback por LLM), sistema de pontuação/reforço adaptativo, atividades variadas (quiz, ligar-
@@ -87,9 +87,16 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 78 — Revisão por IA do Caderninho** (27/09/2026).
+Última fase concluída: **Fase 79 — Ponte "code comigo"** (28/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Ponte "code comigo" (Fase 79, Figma "Ponte: code comigo — v2", dor do dono no Dia 6)**: o 6º dia virou
+  exemplo explicado + **6 passos de código** + resumo falado - uma entrega parecida com o projeto, não igual
+  (Semana 1: "Auditor Relâmpago" sobre um `ponte.pcap` fixo). O aluno roda na máquina dele e manda código +
+  saída; a IA cobra o conceito, sintaxe é ajuda livre. Ajustar não é erro nem vale nota; na 3ª tentativa a
+  solução aparece. Repositório (GitHub/Forgejo) no fim é opcional. `ActivityType.CodeStep`,
+  `GroqCodeStepEvaluationService`; o próximo `seed` troca a ponte antiga da Semana 1 e recomeça quem não
+  concluiu o Dia 6. Só a Semana 1 no formato novo. Ver `docs/fase-79/`.
 - **Revisão por IA do Caderninho (Fase 78, Figma "Caderninho: revisão por IA — v2")**: cada dia com nota tem
   "Revisar com a IA" - o que está bom, o que falta (com onde reler) e se confere com o material; não vale
   nota, fica guardada e só libera de novo quando as notas mudam. 10 por dia. Tabela `NotesReviews`,

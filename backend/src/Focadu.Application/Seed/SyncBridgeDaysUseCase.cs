@@ -16,6 +16,9 @@ namespace Focadu.Application.Seed;
 ///    Daily nova e pendente nela trancaria as semanas seguintes (DailySequencing). Se o aluno ja
 ///    escolheu a linguagem do projeto, a Daily ja nasce na variante dela.
 ///
+/// 3. Fase 79: troca a ponte antiga pela "code comigo" onde ela ja estava no banco
+///    (SeedWebSecurityCourseUseCase.RefreshBridge) e recomeca as Dailies ainda nao concluidas dela.
+///
 /// Serve pra migracao da Fase 69 (a ponte da Semana 1 nas matriculas que ja existiam) e pra cada
 /// ponte curada daqui pra frente (semanas 2-12), sem outra migracao.
 /// </summary>
@@ -53,6 +56,13 @@ public class SyncBridgeDaysUseCase
         var templatesCreated = weeklyTemplates.Values
             .Sum(w => SeedWebSecurityCourseUseCase.ImportBridge(w, $"semana-{w.Number}").Count);
 
+        // Fase 79: ponte antiga (leitura + quiz) trocada pela "code comigo" no mesmo DailyTemplate.
+        var refreshedTemplateIds = weeklyTemplates.Values
+            .SelectMany(w => SeedWebSecurityCourseUseCase.RefreshBridge(w, $"semana-{w.Number}"))
+            .Select(t => t.Id)
+            .ToHashSet();
+        var dailiesReset = 0;
+
         var today = _clock.Today();
         var dailiesAdded = 0;
         var skipped = new List<string>();
@@ -61,6 +71,14 @@ public class SyncBridgeDaysUseCase
         {
             foreach (var weekly in await _weeklyRepository.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken))
             {
+                // Ponte trocada: quem ainda nao concluiu recomeca na versao nova; quem concluiu fica
+                // com o dia fechado (as respostas antigas so deixam de aparecer no historico).
+                foreach (var daily in weekly.Dailies.Where(d => refreshedTemplateIds.Contains(d.DailyTemplateId) && !d.HasEverCompleted))
+                {
+                    daily.ResetAfterTemplateRefresh();
+                    dailiesReset++;
+                }
+
                 var template = weeklyTemplates[weekly.WeeklyTemplateId];
                 var bridgeDay = 6 * template.Number;
                 var variants = template.DailyTemplates.Where(d => d.DayNumber == bridgeDay && d.Language is not null).ToList();
@@ -88,8 +106,11 @@ public class SyncBridgeDaysUseCase
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return new SyncBridgeDaysResult(templatesCreated, dailiesAdded, skipped);
+        return new SyncBridgeDaysResult(templatesCreated, dailiesAdded, skipped, refreshedTemplateIds.Count, dailiesReset);
     }
 }
 
-public record SyncBridgeDaysResult(int TemplatesCreated, int DailiesAdded, IReadOnlyList<string> Skipped);
+/// <param name="TemplatesRefreshed">Fase 79: variantes de ponte trocadas pelo formato "code comigo".</param>
+/// <param name="DailiesReset">Fase 79: Dailies nao concluidas dessas variantes que recomecaram do zero.</param>
+public record SyncBridgeDaysResult(
+    int TemplatesCreated, int DailiesAdded, IReadOnlyList<string> Skipped, int TemplatesRefreshed = 0, int DailiesReset = 0);

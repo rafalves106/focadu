@@ -105,4 +105,47 @@ public class CuratedDayImporterTests
 
         Assert.Throws<InvalidOperationException>(() => CuratedDayImporter.Import(NewWeeklyTemplate(), json));
     }
+
+    // Fase 79: ponte "code comigo" - passo de codigo com solucao/saida/rubrica e o arquivo pra baixar.
+    [Fact]
+    public void Import_CodeStep_WithItsSolutionOutputAndRubric_AndTheDownloadableFile()
+    {
+        const string json = """
+        {
+          "dayNumber": 6,
+          "curatedContents": [
+            { "ref": "arquivo", "type": "File", "title": "ponte.pcap", "externalUrl": "/ponte/x/ponte.pcap", "bodyText": null }
+          ],
+          "activities": [
+            {
+              "type": "CodeStep", "answerMode": "FreeText", "contentRef": "arquivo", "prompt": "Abra o arquivo",
+              "codeSolution": "pacotes = rdpcap(x)", "codeExpectedOutput": "pacotes: 54", "codeRubric": "rdpcap"
+            }
+          ]
+        }
+        """;
+
+        var weeklyTemplate = NewWeeklyTemplate();
+        CuratedDayImporter.Import(weeklyTemplate, json, ProjectLanguage.Python);
+
+        var file = Assert.Single(weeklyTemplate.CuratedContents);
+        Assert.Equal(CuratedContentType.File, file.Type);
+        var step = Assert.Single(weeklyTemplate.DailyTemplates.Single().Activities);
+        Assert.Equal(ActivityType.CodeStep, step.Type);
+        Assert.Equal(file.Id, step.ContentId);
+        Assert.Equal("pacotes = rdpcap(x)", step.CodeSolution);
+        Assert.Equal("pacotes: 54", step.CodeExpectedOutput);
+        Assert.Equal("rdpcap", step.CodeRubric);
+    }
+
+    [Fact]
+    public void Import_CodeStep_WithoutRubric_Fails()
+    {
+        const string json = """
+        { "dayNumber": 6, "curatedContents": [], "activities": [
+          { "type": "CodeStep", "answerMode": "FreeText", "prompt": "x", "codeSolution": "a", "codeExpectedOutput": "b" } ] }
+        """;
+
+        Assert.ThrowsAny<Exception>(() => CuratedDayImporter.Import(NewWeeklyTemplate(), json, ProjectLanguage.Python));
+    }
 }

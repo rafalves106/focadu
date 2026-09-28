@@ -10,6 +10,8 @@ export const ActivityType = {
   VoiceSummary: 4,
   Reading: 5,
   Video: 6,
+  // Fase 79: passo de codigo da ponte ("code comigo") - codigo + saida conferidos pela IA.
+  CodeStep: 7,
 } as const;
 export type ActivityType = (typeof ActivityType)[keyof typeof ActivityType];
 
@@ -32,7 +34,7 @@ export type DailyStatus = (typeof DailyStatus)[keyof typeof DailyStatus];
 
 export const CourseStatus = { Draft: 0, Active: 1, Archived: 2 } as const;
 export type CourseStatus = (typeof CourseStatus)[keyof typeof CourseStatus];
-export type CuratedContentType = 0 | 1; // Reading, Video
+export type CuratedContentType = 0 | 1 | 2; // Reading, Video, File (Fase 79: arquivo pra baixar, ex. ponte.pcap)
 
 // Nomes que a Api de autoria espera no campo `type` do request (case-insensitive, ver
 // CreateCuratedContentUseCase.ParseType) - a mesma ordem do enum acima.
@@ -79,6 +81,7 @@ export const ACTIVITY_TYPE_LABEL: Record<ActivityType, string> = {
   [ActivityType.VoiceSummary]: 'Resumo falado',
   [ActivityType.Reading]: 'Leitura',
   [ActivityType.Video]: 'Vídeo',
+  [ActivityType.CodeStep]: 'Passo de código',
 };
 
 // IsCorrect vem nulo ate a atividade ter uma ActivityResponse - gabarito escondido antes de
@@ -144,6 +147,23 @@ export interface DailyActivityDto {
   wordMatchDefinitions: WordMatchDefinitionDto[];
   roleplayNodes: RoleplayNodeDto[];
   responses: ActivityResponseDto[];
+  /** Fase 79: so em CodeStep (passo de codigo da ponte) - nulo nos outros tipos. */
+  codeStep?: CodeStepDto | null;
+}
+
+/**
+ * Passo de codigo da ponte (Fase 79, "code comigo"). `priorCode` e o script ate antes deste passo (o
+ * que os passos anteriores entregaram: a tentativa aprovada ou a solucao) - nulo enquanto o passo
+ * anterior nao acabou. `solution`/`expectedOutput` so vem depois que o passo acaba (`done`: passou ou
+ * gastou `maxAttempts` tentativas). Nas respostas, `transcript` e o codigo enviado, `justification` a
+ * saida colada e `aiFeedback` a fala da Focada.
+ */
+export interface CodeStepDto {
+  priorCode: string | null;
+  done: boolean;
+  maxAttempts: number;
+  solution: string | null;
+  expectedOutput: string | null;
 }
 
 export interface DailyStateDto {
@@ -160,6 +180,8 @@ export interface DailyStateDto {
   activities: DailyActivityDto[];
   /** Fase 56: id da Daily de reforco ainda nao concluida da matricula - so vem preenchido em GET /api/today (null nos demais e quando nao ha reforco pendente). Alimenta o botao "Ir para a sessao de reforco" (`PendingReinforcementCard`). */
   pendingReinforcementDailyId: string | null;
+  /** Fase 79: repositorio (GitHub ou Forgejo) do script da ponte "code comigo" - opcional, so depois de concluir. */
+  codeRepositoryUrl?: string | null;
 }
 
 export interface SubmitActivityResponseResult {

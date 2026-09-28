@@ -1,5 +1,5 @@
 import { ActivityStatus, type DailyStateDto } from '../../api/types';
-import { STAGE_LABEL, sessionStages } from '../../lib/sessionSteps';
+import { sessionStages, stageLabel } from '../../lib/sessionSteps';
 import checkIcon from '../../assets/pixel/check.png';
 import playIcon from '../../assets/pixel/play-ativo.png';
 
@@ -25,7 +25,7 @@ export function StageChain({ daily, activityId, allDone = false }: { daily: Dail
       <ol className="hidden items-start lg:flex" aria-label="Etapas da sessão">
         {stages.map((stage, i) => (
           <li key={stage.activities[0].id} className={`flex items-start ${i < stages.length - 1 ? 'flex-1' : ''}`}>
-            <div className="flex shrink-0 flex-col items-center gap-1.5" aria-label={`${STAGE_LABEL[stage.type]}: ${states[i]}`}>
+            <div className="flex shrink-0 flex-col items-center gap-1.5" aria-label={`${stageLabel(daily, stages, i)}: ${states[i]}`}>
               <span
                 className={`flex size-8 items-center justify-center border-2 ${
                   states[i] === 'pendente' ? 'border-stroke' : 'border-accent'
@@ -40,8 +40,7 @@ export function StageChain({ daily, activityId, allDone = false }: { daily: Dail
                 )}
               </span>
               <span className={`whitespace-nowrap font-pixel-label text-[7px] ${states[i] === 'pendente' ? 'text-muted' : 'text-accent'}`}>
-                {STAGE_LABEL[stage.type]}
-                {stage.activities.length > 1 ? ` ×${stage.activities.length}` : ''}
+                {stageLabel(daily, stages, i)}
               </span>
             </div>
             {i < stages.length - 1 && (

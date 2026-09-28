@@ -14,6 +14,7 @@ import { PixelConfirmDialog } from './PixelConfirmDialog';
 import { QuickNotePanel } from './notebook/QuickNotePanel';
 import { PomodoroWidget } from './pomodoro/PomodoroWidget';
 import { ScrollArea } from './ScrollArea';
+import { AttemptsGauge } from './session/AttemptsGauge';
 import { ErrorGauge } from './session/ErrorGauge';
 import { StageChain } from './session/StageChain';
 import backArrow from '../assets/pixel/voltar.png';
@@ -177,7 +178,16 @@ export function SessionLayout({
         </div>
         {showGauge && (
           <div data-guia="sessao-contagiros" className="shrink-0">
-            <ErrorGauge penaltyPoints={daily.penaltyPoints} penaltyThreshold={daily.penaltyThreshold} compact={!isDesktop} />
+            {current?.type === ActivityType.CodeStep && current.codeStep ? (
+              <AttemptsGauge
+                attempts={current.responses.length}
+                maxAttempts={current.codeStep.maxAttempts}
+                passed={current.responses.some((r) => r.passed)}
+                compact={!isDesktop}
+              />
+            ) : (
+              <ErrorGauge penaltyPoints={daily.penaltyPoints} penaltyThreshold={daily.penaltyThreshold} compact={!isDesktop} />
+            )}
           </div>
         )}
       </header>

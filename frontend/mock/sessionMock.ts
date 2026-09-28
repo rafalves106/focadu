@@ -13,6 +13,7 @@
  *   /__mock/reset?projeto=pendente|avaliado   (tela do Projeto Semanal)
  *   /__mock/reset?at=ponte                    (Fase 69: a Daily de hoje e a ponte, falta escolher a linguagem)
  *   /__mock/reset?at=Quiz&pausa=1             (Fase 69: streak pausado - projeto da semana aberto)
+ *   /__mock/reset?at=codigo[&passo=3]         (Fase 79: ponte "code comigo" da Semana 1 em Python, no passo N)
  *   /__mock/loja?agente=0|1&gemas=60          (Fase 71: loja e agente, ver shopMock.ts)
  *   /__mock/squad?as=membro|lider|nenhum      (Fase 72: QG do Squad em /squad; Perfil em /perfil)
  *   /__mock/semana?estado=andamento|publicacao|trancada   (Fase 74: visao da Semana 2; trancada abre a 3)
@@ -29,7 +30,7 @@ import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
 import { handleShop, resetShop } from './shopMock';
 
-const TYPE = { Quiz: 0, WordMatch: 1, Cloze: 2, Roleplay: 3, VoiceSummary: 4, Reading: 5, Video: 6 } as const;
+const TYPE = { Quiz: 0, WordMatch: 1, Cloze: 2, Roleplay: 3, VoiceSummary: 4, Reading: 5, Video: 6, CodeStep: 7 } as const;
 type TypeName = keyof typeof TYPE;
 const PASSING = 80;
 const PENALTY_THRESHOLD = 3;
@@ -39,7 +40,7 @@ type Json = any;
 
 interface Curated {
   dayNumber: number;
-  curatedContents: { ref: string; type: 'Reading' | 'Video'; title: string; externalUrl: string | null; bodyText: string | null }[];
+  curatedContents: { ref: string; type: 'Reading' | 'Video' | 'File'; title: string; externalUrl: string | null; bodyText: string | null }[];
   activities: Json[];
 }
 
@@ -363,8 +364,8 @@ function studyCalendarDto() {
   };
 }
 
-function loadCurated(root: string): Curated {
-  const path = resolve(root, '../secret/curadoria/web-security/semana-1/dia-1.json');
+function loadCurated(root: string, file = 'dia-1.json'): Curated {
+  const path = resolve(root, `../secret/curadoria/web-security/semana-1/${file}`);
   if (!existsSync(path)) throw new Error(`[mock] conteudo curado nao encontrado em ${path} (precisa do repo focadu-secret em secret/)`);
   return JSON.parse(readFileSync(path, 'utf8'));
 }
@@ -373,7 +374,7 @@ function buildState(curated: Curated) {
   const contents = curated.curatedContents.map((c) => ({
     id: randomUUID(),
     ref: c.ref,
-    type: c.type === 'Reading' ? 0 : 1,
+    type: c.type === 'Reading' ? 0 : c.type === 'Video' ? 1 : 2,
     title: c.title,
     externalUrl: c.externalUrl,
     bodyText: c.bodyText,
@@ -393,6 +394,9 @@ function buildState(curated: Curated) {
       answerMode: a.answerMode === 'FreeText' ? 1 : 0,
       prompt: a.prompt ?? null,
       expectedAnswer: a.expectedAnswer ?? null,
+      // Fase 79: passo de codigo da ponte.
+      codeSolution: (a.codeSolution ?? null) as string | null,
+      codeExpectedOutput: (a.codeExpectedOutput ?? null) as string | null,
       quizOptions: (a.quizOptions ?? []).map((o: Json) => ({ id: randomUUID(), text: o.text, correct: !!o.isCorrect })),
       terms,
       // Backend embaralha as definicoes a cada carga; aqui uma vez so, pra tela nao pular.
@@ -452,7 +456,8 @@ function respond(state: State, act: State['activities'][number], value: number, 
     ...extra,
   };
   act.responses.push(response);
-  if (!response.passed && !state.completedAt) state.penaltyPoints += 1;
+  // Fase 79: ajustar passo de codigo nao e erro da sessao.
+  if (!response.passed && !state.completedAt && act.typeName !== 'CodeStep') state.penaltyPoints += 1;
   return response;
 }
 
@@ -469,14 +474,44 @@ function fastForward(state: State, at: string, penalty: number) {
   state.penaltyPoints = penalty;
 }
 
-function activityDto(act: State['activities'][number]) {
+const CODE_MAX_ATTEMPTS = 3;
+const codeDone = (act: State['activities'][number]) => act.responses.some((r: Json) => r.passed) || act.responses.length >= CODE_MAX_ATTEMPTS;
+function carriedCode(act: State['activities'][number]): string | null {
+  const passed = act.responses.find((r: Json) => r.passed);
+  if (passed) return passed.transcript;
+  return act.responses.length >= CODE_MAX_ATTEMPTS ? act.codeSolution : null;
+}
+
+/** Igual a Daily.PriorCode no backend: o que cada passo anterior entregou, ou null se algum nao acabou. */
+function priorCode(state: State, act: State['activities'][number]): string | null {
+  const parts: string[] = [];
+  for (const prev of state.activities.filter((a) => a.typeName === 'CodeStep' && a.orderIndex < act.orderIndex)) {
+    const carried = carriedCode(prev);
+    if (carried === null) return null;
+    parts.push(carried.trimEnd());
+  }
+  return parts.join('\n\n');
+}
+
+function activityDto(act: State['activities'][number], _i = 0, all: State['activities'] = []) {
   const answered = act.responses.length > 0;
+  const isCode = act.typeName === 'CodeStep';
+  const done = isCode && codeDone(act);
   return {
     id: act.id,
     type: act.type,
     orderIndex: act.orderIndex,
     contentId: act.contentId,
-    status: answered ? 1 : 0,
+    status: (isCode ? done : answered) ? 1 : 0,
+    codeStep: isCode
+      ? {
+          priorCode: priorCode({ activities: all } as State, act),
+          done,
+          maxAttempts: CODE_MAX_ATTEMPTS,
+          solution: done ? act.codeSolution : null,
+          expectedOutput: done ? act.codeExpectedOutput : null,
+        }
+      : null,
     answerMode: act.answerMode,
     prompt: act.prompt,
     // Gabarito so depois de responder (igual ao backend).
@@ -489,7 +524,7 @@ function activityDto(act: State['activities'][number]) {
   };
 }
 
-type Mode = 'normal' | 'bloqueado' | 'semana' | 'ponte';
+type Mode = 'normal' | 'bloqueado' | 'semana' | 'ponte' | 'codigo';
 type ProjectState = 'pendente' | 'entregue' | 'avaliado';
 interface Scenario {
   mode: Mode;
@@ -499,6 +534,9 @@ interface Scenario {
   paused?: boolean;
 }
 
+/** Fase 79: repositorio do script da ponte (opcional). */
+let codeRepositoryUrl: string | null = null;
+
 function dailyDto(state: State, scenario: Scenario, id = ids.daily, isReinforcement = false) {
   const accessMode = isReinforcement
     ? state.completedAt ? 2 : 1
@@ -506,7 +544,7 @@ function dailyDto(state: State, scenario: Scenario, id = ids.daily, isReinforcem
   return {
     id,
     weeklyId: ids.weekly,
-    dayNumber: scenario.mode === 'ponte' && !isReinforcement ? 6 : 1,
+    dayNumber: (scenario.mode === 'ponte' || scenario.mode === 'codigo') && !isReinforcement ? 6 : 1,
     date: new Date().toISOString().slice(0, 10),
     status: scenario.mode === 'ponte' && !isReinforcement ? 0 : state.completedAt || (!isReinforcement && scenario.mode !== 'normal') ? 3 : 2,
     isReinforcement,
@@ -514,8 +552,9 @@ function dailyDto(state: State, scenario: Scenario, id = ids.daily, isReinforcem
     penaltyThreshold: PENALTY_THRESHOLD,
     accessMode,
     // Fase 69: sem linguagem escolhida, a ponte vem sem atividades (ver GetTodayUseCase).
-    activities: scenario.mode === 'ponte' && !isReinforcement ? [] : state.activities.map(activityDto),
+    activities: scenario.mode === 'ponte' && !isReinforcement ? [] : state.activities.map((a, i, all) => activityDto(a, i, all)),
     pendingReinforcementDailyId: scenario.pendingReinforcement && !isReinforcement ? ids.reinforcement : null,
+    codeRepositoryUrl: isReinforcement ? null : codeRepositoryUrl,
   };
 }
 
@@ -534,8 +573,8 @@ function projectDto(scenario: Scenario) {
       : null,
     forgejoTokenLastEight: 'abcd1234',
     forgejoUsername: 'falves',
-    languageStep: scenario.mode === 'ponte' ? 2 : 0,
-    language: null,
+    languageStep: scenario.mode === 'ponte' ? 2 : scenario.mode === 'codigo' ? 3 : 0,
+    language: scenario.mode === 'codigo' ? 1 : null,
     supportedLanguages: scenario.mode === 'ponte' ? [1, 2] : [],
     choosableLanguages: scenario.mode === 'ponte' ? [1, 2] : [],
     references: [],
@@ -556,7 +595,7 @@ function weeklyDto(state: State, scenario: Scenario) {
     theme: 'Fundamentos da Web',
     dailies: titles.map((title, i) => ({
       id: i === 0 ? ids.daily : randomUUID(),
-      dayNumber: i + 1,
+      dayNumber: i === 0 && scenario.mode === 'codigo' ? 6 : i + 1,
       date: today,
       status: i === 0 ? (state.completedAt || scenario.mode !== 'normal' ? 3 : 2) : scenario.mode === 'semana' ? 3 : 0,
       isReinforcement: false,
@@ -606,13 +645,25 @@ function reinforcementState(curated: Curated): State {
 
 export function sessionMock(): Plugin {
   let curated: Curated;
+  let bridgeCurated: Curated;
   let state: State;
   let reinforcement: State;
   let scenario: Scenario = { mode: 'normal', pendingReinforcement: false, project: 'pendente' };
 
-  function reset(at = 'Quiz', penalty = 0, extra: Partial<Scenario> = {}) {
-    state = buildState(curated);
+  function reset(at = 'Quiz', penalty = 0, extra: Partial<Scenario> = {}, codeStep = 1) {
+    state = buildState(at === 'codigo' ? bridgeCurated : curated);
     reinforcement = reinforcementState(curated);
+    if (at === 'codigo') {
+      // Fase 79: ponte "code comigo" - leitura feita, passos anteriores a `codeStep` aprovados com a solucao.
+      let steps = 0;
+      for (const act of state.activities) {
+        if (act.typeName === 'CodeStep' && ++steps >= codeStep) break;
+        respond(state, act, 100, act.typeName === 'CodeStep' ? { transcript: act.codeSolution } : {});
+      }
+      codeRepositoryUrl = null;
+      scenario = { mode: 'codigo', pendingReinforcement: false, project: 'pendente', ...extra };
+      return;
+    }
     const mode: Mode = at === 'bloqueado' ? 'bloqueado' : at === 'semana' ? 'semana' : at === 'ponte' ? 'ponte' : 'normal';
     fastForward(state, mode === 'normal' && at !== 'reforco' ? at : mode === 'ponte' ? 'Reading' : 'done', penalty);
     if (mode !== 'normal' && mode !== 'ponte') state.completedAt = new Date().toISOString();
@@ -625,6 +676,7 @@ export function sessionMock(): Plugin {
     name: 'focadu-session-mock',
     configResolved(config) {
       curated = loadCurated(config.root);
+      bridgeCurated = loadCurated(config.root, 'ponte/python.json');
       reset();
     },
     configureServer(server) {
@@ -640,7 +692,7 @@ export function sessionMock(): Plugin {
             pendingReinforcement: url.searchParams.get('reforco') === '1',
             paused: url.searchParams.get('pausa') === '1',
             ...(projeto ? { project: projeto } : {}),
-          });
+          }, Number(url.searchParams.get('passo') ?? 1));
           res.statusCode = 302;
           res.setHeader(
             'Location',
@@ -870,6 +922,30 @@ export function sessionMock(): Plugin {
             ? respond(target, act, 86, { transcript: VOICE_TRANSCRIPT, aiFeedback: VOICE_FEEDBACK })
             : respond(target, act, score(act, body), { transcript: body.transcript ?? null });
           return send(res, 200, { response, dailyReinforcementTriggered: false, reinforcementDailyId: null, weeklyReinforcementTriggered: false });
+        }
+        if ((m = path.match(/^\/api\/dailies\/([^/]+)\/activities\/([^/]+)\/responses\/code$/)) && method === 'POST') {
+          // Fase 79: sem IA - passa quando a saida colada tem as linhas da saida esperada.
+          const target = stateFor(m[1]);
+          const act = target?.activities.find((a) => a.id === m![2]);
+          if (!target || !act) return send(res, 404, { error: 'atividade_nao_encontrada', message: 'Atividade não encontrada.' });
+          if (codeDone(act) && !target.completedAt) return send(res, 409, { error: 'passo_concluido', message: 'Este passo ja foi concluido.' });
+          const norm = (t: string) => t.split('\n').map((l) => l.trim().replace(/\s+/g, ' ')).filter(Boolean);
+          const got = new Set(norm(body.output ?? ''));
+          const ok = norm(act.codeExpectedOutput ?? '').every((l) => got.has(l));
+          const feedback = ok
+            ? 'Isso! A saída bate e o código faz o que o passo pede, sem número digitado. Bora pro próximo.'
+            : (body.output ?? '').includes("b'")
+              ? "Os domínios estão certos, mas saíram em bytes (b'...') e com o ponto da raiz do FQDN. Relatório é pra gente ler: o que qname devolve, texto ou bytes?"
+              : 'A saída não bate com o que o passo pede. Rode de novo contra o ponte.pcap e confira linha a linha: o que ficou de fora?';
+          await new Promise((r) => setTimeout(r, 700));
+          const response = respond(target, act, ok ? 100 : 0, { transcript: body.code ?? '', justification: body.output ?? '', aiFeedback: feedback });
+          return send(res, 200, { response, dailyReinforcementTriggered: false, reinforcementDailyId: null, weeklyReinforcementTriggered: false });
+        }
+        if ((m = path.match(/^\/api\/dailies\/([^/]+)\/code-repository$/)) && method === 'PUT') {
+          const url = String(body.url ?? '').trim();
+          if (url && !/^https?:\/\//.test(url)) return send(res, 400, { error: 'url_repositorio_invalida', message: 'Use o endereço completo do repositório (https://...).' });
+          codeRepositoryUrl = url || null;
+          return send(res, 200, dailyDto(state, scenario));
         }
         if ((m = path.match(/^\/api\/dailies\/([^/]+)\/complete$/)) && method === 'POST') {
           const target = stateFor(m[1]);

@@ -113,4 +113,29 @@ public class CuratedContentAllFilesTests
         Assert.All(created, t => Assert.Equal(6, t.DayNumber));
         Assert.Empty(SeedWebSecurityCourseUseCase.ImportBridge(template, "semana-1"));
     }
+
+    // Fase 79: a ponte antiga (leitura + quiz), ja no banco, e trocada no lugar pela "code comigo" do
+    // disco - os conteudos que so ela usava saem - e reimportar de novo nao mexe em nada.
+    [Fact]
+    public void RefreshBridge_Week1_SwapsTheOldBridgeForTheCodeSteps_OnceOnly()
+    {
+        var template = new WeeklyTemplate(Guid.NewGuid(), 1, "Semana 1");
+        const string oldBridge = """
+        { "dayNumber": 6,
+          "curatedContents": [ { "ref": "reading", "type": "Reading", "title": "Antiga", "externalUrl": null, "bodyText": "texto" } ],
+          "activities": [ { "type": "Reading", "answerMode": "MultipleChoice", "contentRef": "reading" } ] }
+        """;
+        CuratedDayImporter.Import(template, oldBridge, ProjectLanguage.Python);
+        CuratedDayImporter.Import(template, oldBridge, ProjectLanguage.JavaScript);
+        var python = template.FindDailyTemplateVariant(6, ProjectLanguage.Python)!;
+
+        var refreshed = SeedWebSecurityCourseUseCase.RefreshBridge(template, "semana-1");
+
+        Assert.Equal(2, refreshed.Count);
+        Assert.Same(python, refreshed.Single(t => t.Language == ProjectLanguage.Python));
+        Assert.Equal(6, python.Activities.Count(a => a.Type == ActivityType.CodeStep));
+        Assert.All(python.Activities.Where(a => a.Type == ActivityType.CodeStep), a => Assert.False(string.IsNullOrWhiteSpace(a.CodeRubric)));
+        Assert.DoesNotContain(template.CuratedContents, c => c.Title == "Antiga");
+        Assert.Empty(SeedWebSecurityCourseUseCase.RefreshBridge(template, "semana-1"));
+    }
 }

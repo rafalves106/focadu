@@ -17,6 +17,10 @@ public class DailyActivityConfiguration : IEntityTypeConfiguration<DailyActivity
         builder.Property(a => a.OrderIndex).IsRequired();
         builder.Property(a => a.Prompt);
         builder.Property(a => a.ExpectedAnswer);
+        // Fase 79: passo de codigo da ponte ("code comigo").
+        builder.Property(a => a.CodeSolution);
+        builder.Property(a => a.CodeExpectedOutput);
+        builder.Property(a => a.CodeRubric);
         builder.Property(a => a.DailyTemplateId).IsRequired();
 
         builder.HasMany(a => a.QuizOptions)

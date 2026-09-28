@@ -21,6 +21,7 @@ export const STAGE_LABEL: Record<ActivityType, string> = {
   [ActivityType.VoiceSummary]: 'Resumo',
   [ActivityType.Reading]: 'Leitura',
   [ActivityType.Video]: 'Vídeo',
+  [ActivityType.CodeStep]: 'Passo',
 };
 
 /** Nome da etapa no cabecalho do cartao ("ETAPA 5 DE 18 — QUIZ"). */
@@ -32,6 +33,7 @@ export const ACTIVITY_TITLE: Record<ActivityType, string> = {
   [ActivityType.VoiceSummary]: 'Resumo falado',
   [ActivityType.Reading]: 'Leitura',
   [ActivityType.Video]: 'Vídeo',
+  [ActivityType.CodeStep]: 'Passo de código',
 };
 
 /** Unidade do contador fino dentro de um bloco com mais de 1 atividade ("QUESTÃO 2 DE 6"). */
@@ -50,10 +52,42 @@ export function sessionStages(daily: DailyStateDto): SessionStage[] {
   for (const activity of sortedActivities(daily)) {
     const last = stages.at(-1);
     const prev = last?.activities.at(-1);
-    if (last && prev && prev.type === activity.type && prev.answerMode === activity.answerMode) last.activities.push(activity);
+    // Fase 79: passo de codigo nao agrupa - cada passo e um no da cadeia (Figma "Ponte: code comigo").
+    const groups = activity.type !== ActivityType.CodeStep;
+    if (groups && last && prev && prev.type === activity.type && prev.answerMode === activity.answerMode) last.activities.push(activity);
     else stages.push({ type: activity.type, activities: [activity] });
   }
   return stages;
+}
+
+/** A Daily e a ponte "code comigo" (Fase 79): tem passo de codigo. */
+export function isCodeBridge(daily: DailyStateDto): boolean {
+  return daily.activities.some((a) => a.type === ActivityType.CodeStep);
+}
+
+/**
+ * O script inteiro da ponte (Fase 79): o que o backend ja montou ate antes do ultimo passo
+ * (`priorCode`) mais o que o ultimo passo entregou - a tentativa aprovada ou a solucao. Nulo
+ * enquanto o ultimo passo nao acabou.
+ */
+export function bridgeScript(daily: DailyStateDto): string | null {
+  const last = sortedActivities(daily).filter((a) => a.type === ActivityType.CodeStep).at(-1);
+  if (!last?.codeStep?.done || last.codeStep.priorCode === null) return null;
+  const delivered = last.responses.find((r) => r.passed)?.transcript ?? last.codeStep.solution ?? '';
+  return [last.codeStep.priorCode, delivered.trimEnd()].filter(Boolean).join('\n\n') + '\n';
+}
+
+/**
+ * Rotulo do bloco na cadeia. Na ponte "code comigo" (Fase 79) cada passo tem o proprio numero
+ * ("Passo 3") e a leitura de abertura vira "Exemplo".
+ */
+export function stageLabel(daily: DailyStateDto, stages: SessionStage[], index: number): string {
+  const stage = stages[index];
+  if (stage.type === ActivityType.CodeStep) {
+    return `Passo ${stages.slice(0, index + 1).filter((s) => s.type === ActivityType.CodeStep).length}`;
+  }
+  if (stage.type === ActivityType.Reading && isCodeBridge(daily)) return 'Exemplo';
+  return `${STAGE_LABEL[stage.type]}${stage.activities.length > 1 ? ` ×${stage.activities.length}` : ''}`;
 }
 
 export interface StepInfo {
@@ -79,13 +113,18 @@ export function stepInfo(daily: DailyStateDto, activityId: string): StepInfo | n
   const stage = stages[stageIndex];
   const positionInStage = stage.activities.findIndex((a) => a.id === activityId);
   const unit = UNIT[stage.type];
+  const codeSteps = all.filter((a) => a.type === ActivityType.CodeStep);
+  const title =
+    stage.type === ActivityType.CodeStep
+      ? `${ACTIVITY_TITLE[stage.type]} ${codeSteps.findIndex((a) => a.id === activityId) + 1} de ${codeSteps.length}`
+      : ACTIVITY_TITLE[stage.type];
   return {
     index,
     total: all.length,
     stageIndex,
     stage,
     positionInStage,
-    label: `Etapa ${index + 1} de ${all.length} — ${ACTIVITY_TITLE[stage.type]}`,
+    label: `Etapa ${index + 1} de ${all.length} — ${title}`,
     sub: unit && stage.activities.length > 1 ? `${unit} ${positionInStage + 1} de ${stage.activities.length}` : '',
   };
 }

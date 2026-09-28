@@ -209,6 +209,39 @@ public class SeedWebSecurityCourseUseCase
         return created;
     }
 
+    /// <summary>
+    /// Fase 79: a ponte virou "code comigo" (secret/rascunhos/ponte-code-comigo.md). Uma variante de
+    /// ponte ja no banco no formato antigo (sem CodeStep) cujo arquivo ja traz passos de codigo e
+    /// reimportada no lugar: sai o conteudo antigo, entra o novo, e os CuratedContents que so a ponte
+    /// antiga usava sao removidos. Idempotente - depois da troca o template ja tem CodeStep. Devolve os
+    /// DailyTemplate trocados (as Dailies deles precisam recomecar, ver SyncBridgeDaysUseCase).
+    /// </summary>
+    internal static IReadOnlyList<Domain.Dailies.DailyTemplate> RefreshBridge(WeeklyTemplate weeklyTemplate, string weekFolder)
+    {
+        var bridgeDay = 6 * weeklyTemplate.Number;
+        var refreshed = new List<Domain.Dailies.DailyTemplate>();
+        foreach (var language in Enum.GetValues<Domain.Enums.ProjectLanguage>())
+        {
+            var template = weeklyTemplate.FindDailyTemplateVariant(bridgeDay, language);
+            if (template is null || template.Activities.Any(a => a.Type == Domain.Enums.ActivityType.CodeStep)) continue;
+
+            var path = TryCuratedContentPath(weekFolder, Path.Combine("ponte", $"{language.ToString().ToLowerInvariant()}.json"));
+            if (path is null || !CuratedDayImporter.FileHasActivityType(path, Domain.Enums.ActivityType.CodeStep)) continue;
+
+            var previousContentIds = CuratedDayImporter.ReimportFile(weeklyTemplate, template, path);
+            var stillUsed = weeklyTemplate.DailyTemplates
+                .SelectMany(d => d.Activities)
+                .Where(a => a.ContentId is not null)
+                .Select(a => a.ContentId!.Value)
+                .ToHashSet();
+            foreach (var contentId in previousContentIds.Where(id => !stillUsed.Contains(id)))
+                weeklyTemplate.RemoveCuratedContent(contentId);
+
+            refreshed.Add(template);
+        }
+        return refreshed;
+    }
+
     // Fase 21: conteudo curado de verdade (secret/curadoria/web-security/semana-1/dia-1.json),
     // carregado via CuratedDayImporter. Fase 26 (fechamento do curriculo): Dias 2-5 migrados do
     // placeholder hardcoded ("TODO: substituir pelo texto completo curado") pro mesmo importer,

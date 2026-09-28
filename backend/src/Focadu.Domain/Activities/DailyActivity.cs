@@ -34,6 +34,19 @@ public class DailyActivity : Entity
 
     public AnswerMode AnswerMode { get; private set; }
 
+    /// <summary>
+    /// CodeStep (Fase 79): a solucao de referencia do passo - so o trecho que o passo acrescenta ao
+    /// script, nao o arquivo inteiro. So vai pro cliente depois que o passo acaba (ver
+    /// CodeStepProgress) e e o codigo de que o passo seguinte parte quando o aluno nao passou.
+    /// </summary>
+    public string? CodeSolution { get; private set; }
+
+    /// <summary>CodeStep: o que o trecho imprime rodando contra o arquivo do dia (conferido rodando de verdade na curadoria).</summary>
+    public string? CodeExpectedOutput { get; private set; }
+
+    /// <summary>CodeStep: o conceito que a IA cobra no passo. Nunca vai pro cliente.</summary>
+    public string? CodeRubric { get; private set; }
+
     private readonly List<QuizOption> _quizOptions = new();
     public IReadOnlyCollection<QuizOption> QuizOptions => _quizOptions.AsReadOnly();
 
@@ -100,6 +113,22 @@ public class DailyActivity : Entity
         }
 
         return clone;
+    }
+
+    /// <summary>
+    /// CodeStep (Fase 79): solucao de referencia, saida esperada e rubrica do passo - as tres
+    /// obrigatorias, sem elas a IA nao tem contra o que conferir.
+    /// </summary>
+    public void ConfigureCodeStep(string solution, string expectedOutput, string rubric)
+    {
+        if (Type != ActivityType.CodeStep)
+            throw new DomainException("Solucao/saida/rubrica de codigo so valem pra atividades do tipo CodeStep.");
+        if (string.IsNullOrWhiteSpace(solution) || string.IsNullOrWhiteSpace(expectedOutput) || string.IsNullOrWhiteSpace(rubric))
+            throw new DomainException("Um CodeStep precisa de solucao, saida esperada e rubrica.");
+
+        CodeSolution = solution;
+        CodeExpectedOutput = expectedOutput;
+        CodeRubric = rubric;
     }
 
     /// <summary>

@@ -26,7 +26,7 @@ internal static class DailyStateMapper
         return new DailyStateDto(
             daily.Id, daily.WeeklyId, daily.DayNumber, daily.Date,
             daily.Status, daily.IsReinforcement, daily.PenaltyPoints, EvaluationPolicy.DailyPenaltyThreshold,
-            accessMode, activities);
+            accessMode, activities, CodeRepositoryUrl: daily.CodeRepositoryUrl);
     }
 
     private static DailyActivityDto ToActivityDto(Daily daily, DailyActivity activity)
@@ -66,10 +66,23 @@ internal static class DailyStateMapper
                 n.Options.Select(o => new RoleplayOptionDto(o.Id, o.Text, o.NextNodeId)).ToList()))
             .ToList();
 
+        // Fase 79: passo de codigo so fica Completed quando acaba (passou ou gastou as tentativas) -
+        // uma tentativa "ajuste isto" nao conclui o passo, e a sessao volta pra ele ao recarregar.
+        CodeStepDto? codeStep = null;
+        var completed = hasAnswered;
+        if (activity.Type == ActivityType.CodeStep)
+        {
+            var done = daily.IsCodeStepDone(activity.Id);
+            completed = done;
+            codeStep = new CodeStepDto(
+                daily.PriorCode(activity.Id), done, CodeStepProgress.MaxAttempts,
+                done ? activity.CodeSolution : null, done ? activity.CodeExpectedOutput : null);
+        }
+
         return new DailyActivityDto(
             activity.Id, activity.Type, activity.OrderIndex, activity.ContentId,
-            hasAnswered ? ActivityStatus.Completed : ActivityStatus.Pending,
+            completed ? ActivityStatus.Completed : ActivityStatus.Pending,
             activity.AnswerMode, activity.Prompt, hasAnswered ? activity.ExpectedAnswer : null,
-            quizOptions, wordMatchTerms, wordMatchDefinitions, roleplayNodes, responses);
+            quizOptions, wordMatchTerms, wordMatchDefinitions, roleplayNodes, responses, codeStep);
     }
 }

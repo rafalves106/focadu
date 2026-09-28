@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 78 - Revisao por IA do Caderninho**.
+> Ultima fase que atualizou este documento: **Fase 79 - Ponte "code comigo"**.
 
 ## Visao geral do projeto
 
@@ -1315,6 +1315,8 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 POST | `/api/dailies/{dailyId}/start` | `StartOrResumeDailyUseCase` | 200 |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses` | `SubmitActivityResponseUseCase` | 201 (cria uma nova `ActivityResponse`) |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/audio` | `SubmitVoiceSummaryResponseUseCase` (Fase 5) | 201, `multipart/form-data`, so pra `VoiceSummary` |
+| 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/code` | `SubmitCodeStepResponseUseCase` (Fase 79) | 201 (`SubmitActivityResponseResult`), so pra `CodeStep`: `{ code, output }`, avaliado por IA; 409 `passo_concluido`/`passo_anterior_pendente` |
+| 🔒 PUT | `/api/dailies/{dailyId}/code-repository` | `LinkDailyCodeRepositoryUseCase` (Fase 79) | 200 (`DailyStateDto`), `{ url }` http(s) ou vazio pra tirar; so ponte "code comigo" ja concluida |
 | 🔒 POST | `/api/dailies/{dailyId}/complete` | `CompleteDailyUseCase` | 200 (`CompleteDailyResult`, ver abaixo - Fase 14: ganhou `GemsEarned`/`StreakAfterCompletion`; Fase 15: ganhou `WasReinforcementBonus`) |
 | 🔒 GET | `/api/curated-content/{id}` | `GetCuratedContentUseCase` (Fase 7) | 200, 404 - exige login, mas nao filtra por usuario (curriculo compartilhado). Fase 21: resposta ganhou `personalizedAnalogies` (array, 1 por secao "####" do texto - so quando `Reading` + usuario com interesses cadastrados, ver secao acima) |
 | 🔒 POST | `/api/curated-content` | `CreateCuratedContentUseCase` (Fase 4) | 201, 400/404 - Fase 13: campo `weeklyTemplateId` (era `weeklyId`) |
@@ -2279,6 +2281,8 @@ Desde a Fase 69 a semana N ocupa os **Dias 6N-5 a 6N** (72 no curso): 5 dias de 
 **ponte** - dia pratico e guiado que liga a teoria ao projeto, curado numa versao por linguagem
 (`secret/curadoria/web-security/semana-N/ponte/<linguagem>.json`, mesmo schema de um dia). So a Semana
 1 tem ponte curada; as outras semanas ficam com 5 Dailies (o `DayNumber` 6N fica livre).
+Desde a Fase 79 a ponte da Semana 1 e "code comigo" (passos de codigo avaliados por IA) - ver a secao
+seguinte.
 
 - **Curriculo**: a ponte sao varios `DailyTemplate` no mesmo `DayNumber`, um por `Language`
   (`WeeklyTemplate.AddDailyTemplate(day, language)` - um dia tem OU dia unico OU variantes; indice unico
@@ -2304,6 +2308,52 @@ Desde a Fase 69 a semana N ocupa os **Dias 6N-5 a 6N** (72 no curso): 5 dias de 
   `CuratedContents.BodyText`, `DailyActivities.Prompt`, `RoleplayNodes.Text` e
   `WeeklyTemplates.WeeklyProjectSpecText` (`CurriculumRenumbering`, mesma regra dos arquivos). SQL
   direto: cada grupo passa por valores negativos por causa dos indices unicos.
+
+### Ponte "code comigo" (Fase 79)
+
+Origem: `secret/rascunhos/ponte-code-comigo.md` (dor do dono no Dia 6: ler codigo numa linguagem que
+nao usa nao prepara pra escrever), desenho aprovado no Figma "Ponte: code comigo — v2 (proposta)"
+(`171:4502`). A ponte deixou de ser leitura + quiz: e um exemplo explicado (`Reading`), **6 passos de
+codigo** (`ActivityType.CodeStep` = 7) e um resumo falado. O aluno escreve, passo a passo, uma entrega
+parecida com o projeto (mesmas ferramentas, outras perguntas), roda na maquina dele contra um arquivo
+fixo do dia e manda o codigo do passo + a saida do terminal. So a Semana 1 esta nesse formato; as outras
+pontes curadas (antigas) continuam funcionando como antes.
+
+- **Curriculo**: `DailyActivity` ganhou `CodeSolution` (so o trecho que o passo acrescenta),
+  `CodeExpectedOutput` (saida da solucao contra o arquivo, conferida rodando de verdade) e `CodeRubric`
+  (o conceito cobrado, nunca vai pro cliente) - `ConfigureCodeStep` exige os tres. `CuratedContentType.File`
+  (= 2): arquivo pra baixar (`ExternalUrl` = caminho servido pelo frontend, ex.
+  `frontend/public/ponte/web-security/semana-1/ponte.pcap`), ligado aos passos por `ContentId`.
+- **Regras** (`CodeStepProgress` + `Daily`): o passo acaba ao passar ou em `MaxAttempts` (3) tentativas;
+  acabou sem passar = a solucao aparece e o passo seguinte parte dela (`CarriedCode`). `Daily.PriorCode`
+  monta o script ate antes de um passo (o que cada passo anterior entregou, em ordem); nulo = passo
+  anterior pendente. Ajustar um passo **nunca soma `PenaltyPoints`** nem entra em `GetFailedActivities`
+  (reforco), e `CodeStep` fica fora de `CalculateScore` (sem nota, so "passou / ajuste isto").
+  Gems: iguais a qualquer Daily (1 ao concluir).
+- **Avaliacao**: `SubmitCodeStepResponseUseCase` (codigo e saida obrigatorios, ate 20 mil caracteres
+  cada; 409 `passo_concluido` fora de replay e `passo_anterior_pendente`) monta o `PriorCode` no servidor e
+  chama `ICodeStepEvaluationService` (`GroqCodeStepEvaluationService`, JSON `{passou, feedback}`,
+  temperatura 0.2): cobra o conceito da rubrica olhando codigo E saida, sintaxe e ajuda livre, a dica
+  aponta o conceito sem a linha pronta, conteudo do aluno e so dado (ignora instrucao embutida), nunca
+  repete credencial. Grava no `ActivityResponse` de sempre: `Transcript` = codigo, `Justification` =
+  saida colada, `AiFeedback` = fala da Focada, Score 100/0. `ResolveScore` recusa `CodeStep` (endpoint
+  proprio).
+- **DTO**: `DailyActivityDto.CodeStep` (`CodeStepDto`: `PriorCode`, `Done`, `MaxAttempts`, e
+  `Solution`/`ExpectedOutput` so depois do passo acabar); passo de codigo so fica `Completed` quando acaba.
+- **Repositorio opcional**: `Daily.CodeRepositoryUrl` (ate 500, http/https absoluto), so em ponte com
+  `CodeStep` ja concluida (`LinkCodeRepository`, vazio tira). Nao muda conclusao nem Gems.
+- **Troca da ponte ja no banco** (`SeedWebSecurityCourseUseCase.RefreshBridge`, dentro do
+  `SyncBridgeDaysUseCase`, todo deploy, idempotente): variante de ponte sem `CodeStep` cujo arquivo em
+  disco ja tem `CodeStep` e reimportada no mesmo `DailyTemplate` (`CuratedDayImporter.ReimportFile`:
+  `DailyTemplate.ClearActivities` + conteudo novo); os `CuratedContents` que so a ponte antiga usava saem
+  (`WeeklyTemplate.RemoveCuratedContent` - por isso `GetFullTemplateGraphAsync` passou a carregar
+  `CuratedContents`). Dailies nao concluidas dessas variantes recomecam (`Daily.ResetAfterTemplateRefresh`:
+  sem respostas, sem penalidade); concluidas ficam fechadas (as respostas antigas so deixam de aparecer,
+  `ActivityResponses.ActivityId` nao tem FK). O `seed` imprime quantas trocou e quantas recomecou.
+- **Migration** `CodeStepBridge`: 3 colunas `text` em `DailyActivities` e `Dailies.CodeRepositoryUrl`.
+- **Curadoria**: formato em `secret/curadoria/CURADORIA.md` (secoes 3 e 5.1); fonte da Semana 1 em
+  `secret/curadoria/scripts/ponte/semana-1/` (gerador do `ponte.pcap`, solucoes de referencia, divisao
+  em passos com as saidas rodadas de verdade e o gerador dos JSONs).
 
 ### Dialogo da Focada no Projeto Semanal (Fase 64)
 
@@ -3468,6 +3518,22 @@ A visao da semana ganhou a mesma casca e, na Fase 74, o redesenho em pixel art (
 em pixel art (Fase 74)"). A Fase 74 tambem criou a variante `tall:` (janela com 960px de altura ou
 mais), pra cartoes extras que so cabem em tela alta. No QG do Squad, o lider gerencia o top 3 pelo "⋯" no nome do
 podio (a lista nao repete mais o top 3).
+
+### Ponte "code comigo" na sessao (Fase 79)
+
+Figma "Ponte: code comigo — v2 (proposta)" (01 escrevendo `171:4503`, 02 ajuste isto `172:5517`, 03 passou
+`172:6556`, 04 solucao `172:7595`, 05 concluida `173:8140`). `CodeStepActivity` na mesma casca da sessao:
+pedido do passo, editor (Fira Code, numeros de linha continuando do script, Tab indenta, Ctrl+Enter envia)
+com o script dos passos anteriores dobrado no topo (`codeStep.priorCode`), e o campo da saida do terminal;
+rascunho no `localStorage` por passo. "Ajuste isto" (Focada em ambar, "Editar ›"), "Passou" (verde,
+"Proximo passo ›") e, na ultima tentativa, a solucao + a saida esperada ("Seguir ›"). Cada passo e um no
+da cadeia (`sessionStages` nao agrupa `CodeStep`; rotulos "Exemplo", "Passo N" em `stageLabel`), o
+conta-giros vira `AttemptsGauge` ("Tentativas do passo") enquanto a etapa e um passo, o "Material de hoje"
+ganha "Arquivo da ponte" com "Baixar ↓" (conteudo `File`). A conclusao da ponte conta passos e solucoes
+vistas, oferece o repositorio opcional ("Linkar") com "Ver meu codigo"/"Copiar" (`bridgeScript`) e leva
+pro projeto. Linguagem vem de `weekly.project.language`. Celular funciona (sem rolagem lateral), mas o
+desenho proprio fica pra depois. Mock: `/__mock/reset?at=codigo&passo=N` (Semana 1 em Python, avaliacao
+falsa: passa quando a saida colada tem as linhas esperadas; `passo=8` = tudo feito).
 
 ### Revisao por IA do Caderninho (Fase 78)
 

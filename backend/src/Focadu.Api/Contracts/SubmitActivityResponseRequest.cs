@@ -20,3 +20,12 @@ public record SubmitActivityResponseRequest(
     string? Justification,
     string? AiFeedback,
     IReadOnlyDictionary<Guid, Guid>? WordMatchMatches = null);
+
+/// <summary>
+/// Fase 79: passo de codigo da ponte - o trecho que o passo pede e a saida que o aluno viu rodando
+/// na maquina dele. A IA confere os dois (ver SubmitCodeStepResponseUseCase).
+/// </summary>
+public record SubmitCodeStepRequest(string? Code, string? Output);
+
+/// <summary>Fase 79: endereco do repositorio do script da ponte - vazio/nulo desliga.</summary>
+public record LinkCodeRepositoryRequest(string? Url);

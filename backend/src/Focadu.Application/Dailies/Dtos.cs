@@ -25,7 +25,8 @@ public record DailyStateDto(
     int PenaltyThreshold,
     DailyAccessMode AccessMode,
     IReadOnlyCollection<DailyActivityDto> Activities,
-    Guid? PendingReinforcementDailyId = null);
+    Guid? PendingReinforcementDailyId = null,
+    string? CodeRepositoryUrl = null);
 
 public record DailyActivityDto(
     Guid Id,
@@ -40,7 +41,16 @@ public record DailyActivityDto(
     IReadOnlyCollection<WordMatchTermDto> WordMatchTerms,
     IReadOnlyCollection<WordMatchDefinitionDto> WordMatchDefinitions,
     IReadOnlyCollection<RoleplayNodeDto> RoleplayNodes,
-    IReadOnlyCollection<ActivityResponseDto> Responses);
+    IReadOnlyCollection<ActivityResponseDto> Responses,
+    CodeStepDto? CodeStep = null);
+
+/// <summary>
+/// Passo de codigo da ponte (Fase 79), so em DailyActivityDto de tipo CodeStep. PriorCode e o
+/// script ate antes deste passo (o que os passos anteriores entregaram) - nulo enquanto o passo
+/// anterior nao acabou. Solution/ExpectedOutput so aparecem depois que o passo acaba (passou ou
+/// gastou MaxAttempts), mesma regra de "gabarito so depois" dos outros tipos.
+/// </summary>
+public record CodeStepDto(string? PriorCode, bool Done, int MaxAttempts, string? Solution, string? ExpectedOutput);
 
 /// <summary>
 /// IsCorrect vem nulo enquanto a atividade não tem nenhuma ActivityResponse registrada - o
