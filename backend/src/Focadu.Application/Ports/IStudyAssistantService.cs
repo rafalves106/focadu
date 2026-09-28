@@ -36,4 +36,5 @@ public record StudyAssistantRequest(
     string? SessionContext,
     IReadOnlyList<StudyAssistantChatTurn>? History = null,
     IReadOnlyCollection<string>? UserInterests = null,
-    string? UserNotes = null);
+    string? UserNotes = null,
+    bool CodeBridge = false);

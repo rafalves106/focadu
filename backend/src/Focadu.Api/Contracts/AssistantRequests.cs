@@ -6,7 +6,8 @@ namespace Focadu.Api.Contracts;
 /// History (Fase 33) e o transcript local do painel de chat (ver StudyAssistantWidget.tsx) - ja vem
 /// clampado no cliente, mas quem clampa de verdade (limite de seguranca) e AskStudyAssistantUseCase.
 /// </summary>
-public record AskStudyAssistantRequest(string Question, string? Context, IReadOnlyList<AskStudyAssistantHistoryItemRequest>? History);
+/// <param name="CodeBridge">Fase 79: pergunta feita na ponte "code comigo" - sem analogia, e sintaxe sem entregar o passo.</param>
+public record AskStudyAssistantRequest(string Question, string? Context, IReadOnlyList<AskStudyAssistantHistoryItemRequest>? History, bool? CodeBridge = null);
 
 /// <summary>Um turno anterior da conversa - `FromUser=true` e a pergunta do aluno, `false` e a resposta da IA.</summary>
 public record AskStudyAssistantHistoryItemRequest(bool FromUser, string Content);

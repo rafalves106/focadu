@@ -104,6 +104,9 @@ public class GetCuratedContentUseCase
     {
         if (content.Type != CuratedContentType.Reading || content.BodyText is null) return [];
 
+        // Fase 79 (decisao do dono): a ponte e pratica - analogia de hobby nao ajuda a escrever codigo.
+        if (await _weeklyTemplateRepository.IsBridgeContentAsync(content.Id, cancellationToken)) return [];
+
         var cached = await _analogyRepository.GetAsync(userId, content.Id, cancellationToken);
         if (cached is not null) return cached.Sections.Select(s => s.Text).ToList();
 

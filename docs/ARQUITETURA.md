@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 79 - Ponte "code comigo"**.
+> Ultima fase que atualizou este documento: **Fase 80 - Chat rapido com codigo formatado e ponte sem analogias**.
 
 ## Visao geral do projeto
 
@@ -2351,6 +2351,11 @@ pontes curadas (antigas) continuam funcionando como antes.
   sem respostas, sem penalidade); concluidas ficam fechadas (as respostas antigas so deixam de aparecer,
   `ActivityResponses.ActivityId` nao tem FK). O `seed` imprime quantas trocou e quantas recomecou.
 - **Migration** `CodeStepBridge`: 3 colunas `text` em `DailyActivities` e `Dailies.CodeRepositoryUrl`.
+- **Sem analogias na ponte** (Fase 80, todas as semanas): a leitura de um conteudo de ponte nao gera o
+  "Pra voce" (`IWeeklyTemplateRepository.IsBridgeContentAsync` - conteudo usado por `DailyTemplate` com
+  `Language`; cache ignorado), o resumo falado da ponte avalia sem os interesses do perfil
+  (`Daily.RequiresProjectLanguage`) e o chat rapido recebe `codeBridge` (`POST /api/study-assistant/ask`):
+  sem perfil e com a instrucao "sintaxe livre, a solucao do passo fica com o aluno".
 - **Curadoria**: formato em `secret/curadoria/CURADORIA.md` (secoes 3 e 5.1); fonte da Semana 1 em
   `secret/curadoria/scripts/ponte/semana-1/` (gerador do `ponte.pcap`, solucoes de referencia, divisao
   em passos com as saidas rodadas de verdade e o gerador dos JSONs).
@@ -3534,6 +3539,14 @@ vistas, oferece o repositorio opcional ("Linkar") com "Ver meu codigo"/"Copiar" 
 pro projeto. Linguagem vem de `weekly.project.language`. Celular funciona (sem rolagem lateral), mas o
 desenho proprio fica pra depois. Mock: `/__mock/reset?at=codigo&passo=N` (Semana 1 em Python, avaliacao
 falsa: passa quando a saida colada tem as linhas esperadas; `passo=8` = tudo feito).
+
+### Codigo formatado no chat rapido (Fase 80)
+
+`ChatMessageText` (components/assistant) renderiza as mensagens do "Tira duvidas": bloco cercado vira quadro
+monoespacado que quebra a linha mantendo a indentacao (a coluna tem ~200px) e crase simples vira codigo
+inline, via o mesmo `splitFences` da leitura. Bolha com bloco ocupa a largura da coluna. O prompt do
+`GroqStudyAssistantService` pede crase/bloco com a linguagem pra codigo. Na ponte (Daily original com
+`DayNumber` multiplo de 6) o `SessionShell` liga `setStudyAssistantCodeBridge` e o chat manda `codeBridge`.
 
 ### Revisao por IA do Caderninho (Fase 78)
 

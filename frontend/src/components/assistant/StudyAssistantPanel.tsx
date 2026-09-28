@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from 'react';
 import { STUDY_ASSISTANT_MAX_QUESTION_LENGTH, useStudyAssistantChat } from '../../lib/useStudyAssistantChat';
 import { CardLabel } from '../CardLabel';
+import { ChatMessageText } from './ChatMessageText';
 import { ScrollArea } from '../ScrollArea';
 
 /**
@@ -116,11 +117,15 @@ function MessageList({
       {messages.map((message, i) => (
         <div
           key={i}
-          className={`max-w-[90%] px-2 py-1 font-pixel text-lg leading-snug ${
+          className={`flex min-w-0 flex-col px-2 py-1 font-pixel text-lg leading-snug ${
+            message.text.includes('```') ? 'w-full' : 'max-w-[90%]'
+          } ${
             message.role === 'user' ? 'self-end bg-accent text-base' : 'self-start bg-surface-alt text-primary'
           }`}
         >
-          {message.text}
+          <div className="min-w-0">
+            <ChatMessageText text={message.text} />
+          </div>
         </div>
       ))}
       {sending && <div className="self-start bg-surface-alt px-2 py-1 font-pixel text-lg text-muted">Pensando...</div>}

@@ -87,9 +87,13 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 79 — Ponte "code comigo"** (28/09/2026).
+Última fase concluída: **Fase 80 — Chat rápido com código formatado e ponte sem analogias** (28/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Chat rápido com código formatado + ponte sem analogias (Fase 80, pedido do dono)**: o "Tira dúvidas"
+  mostra bloco de código e código inline formatados (`ChatMessageText`); nas pontes não há mais analogia de
+  interesse (leitura, feedback do resumo falado e chat), e o chat na ponte ensina sintaxe sem entregar o
+  passo (`codeBridge`). Ver `docs/fase-80/`.
 - **Ponte "code comigo" (Fase 79, Figma "Ponte: code comigo — v2", dor do dono no Dia 6)**: o 6º dia virou
   exemplo explicado + **6 passos de código** + resumo falado - uma entrega parecida com o projeto, não igual
   (Semana 1: "Auditor Relâmpago" sobre um `ponte.pcap` fixo). O aluno roda na máquina dele e manda código +

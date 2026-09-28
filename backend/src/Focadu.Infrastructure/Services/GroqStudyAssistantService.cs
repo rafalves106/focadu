@@ -38,8 +38,17 @@ public class GroqStudyAssistantService : IStudyAssistantService
         "trivial ou, se não souber, diga que não sabe - e sempre encerre reconduzindo com " +
         "gentileza pro foco da sessão. Nunca invente fatos técnicos com confiança quando não " +
         "tiver certeza: prefira dizer que não tem certeza a arriscar uma explicação errada de " +
-        "segurança. Nunca use markdown pesado (sem títulos, sem blocos de código longos) - texto " +
-        "corrido simples, é uma bolha de chat pequena.";
+        "segurança. Sem títulos nem markdown pesado - texto corrido simples, é uma bolha de chat " +
+        "pequena. Código sempre formatado: crase simples pra um nome ou trecho curto no meio da " +
+        "frase (`pkt[IP].src`) e bloco cercado com a linguagem (```python ... ```) quando tiver mais " +
+        "de uma linha - curto, só o necessário pra responder.";
+
+    // Fase 79: ponte "code comigo" - o aluno escreve o script passo a passo e a IA confere cada passo.
+    private const string CodeBridgeInstruction =
+        "O aluno está na ponte \"code comigo\": escrevendo, passo a passo, um script que a Focadu confere. " +
+        "Sintaxe é ajuda livre - como se escreve uma construção, como importar, como ler um campo, com " +
+        "exemplo curto. Mas não escreva a solução do passo nem diga o que filtrar ou comparar pra chegar " +
+        "no resultado: nisso, aponte o conceito com uma pergunta ou pista e deixe a lógica com ele.";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -125,16 +134,17 @@ public class GroqStudyAssistantService : IStudyAssistantService
         return messages;
     }
 
-    private static string? BuildContextSystemMessage(StudyAssistantRequest request)
+    internal static string? BuildContextSystemMessage(StudyAssistantRequest request)
     {
         var contextBlock = string.IsNullOrWhiteSpace(request.SessionContext)
             ? null
             : $"Contexto da sessão atual (o que o aluno está vendo na tela agora):\n\"\"\"\n{request.SessionContext}\n\"\"\"";
 
         var personalization = PersonalizationPromptBuilder.BuildInstruction(request.UserInterests, request.UserNotes);
+        var bridge = request.CodeBridge ? CodeBridgeInstruction : null;
 
-        if (contextBlock is null && personalization is null) return null;
-        return string.Join("\n\n", new[] { contextBlock, personalization }.Where(block => block is not null));
+        if (contextBlock is null && personalization is null && bridge is null) return null;
+        return string.Join("\n\n", new[] { contextBlock, personalization, bridge }.Where(block => block is not null));
     }
 
     private record GroqChatCompletionResponse(List<GroqChatChoice>? Choices);

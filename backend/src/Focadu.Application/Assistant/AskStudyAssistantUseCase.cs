@@ -48,7 +48,8 @@ public class AskStudyAssistantUseCase
     }
 
     public async Task<string> ExecuteAsync(
-        Guid userId, string question, string? context, IReadOnlyList<StudyAssistantChatTurn>? history, CancellationToken cancellationToken = default)
+        Guid userId, string question, string? context, IReadOnlyList<StudyAssistantChatTurn>? history, bool codeBridge = false,
+        CancellationToken cancellationToken = default)
     {
         var trimmedQuestion = (question ?? string.Empty).Trim();
         if (trimmedQuestion.Length == 0)
@@ -56,10 +57,12 @@ public class AskStudyAssistantUseCase
         if (trimmedQuestion.Length > MaxQuestionLength)
             throw new ValidationException("pergunta_muito_longa", $"A pergunta pode ter no maximo {MaxQuestionLength} caracteres.");
 
-        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+        // Fase 79: na ponte ("code comigo") nada de analogia de interesse - o perfil nem e lido.
+        var user = codeBridge ? null : await _userRepository.GetByIdAsync(userId, cancellationToken);
 
         var request = new StudyAssistantRequest(
-            trimmedQuestion, Truncate(context, MaxContextLength), ClampHistory(history), user?.Interests, user?.AdditionalProfileNotes);
+            trimmedQuestion, Truncate(context, MaxContextLength), ClampHistory(history), user?.Interests, user?.AdditionalProfileNotes,
+            codeBridge);
 
         return await _assistantService.AskAsync(request, cancellationToken);
     }

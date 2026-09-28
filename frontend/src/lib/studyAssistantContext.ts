@@ -28,3 +28,17 @@ function getSnapshot() {
 export function useStudyAssistantContext(): string | null {
   return useSyncExternalStore(subscribe, getSnapshot);
 }
+
+/**
+ * Fase 79: a sessao em tela e uma ponte ("code comigo") - o chat pede ao backend sem analogia de
+ * interesse e com sintaxe livre, sem entregar a solucao do passo. Mesmo store externo do contexto.
+ */
+let codeBridge = false;
+
+export function setStudyAssistantCodeBridge(value: boolean) {
+  codeBridge = value;
+}
+
+export function isStudyAssistantCodeBridge() {
+  return codeBridge;
+}

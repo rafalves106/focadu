@@ -1012,7 +1012,12 @@ export function sessionMock(): Plugin {
           });
         if (path === `/api/courses/${ids.course}/notes/tags`) return send(res, 200, [...new Set(state.notes.flatMap((n) => n.tags))]);
         if (path === '/api/study-assistant/ask')
-          return send(res, 200, { answer: '(mock) O three-way handshake é a troca SYN, SYN-ACK e ACK que confirma que os dois lados estão prontos antes de mandar dados.' });
+          // Fase 79: na ponte a resposta vem com codigo (formatacao do chat) e sem analogia.
+          return send(res, 200, {
+            answer: body.codeBridge
+              ? 'O nome fica em `pkt[DNSQR].qname`, importando a camada assim:\n```python\nfrom scapy.all import DNSQR\n\nnome = pkt[DNSQR].qname\n```\nRepara no tipo que vem: texto ou bytes?'
+              : '(mock) O three-way handshake é a troca SYN, SYN-ACK e ACK que confirma que os dois lados estão prontos antes de mandar dados.',
+          });
 
         return send(res, 404, { error: 'mock_nao_implementado', message: `Mock sem rota pra ${method} ${path}.` });
       });

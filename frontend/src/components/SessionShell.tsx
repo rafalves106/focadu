@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { ActivityStatus, ActivityType } from '../api/types';
 import { SessionFooterContext, useSession } from '../lib/sessionContext';
 import { stepInfo } from '../lib/sessionSteps';
-import { setStudyAssistantContext } from '../lib/studyAssistantContext';
+import { setStudyAssistantCodeBridge, setStudyAssistantContext } from '../lib/studyAssistantContext';
 import { formatPomodoroTime, usePomodoroTimer } from '../lib/pomodoroTimer';
 import { useIsDesktop } from '../lib/useIsDesktop';
 import { useGuide } from '../contexts/useGuide';
@@ -102,6 +102,13 @@ export function SessionLayout({
     setStudyAssistantContext(assistantContext ?? [title, headerLabel].filter(Boolean).join(' — '));
     return () => setStudyAssistantContext(null);
   }, [assistantContext, title, headerLabel]);
+
+  // Fase 79: na ponte o chat rapido responde sem analogia e sem entregar o passo.
+  const onBridge = !daily.isReinforcement && daily.dayNumber % 6 === 0;
+  useEffect(() => {
+    setStudyAssistantCodeBridge(onBridge);
+    return () => setStudyAssistantCodeBridge(false);
+  }, [onBridge]);
 
   // Material do dia = so o conteudo referenciado pelas atividades DESTA Daily (a Weekly traz os 5 dias).
   const current = activityId ? daily.activities.find((a) => a.id === activityId) : undefined;

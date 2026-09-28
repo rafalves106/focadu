@@ -918,7 +918,8 @@ api.MapGet("/courses/{courseId}/notes/reviews", async (ClaimsPrincipal principal
 api.MapPost("/study-assistant/ask", async (ClaimsPrincipal principal, AskStudyAssistantRequest? request, AskStudyAssistantUseCase useCase, CancellationToken ct) =>
     {
         var history = request?.History?.Select(h => new StudyAssistantChatTurn(h.FromUser, h.Content)).ToList();
-        var answer = await useCase.ExecuteAsync(CurrentUserId(principal), request?.Question ?? string.Empty, request?.Context, history, ct);
+        var answer = await useCase.ExecuteAsync(
+            CurrentUserId(principal), request?.Question ?? string.Empty, request?.Context, history, request?.CodeBridge ?? false, ct);
         return Results.Ok(new AskStudyAssistantResponse(answer));
     })
     .RequireAuthorization()
