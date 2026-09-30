@@ -21,6 +21,9 @@ public class DailyActivityConfiguration : IEntityTypeConfiguration<DailyActivity
         builder.Property(a => a.CodeSolution);
         builder.Property(a => a.CodeExpectedOutput);
         builder.Property(a => a.CodeRubric);
+        // Fase 86: laboratorio de codigo - codigo inicial do editor e opt-out do passo.
+        builder.Property(a => a.CodeStarter);
+        builder.Property(a => a.LabDisabled).IsRequired().HasDefaultValue(false);
         builder.Property(a => a.DailyTemplateId).IsRequired();
 
         builder.HasMany(a => a.QuizOptions)

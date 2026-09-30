@@ -26,7 +26,25 @@ public record DailyStateDto(
     DailyAccessMode AccessMode,
     IReadOnlyCollection<DailyActivityDto> Activities,
     Guid? PendingReinforcementDailyId = null,
-    string? CodeRepositoryUrl = null);
+    string? CodeRepositoryUrl = null,
+    LabConfigDto? Lab = null);
+
+/// <summary>
+/// Fase 86: laboratorio de codigo do dia (nulo = dia sem laboratorio). FileContentIds sao os File do
+/// "Material de hoje" que ja vem no ambiente; quem roda o codigo e o navegador do aluno (ver LabConfig).
+/// </summary>
+public record LabConfigDto(
+    string Runtime,
+    string? Image,
+    IReadOnlyCollection<Guid> FileContentIds,
+    IReadOnlyCollection<string> Packages,
+    IReadOnlyCollection<string> Services,
+    string Entry,
+    string Command,
+    int TimeoutSeconds);
+
+/// <summary>Fase 86: uma dica da Focada num passo de codigo com laboratorio (tres blocos curtos).</summary>
+public record CodeStepHintDto(int Number, string Right, string Wrong, string Improve, DateTime CreatedAt);
 
 public record DailyActivityDto(
     Guid Id,
@@ -50,7 +68,14 @@ public record DailyActivityDto(
 /// anterior nao acabou. Solution/ExpectedOutput so aparecem depois que o passo acaba (passou ou
 /// gastou MaxAttempts), mesma regra de "gabarito so depois" dos outros tipos.
 /// </summary>
-public record CodeStepDto(string? PriorCode, bool Done, int MaxAttempts, string? Solution, string? ExpectedOutput);
+/// <remarks>
+/// Fase 86: LabEnabled diz se este passo roda no laboratorio do dia (o dia tem lab e o passo nao saiu
+/// dele); CodeStarter e o codigo inicial do editor (nulo = vazio, ou o acumulado nas pontes); Hints sao
+/// as dicas da Focada ja dadas no passo (limite MaxHints, nao contam como tentativa).
+/// </remarks>
+public record CodeStepDto(
+    string? PriorCode, bool Done, int MaxAttempts, string? Solution, string? ExpectedOutput,
+    bool LabEnabled = false, string? CodeStarter = null, int MaxHints = 0, IReadOnlyCollection<CodeStepHintDto>? Hints = null);
 
 /// <summary>
 /// IsCorrect vem nulo enquanto a atividade não tem nenhuma ActivityResponse registrada - o

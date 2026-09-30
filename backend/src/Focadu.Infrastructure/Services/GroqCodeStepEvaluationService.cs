@@ -113,8 +113,21 @@ public class GroqCodeStepEvaluationService : ICodeStepEvaluationService
             ? " É a última tentativa: se não passar, a tela mostra a solução depois da sua fala, então explique o conceito que faltou, sem código."
             : "";
 
+        // Fase 86: no laboratorio a saida e da plataforma (o aluno nao colou nada); no Linux ela traz o
+        // historico de comandos, entao o erro pode estar na linha de comando e nao so no script.
+        var outputLabel = request.Lab is null
+            ? "Saída que o aluno colou do terminal"
+            : request.Lab.Commands.Count > 0
+                ? $"Histórico do terminal do laboratório da plataforma (comandos que o aluno digitou e a saída de cada um; código de saída da última execução: {request.Lab.ExitCode})"
+                : $"Saída que o laboratório da plataforma registrou ao rodar o código do aluno (não foi colada; código de saída: {request.Lab.ExitCode})";
+        var labNote = request.Lab is null
+            ? ""
+            : "O passo roda no laboratório da plataforma, dentro do navegador do aluno: a saída abaixo é a que o laboratório gerou. " +
+              "Um código de saída diferente de zero ou um traceback quer dizer que o programa falhou - aponte o que denuncia isso, sem escrever a correção.\n";
+
         return
             $"Linguagem: {request.Language}\n" +
+            labNote +
             $"Tentativa {request.AttemptNumber} de {request.MaxAttempts}.{lastAttempt}\n\n" +
             $"O que o passo pede ao aluno:\n\"\"\"\n{request.StepPrompt}\n\"\"\"\n\n" +
             $"Rubrica (o conceito cobrado neste passo):\n\"\"\"\n{request.Rubric}\n\"\"\"\n\n" +
@@ -122,7 +135,7 @@ public class GroqCodeStepEvaluationService : ICodeStepEvaluationService
             $"Solução de referência (só pra calibrar, nunca citar):\n\"\"\"\n{request.ReferenceSolution}\n\"\"\"\n\n" +
             $"Código dos passos anteriores (já aceito):\n\"\"\"\n{prior}\n\"\"\"\n\n" +
             $"Código do aluno neste passo:\n\"\"\"\n{request.StepCode}\n\"\"\"\n\n" +
-            $"Saída que o aluno colou do terminal:\n\"\"\"\n{request.Output}\n\"\"\"\n\n" +
+            $"{outputLabel}:\n\"\"\"\n{request.Output}\n\"\"\"\n\n" +
             "Confira o passo seguindo as regras.";
     }
 

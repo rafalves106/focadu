@@ -32,7 +32,15 @@ public record CodeStepEvaluationRequest(
     int AttemptNumber,
     int MaxAttempts,
     /// <summary>Fase 85: curso da ponte, citado no prompt (nulo = so "Focadu").</summary>
-    string? CourseName = null);
+    string? CourseName = null,
+    /// <summary>Fase 86: o passo rodou no laboratorio - a saida e da plataforma (nao colada) e traz exit code e historico de comandos.</summary>
+    CodeStepLabRun? Lab = null);
+
+/// <summary>Fase 86: um comando do terminal do laboratorio (Linux) e o que ele imprimiu.</summary>
+public record CodeStepLabCommand(string Command, string Output);
+
+/// <summary>Fase 86: metadados da execucao no laboratorio - exit code e, no Linux, o historico de comandos.</summary>
+public record CodeStepLabRun(int ExitCode, IReadOnlyList<CodeStepLabCommand> Commands);
 
 /// <summary>Veredito do passo: passou ou "ajuste isto" - sem nota. Feedback e a fala da Focada.</summary>
 public record CodeStepEvaluationResult(bool Passed, string Feedback);

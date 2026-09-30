@@ -185,6 +185,12 @@ void ClearAuthCookie(HttpContext context) =>
 // middleware JwtBearer antes do endpoint rodar (nunca decodificado de novo aqui).
 Guid CurrentUserId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 
+// Fase 86: corpo HTTP do laboratorio -> entrada do caso de uso (nulo = o aluno nao rodou nada).
+LabRunInput? ToLabRun(LabRunRequest? run) =>
+    run is null
+        ? null
+        : new LabRunInput(run.Output, run.ExitCode, run.Commands?.Select(c => new LabCommandInput(c.Command, c.Output)).ToList());
+
 // Fase 16: scope ausente/vazio vira "course" (recorte mais completo) - so string invalida vira erro.
 RankingScope ParseRankingScope(string? scope)
 {
@@ -228,6 +234,13 @@ if (args.Contains("seed"))
         foreach (var skipped in curated.Skipped)
             Console.WriteLine($"Seed: Daily NAO adicionada - {skipped}");
     }
+
+    // Fase 86: laboratorio de codigo (bloco lab, codigo inicial, opt-out por passo) nos dias que ja estao
+    // no banco - so atualiza a configuracao, nunca reimporta (quem esta no meio do dia nao perde progresso).
+    var labSync = await scope.ServiceProvider.GetRequiredService<SyncLabConfigUseCase>().ExecuteAsync();
+    Console.WriteLine($"Seed: laboratorio de codigo - {labSync.Updated.Count} dia(s) atualizado(s){(labSync.Updated.Count > 0 ? ": " + string.Join("; ", labSync.Updated) : "")}.");
+    foreach (var skipped in labSync.Skipped)
+        Console.WriteLine($"Seed: laboratorio NAO aplicado - {skipped}");
 
     // Fase 84: ficha do curso (o que ajuda saber antes e o curso recomendado) - reaplicada em todo deploy.
     var recommended = await scope.ServiceProvider.GetRequiredService<SyncCourseRecommendationsUseCase>().ExecuteAsync();
@@ -832,11 +845,25 @@ api.MapPost("/dailies/{dailyId}/activities/{activityId}/responses/code",
             var dId = RouteParsing.RequireGuid(dailyId, "dailyId");
             var aId = RouteParsing.RequireGuid(activityId, "activityId");
 
-            var result = await useCase.ExecuteAsync(CurrentUserId(principal), dId, aId, request?.Code, request?.Output, ct);
+            // Fase 86: nos passos que rodam no laboratorio vale o labRun (saida da plataforma); fora dele, output colado.
+            var result = await useCase.ExecuteAsync(CurrentUserId(principal), dId, aId, request?.Code, request?.Output, ToLabRun(request?.LabRun), ct);
             return Results.Created($"/api/dailies/{dailyId}/activities/{activityId}/responses/{result.Response.Id}", result);
         })
     .RequireAuthorization()
     .WithName("SubmitCodeStepResponse");
+
+// Fase 86: dica da Focada num passo de codigo com laboratorio - tres blocos, nao e tentativa, limite de
+// 3 por passo. O codigo dos passos anteriores vem do servidor.
+api.MapPost("/dailies/{dailyId}/activities/{activityId}/code-hint",
+        async (ClaimsPrincipal principal, string dailyId, string activityId, RequestCodeHintRequest? request, RequestCodeStepHintUseCase useCase, CancellationToken ct) =>
+        {
+            var dId = RouteParsing.RequireGuid(dailyId, "dailyId");
+            var aId = RouteParsing.RequireGuid(activityId, "activityId");
+
+            return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), dId, aId, request?.Code, ToLabRun(request?.LabRun), ct));
+        })
+    .RequireAuthorization()
+    .WithName("RequestCodeStepHint");
 
 // Fase 79: repositorio (GitHub ou Forgejo) do script da ponte - opcional, depois de concluir o dia.
 api.MapPut("/dailies/{dailyId}/code-repository",

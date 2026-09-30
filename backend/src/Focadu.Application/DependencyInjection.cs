@@ -44,11 +44,13 @@ public static class DependencyInjection
         services.AddScoped<SubmitActivityResponseUseCase>();
         services.AddScoped<SubmitVoiceSummaryResponseUseCase>();
         services.AddScoped<SubmitCodeStepResponseUseCase>();
+        services.AddScoped<RequestCodeStepHintUseCase>(); // Fase 86
         services.AddScoped<LinkDailyCodeRepositoryUseCase>();
         services.AddScoped<CompleteDailyUseCase>();
         services.AddScoped<SeedWebSecurityCourseUseCase>();
         services.AddScoped<SyncBridgeDaysUseCase>();
         services.AddScoped<SeedCuratedCoursesUseCase>();
+        services.AddScoped<SyncLabConfigUseCase>(); // Fase 86
         services.AddScoped<SyncCourseRecommendationsUseCase>();
         services.AddScoped<SeedCosmeticCatalogUseCase>();
         services.AddScoped<GetCuratedContentUseCase>();

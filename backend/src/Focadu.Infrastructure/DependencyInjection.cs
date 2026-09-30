@@ -118,6 +118,9 @@ public static class DependencyInjection
         // Passo de codigo da ponte "code comigo" (Fase 79) - mesmo cliente/chave do Groq.
         services.AddHttpClient<ICodeStepEvaluationService, GroqCodeStepEvaluationService>(
             client => ConfigureGroqClient(client, GroqDefaultTimeout));
+        // Dica da Focada no laboratorio de codigo (Fase 86) - mesmo cliente/chave do Groq.
+        services.AddHttpClient<ICodeStepHintService, GroqCodeStepHintService>(
+            client => ConfigureGroqClient(client, GroqDefaultTimeout));
         // Status da IA (Fase 28): badge do GlobalNav no frontend - GroqHealthCheckService e
         // Singleton (guarda cache em memoria, ver comentario na classe), entao usa
         // IHttpClientFactory.CreateClient(nome) em vez de AddHttpClient<TService> (que registraria

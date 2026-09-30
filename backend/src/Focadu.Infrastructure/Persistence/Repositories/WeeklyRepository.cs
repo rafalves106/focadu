@@ -30,6 +30,7 @@ public class WeeklyRepository : IWeeklyRepository
             .Include(w => w.Dailies).ThenInclude(d => d.Template).ThenInclude(t => t.Activities).ThenInclude(a => a.WordMatchPairs)
             .Include(w => w.Dailies).ThenInclude(d => d.Template).ThenInclude(t => t.Activities).ThenInclude(a => a.RoleplayNodes).ThenInclude(n => n.Options)
             .Include(w => w.Dailies).ThenInclude(d => d.Responses)
+            .Include(w => w.Dailies).ThenInclude(d => d.Hints)
             .Include(w => w.Project)
             .Include(w => w.Reinforcements)
             .Include(w => w.Publication)

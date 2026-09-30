@@ -47,6 +47,19 @@ public class DailyActivity : Entity
     /// <summary>CodeStep: o conceito que a IA cobra no passo. Nunca vai pro cliente.</summary>
     public string? CodeRubric { get; private set; }
 
+    /// <summary>
+    /// CodeStep (Fase 86): codigo com que o editor do laboratorio abre neste passo (esqueleto com TODO,
+    /// util no 1o passo do dia ou em passo independente). Nulo = editor vazio; nas pontes o editor abre
+    /// com o codigo acumulado dos passos anteriores. Nao e segredo.
+    /// </summary>
+    public string? CodeStarter { get; private set; }
+
+    /// <summary>
+    /// CodeStep (Fase 86): o passo sai do laboratorio mesmo que o dia tenha um (<c>"lab": false</c> no
+    /// JSON) e cai no fluxo antigo - rodar na maquina do aluno e colar a saida.
+    /// </summary>
+    public bool LabDisabled { get; private set; }
+
     private readonly List<QuizOption> _quizOptions = new();
     public IReadOnlyCollection<QuizOption> QuizOptions => _quizOptions.AsReadOnly();
 
@@ -119,7 +132,7 @@ public class DailyActivity : Entity
     /// CodeStep (Fase 79): solucao de referencia, saida esperada e rubrica do passo - as tres
     /// obrigatorias, sem elas a IA nao tem contra o que conferir.
     /// </summary>
-    public void ConfigureCodeStep(string solution, string expectedOutput, string rubric)
+    public void ConfigureCodeStep(string solution, string expectedOutput, string rubric, string? starter = null, bool labDisabled = false)
     {
         if (Type != ActivityType.CodeStep)
             throw new DomainException("Solucao/saida/rubrica de codigo so valem pra atividades do tipo CodeStep.");
@@ -129,6 +142,21 @@ public class DailyActivity : Entity
         CodeSolution = solution;
         CodeExpectedOutput = expectedOutput;
         CodeRubric = rubric;
+        SetLabOptions(starter, labDisabled);
+    }
+
+    /// <summary>
+    /// CodeStep (Fase 86): codigo inicial do editor e opt-out do laboratorio. Separado de
+    /// <see cref="ConfigureCodeStep"/> pra o sync poder atualizar um passo ja no banco sem tocar na
+    /// solucao, na saida esperada nem na rubrica.
+    /// </summary>
+    public void SetLabOptions(string? starter, bool labDisabled)
+    {
+        if (Type != ActivityType.CodeStep)
+            throw new DomainException("Codigo inicial e opt-out do laboratorio so valem pra atividades do tipo CodeStep.");
+
+        CodeStarter = string.IsNullOrWhiteSpace(starter) ? null : starter;
+        LabDisabled = labDisabled;
     }
 
     /// <summary>

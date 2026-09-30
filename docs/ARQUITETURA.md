@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 85 - Prompts de IA citam o curso certo (antes todos diziam "seguranca web")**.
+> Ultima fase que atualizou este documento: **Fase 86 - Laboratorio de codigo (backend): bloco `lab` por dia, `labRun` no envio do passo, dica da Focada e sync no seed**.
 
 ## Visao geral do projeto
 
@@ -1315,7 +1315,8 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 POST | `/api/dailies/{dailyId}/start` | `StartOrResumeDailyUseCase` | 200 |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses` | `SubmitActivityResponseUseCase` | 201 (cria uma nova `ActivityResponse`) |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/audio` | `SubmitVoiceSummaryResponseUseCase` (Fase 5) | 201, `multipart/form-data`, so pra `VoiceSummary` |
-| 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/code` | `SubmitCodeStepResponseUseCase` (Fase 79) | 201 (`SubmitActivityResponseResult`), so pra `CodeStep`: `{ code, output }`, avaliado por IA; 409 `passo_concluido`/`passo_anterior_pendente` |
+| 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/code` | `SubmitCodeStepResponseUseCase` (Fase 79; Fase 86: `labRun`) | 201 (`SubmitActivityResponseResult`), so pra `CodeStep`: `{ code, output, labRun? }`, avaliado por IA; passo com laboratorio exige `labRun` (400 `rodar_antes_de_enviar`) e ignora `output`; 409 `passo_concluido`/`passo_anterior_pendente` |
+| 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/code-hint` | `RequestCodeStepHintUseCase` (Fase 86) | 200 (`CodeStepHintResponse`: `hint` com `right`/`wrong`/`improve`, `hintsUsed`, `hintsLeft`), `{ code, labRun? }`; nao e tentativa, 3 por passo; 400 `dicas_esgotadas`/`passo_sem_laboratorio`/`codigo_obrigatorio`/`passo_anterior_pendente`/`passo_concluido`; 502 se a IA falhar |
 | 🔒 PUT | `/api/dailies/{dailyId}/code-repository` | `LinkDailyCodeRepositoryUseCase` (Fase 79) | 200 (`DailyStateDto`), `{ url }` http(s) ou vazio pra tirar; so ponte "code comigo" ja concluida |
 | 🔒 POST | `/api/dailies/{dailyId}/complete` | `CompleteDailyUseCase` | 200 (`CompleteDailyResult`, ver abaixo - Fase 14: ganhou `GemsEarned`/`StreakAfterCompletion`; Fase 15: ganhou `WasReinforcementBonus`) |
 | 🔒 GET | `/api/curated-content/{id}` | `GetCuratedContentUseCase` (Fase 7) | 200, 404 - exige login, mas nao filtra por usuario (curriculo compartilhado). Fase 21: resposta ganhou `personalizedAnalogies` (array, 1 por secao "####" do texto - so quando `Reading` + usuario com interesses cadastrados, ver secao acima) |
@@ -2435,6 +2436,59 @@ pontes curadas (antigas) continuam funcionando como antes.
 - **Curadoria**: formato em `secret/curadoria/CURADORIA.md` (secoes 3 e 5.1); fonte da Semana 1 em
   `secret/curadoria/scripts/ponte/semana-1/` (gerador do `ponte.pcap`, solucoes de referencia, divisao
   em passos com as saidas rodadas de verdade e o gerador dos JSONs).
+
+### Laboratorio de codigo (Fase 86, backend)
+
+Origem: `secret/rascunhos/laboratorio-de-codigo-na-ponte.md` (decisoes de 30/09/2026) e desenho no Figma
+"Laboratorio de codigo — v2 (proposta)" (`193:9321`, **aguardando aprovacao do dono: o front ainda nao existe**).
+O aluno escreve e roda o codigo dentro da Focada e a saida que vai pra avaliacao e a do laboratorio. Quem
+executa e o navegador do aluno (Pyodide, Worker de JavaScript com shim, Linux no v86); **o servidor nunca roda
+codigo nem verifica a saida** (adulteracao ignorada), so guarda a configuracao e o que o aluno enviou.
+
+- **Configuracao do dia**: `DailyTemplate.Lab` (`LabConfig`, coluna `DailyTemplates.LabConfig`, JSON em texto;
+  nulo = sem laboratorio): `Runtime` (`python`/`javascript`/`bash`), `Image` (so bash: `basico` ou `servidor`),
+  `FileContentIds` (`CuratedContent` tipo `File` ja no ambiente), `Packages`, `Services` (arquivos iniciados no
+  boot, exige `servidor`), `Entry`, `Command` (precisa conter o `Entry`) e `TimeoutSeconds` (1-60).
+  `LabConfig.Create` valida. `DailyTemplate.SetLab` exige passo de codigo; `StepUsesLab(activity)` = dia com lab
+  e passo sem `LabDisabled`.
+- **Por passo**: `DailyActivity.CodeStarter` (codigo inicial do editor, nao e segredo) e `LabDisabled`
+  (`"lab": false` no JSON: o passo volta pro fluxo da Fase 79, saida colada).
+- **Envio** (`SubmitCodeStepResponseUseCase`): passo com laboratorio exige `labRun` (`LabRunInput`: saida da
+  ultima execucao, exit code e, no Linux, historico de comandos com a saida de cada um; ate 50 comandos e 20
+  mil caracteres) e ignora o `output` colado; sem `labRun` → 400 `rodar_antes_de_enviar`. `Justification` guarda
+  a saida (ou o historico), e `CodeStepEvaluationRequest.Lab` (`CodeStepLabRun`) leva exit code e historico
+  pro prompt, que passa a dizer "saida que o laboratorio registrou (nao foi colada)". Passo sem laboratorio
+  segue exatamente como na Fase 79.
+- **Dica da Focada** (`POST .../activities/{activityId}/code-hint`, `RequestCodeStepHintUseCase`,
+  `ICodeStepHintService` → `GroqCodeStepHintService`, JSON `{certo, erro, melhorar}`, temperatura 0.2): tres
+  blocos curtos, **nao e tentativa** (nao cria `ActivityResponse`, nao soma penalidade nem entra em reforco),
+  `CodeStepProgress.MaxHints` = 3 por passo, guardadas em `CodeStepHints` (`Daily.Hints`, FK sombra `DailyId`,
+  indice unico por `DailyId+ActivityId+Number`; `Daily.AddCodeStepHint` barra passo sem laboratorio, passo
+  ja concluido fora de replay, anterior pendente e limite; `ResetAfterTemplateRefresh` zera). Sintaxe e erro de
+  linha de comando sao ajuda livre; a logica do passo nunca. **Rede de seguranca contra vazamento**: bloco com
+  2 ou mais tokens de codigo (com simbolo: `-l`, `$LOG`...) iguais aos da solucao de referencia e vazamento;
+  a IA e chamada de novo uma vez com um lembrete e, se vazar outra vez, so aquele bloco vira
+  `GroqCodeStepHintService.SafeBlock`. (Na 1a verificacao com a IA real a dica entregou a linha pronta; com o
+  prompt mais rigido e a checagem, tres dicas reais seguintes vieram conceituais - o log nao registra se a
+  checagem chegou a disparar um retry.)
+- **DTO**: `DailyStateDto.Lab` (`LabConfigDto`) e, em `CodeStepDto`, `LabEnabled`, `CodeStarter`, `MaxHints`,
+  `Hints` (as ja dadas no passo). Os campos so vem preenchidos em passo que roda no laboratorio.
+- **Importador**: `CuratedDayImporter` le o bloco `lab` do dia, `codeStarter` e `"lab": false` por passo;
+  `files` tem que ser `File` de `curatedContents` e cada `service` o titulo de um desses arquivos (senao
+  `InvalidOperationException`). `CuratedDayImporter.ApplyLab` atualiza um dia **ja no banco** sem reimportar
+  (as atividades mantem os Ids): acha os `File` pelo `externalUrl` preferindo os conteudos que as atividades
+  do proprio dia usam (as variantes Python/JavaScript da ponte tem um `File` cada, mesmo `externalUrl`).
+- **Sync no `seed`** (`SyncLabConfigUseCase`, todo deploy, idempotente, depois dos cursos curados): pra cada
+  `DailyTemplate` com `CodeStep` do Web Security e dos cursos de `SeedCuratedCoursesUseCase.CourseSlugs`,
+  abre o arquivo do dia (`semana-N/ponte/<linguagem>.json` ou `semana-N/dia-D.json`) e aplica. Dia com
+  problema no arquivo e pulado e listado no log (`Seed: laboratorio NAO aplicado - ...`), o deploy nao cai.
+- **Migration** `LabCodeStep`: `DailyTemplates.LabConfig` (text), `DailyActivities.CodeStarter` (text) e
+  `LabDisabled` (bool, padrao false), tabela `CodeStepHints`.
+- **Curadoria**: formato em `secret/curadoria/CURADORIA.md` (secao 5.2) e verificador em
+  `secret/curadoria/scripts/lab/` (roda cada solucao acumulada no runtime do laboratorio e compara com a saida
+  esperada). Dias com `lab` hoje: pontes Python e JavaScript da Semana 1 do Web Security, Linux Dia 6 e Dia 12.
+- **Fora desta fase**: todo o front (editor, terminal, runtimes no navegador, origem propria em iframe, tela
+  da dica, celular), o verificador de JavaScript, o exercicio por dia do Python pra Web Security.
 
 ### Dialogo da Focada no Projeto Semanal (Fase 64)
 

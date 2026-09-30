@@ -13,6 +13,9 @@ public static class CodeStepProgress
     /// <summary>Tentativas por passo; na ultima sem passar, a solucao aparece.</summary>
     public const int MaxAttempts = 3;
 
+    /// <summary>Fase 86: dicas da Focada por passo com laboratorio (nao contam como tentativa).</summary>
+    public const int MaxHints = 3;
+
     public static bool IsDone(IEnumerable<ActivityResponse> responses)
     {
         var list = responses.ToList();

@@ -74,6 +74,88 @@ public static class CuratedDayImporter
 
         for (var i = 0; i < day.Activities.Count; i++)
             AddActivity(dailyTemplate, day.Activities[i], i, contentByRef);
+
+        // Fase 86: laboratorio de codigo do dia (depois das atividades: SetLab exige um CodeStep).
+        if (day.Lab is not null)
+            dailyTemplate.SetLab(BuildLab(day, fileRef => contentByRef.TryGetValue(fileRef, out var id) ? id : null));
+    }
+
+    /// <summary>
+    /// Fase 86: liga o laboratorio (bloco <c>lab</c>, codigo inicial e opt-out por passo) de um dia-N.json
+    /// a um DailyTemplate que JA esta no banco, sem reimportar o dia - quem ja esta no meio do dia nao perde
+    /// progresso. Os File do lab sao achados pelo <c>externalUrl</c> entre os CuratedContents da semana. Dia
+    /// do arquivo sem <c>lab</c> desliga o laboratorio do template. Devolve true se algo mudou. Idempotente.
+    /// </summary>
+    public static bool ApplyLab(WeeklyTemplate weeklyTemplate, DailyTemplate dailyTemplate, string jsonFilePath)
+    {
+        var day = Parse(File.ReadAllText(jsonFilePath));
+        if (day.DayNumber != dailyTemplate.DayNumber)
+            throw new InvalidOperationException($"{jsonFilePath}: dayNumber {day.DayNumber} nao bate com o dia {dailyTemplate.DayNumber}.");
+
+        var jsonSteps = day.Activities.Where(a => a.Type == ActivityType.CodeStep).ToList();
+        var steps = dailyTemplate.Activities.Where(a => a.Type == ActivityType.CodeStep).OrderBy(a => a.OrderIndex).ToList();
+        if (jsonSteps.Count != steps.Count)
+            throw new InvalidOperationException($"{jsonFilePath}: {jsonSteps.Count} passos de codigo no arquivo, {steps.Count} no banco - reimporte a ponte.");
+
+        var changed = false;
+        for (var i = 0; i < steps.Count; i++)
+        {
+            var starter = string.IsNullOrWhiteSpace(jsonSteps[i].CodeStarter) ? null : jsonSteps[i].CodeStarter;
+            var disabled = jsonSteps[i].Lab == false;
+            if (steps[i].CodeStarter == starter && steps[i].LabDisabled == disabled) continue;
+            steps[i].SetLabOptions(starter, disabled);
+            changed = true;
+        }
+
+        // As variantes de linguagem da ponte (Python, JavaScript) tem cada uma o seu File com o mesmo
+        // externalUrl: o arquivo certo e o que as atividades DESTE dia ja usam; so na falta dele, qualquer um da semana.
+        var dayContentIds = dailyTemplate.Activities.Where(a => a.ContentId is not null).Select(a => a.ContentId!.Value).ToHashSet();
+        var lab = day.Lab is null
+            ? null
+            : BuildLab(day, fileRef =>
+            {
+                var url = day.CuratedContents.FirstOrDefault(c => c.Ref == fileRef)?.ExternalUrl;
+                var matches = weeklyTemplate.CuratedContents.Where(c => c.Type == CuratedContentType.File && c.ExternalUrl == url).ToList();
+                return (matches.FirstOrDefault(c => dayContentIds.Contains(c.Id)) ?? matches.FirstOrDefault())?.Id;
+            });
+        if (!SameLab(dailyTemplate.Lab, lab))
+        {
+            dailyTemplate.SetLab(lab);
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    /// <summary>Fase 86: o dia-N.json traz bloco lab (usado pelo sync pra nao abrir o arquivo de novo).</summary>
+    public static bool FileHasLab(string jsonFilePath) => Parse(File.ReadAllText(jsonFilePath)).Lab is not null;
+
+    // LabConfig e um record com listas: a igualdade de record compara as listas por referencia, entao compara valor a valor.
+    private static bool SameLab(LabConfig? a, LabConfig? b) =>
+        a is null ? b is null
+        : b is not null && a.Runtime == b.Runtime && a.Image == b.Image && a.Entry == b.Entry && a.Command == b.Command
+          && a.TimeoutSeconds == b.TimeoutSeconds && a.FileContentIds.SequenceEqual(b.FileContentIds)
+          && a.Packages.SequenceEqual(b.Packages) && a.Services.SequenceEqual(b.Services);
+
+    private static LabConfig BuildLab(CuratedDayJson day, Func<string, Guid?> resolveFile)
+    {
+        var lab = day.Lab!;
+        var fileIds = new List<Guid>();
+        var fileTitles = new List<string>();
+        foreach (var fileRef in lab.Files ?? [])
+        {
+            var content = day.CuratedContents.FirstOrDefault(c => c.Ref == fileRef);
+            if (content is null || content.Type != CuratedContentType.File)
+                throw new InvalidOperationException($"lab.files: '{fileRef}' nao e um File em curatedContents.");
+            fileIds.Add(resolveFile(fileRef) ?? throw new InvalidOperationException($"lab.files: o File '{fileRef}' nao esta nos conteudos da semana."));
+            fileTitles.Add(content.Title);
+        }
+
+        foreach (var service in lab.Services ?? [])
+            if (!fileTitles.Contains(service))
+                throw new InvalidOperationException($"lab.services: '{service}' nao e o titulo de um File listado em lab.files.");
+
+        return LabConfig.Create(lab.Runtime, lab.Image, fileIds, lab.Packages, lab.Services, lab.Entry, lab.Command, lab.TimeoutSeconds);
     }
 
     private static void AddActivity(DailyTemplate dailyTemplate, ActivityJson json, int orderIndex, Dictionary<string, Guid> contentByRef)
@@ -89,7 +171,9 @@ public static class CuratedDayImporter
         var activity = dailyTemplate.AddActivity(json.Type, orderIndex, json.AnswerMode, json.Prompt, contentId, json.ExpectedAnswer);
 
         if (json.Type == ActivityType.CodeStep)
-            activity.ConfigureCodeStep(json.CodeSolution ?? "", json.CodeExpectedOutput ?? "", json.CodeRubric ?? "");
+            activity.ConfigureCodeStep(
+                json.CodeSolution ?? "", json.CodeExpectedOutput ?? "", json.CodeRubric ?? "",
+                json.CodeStarter, labDisabled: json.Lab == false);
 
         foreach (var option in json.QuizOptions ?? [])
             activity.AddQuizOption(option.Text, option.IsCorrect);
@@ -128,7 +212,12 @@ public static class CuratedDayImporter
         }
     }
 
-    private record CuratedDayJson(int DayNumber, List<CuratedContentJson> CuratedContents, List<ActivityJson> Activities);
+    private record CuratedDayJson(int DayNumber, List<CuratedContentJson> CuratedContents, List<ActivityJson> Activities, LabJson? Lab = null);
+
+    /// <summary>Fase 86: bloco <c>lab</c> do dia (CURADORIA.md 5.2). Os nomes dos campos seguem o JSON.</summary>
+    private record LabJson(
+        string? Runtime, string? Image, List<string>? Files, List<string>? Packages, List<string>? Services,
+        string? Entry, string? Command, int TimeoutSeconds = 0);
 
     private record CuratedContentJson(string Ref, CuratedContentType Type, string Title, string? ExternalUrl, string? BodyText);
 
@@ -136,7 +225,10 @@ public static class CuratedDayImporter
         ActivityType Type, AnswerMode AnswerMode, string? ContentRef, string? Prompt,
         string? ExpectedAnswer, List<QuizOptionJson>? QuizOptions, List<WordMatchPairJson>? WordMatchPairs,
         List<RoleplayNodeJson>? RoleplayNodes,
-        string? CodeSolution = null, string? CodeExpectedOutput = null, string? CodeRubric = null);
+        string? CodeSolution = null, string? CodeExpectedOutput = null, string? CodeRubric = null,
+        string? CodeStarter = null,
+        /// <summary>Fase 86: <c>"lab": false</c> tira o passo do laboratorio do dia (fluxo antigo). Ausente/true = usa o lab do dia.</summary>
+        bool? Lab = null);
 
     private record QuizOptionJson(string Text, bool IsCorrect);
 

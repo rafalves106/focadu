@@ -48,6 +48,13 @@ public class DailyConfiguration : IEntityTypeConfiguration<Daily>
             .IsRequired()
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Fase 86: dicas da Focada nos passos de codigo com laboratorio - mesma FK sombra das respostas.
+        builder.HasMany(d => d.Hints)
+            .WithOne()
+            .HasForeignKey("DailyId")
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Referencia "fraca" auto-relacionada (mesmo padrao de DailyActivity.ContentId antes): se
         // a Daily de reforco gerada for removida por algum motivo, so desvincula (SetNull), nunca
         // apaga em cadeia a Daily de origem.

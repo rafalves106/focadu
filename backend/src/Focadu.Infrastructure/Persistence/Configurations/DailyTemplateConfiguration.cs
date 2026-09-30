@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Focadu.Domain.Dailies;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Focadu.Infrastructure.Persistence.Configurations;
@@ -20,6 +22,19 @@ public class DailyTemplateConfiguration : IEntityTypeConfiguration<DailyTemplate
         builder.Property(d => d.WeeklyTemplateId);
         // Fase 69: variante de linguagem do dia (a ponte) - mesma conversao de WeeklyProject.Language.
         builder.Property(d => d.Language).HasConversion<string>().HasMaxLength(20);
+
+        // Fase 86: laboratorio de codigo do dia (nulo = sem laboratorio) - um valor, guardado como JSON em
+        // texto. O comparador serializa porque LabConfig tem listas (a igualdade de record as compara por referencia).
+        var labJson = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        builder.Property(d => d.Lab)
+            .HasConversion(
+                v => v == null ? null : JsonSerializer.Serialize(v, labJson),
+                v => v == null ? null : JsonSerializer.Deserialize<LabConfig>(v, labJson))
+            .HasColumnName("LabConfig")
+            .Metadata.SetValueComparer(new ValueComparer<LabConfig?>(
+                (a, b) => JsonSerializer.Serialize(a, labJson) == JsonSerializer.Serialize(b, labJson),
+                v => v == null ? 0 : JsonSerializer.Serialize(v, labJson).GetHashCode(),
+                v => v == null ? null : JsonSerializer.Deserialize<LabConfig>(JsonSerializer.Serialize(v, labJson), labJson)));
 
         builder.HasMany(d => d.Activities)
             .WithOne()

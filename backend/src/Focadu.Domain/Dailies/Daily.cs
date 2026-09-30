@@ -59,6 +59,11 @@ public class Daily : Entity
     /// <summary>Todas as tentativas de resposta desta Daily, de qualquer atividade - filtre por ActivityId pra ver o histórico de uma atividade específica.</summary>
     public IReadOnlyCollection<ActivityResponse> Responses => _responses.AsReadOnly();
 
+    private readonly List<CodeStepHint> _hints = new();
+
+    /// <summary>Fase 86: dicas da Focada dadas nos passos de codigo com laboratorio (nao sao tentativas).</summary>
+    public IReadOnlyCollection<CodeStepHint> Hints => _hints.AsReadOnly();
+
     private Daily()
     {
     }
@@ -248,6 +253,31 @@ public class Daily : Entity
     }
 
     /// <summary>
+    /// Fase 86: pede uma dica da Focada num passo de codigo com laboratorio. Nao e tentativa: so conta pro
+    /// limite de <see cref="CodeStepProgress.MaxHints"/> por passo. Nao da pra pedir depois que o passo
+    /// acabou (passou ou a solucao apareceu) - numa Daily ja concluida (replay) o passo pode ser refeito.
+    /// </summary>
+    public CodeStepHint AddCodeStepHint(Guid activityId, string right, string wrong, string improve)
+    {
+        var activity = Activities.FirstOrDefault(a => a.Id == activityId)
+            ?? throw new DomainException("Atividade nao encontrada nesta Daily.", "atividade_nao_encontrada");
+        if (!Template.StepUsesLab(activity))
+            throw new DomainException("Este passo nao tem laboratorio, entao nao tem dica.", "passo_sem_laboratorio");
+        if (!HasEverCompleted && IsCodeStepDone(activityId))
+            throw new DomainException("Este passo ja foi concluido.", "passo_concluido");
+        if (PriorCode(activityId) is null)
+            throw new DomainException("Conclua o passo anterior antes deste.", "passo_anterior_pendente");
+
+        var used = _hints.Count(h => h.ActivityId == activityId);
+        if (used >= CodeStepProgress.MaxHints)
+            throw new DomainException($"As {CodeStepProgress.MaxHints} dicas deste passo ja foram usadas.", "dicas_esgotadas");
+
+        var hint = new CodeStepHint(activityId, used + 1, right, wrong, improve);
+        _hints.Add(hint);
+        return hint;
+    }
+
+    /// <summary>
     /// Fase 79: o conteudo do DailyTemplate desta Daily foi trocado (a ponte virou "code comigo") -
     /// as respostas antigas respondem atividades que nao existem mais. So pra Daily ainda nao
     /// concluida (SyncBridgeDaysUseCase): a sessao recomeca do zero, sem penalidade herdada.
@@ -258,6 +288,7 @@ public class Daily : Entity
             throw new DomainException("Uma Daily ja concluida mantem o historico dela.");
 
         _responses.Clear();
+        _hints.Clear();
         PenaltyPoints = 0;
     }
 

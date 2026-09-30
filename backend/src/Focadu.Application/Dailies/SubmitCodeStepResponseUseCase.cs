@@ -40,14 +40,19 @@ public class SubmitCodeStepResponseUseCase
         _evaluationService = evaluationService;
     }
 
+    /// <param name="output">Saida colada do terminal - so no fluxo sem laboratorio (passo fora do lab).</param>
+    /// <param name="labRun">
+    /// Fase 86: o que o laboratorio produziu ao rodar o passo. Obrigatorio quando o passo roda no
+    /// laboratorio (o aluno precisa ter rodado ao menos uma vez antes de enviar); nesse caso
+    /// <paramref name="output"/> e ignorado.
+    /// </param>
     public async Task<SubmitActivityResponseResult> ExecuteAsync(
-        Guid userId, Guid dailyId, Guid activityId, string? code, string? output, CancellationToken cancellationToken = default)
+        Guid userId, Guid dailyId, Guid activityId, string? code, string? output, LabRunInput? labRun = null,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(code))
             throw new ValidationException("codigo_obrigatorio", "Escreva o codigo do passo antes de enviar.");
-        if (string.IsNullOrWhiteSpace(output))
-            throw new ValidationException("saida_obrigatoria", "Cole a saida que apareceu no seu terminal.");
-        if (code.Length > MaxLength || output.Length > MaxLength)
+        if (code.Length > MaxLength)
             throw new ValidationException("codigo_muito_grande", $"Codigo e saida tem limite de {MaxLength} caracteres cada.");
 
         var weekly = await _weeklyRepository.GetByDailyIdAsync(dailyId, userId, cancellationToken)
@@ -67,6 +72,27 @@ public class SubmitCodeStepResponseUseCase
         var priorCode = daily.PriorCode(activityId)
             ?? throw new DomainException("Conclua o passo anterior antes deste.", "passo_anterior_pendente");
 
+        // Fase 86: no laboratorio a saida e a da plataforma e o aluno precisa ter rodado ao menos uma
+        // vez; fora dele vale o fluxo da Fase 79 (saida colada do terminal).
+        string evidence;
+        CodeStepLabRun? lab = null;
+        if (daily.Template.StepUsesLab(activity))
+        {
+            if (labRun is null)
+                throw new ValidationException("rodar_antes_de_enviar", "Rode o codigo no laboratorio antes de enviar o passo.");
+            var normalized = labRun.Normalize(MaxLength);
+            evidence = normalized.Text;
+            lab = normalized.Run;
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(output))
+                throw new ValidationException("saida_obrigatoria", "Cole a saida que apareceu no seu terminal.");
+            if (output.Length > MaxLength)
+                throw new ValidationException("codigo_muito_grande", $"Codigo e saida tem limite de {MaxLength} caracteres cada.");
+            evidence = output;
+        }
+
         var attemptNumber = daily.Responses.Count(r => r.ActivityId == activityId) + 1;
         var courseName = await _weeklyTemplateRepository.GetCourseNameAsync(weekly.Template.Id, cancellationToken);
         var evaluation = await _evaluationService.EvaluateAsync(
@@ -78,14 +104,15 @@ public class SubmitCodeStepResponseUseCase
                 activity.CodeSolution ?? string.Empty,
                 priorCode,
                 code,
-                output,
+                evidence,
                 attemptNumber,
                 CodeStepProgress.MaxAttempts,
-                courseName),
+                courseName,
+                lab),
             cancellationToken);
 
         return await ActivityResponseRecorder.RecordAsync(
             weekly, daily, activityId, evaluation.Passed ? 100 : 0, transcript: code, correctedTranscript: null,
-            justification: output, evaluation.Feedback, _clock, _unitOfWork, cancellationToken);
+            justification: evidence, evaluation.Feedback, _clock, _unitOfWork, cancellationToken);
     }
 }

@@ -41,6 +41,7 @@ public class FocaduDbContext : DbContext
     public DbSet<Weekly> Weeklies => Set<Weekly>();
     public DbSet<Daily> Dailies => Set<Daily>();
     public DbSet<ActivityResponse> ActivityResponses => Set<ActivityResponse>();
+    public DbSet<CodeStepHint> CodeStepHints => Set<CodeStepHint>(); // Fase 86
     public DbSet<QuizOption> QuizOptions => Set<QuizOption>();
     public DbSet<RoleplayNode> RoleplayNodes => Set<RoleplayNode>();
     public DbSet<RoleplayOption> RoleplayOptions => Set<RoleplayOption>();

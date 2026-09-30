@@ -26,8 +26,13 @@ internal static class DailyStateMapper
         return new DailyStateDto(
             daily.Id, daily.WeeklyId, daily.DayNumber, daily.Date,
             daily.Status, daily.IsReinforcement, daily.PenaltyPoints, EvaluationPolicy.DailyPenaltyThreshold,
-            accessMode, activities, CodeRepositoryUrl: daily.CodeRepositoryUrl);
+            accessMode, activities, CodeRepositoryUrl: daily.CodeRepositoryUrl, Lab: ToLabDto(daily.Template.Lab));
     }
+
+    private static LabConfigDto? ToLabDto(LabConfig? lab) =>
+        lab is null
+            ? null
+            : new LabConfigDto(lab.Runtime, lab.Image, lab.FileContentIds, lab.Packages, lab.Services, lab.Entry, lab.Command, lab.TimeoutSeconds);
 
     private static DailyActivityDto ToActivityDto(Daily daily, DailyActivity activity)
     {
@@ -74,9 +79,18 @@ internal static class DailyStateMapper
         {
             var done = daily.IsCodeStepDone(activity.Id);
             completed = done;
+            var usesLab = daily.Template.StepUsesLab(activity);
+            var hints = usesLab
+                ? daily.Hints
+                    .Where(h => h.ActivityId == activity.Id)
+                    .OrderBy(h => h.Number)
+                    .Select(h => new CodeStepHintDto(h.Number, h.Right, h.Wrong, h.Improve, h.CreatedAt))
+                    .ToList()
+                : null;
             codeStep = new CodeStepDto(
                 daily.PriorCode(activity.Id), done, CodeStepProgress.MaxAttempts,
-                done ? activity.CodeSolution : null, done ? activity.CodeExpectedOutput : null);
+                done ? activity.CodeSolution : null, done ? activity.CodeExpectedOutput : null,
+                usesLab, usesLab ? activity.CodeStarter : null, usesLab ? CodeStepProgress.MaxHints : 0, hints);
         }
 
         return new DailyActivityDto(

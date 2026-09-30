@@ -25,7 +25,19 @@ public record SubmitActivityResponseRequest(
 /// Fase 79: passo de codigo da ponte - o trecho que o passo pede e a saida que o aluno viu rodando
 /// na maquina dele. A IA confere os dois (ver SubmitCodeStepResponseUseCase).
 /// </summary>
-public record SubmitCodeStepRequest(string? Code, string? Output);
+public record SubmitCodeStepRequest(string? Code, string? Output, LabRunRequest? LabRun = null);
+
+/// <summary>
+/// Fase 86: o que o laboratorio de codigo produziu ao rodar o passo (saida da ultima execucao, exit code e,
+/// no Linux, o historico de comandos com a saida de cada um). Obrigatorio nos passos que rodam no
+/// laboratorio - ai <c>Output</c> do SubmitCodeStepRequest e ignorado.
+/// </summary>
+public record LabRunRequest(string? Output, int ExitCode, IReadOnlyList<LabCommandRequest>? Commands = null);
+
+public record LabCommandRequest(string? Command, string? Output);
+
+/// <summary>Fase 86: pedido de dica da Focada num passo com laboratorio - o codigo atual e o que aconteceu ao rodar (opcional).</summary>
+public record RequestCodeHintRequest(string? Code, LabRunRequest? LabRun = null);
 
 /// <summary>Fase 79: endereco do repositorio do script da ponte - vazio/nulo desliga.</summary>
 public record LinkCodeRepositoryRequest(string? Url);

@@ -37,6 +37,14 @@ public class DailyTemplate : Entity
     public IReadOnlyCollection<DailyActivity> Activities => _activities.AsReadOnly();
 
     /// <summary>
+    /// Fase 86: laboratorio de codigo do dia (bloco <c>lab</c> do dia-N.json, CURADORIA.md 5.2). Nulo = sem
+    /// laboratorio: todo dia ja curado continua valendo e os passos de codigo seguem no fluxo antigo
+    /// (rodar na maquina e colar a saida). Vale pra todos os CodeStep do dia, exceto os com
+    /// <see cref="DailyActivity.LabDisabled"/>.
+    /// </summary>
+    public LabConfig? Lab { get; private set; }
+
+    /// <summary>
     /// Fase 82: dia de ponte - uma variante por linguagem (ponte antiga do Web Security) ou um dia com
     /// passos de codigo ("code comigo", Fase 79). A 2a forma cobre a ponte dos cursos sem Projeto Semanal
     /// (Linux), cuja linguagem mora na semana (<c>WeeklyTemplate.PracticeLanguage</c>) e nao no dia. Ponte
@@ -65,6 +73,19 @@ public class DailyTemplate : Entity
 
         DayNumber = dayNumber;
     }
+
+    /// <summary>Fase 86: liga (ou desliga, com nulo) o laboratorio do dia. So faz sentido com passo de codigo.</summary>
+    public void SetLab(LabConfig? lab)
+    {
+        if (lab is not null && _activities.All(a => a.Type != ActivityType.CodeStep))
+            throw new DomainException("So um dia com passo de codigo (CodeStep) pode ter laboratorio.", "lab_sem_passo_de_codigo");
+
+        Lab = lab;
+    }
+
+    /// <summary>Fase 86: este passo roda no laboratorio do dia (o dia tem lab e o passo nao saiu dele).</summary>
+    public bool StepUsesLab(DailyActivity activity) =>
+        Lab is not null && activity.Type == ActivityType.CodeStep && !activity.LabDisabled;
 
     /// <summary>Ver doc da classe - usado so por Weekly.CreateDailyReinforcement (instancia).</summary>
     internal static DailyTemplate CreateSynthetic(int dayNumber) => new(dayNumber);
