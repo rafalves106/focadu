@@ -1,6 +1,5 @@
 using System.IO;
 using System.Linq;
-using Focadu.Application.Enrollments;
 using Focadu.Application.Seed;
 using Focadu.Domain.Enums;
 using Xunit;
@@ -10,7 +9,8 @@ namespace Focadu.Tests.Seed;
 /// <summary>
 /// Fase 81: o seed dos cursos de pre-requisito contra a curadoria de verdade (secret/curadoria/linux/),
 /// sem banco - mesmo espirito de CuratedContentAllFilesTests. Pega erro de schema do curso.json ou de
-/// um dia curado antes de o deploy rodar o seed.
+/// um dia curado antes de o deploy rodar o seed. Fora do CI hospedado (sem o repo focadu-secret), igual
+/// CuratedContentAllFilesTests - ver .github/workflows/ci.yml.
 /// </summary>
 public class CuratedCourseImporterTests
 {
@@ -82,12 +82,4 @@ public class CuratedCourseImporterTests
         Assert.All(steps, s => Assert.False(string.IsNullOrWhiteSpace(s.CodeExpectedOutput)));
         Assert.Null(bridge.Language);
     }
-
-    [Theory]
-    [InlineData("rafa@x.com, Outra@Y.com", "outra@y.com", true)]
-    [InlineData("rafa@x.com", "outro@x.com", false)]
-    [InlineData("", "rafa@x.com", false)]
-    [InlineData(null, null, false)]
-    public void CoursePreviewOptions_MatchesEmailsIgnoringCase(string? setting, string? email, bool expected) =>
-        Assert.Equal(expected, CoursePreviewOptions.FromSetting(setting).CanPreview(email));
 }
