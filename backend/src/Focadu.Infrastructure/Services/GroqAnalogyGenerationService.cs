@@ -33,14 +33,15 @@ public class GroqAnalogyGenerationService : IAnalogyGenerationService
         "(ex.: carta = pacote, endereço no envelope = destino) e a relação entre eles funciona do " +
         "mesmo jeito. Se a analogia sugerir um funcionamento diferente do real, descarte e escolha " +
         "outro cenário. " +
-        "(2) Use um interesse do aluno SOMENTE se ele reproduzir o mecanismo da seção elemento por " +
-        "elemento, usando apenas aspectos verdadeiros e conhecidos desse interesse. Na dúvida, NÃO " +
-        "use o interesse e siga a regra 3: na maioria das seções nenhum interesse vai se encaixar, " +
-        "e isso é o esperado. Nunca invente regras, mecânicas ou detalhes do interesse para a " +
-        "analogia caber, e não cite um interesse apenas para personalizar o texto: citar um " +
-        "interesse sem correspondência real é pior do que não citá-lo. " +
-        "(3) Se nenhum interesse se encaixar de forma natural (o que é normal e esperado), use um " +
-        "cenário universal do cotidiano: correio e cartas, portaria de prédio, chaves e fechaduras, " +
+        "(2) Os interesses e hobbies do aluno são a fonte PREFERIDA das analogias - é por isso que ele " +
+        "os informou. Em cada seção, procure PRIMEIRO, entre os interesses dele, uma situação real " +
+        "cujo funcionamento reproduza o mecanismo da seção elemento por elemento (ex.: pra quem " +
+        "cozinha, a receita que diz a ordem dos passos; pra quem joga futebol, o juiz que só valida " +
+        "o gol depois de conferir o impedimento). Varie os interesses entre as seções. Use apenas " +
+        "aspectos verdadeiros e conhecidos do interesse: nunca invente regras, mecânicas ou " +
+        "detalhes para a analogia caber. " +
+        "(3) Só quando NENHUM interesse reproduzir o mecanismo sem distorcer, use um cenário " +
+        "universal do cotidiano: correio e cartas, portaria de prédio, chaves e fechaduras, " +
         "cofres, trânsito urbano simples, filas, listas telefônicas. Isso é sempre melhor do que uma " +
         "analogia forçada. Exemplo do que NÃO fazer: explicar o handshake TCP com a fila de entrada " +
         "de uma partida de um jogo (o jogo não funciona assim e a analogia induz um modelo errado). " +
@@ -121,23 +122,26 @@ public class GroqAnalogyGenerationService : IAnalogyGenerationService
     internal static string BuildSystemPrompt(string? courseName) =>
         SystemPromptTemplate.Replace("{plataforma}", CoursePromptText.Platform(courseName));
 
-    private static string BuildUserPrompt(AnalogyRequest request)
+    /// <summary>
+    /// Fase 86: as etiquetas de interesse e o texto livre do perfil ("Referencias, hobbies, o que quiser...")
+    /// entram juntos como interesses - o dono tinha "Academia, Motos, Carros, Rock" so no texto livre (as
+    /// etiquetas fixas nao tem nada disso) e o prompt dizia "nenhum interesse informado".
+    /// </summary>
+    internal static string BuildUserPrompt(AnalogyRequest request)
     {
-        var interests = request.Interests.Count > 0 ? string.Join(", ", request.Interests) : "(nenhum interesse especifico informado)";
-        var notes = string.IsNullOrWhiteSpace(request.AdditionalNotes)
-            ? string.Empty
-            : $"Notas adicionais do aluno sobre si mesmo: {request.AdditionalNotes}\n\n";
+        var parts = request.Interests.Where(i => !string.IsNullOrWhiteSpace(i)).Select(i => i.Trim()).ToList();
+        if (!string.IsNullOrWhiteSpace(request.AdditionalNotes)) parts.Add(request.AdditionalNotes.Trim());
+        var interests = parts.Count > 0 ? string.Join("; ", parts) : "(nenhum informado)";
 
         var sections = new StringBuilder();
         for (var i = 0; i < request.Sections.Count; i++)
             sections.Append($"[Seção {i + 1}]\n{request.Sections[i]}\n\n");
 
         return
-            $"Interesses do aluno (opcionais: use-os só se reproduzirem fielmente o mecanismo da seção; caso contrário, ignore-os): {interests}\n\n" +
-            notes +
+            $"Interesses e hobbies do aluno (o que ele escreveu no perfil): {interests}\n\n" +
             $"Seções do texto (na ordem):\n\n{sections}" +
             $"Escreva uma analogia para cada uma das {request.Sections.Count} seções acima, nessa ordem. " +
-            "Em cada seção, prefira um cenário universal do cotidiano, a menos que um interesse reproduza o mecanismo fielmente. " +
+            "Em cada seção, tente primeiro um dos interesses e hobbies acima; só use um cenário universal do cotidiano se nenhum reproduzir o mecanismo sem distorcer. " +
             "Escreva todas as analogias em português do Brasil.";
     }
 
