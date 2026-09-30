@@ -67,7 +67,7 @@ public class SubmitCodeStepResponseUseCase
         var attemptNumber = daily.Responses.Count(r => r.ActivityId == activityId) + 1;
         var evaluation = await _evaluationService.EvaluateAsync(
             new CodeStepEvaluationRequest(
-                daily.Template.Language?.ToString() ?? "Python",
+                daily.Template.Language?.ToString() ?? weekly.Template.PracticeLanguage ?? "Python",
                 activity.Prompt ?? string.Empty,
                 activity.CodeRubric ?? string.Empty,
                 activity.CodeExpectedOutput ?? string.Empty,

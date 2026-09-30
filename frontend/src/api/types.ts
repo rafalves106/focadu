@@ -420,6 +420,8 @@ export interface WeeklyDetailDto {
   hasPendingWeeklyReinforcement: boolean;
   /** Fase 45: certificacoes de mercado do Monthly ao qual esta Weekly pertence. */
   moduleCertifications: CertificationCoverageDto[];
+  /** Fase 81: linguagem dos passos de codigo nos cursos sem projeto ("Bash", "Python"); null no Web Security. */
+  practiceLanguage?: string | null;
 }
 
 // Ranking (Fase 16) - Score de Estudo, metrica de QUALIDADE (diferente de Gems, que recompensa

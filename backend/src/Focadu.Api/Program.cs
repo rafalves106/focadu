@@ -85,6 +85,8 @@ var smtpOptions = new SmtpOptions(
 var frontendOptions = new FrontendOptions(
     builder.Configuration["Frontend:BaseUrl"] is { Length: > 0 } frontendBaseUrl ? frontendBaseUrl : "http://localhost:5173");
 
+// Fase 81: e-mails que enxergam os cursos ainda escondidos (Draft). Env var CoursePreview__Emails.
+builder.Services.AddSingleton(Focadu.Application.Enrollments.CoursePreviewOptions.FromSetting(builder.Configuration["CoursePreview:Emails"]));
 builder.Services.AddFocaduApplication();
 builder.Services.AddFocaduInfrastructure(connectionString, groqApiKey, gitHubOptions, forgejoOptions, jwtOptions, smtpOptions, frontendOptions);
 
@@ -216,6 +218,16 @@ if (args.Contains("seed"))
         $"{bridgeSync.TemplatesRefreshed} trocadas pelo code comigo ({bridgeSync.DailiesReset} Dailies recomecadas).");
     foreach (var skipped in bridgeSync.Skipped)
         Console.WriteLine($"Seed: ponte NAO adicionada - {skipped}");
+
+    // Fase 81: cursos de pre-requisito (Linux, Python pra Web Security) - nascem escondidos e ganham
+    // os dias curados desde o deploy anterior.
+    foreach (var curated in await scope.ServiceProvider.GetRequiredService<SeedCuratedCoursesUseCase>().ExecuteAsync())
+    {
+        Console.WriteLine($"Seed: curso '{curated.CourseName}' ({curated.Status}) - " +
+            (curated.Created ? "criado, " : "") + $"{curated.DaysImported} dias importados, {curated.DailiesAdded} Dailies adicionadas.");
+        foreach (var skipped in curated.Skipped)
+            Console.WriteLine($"Seed: Daily NAO adicionada - {skipped}");
+    }
 
     // Fase 17: catalogo fixo da loja de cosmeticos - mesmo gatilho `-- seed`. Fase 71: as pecas em
     // pixel art entram por Code, so as que faltam (uma leva nova chega em producao pelo proprio seed).
@@ -575,8 +587,8 @@ api.MapGet("/enrollments/me", async (ClaimsPrincipal principal, GetMyEnrollments
 
 // --- Cursos --------------------------------------------------------------------------------
 
-api.MapGet("/courses", async (ListCoursesUseCase useCase, CancellationToken ct) =>
-        Results.Ok(await useCase.ExecuteAsync(ct)))
+api.MapGet("/courses", async (ClaimsPrincipal principal, ListCoursesUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
     .RequireAuthorization()
     .WithName("ListCourses");
 

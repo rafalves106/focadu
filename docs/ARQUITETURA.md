@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 80 - Chat rapido com codigo formatado e ponte sem analogias**.
+> Ultima fase que atualizou este documento: **Fase 81 - Cursos de pre-requisito (Linux, Python pra Web Security): seed generico, curso escondido e semana sem projeto**.
 
 ## Visao geral do projeto
 
@@ -1728,6 +1728,44 @@ achar `.git` (o seed pode rodar tanto da raiz quanto de `backend/`) - **Fase 40:
 `CURATED_CONTENT_ROOT` estiver definida (caso do container Docker, que nao tem `.git`), usa ela
 direto sem subir diretorio nenhum (ver "Docker e Deploy" abaixo). Dias 2-4 continuam no
 placeholder - so o Dia 1 foi pedido nesta fase, trocar os outros e a mesma 1 linha cada.
+
+### Cursos de pre-requisito: seed generico, curso escondido e semana sem projeto (Fase 81)
+
+Origem: `secret/rascunhos/trilha-pre-requisitos-linux-python.md` (trilha Linux -> Python pra Web
+Security antes/junto do Web Security; decisoes do dono em 29/09/2026: **sem Projeto Semanal**, curso
+**escondido ate a curadoria terminar**, telas de curso sem projeto **desenhadas no Figma antes** do front).
+
+- **Manifesto por curso:** `secret/curadoria/<slug>/curso.json` (`name`, `description`,
+  `practiceLanguage`, `published`, `modules[].weeks[]` com `number`/`title`/`theme`/`days`). Slugs
+  conhecidos em `SeedCuratedCoursesUseCase.CourseSlugs` (`linux`, `python-websec`); sem `curso.json`, o
+  curso nao existe (hoje so o Linux tem).
+- **`SeedCuratedCoursesUseCase`** (roda no `-- seed`, depois do Web Security e das pontes): cria o curso
+  **Draft** se nao existir e, em todo deploy, acrescenta os dias curados desde o anterior
+  (`CuratedCourseImporter.Apply`, puro, testado contra a curadoria real). Diferente do seed do Web
+  Security (tudo de uma vez, nunca mais mexe): **incremental** - um dia so entra quando o `dia-N.json`
+  existe. Os dias novos chegam tambem as matriculas que ja existem (Daily na Weekly da semana; Weekly
+  criada se a semana for nova; numero ocupado vira aviso no log, nao derruba o deploy). `published: true`
+  ativa o curso (so ida, nunca esconde de novo).
+- **`CuratedContentLocator`**: a busca de arquivo de curadoria (CURATED_CONTENT_ROOT / `.git` / repo irmao)
+  saiu do seed do Web Security e passou a receber o slug; o do Web Security delega pra ele.
+- **Semana sem projeto:** `WeeklyTemplate.PracticeLanguage` (coluna nova, migration `PracticeOnlyWeeks`)
+  e `IsPracticeOnly` (linguagem de pratica **e** nenhuma especificacao de projeto - as duas condicoes de
+  proposito, pra uma semana do Web Security sem spec no banco continuar ganhando projeto). A matricula
+  nao inicializa `WeeklyProject` nessas semanas. `Weekly.IsModuleComplete` = Dailies concluidas quando
+  nao ha projeto; `RequiresPublicationToUnlock` e sempre falso sem projeto (a publicacao e a prova do
+  projeto); `CalculateScore` = media das Dailies; `StreakPauseWindows` ignora a semana (nao ha espera).
+- **Ponte do curso sem projeto:** dia normal (sem `DailyTemplate.Language`) com `CodeStep`. A linguagem
+  mandada pra IA sai de `WeeklyTemplate.PracticeLanguage` ("Bash") quando o dia nao tem variante; o
+  `WeeklyDetailDto.PracticeLanguage` alimenta o rotulo "Seu codigo · Bash" do `CodeStepActivity`.
+- **Curso escondido (Draft) e previa:** `CoursePreviewOptions` (config `CoursePreview:Emails`, env
+  `COURSE_PREVIEW_EMAILS` no compose, e-mails separados por virgula). Quem esta na lista ve o curso
+  Draft em `GET /api/courses/available` e `GET /api/courses` e consegue se matricular; os demais nao
+  veem e recebem 404 (`curso_nao_encontrado`) no `POST /api/enrollments`. `GET /api/courses` passou a
+  filtrar por usuario (Draft so pra previa ou matriculado) e a listar os publicados primeiro - antes
+  devolvia todos os cursos pra qualquer usuario, e o front usa essa lista no menu, Start, Ranking e guia.
+  Curso Archived nunca aceita matricula.
+- **Front ainda nao adaptado** a semana sem projeto (castelo do mapa, visao da semana, start): aguarda
+  o desenho no Figma. Enquanto o curso estiver Draft, so quem testa a previa ve essas telas.
 
 ## Certificacoes de mercado sugeridas por modulo (Fase 45)
 

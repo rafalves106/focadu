@@ -179,8 +179,9 @@ export function CodeStepActivity({
   const [error, setError] = useState<string | null>(null);
 
   const isJs = weekly?.project?.language === ProjectLanguage.JavaScript;
-  const languageName = isJs ? 'JavaScript' : 'Python';
-  const indent = isJs ? '  ' : '    ';
+  // Fase 81: curso sem projeto (Linux) diz a linguagem pela semana.
+  const languageName = weekly?.practiceLanguage ?? (isJs ? 'JavaScript' : 'Python');
+  const indent = isJs || languageName === 'Bash' ? '  ' : '    ';
   const codeSteps = daily.activities.filter((a) => a.type === ActivityType.CodeStep).sort((a, b) => a.orderIndex - b.orderIndex);
   const stepNumber = codeSteps.findIndex((a) => a.id === activity.id) + 1;
   const priorCode = activity.codeStep?.priorCode ?? '';

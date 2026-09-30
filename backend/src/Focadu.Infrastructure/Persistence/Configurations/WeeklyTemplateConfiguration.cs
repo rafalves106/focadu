@@ -19,6 +19,8 @@ public class WeeklyTemplateConfiguration : IEntityTypeConfiguration<WeeklyTempla
         builder.Property(w => w.Number).IsRequired();
         builder.Property(w => w.MonthlyId).IsRequired();
         builder.Property(w => w.WeeklyProjectSpecText);
+        // Fase 81: linguagem dos passos de codigo nos cursos sem projeto (Bash, Python).
+        builder.Property(w => w.PracticeLanguage).HasMaxLength(40);
 
         // Fase 64: briefing da Focada (text[], mesmo tipo das linguagens preferidas do perfil) e as
         // falas de estado sobrescritas pela semana (jsonb, chave -> texto). Ambos definidos 1x via seed.

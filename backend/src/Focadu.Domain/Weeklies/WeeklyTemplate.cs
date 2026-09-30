@@ -47,6 +47,22 @@ public class WeeklyTemplate : Entity
     /// <summary>Nome do repositorio-template no Forgejo interno (ex: "template-web-security-semana-1"), mantido pela curadoria - EnrollUserInCourseUseCase da fork disso pra cada aluno matriculado. Nulo ate a curadoria configurar; sem isso, a Weekly nao recebe repositorio (ver "repositorios-gerenciados-projeto-semanal.md").</summary>
     public string? ForgejoTemplateSlug { get; private set; }
 
+    /// <summary>
+    /// Fase 81: linguagem em que os passos de codigo (CodeStep) desta semana sao escritos, pros cursos
+    /// sem Projeto Semanal (Linux: "Bash", Python pra Web Security: "Python"). Nulo no Web Security, que
+    /// resolve a linguagem pela variante da ponte (DailyTemplate.Language). Definido uma vez via seed.
+    /// </summary>
+    public string? PracticeLanguage { get; private set; }
+
+    /// <summary>
+    /// Fase 81: semana de pratica, sem Projeto Semanal - a dos cursos curtos de pre-requisito (Linux,
+    /// Python pra Web Security): tem linguagem de pratica e nenhuma especificacao de projeto. Fecha so
+    /// com as Dailies, sem projeto e sem publicacao (secret/rascunhos/trilha-pre-requisitos-linux-python.md).
+    /// Exige as duas condicoes de proposito: uma semana do Web Security que por acaso esteja sem
+    /// especificacao no banco continua ganhando projeto na matricula, como sempre foi.
+    /// </summary>
+    public bool IsPracticeOnly => PracticeLanguage is not null && WeeklyProjectSpecText is null;
+
     private readonly List<WeeklyTemplateLanguage> _languageVariants = new();
 
     /// <summary>Fase 59: variantes de linguagem do projeto (1 repositorio-template por linguagem). Vazio = semana como antes da Fase 59, sem escolha de linguagem.</summary>
@@ -171,6 +187,17 @@ public class WeeklyTemplate : Entity
             throw new DomainException("Esta WeeklyTemplate ja tem um repositorio-template definido.");
 
         ForgejoTemplateSlug = slug;
+    }
+
+    /// <summary>Fase 81: define a linguagem dos passos de codigo da semana (uma vez so, via seed).</summary>
+    public void SetPracticeLanguage(string language)
+    {
+        if (string.IsNullOrWhiteSpace(language))
+            throw new DomainException("Linguagem de pratica nao pode ser vazia.");
+        if (PracticeLanguage is not null && PracticeLanguage != language)
+            throw new DomainException("Linguagem de pratica ja definida para esta semana.");
+
+        PracticeLanguage = language.Trim();
     }
 
     /// <summary>

@@ -25,6 +25,8 @@ public class EnrollUserInCourseUseCase
     private readonly IForgejoService _forgejoService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
+    private readonly IUserRepository _userRepository;
+    private readonly CoursePreviewOptions _previewOptions;
 
     public EnrollUserInCourseUseCase(
         ICourseRepository courseRepository,
@@ -34,8 +36,12 @@ public class EnrollUserInCourseUseCase
         ForgejoAccountProvisioner forgejoAccountProvisioner,
         IForgejoService forgejoService,
         IUnitOfWork unitOfWork,
-        IClock clock)
+        IClock clock,
+        IUserRepository userRepository,
+        CoursePreviewOptions previewOptions)
     {
+        _userRepository = userRepository;
+        _previewOptions = previewOptions;
         _courseRepository = courseRepository;
         _enrollmentRepository = enrollmentRepository;
         _weeklyRepository = weeklyRepository;
@@ -54,6 +60,13 @@ public class EnrollUserInCourseUseCase
 
         var course = await _courseRepository.GetFullTemplateGraphAsync(courseId, cancellationToken)
             ?? throw new NotFoundException("curso_nao_encontrado", "Curso nao encontrado.");
+
+        // Fase 81: curso escondido (Draft) so aceita matricula de quem esta na lista de previa - pro
+        // resto, responde como se nao existisse. Arquivado nunca.
+        if (course.Status == Domain.Enums.CourseStatus.Archived
+            || (course.Status == Domain.Enums.CourseStatus.Draft
+                && !_previewOptions.CanPreview((await _userRepository.GetByIdAsync(userId, cancellationToken))?.Email)))
+            throw new NotFoundException("curso_nao_encontrado", "Curso nao encontrado.");
 
         var enrollment = new Enrollment(userId, courseId);
         await _enrollmentRepository.AddAsync(enrollment, cancellationToken);
@@ -82,6 +95,13 @@ public class EnrollUserInCourseUseCase
                 {
                     weekly.AddDaily(dailyTemplate, cursor);
                     cursor = NextBusinessDay(cursor);
+                }
+
+                // Fase 81: semana sem Projeto Semanal (cursos de pre-requisito) fecha so com as Dailies.
+                if (weeklyTemplate.IsPracticeOnly)
+                {
+                    await _weeklyRepository.AddAsync(weekly, cancellationToken);
+                    continue;
                 }
 
                 var project = weekly.InitializeProject();

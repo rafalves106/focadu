@@ -53,6 +53,9 @@ services:
       Smtp__FromName: ${SMTP_FROM_NAME:-Focadu}
       Smtp__EnableSsl: ${SMTP_ENABLE_SSL:-true}
       Frontend__BaseUrl: ${FRONTEND_BASE_URL:-}
+      # Fase 81: e-mails (separados por virgula) que enxergam os cursos ainda escondidos (Draft) -
+      # os de pre-requisito nascem assim ate a curadoria terminar. Vazio = ninguem ve.
+      CoursePreview__Emails: ${COURSE_PREVIEW_EMAILS:-}
       # Contorna a busca por `.git` de CuratedContentPath (nao existe dentro do container) -
       # aponta direto pro bind mount do clone de focadu-secret abaixo. Ver
       # SeedWebSecurityCourseUseCase.CuratedContentPath.

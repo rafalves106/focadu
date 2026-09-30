@@ -46,6 +46,8 @@ public class StreakPauseWindows
         foreach (var weekly in weeklies)
         {
             if (!weekly.AreDailiesComplete()) continue;
+            // Fase 81: semana sem projeto fecha junto com a ultima Daily - nao ha espera pra pausar.
+            if (weekly.Project is null) continue;
 
             var lastDaily = weekly.Dailies
                 .Where(d => !d.IsReinforcement && d.CompletedAt.HasValue)

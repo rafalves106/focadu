@@ -285,45 +285,8 @@ public class SeedWebSecurityCourseUseCase
     internal static string? TryCuratedContentPath(string? weekFolder, string fileName) =>
         ResolveCuratedContentPath(weekFolder, fileName, required: false);
 
-    private static string? ResolveCuratedContentPath(string? weekFolder, string fileName, bool required)
-    {
-        var relativeSegments = string.IsNullOrEmpty(weekFolder)
-            ? new[] { CourseSlug, fileName }
-            : new[] { CourseSlug, weekFolder, fileName };
-
-        var contentRoot = Environment.GetEnvironmentVariable("CURATED_CONTENT_ROOT");
-        if (!string.IsNullOrWhiteSpace(contentRoot))
-        {
-            var fromRoot = Path.Combine([contentRoot, "curadoria", .. relativeSegments]);
-            return required || File.Exists(fromRoot) ? fromRoot : null;
-        }
-
-        var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
-        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, ".git")))
-            dir = dir.Parent;
-
-        var repoRoot = dir?.FullName
-            ?? throw new InvalidOperationException("Nao foi possivel localizar a raiz do repositorio (procurando por .git) para achar o conteudo curado.");
-
-        var nested = Path.Combine([repoRoot, "secret", "curadoria", .. relativeSegments]);
-        if (File.Exists(nested))
-            return nested;
-
-        var siblingParent = Directory.GetParent(repoRoot)?.FullName;
-        var sibling = siblingParent is null
-            ? null
-            : Path.Combine([siblingParent, "focadu-secret", "curadoria", .. relativeSegments]);
-        if (sibling is not null && File.Exists(sibling))
-            return sibling;
-
-        if (!required)
-            return null;
-
-        throw new InvalidOperationException(
-            $"Conteudo curado nao encontrado. Procurado em '{nested}'" +
-            (sibling is not null ? $" e em '{sibling}'" : "") +
-            " - confirme que o repositorio focadu-secret esta clonado ao lado deste, ou que existe uma pasta/symlink 'secret/' local.");
-    }
+    private static string? ResolveCuratedContentPath(string? weekFolder, string fileName, bool required) =>
+        CuratedContentLocator.Resolve(CourseSlug, weekFolder, fileName, required);
 }
 
 /// <summary>Resultado do seed: CourseId nulo quando o curso ja existia (nada foi inserido).</summary>

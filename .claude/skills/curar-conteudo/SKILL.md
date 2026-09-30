@@ -98,6 +98,10 @@ Web Security, é o Web Security.
   da ponte + código acumulado). Usar em dia normal exige fase de backend. Até lá, a prática entra no
   Quiz ("o que esse comando imprime?"), no Cloze ("complete o comando") e no Roleplay.
 - Analogias continuam como no Web Security (âncora no texto, a plataforma injeta).
+- **Distrator de quiz pode ser um equívoco típico.** Em pergunta de comportamento ("o que esse comando
+  imprime?", "o que acontece se..."), a regra absoluta do Web Security (todas as alternativas
+  verdadeiras) não se aplica: as erradas são o comportamento que um iniciante esperaria, sempre do
+  mesmo subtema e plausíveis. Os 4 critérios da CURADORIA.md 2.2 continuam valendo sem exceção.
 
 ## Referências
 

@@ -20,7 +20,9 @@ public record WeeklyDetailDto(
     /// <summary>Fase 15: true quando existe um WeeklyReinforcement (2+ dias fracos) ainda nao totalmente atendido - ver Weekly.HasPendingWeeklyReinforcement. So indicador, nunca bloqueia nada.</summary>
     bool HasPendingWeeklyReinforcement,
     /// <summary>Fase 45: certificacoes de mercado do Monthly ao qual esta Weekly pertence - usado no reforco mostrado junto da prova publica (PublicationModal) e no banner desta tela.</summary>
-    IReadOnlyCollection<CertificationCoverageDto> ModuleCertifications);
+    IReadOnlyCollection<CertificationCoverageDto> ModuleCertifications,
+    /// <summary>Fase 81: linguagem dos passos de codigo nos cursos sem projeto (Bash, Python) - o rotulo "Seu codigo · X" do CodeStep. Nulo no Web Security (a linguagem vem do projeto).</summary>
+    string? PracticeLanguage = null);
 
 /// <summary>Desempenho de um dia dentro da semana: quantas atividades tem, quantas ja foram feitas, quantas passaram.</summary>
 public record DailyOverviewDto(

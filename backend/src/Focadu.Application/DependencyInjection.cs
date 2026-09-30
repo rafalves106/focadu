@@ -48,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<CompleteDailyUseCase>();
         services.AddScoped<SeedWebSecurityCourseUseCase>();
         services.AddScoped<SyncBridgeDaysUseCase>();
+        services.AddScoped<SeedCuratedCoursesUseCase>();
         services.AddScoped<SeedCosmeticCatalogUseCase>();
         services.AddScoped<GetCuratedContentUseCase>();
         services.AddScoped<RegisterUserUseCase>();

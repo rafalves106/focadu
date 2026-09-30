@@ -77,8 +77,8 @@ Ao final de **toda fase de implementação**:
 
 ## Skills do projeto já configuradas
 
-- `curar-conteudo` — cura conteúdo didático de um dia do curso e grava em
-  `secret/curadoria/<curso>/semana-N/dia-N.json`.
+- `curar-conteudo` — cura conteúdo didático de um dia de qualquer curso (Web Security, Linux, Python pra
+  Web Security) e grava em `secret/curadoria/<curso>/semana-N/dia-N.json`.
 - `registrar-rascunho` — detecta ideia solta/não decidida sobre o produto e registra em
   `secret/rascunhos/<slug>.md`.
 - `aplicar-elementos-visuais` — retrofita um dia já curado com os elementos visuais das Fases
@@ -87,9 +87,17 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 80 — Chat rápido com código formatado e ponte sem analogias** (28/09/2026).
+Última fase concluída: **Fase 81 — Cursos de pré-requisito: seed genérico, curso escondido e semana sem projeto** (29/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Cursos de pré-requisito (Fase 81, trilha Linux → Python pra Web Security)**: seed genérico por
+  curso (`secret/curadoria/<slug>/curso.json` + `SeedCuratedCoursesUseCase`, incremental: cada deploy traz
+  os dias curados desde o anterior, inclusive pras matrículas existentes). O curso nasce **escondido**
+  (Draft) e só aparece pra e-mails em `COURSE_PREVIEW_EMAILS`; `GET /api/courses` passou a filtrar por
+  usuário (antes vazava qualquer curso). Semana **sem Projeto Semanal** (`WeeklyTemplate.IsPracticeOnly`):
+  fecha só com as Dailies, sem publicação, score = média das Dailies; ponte em Bash via
+  `PracticeLanguage`. Linux curado: Dias 1-7, 10 e 11. Telas de curso sem projeto aguardam o Figma.
+  Ver `docs/fase-81/`.
 - **Chat rápido com código formatado + ponte sem analogias (Fase 80, pedido do dono)**: o "Tira dúvidas"
   mostra bloco de código e código inline formatados (`ChatMessageText`); nas pontes não há mais analogia de
   interesse (leitura, feedback do resumo falado e chat), e o chat na ponte ensina sintaxe sem entregar o

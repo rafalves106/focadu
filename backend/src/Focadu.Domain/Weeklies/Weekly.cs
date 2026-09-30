@@ -100,10 +100,11 @@ public class Weekly : Entity
 
     /// <summary>
     /// "Modulo completo" (Fase 11): todas as Dailies originais concluidas e o WeeklyProject
-    /// avaliado.
+    /// avaliado. Fase 81: semana sem projeto (curso de pre-requisito, a matricula nao inicializa
+    /// um) fecha so com as Dailies.
     /// </summary>
     public bool IsModuleComplete() =>
-        AreDailiesComplete() && _project is { Status: WeeklyProjectStatus.Evaluated };
+        AreDailiesComplete() && (_project is null || _project.Status == WeeklyProjectStatus.Evaluated);
 
     /// <summary>
     /// Envia o projeto pratico desta Weekly (Fase 38) - so permitido depois que todas as Dailies
@@ -191,9 +192,9 @@ public class Weekly : Entity
         return _project;
     }
 
-    /// <summary>Verdadeiro quando o modulo esta completo mas ainda nao tem uma publicacao Validated - trava o proximo modulo (ver StartOrResumeDailyUseCase).</summary>
+    /// <summary>Verdadeiro quando o modulo esta completo mas ainda nao tem uma publicacao Validated - trava o proximo modulo (ver StartOrResumeDailyUseCase). Fase 81: semana sem projeto nao tem publicacao (a publicacao e a prova publica do projeto).</summary>
     public bool RequiresPublicationToUnlock() =>
-        IsModuleComplete() && _publication?.Status != PublicationStatus.Validated;
+        _project is not null && IsModuleComplete() && _publication?.Status != PublicationStatus.Validated;
 
     /// <summary>
     /// Verdadeiro quando as Dailies originais ja foram todas concluidas mas o projeto semanal ainda
@@ -250,9 +251,12 @@ public class Weekly : Entity
         // Reading/Video (sem nenhuma atividade avaliavel) nunca teria Daily.CalculateScore() != null.
         if (dailyScores.Count == 0) return null;
 
+        // Fase 81: semana sem projeto vale so pela media das Dailies.
+        if (_project is null) return dailyScores.Average();
+
         // IsModuleComplete() ja garante Project.Status == Evaluated, e Evaluate(score, ...) sempre
         // seta Status e Score juntos - Score nunca fica null aqui.
-        var projectScore = _project!.Score!.Value;
+        var projectScore = _project.Score!.Value;
 
         return EvaluationPolicy.WeeklyDailyAverageWeight * dailyScores.Average()
             + EvaluationPolicy.WeeklyProjectScoreWeight * projectScore;
