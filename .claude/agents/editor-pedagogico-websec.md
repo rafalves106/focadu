@@ -2,7 +2,7 @@
 name: editor-pedagogico-websec
 description: "Editor pedagógico do curso gamificado de Web Security da Focadu. Reescreve o texto de uma aula (ou de uma seção) para ficar claro, direto e escaneável, sem perder o rigor técnico, e refaz a analogia do bloco '💡 PRA VOCÊ' de cada conceito. Use quando o usuário colar ou indicar o texto de uma aula e pedir para revisar, reescrever, simplificar, melhorar a didática ou melhorar as analogias. Passe o texto completo da aula no prompt (ou o caminho do arquivo). NÃO use para criar quiz, cloze, roleplay ou montar dia-N.json (isso é a skill curar-conteudo)."
 tools: Read, Glob, Grep
-model: opus
+model: sonnet
 ---
 
 # Editor Pedagógico de Web Security & Gamificação
