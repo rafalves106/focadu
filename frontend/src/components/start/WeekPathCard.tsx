@@ -18,6 +18,7 @@ import focadaMarcador from '../../assets/pixel/mapa/focada-marcador.png';
  * "Projeto desta semana" e "Trilha completa".
  */
 export function WeekPathCard({ week, courseId }: { week: WeeklyOverviewDto; courseId: string }) {
+  if (week.isPracticeOnly) return <BridgePathCard week={week} courseId={courseId} />;
   const days = primaryDays(week);
   const remaining = days.filter((d) => d.status !== DailyStatus.Completed).length;
   const castle = castleOf(week, remaining);
@@ -60,6 +61,63 @@ export function WeekPathCard({ week, courseId }: { week: WeeklyOverviewDto; cour
             <span className="font-pixel text-lg leading-none text-secondary">{castle.text}</span>
           </span>
         </Link>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Fase 83 (Figma "Cursos de pre-requisito — v2", quadro 03): semana sem Projeto Semanal. A linha termina na
+ * ponte (o ultimo dia), que fecha a semana - "Rumo a ponte" no lugar de "Rumo ao castelo".
+ */
+function BridgePathCard({ week, courseId }: { week: WeeklyOverviewDto; courseId: string }) {
+  const all = primaryDays(week);
+  const bridge = all[all.length - 1] ?? null;
+  const days = bridge ? all.slice(0, -1) : all;
+  const focadaDayId = (all.find((d) => d.status === DailyStatus.InProgress) ?? all.find((d) => d.isNext))?.id ?? null;
+  const bridgeDone = bridge?.status === DailyStatus.Completed;
+  const bridgeOpen = bridge && (bridge.status === DailyStatus.InProgress || bridge.isNext);
+  const bridgeTo = bridge && (bridgeDone || bridgeOpen) ? `/hoje?daily=${bridge.id}` : `/start?course=${courseId}&weekly=${week.id}`;
+
+  return (
+    <section data-guia="start-castelo" className="pixel-box flex shrink-0 flex-col gap-3 bg-base px-5 py-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-pixel-label text-[10px] text-accent">// Rumo à ponte — Semana {week.number}</p>
+        <Link to={`/start?course=${courseId}`} className="font-pixel-label text-[9px] text-secondary hover:text-primary">
+          Ver trilha ›
+        </Link>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-4">
+        <ol className="flex min-w-[220px] flex-1 items-start" aria-label={`Dias da Semana ${week.number}`}>
+          {days.map((day) => (
+            <li key={day.id} className="flex flex-1 items-start">
+              <DayPoint day={day} week={week} withFocada={day.id === focadaDayId} />
+              <span
+                className={`mt-[50px] h-1 min-w-3 flex-1 ${day.status === DailyStatus.Completed ? 'bg-accent' : 'bg-stroke'}`}
+                aria-hidden="true"
+              />
+            </li>
+          ))}
+        </ol>
+
+        {bridge && (
+          <Link
+            to={bridgeTo}
+            className={`flex items-center gap-3 border-2 px-3 py-2 ${bridgeDone ? 'border-accent' : 'border-project'} hover:brightness-110`}
+            aria-label={`Ponte da Semana ${week.number}: ${bridge.title ?? `Dia ${bridge.dayNumber}`}`}
+          >
+            <span className="flex flex-col gap-1">
+              <span className="flex items-center gap-1.5">
+                <span className="border-2 border-project px-1 font-pixel-label text-[8px] text-project">Ponte</span>
+                <span className="max-w-[180px] truncate font-pixel-label text-[9px] text-project">{bridge.title ?? `Dia ${bridge.dayNumber}`}</span>
+              </span>
+              <span className="font-pixel text-lg leading-none text-secondary">
+                D{String(bridge.dayNumber).padStart(2, '0')} · {bridgeDone ? 'semana fechada' : 'fecha a semana'}
+              </span>
+            </span>
+          </Link>
+        )}
       </div>
     </section>
   );

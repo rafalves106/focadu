@@ -25,6 +25,9 @@ export function RankingPage({ courseId }: { courseId: string }) {
   const { data, error, loading, retry } = useApiResource(() => api.getCourseRanking(courseId, scope), [courseId, scope]);
   const { data: courses } = useApiResource(() => api.getCourses(), []);
   const courseName = courses?.find((c) => c.id === courseId)?.name ?? 'Curso';
+  // Fase 83: curso sem Projeto Semanal (pre-requisito) - o score e so a media das Dailies.
+  const { data: course } = useApiResource(() => api.getCourse(courseId), [courseId]);
+  const practiceOnly = !!course && course.monthlies.every((m) => m.weeklies.every((w) => w.isPracticeOnly));
 
   const weekPending = scope === 'weekly' && data && !data.currentWeekScored && data.currentWeekNumber !== null;
 
@@ -54,7 +57,8 @@ export function RankingPage({ courseId }: { courseId: string }) {
               weekPending && (
                 // Fase 76: a Focada ja diz isso no alto do podio; o aviso so fica em tela muito baixa, onde ela some.
                 <p className="hidden border-2 border-project/60 px-3 py-2 font-pixel text-lg leading-tight text-project lg:tight:block">
-                  Sua Semana {data.currentWeekNumber} ainda não fechou: ela entra no placar quando o projeto for avaliado.
+                  Sua Semana {data.currentWeekNumber} ainda não fechou: ela entra no placar quando{' '}
+                  {practiceOnly ? 'a ponte fechar' : 'o projeto for avaliado'}.
                 </p>
               )
             }
@@ -68,7 +72,7 @@ export function RankingPage({ courseId }: { courseId: string }) {
             />
             <div data-guia="ranking-dicas" className="grid gap-4 sm:grid-cols-2 lg:shrink-0 lg:short:gap-3">
               <NextTarget me={data.currentUserEntry} ahead={data.aheadEntry} total={data.totalEntries} />
-              <HowToClimb />
+              <HowToClimb practiceOnly={practiceOnly} />
             </div>
           </div>
         </div>

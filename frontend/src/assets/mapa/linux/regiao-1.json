@@ -1,0 +1,90 @@
+{
+  "monthlyNumber": 1,
+  "titulo": "Linux para Web Security",
+  "arte": {
+    "figma": "Focadu — Pixel Art, componente mapa/linux/regiao-1",
+    "largura": 384,
+    "altura": 192,
+    "escala": 2
+  },
+  "entrada": [
+    16,
+    146
+  ],
+  "saida": [
+    360,
+    158
+  ],
+  "pontos": {
+    "dia-1": [
+      40,
+      160
+    ],
+    "dia-2": [
+      64,
+      160
+    ],
+    "dia-3": [
+      88,
+      160
+    ],
+    "dia-4": [
+      112,
+      160
+    ],
+    "dia-5": [
+      112,
+      134
+    ],
+    "dia-6": [
+      88,
+      134
+    ],
+    "projeto-semana-1": [
+      88,
+      108
+    ],
+    "dia-7": [
+      232,
+      86
+    ],
+    "dia-8": [
+      256,
+      86
+    ],
+    "dia-9": [
+      280,
+      86
+    ],
+    "dia-10": [
+      280,
+      60
+    ],
+    "dia-11": [
+      304,
+      60
+    ],
+    "dia-12": [
+      328,
+      60
+    ],
+    "projeto-semana-2": [
+      352,
+      86
+    ]
+  },
+  "ilhas": [
+    [
+      8,
+      92,
+      172,
+      86
+    ],
+    [
+      204,
+      22,
+      172,
+      96
+    ]
+  ]
+}

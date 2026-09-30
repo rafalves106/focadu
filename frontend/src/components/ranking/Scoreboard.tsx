@@ -215,14 +215,15 @@ export function NextTarget({ me, ahead, total }: { me: RankingEntryDto | null; a
   );
 }
 
-export function HowToClimb() {
+/** Fase 83: `practiceOnly` = curso sem Projeto Semanal - o score e a media das Dailies. */
+export function HowToClimb({ practiceOnly = false }: { practiceOnly?: boolean }) {
   return (
     <section className="flex min-w-0 flex-col gap-3 border-2 border-stroke bg-base p-5 lg:short:gap-2 lg:short:p-4">
       <h2 className="font-pixel-label text-[10px] text-accent">// Como subir</h2>
       <ul className="flex flex-col gap-2.5 lg:short:gap-1.5">
         {[
-          [checkIcon, 'Daily bem feita · 70% do score'],
-          [terminalIcon, 'Projeto Semanal · 30%'],
+          [checkIcon, practiceOnly ? 'Daily bem feita · 100% do score' : 'Daily bem feita · 70% do score'],
+          [terminalIcon, practiceOnly ? 'Ponte fecha a semana' : 'Projeto Semanal · 30%'],
           [shieldIcon, 'Reforço não soma, mas destrava'],
         ].map(([icon, text]) => (
           <li key={text} className="flex items-center gap-2.5 font-pixel text-[21px] leading-none text-primary">

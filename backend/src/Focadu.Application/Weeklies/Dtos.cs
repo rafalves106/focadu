@@ -22,7 +22,11 @@ public record WeeklyDetailDto(
     /// <summary>Fase 45: certificacoes de mercado do Monthly ao qual esta Weekly pertence - usado no reforco mostrado junto da prova publica (PublicationModal) e no banner desta tela.</summary>
     IReadOnlyCollection<CertificationCoverageDto> ModuleCertifications,
     /// <summary>Fase 81: linguagem dos passos de codigo nos cursos sem projeto (Bash, Python) - o rotulo "Seu codigo · X" do CodeStep. Nulo no Web Security (a linguagem vem do projeto).</summary>
-    string? PracticeLanguage = null);
+    string? PracticeLanguage = null,
+    /// <summary>Fase 83: semana sem Projeto Semanal - a visao da semana fecha no castelo da semana, sem projeto.</summary>
+    bool IsPracticeOnly = false,
+    /// <summary>Fase 83: semana fechada (Weekly.IsModuleComplete) - castelo concluido e "Ir pra Semana N".</summary>
+    bool IsClosed = false);
 
 /// <summary>Desempenho de um dia dentro da semana: quantas atividades tem, quantas ja foram feitas, quantas passaram.</summary>
 public record DailyOverviewDto(

@@ -58,7 +58,11 @@ public record WeeklyOverviewDto(
     /// usa pro estado do castelo (concluido quando Evaluated) e pras falas da Focada que dependem do
     /// projeto (entregue, aguardando avaliacao, curso concluido).
     /// </summary>
-    WeeklyProjectStatus? ProjectStatus);
+    WeeklyProjectStatus? ProjectStatus,
+    /// <summary>Fase 83: semana sem Projeto Semanal (curso de pre-requisito) - o castelo do mapa e o fechamento da semana, nao um projeto.</summary>
+    bool IsPracticeOnly = false,
+    /// <summary>Fase 83: semana fechada (Weekly.IsModuleComplete: Dailies originais concluidas e, se houver, projeto avaliado) - castelo concluido na semana sem projeto.</summary>
+    bool IsClosed = false);
 
 /// <summary>Resumo enxuto de uma Daily pra grids de navegacao (Fase 8) - versao mais leve de DailyOverviewDto (WeeklyDetailDto), sem PenaltyPoints/PassedActivities que essas telas nao usam.</summary>
 public record DailyStatusSummaryDto(

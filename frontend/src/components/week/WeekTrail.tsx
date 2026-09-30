@@ -41,12 +41,15 @@ export function WeekTrail({
   overview,
   courseId,
   weekLocked,
+  nextWeek = null,
   compact = false,
 }: {
   weekly: WeeklyDetailDto;
   overview: WeeklyOverviewDto | null;
   courseId: string | null;
   weekLocked: boolean;
+  /** Fase 83: a semana seguinte, pro "Ir pra Semana N" do castelo da semana sem projeto. */
+  nextWeek?: { id: string; number: number } | null;
   /** Linhas mais baixas (Figma 138:6537): a faixa de publicacao ocupa o espaco de cima. */
   compact?: boolean;
 }) {
@@ -67,7 +70,11 @@ export function WeekTrail({
           </Fragment>
         );
       })}
-      <CastleRow weekly={weekly} courseId={courseId} remaining={remaining} compact={compact} />
+      {weekly.isPracticeOnly ? (
+        <WeekCastleRow weekly={weekly} courseId={courseId} days={days} nextWeek={nextWeek} compact={compact} />
+      ) : (
+        <CastleRow weekly={weekly} courseId={courseId} remaining={remaining} compact={compact} />
+      )}
     </ol>
   );
 }
@@ -176,6 +183,56 @@ function CastleRow({ weekly, courseId, remaining, compact }: { weekly: WeeklyDet
         <p className={`font-pixel text-xl leading-none ${castle.tone}`}>{castle.text}</p>
       </div>
       <span className={`${ACTION} hidden border-project sm:flex ${castle.solid ? 'bg-project text-base' : 'text-project'}`}>{castle.action}</span>
+    </li>
+  );
+}
+
+/**
+ * Fase 83 (Figma "Cursos de pre-requisito — v2", quadros 01/02): na semana sem Projeto Semanal o castelo e o
+ * fechamento da semana - trancado ate a ponte fechar, concluido depois, com o atalho pra proxima semana.
+ * Sem briefing, sem repositorio, sem publicacao.
+ */
+function WeekCastleRow({
+  weekly,
+  courseId,
+  days,
+  nextWeek,
+  compact,
+}: {
+  weekly: WeeklyDetailDto;
+  courseId: string | null;
+  days: DailyOverviewDto[];
+  nextWeek: { id: string; number: number } | null;
+  compact: boolean;
+}) {
+  const closed = weekly.isClosed ?? false;
+  const done = days.filter((d) => d.status === DailyStatus.Completed).length;
+  const bridgeDay = String(days[days.length - 1]?.dayNumber ?? 6).padStart(2, '0');
+  const text = closed
+    ? `${done}/${days.length} dias, sem projeto nem publicação. ${nextWeek ? `A Semana ${nextWeek.number} já está aberta.` : 'Curso concluído.'}`
+    : `Sem projeto e sem publicação. Fechou a ponte do Dia ${bridgeDay}, o castelo abre${nextWeek ? ` com a Semana ${nextWeek.number}` : ''}.`;
+  return (
+    <li className={`relative flex items-center gap-3 border-2 bg-project/[0.06] px-3 sm:gap-4 sm:pl-4 sm:pr-[18px] ${compact ? 'py-2' : 'py-3 lg:short:py-2.5'} ${closed ? 'border-accent' : 'border-stroke'}`}>
+      <img src={closed ? casteloConcluido : casteloTrancado} alt="" className="size-16 shrink-0 pixelated lg:short:size-12" aria-hidden="true" />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <PixelChip tone="project">Castelo</PixelChip>
+          <span className="font-pixel-label text-[9px] text-project">Fechamento da semana</span>
+        </div>
+        <p className="font-pixel text-[22px] leading-tight text-primary sm:text-[26px]">
+          Castelo da Semana {weekly.number}
+          {closed ? ' conquistado' : ''}
+        </p>
+        <p className="font-pixel text-lg leading-tight text-secondary">{text}</p>
+      </div>
+      {closed && nextWeek && (
+        <Link
+          to={`/start?course=${courseId ?? ''}&weekly=${nextWeek.id}`}
+          className={`${ACTION} hidden border-project text-project hover:bg-project hover:text-base sm:flex`}
+        >
+          Ir pra Semana {nextWeek.number}
+        </Link>
+      )}
     </li>
   );
 }

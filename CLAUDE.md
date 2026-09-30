@@ -87,23 +87,28 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 82 — Linux pronto pra publicar: lista de cursos só com matrícula, ponte sem projeto e curso escondido recriado** (30/09/2026).
+Última fase concluída: **Fase 83 — Telas de curso sem Projeto Semanal (Linux): castelo fecha a semana, mapa curto, "Rumo à ponte"** (30/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Telas de curso sem Projeto Semanal (Fase 83, Figma "Cursos de pré-requisito — v2")**: no curso sem
+  projeto (Linux) o castelo continua em toda semana, mas é o **fechamento da semana** (cai quando a ponte
+  fecha, com "Ir pra Semana N"). Trilha num mapa curto (`mapa/linux/regiao-1`, 2 ilhas), "Pontes" no
+  resumo, Start "Rumo à ponte", Ranking sem Projeto Semanal, falas da Focada próprias. API: `IsPracticeOnly` e
+  `IsClosed` nos DTOs de semana. Legenda do arquivo da ponte vem do `bodyText` do `File`. Falta só publicar
+  (`"published": true`). Ver `docs/fase-83/`.
 - **Linux pronto pra publicar (Fase 82, teste de ponta a ponta antes de liberar)**: `GET /api/courses` lista
   só os cursos em que o aluno está matriculado (um curso visível sem matrícula derrubava o `/start` com
   404 - com o Linux publicado, todo aluno só do Web Security cairia nisso). A ponte do curso sem projeto é
   reconhecida (`DailyTemplate.IsBridge`: `Language` ou `CodeStep`) e fica sem analogia, como a Fase 80
   queria. Curso escondido sem nenhuma matrícula é apagado e recriado a cada deploy, pra correção de
-  curadoria chegar (o importador não mexe em dia já importado). Falta: telas de curso sem projeto no
-  Figma e o `published: true`. Ver `docs/fase-82/`.
+  curadoria chegar (o importador não mexe em dia já importado). Ver `docs/fase-82/`.
 - **Cursos de pré-requisito (Fase 81, trilha Linux → Python pra Web Security)**: seed genérico por
   curso (`secret/curadoria/<slug>/curso.json` + `SeedCuratedCoursesUseCase`, incremental: cada deploy traz
   os dias curados desde o anterior, inclusive pras matrículas existentes). O curso nasce **escondido**
   (Draft) e só aparece pra e-mails em `COURSE_PREVIEW_EMAILS`; `GET /api/courses` passou a filtrar por
   usuário (antes vazava qualquer curso). Semana **sem Projeto Semanal** (`WeeklyTemplate.IsPracticeOnly`):
   fecha só com as Dailies, sem publicação, score = média das Dailies; ponte em Bash via
-  `PracticeLanguage`. Linux curado por completo (12 dias). Telas de curso sem projeto aguardam o Figma.
+  `PracticeLanguage`. Linux curado por completo (12 dias); telas de curso sem projeto na Fase 83.
   Ver `docs/fase-81/`.
 - **Chat rápido com código formatado + ponte sem analogias (Fase 80, pedido do dono)**: o "Tira dúvidas"
   mostra bloco de código e código inline formatados (`ChatMessageText`); nas pontes não há mais analogia de

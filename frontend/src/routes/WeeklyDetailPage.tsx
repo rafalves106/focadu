@@ -46,9 +46,11 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
   const nextWeek = weekIndex >= 0 && weekIndex < allWeeks.length - 1 ? allWeeks[weekIndex + 1] : null;
   const monthly = course?.monthlies.find((m) => m.weeklies.some((w) => w.id === weeklyId)) ?? null;
   const weekLocked = overview?.isLocked ?? false;
-  const focada = buildFocadaWeekLine(weekly, overview);
+  const focada = buildFocadaWeekLine(weekly, overview, !course || nextWeek !== null);
   // Regras de fechamento so importam enquanto a semana nao fechou.
-  const weekClosed = weekly.requiresPublicationToUnlock || weekly.project?.status === WeeklyProjectStatus.Evaluated;
+  const weekClosed = weekly.requiresPublicationToUnlock || weekly.project?.status === WeeklyProjectStatus.Evaluated || (weekly.isClosed ?? false);
+  const practiceOnly = weekly.isPracticeOnly ?? false;
+  const bridgeDay = String(Math.max(0, ...weekly.dailies.filter((d) => !d.isReinforcement).map((d) => d.dayNumber))).padStart(2, '0');
   const weekLink = (id: string) => `/start?course=${courseId}&weekly=${id}`;
 
   const label = [`Semana ${String(weekly.number).padStart(2, '0')}`, monthly && `Módulo ${monthly.number}`, monthly?.title].filter(Boolean);
@@ -87,7 +89,14 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
           )}
 
           <ScrollArea className="lg:min-h-0 lg:flex-1" contentClassName="lg:pr-3">
-            <WeekTrail weekly={weekly} overview={overview} courseId={courseId} weekLocked={weekLocked} compact={weekly.requiresPublicationToUnlock} />
+            <WeekTrail
+              weekly={weekly}
+              overview={overview}
+              courseId={courseId}
+              weekLocked={weekLocked}
+              nextWeek={nextWeek ? { id: nextWeek.id, number: nextWeek.number } : null}
+              compact={weekly.requiresPublicationToUnlock}
+            />
           </ScrollArea>
         </section>
 
@@ -111,16 +120,30 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
               <p className="font-pixel-label text-[7px] text-muted">Cobre tópicos do exame, não é equivalência.</p>
             </PixelPanel>
           )}
-          {!weekClosed && (
-          <div className="hidden lg:tall:block">
-            <PixelPanel label="Como a semana fecha">
-              <ul className="flex flex-col gap-1.5 font-pixel text-[19px] leading-tight text-secondary">
-                <li>· 1 Daily por dia. Reforço não gasta a cota.</li>
-                <li>· O 6º dia é a ponte: prática, na sua linguagem.</li>
-                <li>· O castelo abre depois da ponte. A Semana {weekly.number + 1} só abre com ele avaliado.</li>
-              </ul>
-            </PixelPanel>
-          </div>
+          {practiceOnly ? (
+            <div className="hidden lg:tall:block">
+              <PixelPanel label="Como a semana fecha">
+                <ul className="flex flex-col gap-1.5 font-pixel text-[19px] leading-tight text-secondary">
+                  <li>· 1 Daily por dia. Reforço não gasta a cota.</li>
+                  <li>
+                    · Dia {bridgeDay} é a ponte: um script {weekly.practiceLanguage?.toLowerCase() ?? ''}, passo a passo.
+                  </li>
+                  <li>· Sem projeto nem publicação: a semana fecha com os 6 dias.</li>
+                </ul>
+              </PixelPanel>
+            </div>
+          ) : (
+            !weekClosed && (
+              <div className="hidden lg:tall:block">
+                <PixelPanel label="Como a semana fecha">
+                  <ul className="flex flex-col gap-1.5 font-pixel text-[19px] leading-tight text-secondary">
+                    <li>· 1 Daily por dia. Reforço não gasta a cota.</li>
+                    <li>· O 6º dia é a ponte: prática, na sua linguagem.</li>
+                    <li>· O castelo abre depois da ponte. A Semana {weekly.number + 1} só abre com ele avaliado.</li>
+                  </ul>
+                </PixelPanel>
+              </div>
+            )
           )}
         </ScrollArea>
       </div>

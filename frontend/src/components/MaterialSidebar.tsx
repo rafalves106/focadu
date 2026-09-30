@@ -67,7 +67,8 @@ export function MaterialSidebar({
                         Baixar ↓
                       </a>
                     </div>
-                    <p className="font-pixel text-base leading-tight text-secondary">Rode tudo contra este arquivo.</p>
+                    {/* Fase 83: legenda curada no bodyText do File (ex.: o servidor de laboratorio do Linux); sem ela, a padrao. */}
+                    <p className="font-pixel text-base leading-tight text-secondary">{item.bodyText?.trim() || 'Rode tudo contra este arquivo.'}</p>
                   </div>
                 ))
               : type === 0

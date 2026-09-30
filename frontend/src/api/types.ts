@@ -256,6 +256,10 @@ export interface WeeklyOverviewDto {
   isLocked: boolean;
   /** Fase 65: status do Projeto Semanal desta semana (null se ainda nao existe) - estado do castelo no mapa da trilha. */
   projectStatus: WeeklyProjectStatus | null;
+  /** Fase 83: semana sem Projeto Semanal (curso de pre-requisito) - o castelo e o fechamento da semana. */
+  isPracticeOnly?: boolean;
+  /** Fase 83: semana fechada (Dailies originais concluidas e, se houver, projeto avaliado). */
+  isClosed?: boolean;
 }
 
 /** Resumo enxuto de uma Daily pra grids de navegacao (Fase 8) - versao mais leve de DailyOverviewDto. */
@@ -422,6 +426,10 @@ export interface WeeklyDetailDto {
   moduleCertifications: CertificationCoverageDto[];
   /** Fase 81: linguagem dos passos de codigo nos cursos sem projeto ("Bash", "Python"); null no Web Security. */
   practiceLanguage?: string | null;
+  /** Fase 83: semana sem Projeto Semanal - fecha no castelo da semana. */
+  isPracticeOnly?: boolean;
+  /** Fase 83: semana fechada (Dailies originais concluidas e, se houver, projeto avaliado). */
+  isClosed?: boolean;
 }
 
 // Ranking (Fase 16) - Score de Estudo, metrica de QUALIDADE (diferente de Gems, que recompensa

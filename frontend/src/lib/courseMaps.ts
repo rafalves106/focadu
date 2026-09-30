@@ -7,6 +7,8 @@ import webSecurity1Json from '../assets/mapa/web-security/regiao-1.json';
 import webSecurity2Json from '../assets/mapa/web-security/regiao-2.json';
 import webSecurity3Json from '../assets/mapa/web-security/regiao-3.json';
 import webSecurity4Json from '../assets/mapa/web-security/regiao-4.json';
+import linux1 from '../assets/mapa/linux/regiao-1.png';
+import linux1Json from '../assets/mapa/linux/regiao-1.json';
 
 /**
  * Mapa da trilha (Fase 65, ver secret/rascunhos/mapa-da-trilha-pixel-art.md): cada curso com mapa
@@ -75,6 +77,8 @@ const COURSE_MAPS: Record<string, MapRegion[]> = {
     region(webSecurity3Json, webSecurity3),
     region(webSecurity4Json, webSecurity4),
   ],
+  // Fase 83: curso de pre-requisito numa regiao so (2 semanas, um castelo por semana).
+  linux: [region(linux1Json, linux1)],
 };
 
 export function courseSlug(name: string): string {

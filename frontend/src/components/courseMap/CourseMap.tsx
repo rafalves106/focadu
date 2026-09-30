@@ -53,7 +53,18 @@ function dayState(day: DailyStatusSummaryDto): DayState {
   return day.isNext ? 'disponivel' : 'trancado';
 }
 
+/** Fase 83: na semana sem Projeto Semanal o castelo e o fechamento da semana. */
+const WEEK_CASTLE_LABEL: Partial<Record<CastleState, string>> = {
+  trancado: 'Abre quando a ponte fechar',
+  concluido: 'Semana fechada',
+};
+
+function castleLabel(week: WeeklyOverviewDto, state: CastleState): string {
+  return (week.isPracticeOnly ? WEEK_CASTLE_LABEL[state] : undefined) ?? CASTLE_LABEL[state];
+}
+
 function castleState(week: WeeklyOverviewDto): CastleState {
+  if (week.isPracticeOnly) return week.isClosed ? 'concluido' : 'trancado';
   if (week.projectStatus === WeeklyProjectStatus.Evaluated) return 'concluido';
   if (week.projectStatus === WeeklyProjectStatus.Submitted) return 'entregue';
   return isWeekDailiesDone(week) ? 'pendente' : 'trancado';
@@ -178,6 +189,12 @@ export function CourseMap({
     <div className="flex flex-col gap-3">
       {/* Altura fixa (h-8 + gap-3 = 44px): as colunas laterais do CourseDetailPage descem isso (lg:pt-11)
           pra comecar na mesma altura da caixa do mapa. */}
+      {monthlies.length === 1 ? (
+        // Fase 83: curso de uma regiao so (Linux) - sem seletor de mes.
+        <div className="flex h-8 items-center justify-center font-pixel-label">
+          <p className="text-xs text-primary">{title}</p>
+        </div>
+      ) : (
       <div className="flex h-8 items-center justify-between gap-4 font-pixel-label">
         <button
           type="button"
@@ -208,6 +225,7 @@ export function CourseMap({
           {'>'}
         </button>
       </div>
+      )}
 
       {region ? (
         <RegionView
@@ -366,7 +384,7 @@ function RegionView({
                   point={castlePoint}
                   px={32}
                   sprite={CASTLE_SPRITE[castleState(week)]}
-                  label={`Projeto da Semana ${week.number}. ${CASTLE_LABEL[castleState(week)]}.`}
+                  label={`${week.isPracticeOnly ? 'Castelo' : 'Projeto'} da Semana ${week.number}. ${castleLabel(week, castleState(week))}.`}
                   inert={fogged}
                   active={selected?.kind === 'castelo' && selected.week.id === week.id}
                   onClick={() =>
@@ -416,7 +434,12 @@ function RegionView({
           <div className="flex flex-1 flex-col items-center justify-center gap-2 bg-base px-4 text-center font-pixel-label text-muted">
             <p className="text-xs">{fogIndex === 0 ? `Mês ${monthly.number}` : `Semana ${fogWeek.number}`}</p>
             <p className="text-[9px] leading-relaxed">
-              {fogWeek.isLocked ? `Abre depois do projeto da Semana ${fogWeek.number - 1}` : 'Ainda não chegou a hora'}
+              {/* Fase 83: sem projeto, a semana seguinte abre quando a anterior fecha (a ponte), trancada ou nao. */}
+              {fogWeek.isPracticeOnly && fogIndex > 0
+                ? `Abre quando a Semana ${fogWeek.number - 1} fechar`
+                : fogWeek.isLocked
+                  ? `Abre depois do projeto da Semana ${fogWeek.number - 1}`
+                  : 'Ainda não chegou a hora'}
             </p>
           </div>
         </div>
@@ -566,15 +589,16 @@ function Balloon({
     }
   } else {
     const state = castleState(week);
-    kicker = `Projeto · Semana ${week.number}`;
+    kicker = `${week.isPracticeOnly ? 'Castelo' : 'Projeto'} · Semana ${week.number}`;
     heading = week.theme ?? week.title;
     status = {
-      text: CASTLE_LABEL[state],
+      text: castleLabel(week, state),
       tone: state === 'concluido' ? 'text-accent' : state === 'trancado' ? 'text-muted' : 'text-project',
     };
-    if (state !== 'trancado') primary = { label: 'Abrir projeto >', to: `${weekUrl}&project=1` };
+    if (week.isPracticeOnly) primary = { label: 'Ver semana >', to: weekUrl };
+    else if (state !== 'trancado') primary = { label: 'Abrir projeto >', to: `${weekUrl}&project=1` };
   }
-  secondary.push({ label: 'Ver semana', to: weekUrl });
+  if (primary?.to !== weekUrl) secondary.push({ label: 'Ver semana', to: weekUrl });
 
   return (
     <div role="dialog" aria-label={kicker} className="pixel-box absolute z-10 flex w-56 flex-col gap-2 bg-base p-4" style={style}>

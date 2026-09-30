@@ -38,6 +38,17 @@ export const DEFAULT_MAP_LINES: Record<FocadaMapLineKey, string> = {
   padrao: 'Próxima parada: dia {dia}. Faltam {faltam} dias pro castelo da Semana {semana}. Não é longe, mas também não anda sozinho.',
 };
 
+/**
+ * Fase 83: curso sem Projeto Semanal (pre-requisito, Figma "Cursos de pre-requisito — v2"): o castelo fecha
+ * a semana em vez de guardar um projeto. Troca so as falas que falavam de projeto; um `falas.json` do curso
+ * ainda vence estas.
+ */
+export const PRACTICE_ONLY_MAP_LINES: Partial<Record<FocadaMapLineKey, string>> = {
+  cursoConcluido: 'Todos os castelos caíram, agente. Curso fechado: o terminal agora é seu, e o Web Security vai cobrar cada comando.',
+  primeiraVez: 'Este é o mapa, agente. Cada ponto é um dia, cada castelo fecha uma semana. Você começa no primeiro. Eu fico de olho.',
+  ultimoDiaAntesDoCastelo: 'Falta a ponte pro castelo da Semana {semana}, agente. Fechou ela, a semana fecha junto.',
+};
+
 /** Dias "de verdade" da semana (sem os de reforco, que nao tem ponto no mapa), em ordem. */
 export function primaryDays(week: WeeklyOverviewDto): DailyStatusSummaryDto[] {
   return week.days.filter((d) => !d.isReinforcement).sort((a, b) => a.dayNumber - b.dayNumber);
@@ -71,13 +82,16 @@ export function buildFocadaMapLine(
 ): FocadaLine | null {
   const weeks = course.monthlies.flatMap((m) => m.weeklies).sort((a, b) => a.number - b.number);
   if (weeks.length === 0) return null;
+  const practiceOnly = weeks.every((w) => w.isPracticeOnly);
   const line = (key: FocadaMapLineKey, values: Record<string, string | number> = {}, expression: FocadaLine['expression'] = 'neutra'): FocadaLine => ({
-    text: fill(courseLines[key] ?? DEFAULT_MAP_LINES[key], values),
+    text: fill(courseLines[key] ?? (practiceOnly ? PRACTICE_ONLY_MAP_LINES[key] : undefined) ?? DEFAULT_MAP_LINES[key], values),
     expression,
   });
 
   const lastWeek = weeks[weeks.length - 1];
-  if (lastWeek.projectStatus === WeeklyProjectStatus.Evaluated) return line('cursoConcluido', {}, 'comemorando');
+  if (lastWeek.projectStatus === WeeklyProjectStatus.Evaluated || (lastWeek.isPracticeOnly && lastWeek.isClosed)) {
+    return line('cursoConcluido', {}, 'comemorando');
+  }
 
   for (const week of weeks) {
     for (const day of primaryDays(week)) {
@@ -89,7 +103,7 @@ export function buildFocadaMapLine(
   if (publicar) return line('publicacaoPendente', { proxima: publicar.number + 1 }, 'comemorando');
 
   const liberado = weeks.find(
-    (w) => isWeekDailiesDone(w) && w.projectStatus !== WeeklyProjectStatus.Submitted && w.projectStatus !== WeeklyProjectStatus.Evaluated,
+    (w) => !w.isPracticeOnly && isWeekDailiesDone(w) && w.projectStatus !== WeeklyProjectStatus.Submitted && w.projectStatus !== WeeklyProjectStatus.Evaluated,
   );
   if (liberado) return line('projetoLiberado', { semana: liberado.number });
 
@@ -131,9 +145,14 @@ export const WEEK_LINES = {
   publicacaoPendente: 'Castelo derrubado, agente! Agora mostra pro mundo: publique a prova do módulo e a Semana {proxima} abre.',
   semanaFechada: 'Semana {semana} fechada com {nota} no castelo. Pode revisar o que quiser, agente: aqui nada tranca de novo.',
   semanaTrancada: 'Essa semana ainda está na névoa, agente. Ela abre quando a semana anterior fechar.',
+  // Fase 83: semana sem Projeto Semanal (Figma "Cursos de pre-requisito — v2", quadros 01/02).
+  semanaFechadaSemProjeto: 'Semana {semana} fechada, agente. Castelo conquistado, sem projeto nem post: a Semana {proxima} já te espera.',
+  cursoFechadoSemProjeto: 'Último castelo conquistado, agente. Curso fechado: o terminal agora é seu, e o Web Security vai cobrar cada comando.',
+  emAndamentoSemProjeto: 'Você parou no Dia {dia}, agente. O castelo desta semana abre quando você fechar a ponte, e a Semana {proxima} vem junto.',
+  pontePendenteSemProjeto: 'Falta a ponte pro castelo da Semana {semana}, agente. Fechou ela, a semana fecha junto.',
 } as const;
 
-export function buildFocadaWeekLine(weekly: WeeklyDetailDto, overview: WeeklyOverviewDto | null): FocadaLine {
+export function buildFocadaWeekLine(weekly: WeeklyDetailDto, overview: WeeklyOverviewDto | null, hasNextWeek = true): FocadaLine {
   const days = weekly.dailies.filter((d) => !d.isReinforcement).sort((a, b) => a.dayNumber - b.dayNumber);
   const project = weekly.project;
   const line = (text: string, values: Record<string, string | number> = {}, expression: FocadaLine['expression'] = 'neutra'): FocadaLine => ({
@@ -142,6 +161,7 @@ export function buildFocadaWeekLine(weekly: WeeklyDetailDto, overview: WeeklyOve
   });
 
   if (weekly.requiresPublicationToUnlock) return line(WEEK_LINES.publicacaoPendente, { proxima: weekly.number + 1 }, 'comemorando');
+  if (weekly.isPracticeOnly) return buildPracticeOnlyWeekLine(weekly, overview, days, line, hasNextWeek);
   if (project?.status === WeeklyProjectStatus.Evaluated) {
     return line(WEEK_LINES.semanaFechada, { semana: weekly.number, nota: project.score ?? '-' }, 'comemorando');
   }
@@ -162,5 +182,34 @@ export function buildFocadaWeekLine(weekly: WeeklyDetailDto, overview: WeeklyOve
   const next = days.find((d) => d.isNext);
   const faltam = days.filter((d) => d.status !== DailyStatus.Completed).length;
   if (next && next.id === days[days.length - 1]?.id) return line(DEFAULT_MAP_LINES.ultimoDiaAntesDoCastelo, { semana: weekly.number });
+  return line(DEFAULT_MAP_LINES.padrao, { dia: (next ?? days.find((d) => d.status !== DailyStatus.Completed))?.dayNumber ?? '-', faltam, semana: weekly.number });
+}
+
+/** Fase 83: visao da semana sem Projeto Semanal - o castelo e o fechamento da semana (ponte feita = semana fechada). */
+function buildPracticeOnlyWeekLine(
+  weekly: WeeklyDetailDto,
+  overview: WeeklyOverviewDto | null,
+  days: WeeklyDetailDto['dailies'],
+  line: (text: string, values?: Record<string, string | number>, expression?: FocadaLine['expression']) => FocadaLine,
+  hasNextWeek: boolean,
+): FocadaLine {
+  const proxima = weekly.number + 1;
+  if (weekly.isClosed) {
+    return hasNextWeek
+      ? line(WEEK_LINES.semanaFechadaSemProjeto, { semana: weekly.number, proxima }, 'comemorando')
+      : line(WEEK_LINES.cursoFechadoSemProjeto, {}, 'comemorando');
+  }
+  if (overview?.isLocked) return line(WEEK_LINES.semanaTrancada);
+  if (overview) {
+    const withReinforcement = primaryDays(overview).find((d) => pendingReinforcementOf(overview, d));
+    if (withReinforcement) return line(DEFAULT_MAP_LINES.reforcoPendente, { dia: withReinforcement.dayNumber });
+  }
+  const inProgress = days.find((d) => d.status === DailyStatus.InProgress);
+  if (inProgress) return line(WEEK_LINES.emAndamentoSemProjeto, { dia: String(inProgress.dayNumber).padStart(2, '0'), proxima });
+  const doneToday = overview && primaryDays(overview).find((d) => d.completedToday);
+  if (doneToday) return line(DEFAULT_MAP_LINES.diaFeitoHoje, { dia: doneToday.dayNumber }, 'comemorando');
+  const next = days.find((d) => d.isNext);
+  if (next && next.id === days[days.length - 1]?.id) return line(WEEK_LINES.pontePendenteSemProjeto, { semana: weekly.number });
+  const faltam = days.filter((d) => d.status !== DailyStatus.Completed).length;
   return line(DEFAULT_MAP_LINES.padrao, { dia: (next ?? days.find((d) => d.status !== DailyStatus.Completed))?.dayNumber ?? '-', faltam, semana: weekly.number });
 }

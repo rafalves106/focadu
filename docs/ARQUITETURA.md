@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 82 - Linux pronto pra publicar: lista de cursos so com matricula, ponte sem projeto reconhecida e curso escondido recriado no seed**.
+> Ultima fase que atualizou este documento: **Fase 83 - Telas de curso sem Projeto Semanal (Linux): castelo como fechamento da semana, mapa curto, "Rumo a ponte"**.
 
 ## Visao geral do projeto
 
@@ -1772,8 +1772,20 @@ Security antes/junto do Web Security; decisoes do dono em 29/09/2026: **sem Proj
   cada um - um curso visivel sem matricula na lista derrubava o Start com 404. Descobrir curso novo e so
   pelo `/available`.
   Curso Archived nunca aceita matricula.
-- **Front ainda nao adaptado** a semana sem projeto (castelo do mapa, visao da semana, start): aguarda
-  o desenho no Figma. Enquanto o curso estiver Draft, so quem testa a previa ve essas telas.
+- **Telas de curso sem projeto (Fase 83, Figma "Cursos de pre-requisito — v2", quadros 01-05):**
+  `WeeklyOverviewDto` e `WeeklyDetailDto` ganharam `IsPracticeOnly` e `IsClosed` (`Weekly.IsModuleComplete`).
+  O castelo continua em toda semana, mas no curso sem projeto ele e o **fechamento da semana** (trancado ate
+  a ponte fechar, concluido depois; nunca "pendente"/"entregue"; o clique leva a visao da semana). Visao da
+  semana: `WeekCastleRow` (castelo da semana + "Ir pra Semana N"), regras com "um script <linguagem>" e
+  falas proprias (`buildPracticeOnlyWeekLine`). Trilha: mapa curto `assets/mapa/linux/regiao-1` (2 ilhas,
+  gerado por `secret/curadoria/scripts/mapa/regiao-linux-1.js`, `exportar-frontend.js` agora exporta por
+  curso), sem seletor de mes quando o curso tem uma regiao so, nevoa "Abre quando a Semana N fechar",
+  "Pontes" (semanas fechadas) no resumo, sem o atalho de Certificacoes, "N semanas · pre-requisito".
+  Start: "Rumo a ponte" (`BridgePathCard`: dias 1-5 e a ponte como fim da linha). Ranking: "Como subir"
+  sem Projeto Semanal (score = media das Dailies). Falas do mapa: `PRACTICE_ONLY_MAP_LINES` (um
+  `falas.json` do curso ainda vence). Guia das telas com textos que valem pros dois tipos de curso.
+- **Legenda do arquivo da ponte:** o `bodyText` de um `CuratedContent` `File` vira a legenda no "Material
+  de hoje" (`MaterialSidebar`); sem ele, "Rode tudo contra este arquivo.".
 
 ## Certificacoes de mercado sugeridas por modulo (Fase 45)
 

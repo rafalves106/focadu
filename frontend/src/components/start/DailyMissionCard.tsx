@@ -56,7 +56,7 @@ export function DailyMissionCard({
           <img src={trophyIcon} alt="" className="size-12 shrink-0 pixelated" aria-hidden="true" />
           <div className="flex flex-col gap-1">
             <h2 className="font-pixel text-3xl leading-none text-primary">Curso concluído</h2>
-            <p className="font-pixel text-lg leading-snug text-secondary">Todos os dias e projetos de {course.name} estão feitos.</p>
+            <p className="font-pixel text-lg leading-snug text-secondary">Todos os dias {course.monthlies.every((m) => m.weeklies.every((w) => w.isPracticeOnly)) ? '' : 'e projetos '}de {course.name} estão feitos.</p>
           </div>
         </div>
         <CtaLink to={`/start?course=${course.id}`}>Ver a trilha</CtaLink>

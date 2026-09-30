@@ -55,6 +55,9 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
   const reinforcementCount = course.dailyReinforcements.length + course.weeklyReinforcements.length;
   const currentWeekId = findCurrentWeekId(weeks);
   const projectsDone = weeks.filter((w) => w.projectStatus === WeeklyProjectStatus.Evaluated).length;
+  // Fase 83: curso sem Projeto Semanal (pre-requisito) - o resumo conta pontes (semanas fechadas) e nao ha certificacoes.
+  const practiceOnly = weeks.length > 0 && weeks.every((w) => w.isPracticeOnly);
+  const bridgesDone = weeks.filter((w) => w.isClosed).length;
   // Fase 65: mapa da trilha no desktop quando o curso tem arte desenhada; celular (e curso sem mapa)
   // segue com a lista de semanas - versao vertical do mapa pro celular ficou pra depois (rascunho).
   const showMap = courseMap !== null && !isMobile;
@@ -91,7 +94,8 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
               <span className="border-2 border-accent px-2 py-1 text-accent">Curso ativo</span>
             )}
             <span className="text-secondary">
-              {weeks.length} semana{weeks.length === 1 ? '' : 's'} · {course.monthlies.length} {course.monthlies.length === 1 ? 'mês' : 'meses'}
+              {weeks.length} semana{weeks.length === 1 ? '' : 's'} ·{' '}
+              {practiceOnly ? 'pré-requisito' : `${course.monthlies.length} ${course.monthlies.length === 1 ? 'mês' : 'meses'}`}
             </span>
           </div>
           <h1 className="font-pixel-label text-2xl leading-tight tracking-wide text-primary">{course.name}</h1>
@@ -126,7 +130,11 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
           <p className="font-pixel-label text-[10px] text-accent">// Resumo do Curso</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-3">
             <Stat label="Dailies" value={`${course.progress.completedDailies}/${course.progress.totalDailies}`} />
-            <Stat label="Projetos" value={`${projectsDone}/${weeks.length}`} tone="text-project" />
+            {practiceOnly ? (
+              <Stat label="Pontes" value={`${bridgesDone}/${weeks.length}`} tone="text-project" />
+            ) : (
+              <Stat label="Projetos" value={`${projectsDone}/${weeks.length}`} tone="text-project" />
+            )}
             <Stat label="Reforços" value={`${reinforcementCount}`} />
             <Stat label="Conclusão" value={`${course.progress.completionPercentage}%`} />
           </div>
@@ -140,7 +148,7 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
             <SideLink to={`/start?course=${courseId}&ranking=1`} icon={trophyIcon} label="Ver ranking" />
             <SideLink to="/conquistas" icon={medalIcon} label="Conquistas" />
             <SideLink to={`/start?course=${courseId}&caderninho=1`} icon={notebookIcon} label="Caderninho" />
-            <SideLink to={`/start?course=${courseId}&certifications=1`} icon={shieldIcon} label="Certificações" />
+            {!practiceOnly && <SideLink to={`/start?course=${courseId}&certifications=1`} icon={shieldIcon} label="Certificações" />}
           </div>
         </div>
       </div>
@@ -196,12 +204,13 @@ function WeekSummaryCard({
 }) {
   const isComplete = weekly.totalDailies > 0 && weekly.completedDailies === weekly.totalDailies;
   const primaryDays = weekly.days.filter((d) => !d.isReinforcement).sort((a, b) => a.dayNumber - b.dayNumber);
-  const castle =
-    weekly.projectStatus === WeeklyProjectStatus.Evaluated ? casteloConcluido : isComplete ? casteloPendente : casteloTrancado;
+  // Fase 83: na semana sem Projeto Semanal o castelo e o fechamento da semana.
+  const castleDone = weekly.isPracticeOnly ? (weekly.isClosed ?? false) : weekly.projectStatus === WeeklyProjectStatus.Evaluated;
+  const castle = castleDone ? casteloConcluido : isComplete && !weekly.isPracticeOnly ? casteloPendente : casteloTrancado;
   const status = isLocked
     ? 'Trancada'
-    : weekly.projectStatus === WeeklyProjectStatus.Evaluated
-      ? `${weekly.completedDailies}/${weekly.totalDailies} · castelo caído`
+    : castleDone
+      ? `${weekly.completedDailies}/${weekly.totalDailies} · ${weekly.isPracticeOnly ? 'semana fechada' : 'castelo caído'}`
       : `${weekly.completedDailies}/${weekly.totalDailies} dias`;
 
   const body = (

@@ -95,6 +95,7 @@ public class GetWeeklyDetailUseCase
         return new WeeklyDetailDto(
             weekly.Id, weekly.MonthlyId, monthly.CourseId, weekly.Number, weekly.Title, weekly.Theme,
             dailyDtos, contentDtos, projectDto, reinforcementDtos, weekly.RequiresPublicationToUnlock(),
-            weekly.HasPendingWeeklyReinforcement(), certificationDtos, weekly.Template.PracticeLanguage);
+            weekly.HasPendingWeeklyReinforcement(), certificationDtos, weekly.Template.PracticeLanguage,
+            weekly.Template.IsPracticeOnly, weekly.IsModuleComplete());
     }
 }

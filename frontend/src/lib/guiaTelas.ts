@@ -68,7 +68,7 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
     items: [
       { title: 'Seus interesses', text: 'Viram analogias nas leituras, montadas pra você. Dá pra mudar depois no perfil.' },
       { title: 'Linguagens', text: 'As que você topa usar nos projetos. A escolha de cada projeto vem depois.' },
-      { title: 'O curso', text: 'Por enquanto, Web Security: 12 semanas, 12 castelos.' },
+      { title: 'O curso', text: 'Cada curso tem a sua trilha. No Web Security, cada semana fecha num projeto; nos cursos de pré-requisito, na ponte.' },
     ],
   },
   start: {
@@ -80,17 +80,17 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
       { title: 'Seus cursos', text: 'Cada curso é um save. O escolhido muda o resto da tela.', anchor: 'start-cursos' },
       { title: 'Seu agente', text: 'Ofensiva, Gems e os dias da semana em que você estudou.', anchor: 'start-agente' },
       { title: 'Missão do dia', text: 'Uma Daily por dia, em etapas. É daqui que você começa.', anchor: 'start-missao' },
-      { title: 'Rumo ao castelo', text: 'Os dias que faltam até o Projeto Semanal desta semana.', anchor: 'start-castelo' },
+      { title: 'Rumo ao castelo', text: 'Os dias que faltam até o Projeto Semanal desta semana. No curso sem projeto, a linha termina na ponte.', anchor: 'start-castelo' },
     ],
   },
   trilha: {
     title: 'Mapa da trilha',
-    focada: 'O curso inteiro num mapa. Cada região é um módulo, cada castelo é um projeto. Eu fico parada na próxima Daily.',
+    focada: 'O curso inteiro num mapa. Cada região é um módulo, cada castelo fecha uma semana. Eu fico parada na próxima Daily.',
     items: [
       { title: 'Seu progresso', text: 'Quanto do curso você já fez.', anchor: 'trilha-curso' },
       {
         title: 'Pontos, castelos e névoa',
-        text: 'Ponto é dia: verde feito, piscando em andamento, cadeado trancado. Castelo é projeto. Névoa é semana que ainda não abriu.',
+        text: 'Ponto é dia: verde feito, piscando em andamento, cadeado trancado. Castelo fecha a semana (no Web Security, é o projeto). Névoa é semana que ainda não abriu.',
         anchor: 'trilha-mapa',
       },
       { title: 'Selo vermelho', text: 'Reforço pendente daquele dia. Clique pra ir direto.' },
@@ -99,11 +99,11 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
   },
   semana: {
     title: 'Visão da semana',
-    focada: 'Aqui é a sua semana inteira num trecho da trilha, agente: seis dias e o castelo do projeto fechando a semana.',
+    focada: 'Aqui é a sua semana inteira num trecho da trilha, agente: seis dias e o castelo fechando a semana.',
     items: [
       { title: 'Os dias', text: 'Aprovadas e erros de cada dia, e o dia atual em destaque. Uma Daily por dia.', anchor: 'semana-trilha' },
-      { title: 'A ponte', text: 'O 6º dia é prático, na linguagem que você escolher pro projeto. É ela que abre o castelo.' },
-      { title: 'O castelo', text: 'O Projeto Semanal. A semana seguinte só abre com ele avaliado.' },
+      { title: 'A ponte', text: 'O 6º dia é prático, na linguagem do projeto (ou do curso, quando ele não tem projeto). É ela que abre o castelo.' },
+      { title: 'O castelo', text: 'O Projeto Semanal: a semana seguinte só abre com ele avaliado. No curso sem projeto, o castelo cai quando a ponte fecha.' },
       { title: 'Faixa âmbar', text: 'Quando aparece, falta publicar o módulo pra próxima semana abrir.' },
       { title: 'Resumo da semana', text: 'Dias feitos, aprovação, erros e as certificações que o módulo cobre.', anchor: 'semana-resumo' },
     ],
@@ -295,7 +295,7 @@ export const APP_TOUR: TourStep[] = [
   { screen: 'start', anchor: 'nav-solo', title: 'O menu', text: 'Hoje, Trilhas, Loja e Ranking. Do outro lado, o Squad e o seu perfil. O logo no meio volta pra cá.' },
   { screen: 'start', anchor: 'start-missao', title: 'Sua missão do dia', text: 'Uma Daily por dia, em etapas: leitura, vídeo, atividades e o resumo falado. É daqui que você começa todo dia.' },
   { screen: 'start', anchor: 'start-agente', title: 'Seu agente', text: 'Ofensiva e Gems. A ofensiva conta dias seguidos de estudo; as Gems viram roupa na Loja.' },
-  { screen: 'trilha', anchor: 'trilha-mapa', title: 'A trilha', text: 'O curso inteiro num mapa. Cada semana termina num castelo: o Projeto Semanal.' },
+  { screen: 'trilha', anchor: 'trilha-mapa', title: 'A trilha', text: 'O curso inteiro num mapa. Cada semana termina num castelo: no Web Security, o Projeto Semanal.' },
   { screen: 'perfil', anchor: 'perfil-agente', title: 'Seu perfil', text: 'Sua ficha: o agente, os troféus e os últimos 14 dias.' },
   { screen: 'squad', title: 'O Squad', text: 'Estudar junto: meta da semana em grupo, feed dos colegas e ranking próprio.' },
   { screen: 'loja', anchor: 'loja-vitrine', title: 'A Loja', text: 'Gems compram roupa pro agente. Só visual, nada compra nota.' },

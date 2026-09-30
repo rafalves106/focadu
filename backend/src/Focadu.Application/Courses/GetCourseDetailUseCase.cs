@@ -100,7 +100,7 @@ public class GetCourseDetailUseCase
                     weeklyTotal, weeklyCompleted, weeklyWeak, weekly.Reinforcements.Count > 0, dayDtos,
                     weekly.RequiresPublicationToUnlock(),
                     DailySequencing.FindPendingClosureBefore(instanceWeeklies, weekly) is not null,
-                    weekly.Project?.Status));
+                    weekly.Project?.Status, weekly.Template.IsPracticeOnly, weekly.IsModuleComplete()));
 
                 totalDailies += weeklyTotal;
                 completedDailies += weeklyCompleted;
