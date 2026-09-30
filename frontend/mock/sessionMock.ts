@@ -13,7 +13,7 @@
  *   /__mock/reset?projeto=pendente|avaliado   (tela do Projeto Semanal)
  *   /__mock/reset?at=ponte                    (Fase 69: a Daily de hoje e a ponte, falta escolher a linguagem)
  *   /__mock/reset?at=Quiz&pausa=1             (Fase 69: streak pausado - projeto da semana aberto)
- *   /__mock/reset?at=terminal                 (missao no terminal do Dia 2 do Linux: Leitura feita, falta a MissionTerminal; o Linux roda de verdade no navegador)
+ *   /__mock/reset?at=terminal                 (missao no terminal do Dia 2 do Linux; &lab=N abre o dia N: Leitura feita, falta a MissionTerminal; o Linux roda de verdade no navegador)
  *   /__mock/reset?at=codigo[&passo=3][&lab=python|javascript|bash|servidor|none]   (Fase 79/87: ponte "code comigo"; o laboratorio de codigo roda de verdade no navegador, lab=none volta ao fluxo de colar a saida)
  *   /__mock/loja?agente=0|1&gemas=60          (Fase 71: loja e agente, ver shopMock.ts)
  *   /__mock/squad?as=membro|lider|nenhum      (Fase 72: QG do Squad em /squad; Perfil em /perfil)
@@ -691,7 +691,7 @@ export function sessionMock(): Plugin {
   function reset(at = 'Quiz', penalty = 0, extra: Partial<Scenario> = {}, codeStep = 1, labKind = 'python') {
     if (at === 'terminal') {
       // Missao no terminal (Dia 2 do Linux): as atividades antes dela (a Leitura) ja feitas; o resto e o dia de verdade.
-      state = buildState(labCurated.terminal);
+      state = buildState(labCurated[labKind === 'python' ? 'terminal' : `terminal${labKind}`] ?? labCurated.terminal);
       reinforcement = reinforcementState(curated);
       fastForward(state, 'TerminalMission', 0);
       codeRepositoryUrl = null;
@@ -731,6 +731,10 @@ export function sessionMock(): Plugin {
         bash: loadCurated(config.root, 'dia-6.json', 'linux/semana-1'),
         servidor: loadCurated(config.root, 'dia-12.json', 'linux/semana-2'),
         terminal: loadCurated(config.root, 'dia-2.json', 'linux/semana-1'),
+        // /__mock/reset?at=terminal&lab=8 abre a missao do dia 8 do Linux (1, 3, 4, 5, 7, 8, 9, 11).
+        ...Object.fromEntries(
+          [1, 3, 4, 5, 7, 8, 9, 11].map((n) => [`terminal${n}`, loadCurated(config.root, `dia-${n}.json`, `linux/semana-${n <= 5 ? 1 : 2}`)]),
+        ),
       };
       reset();
     },

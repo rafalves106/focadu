@@ -138,7 +138,7 @@ export function LabCodeStepActivity({
     try {
       const script = composeScript(code);
       if (syncedScript.current !== script) {
-        await session.write(`/root/${lab.entry}`, script);
+        await session.write(`${lab.user ? `/home/${lab.user}` : '/root'}/${lab.entry}`, script);
         syncedScript.current = script;
       }
       const result = await session.exec(command);
@@ -336,6 +336,7 @@ export function LabCodeStepActivity({
                   disabled={!ready}
                   serviceLabel={lab.services[0] ? `${lab.services[0]} rodando` : null}
                   placeholder={`digite um comando (ex.: ${lab.command})`}
+                  prompt={lab.user ? `${lab.user}@srv:~$` : undefined}
                 />
               )
             ) : (

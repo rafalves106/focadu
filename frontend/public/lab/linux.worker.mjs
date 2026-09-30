@@ -9,6 +9,11 @@ const say = (message) => postMessage(message);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let emu = null;
+
+/** Digita no terminal da VM em UTF-8 (`serial0_send` do v86 manda so o codigo de cada caractere: acento viraria byte invalido). */
+function type(text) {
+  for (const byte of new TextEncoder().encode(text)) emu.bus.send('serial0-input', byte);
+}
 let serial = '';
 const decoder = new TextDecoder('utf-8');
 
@@ -50,7 +55,7 @@ async function sizeOf(url) {
 async function sh(command, limitMs = 120000) {
   serial = '';
   const id = Math.random().toString(36).slice(2, 8);
-  emu.serial0_send(`${command}\necho __EN''D${id}:$?\n`);
+  type(`${command}\necho __EN''D${id}:$?\n`);
   const end = new RegExp(`\\r\\n__END${id}:(\\d+)\\r\\n`);
   const started = Date.now();
   let match = null;
@@ -81,13 +86,13 @@ async function writeFile(path, text) {
 /** Entra no terminal de `user` (a shell de root e trocada: `exec su -`) e deixa o prompt/paste como o resto do laboratorio espera. */
 async function enterAs(user) {
   serial = '';
-  emu.serial0_send(`exec su - ${user}\n`);
+  type(`exec su - ${user}\n`);
   const started = Date.now();
   // A shell nova demora um instante; repete o eco ate ela responder.
   for (;;) {
     await sleep(300);
     serial = '';
-    emu.serial0_send("echo __RE''ADY\n");
+    type("echo __RE''ADY\n");
     await sleep(300);
     if (/__READY\r?\n/.test(serial)) break;
     if (Date.now() - started > 20000) throw new Error(`Não consegui entrar como ${user} no laboratório.`);

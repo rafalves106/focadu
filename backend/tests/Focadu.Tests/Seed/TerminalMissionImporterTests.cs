@@ -161,6 +161,48 @@ public class TerminalMissionImporterTests
         Assert.All(missions, m => Assert.InRange(m.Hints.Count, 1, 3));
     }
 
+    [Theory]
+    [InlineData("semana-1", 1)]
+    [InlineData("semana-1", 3)]
+    [InlineData("semana-1", 4)]
+    [InlineData("semana-1", 5)]
+    [InlineData("semana-2", 7)]
+    [InlineData("semana-2", 8)]
+    [InlineData("semana-2", 9)]
+    [InlineData("semana-2", 11)]
+    public void RealLinuxDays_HaveMissions_AndTheTerminalUserIsAgente(string week, int dayNumber)
+    {
+        var path = CuratedContentLocator.Resolve("linux", week, $"dia-{dayNumber}.json", required: false);
+        if (path is null) return; // curadoria fora do checkout (CI)
+
+        var template = NewWeeklyTemplate();
+        CuratedDayImporter.ImportFile(template, path);
+
+        var day = Assert.Single(template.DailyTemplates);
+        Assert.False(day.IsBridge);
+        Assert.Equal("agente", day.Lab!.User);
+        Assert.True(day.Lab.NoEditor);
+        Assert.InRange(day.Activities.Single(a => a.Type == ActivityType.TerminalMission).TerminalMissionList.Count, 3, 5);
+        Assert.DoesNotContain("docker run", template.CuratedContents.First(c => c.Type == Focadu.Domain.Enums.CuratedContentType.Reading).BodyText ?? "");
+    }
+
+    [Theory]
+    [InlineData("semana-1", 6)]
+    [InlineData("semana-2", 12)]
+    public void RealLinuxBridges_RunTheTerminalAsAgente(string week, int dayNumber)
+    {
+        var path = CuratedContentLocator.Resolve("linux", week, $"dia-{dayNumber}.json", required: false);
+        if (path is null) return;
+
+        var template = NewWeeklyTemplate();
+        CuratedDayImporter.ImportFile(template, path);
+
+        var day = Assert.Single(template.DailyTemplates);
+        Assert.True(day.IsBridge);
+        Assert.Equal("agente", day.Lab!.User);
+        Assert.False(day.Lab.NoEditor);
+    }
+
     [Fact]
     public void ResolveScore_TerminalMission_IsAFixedFullScore()
     {

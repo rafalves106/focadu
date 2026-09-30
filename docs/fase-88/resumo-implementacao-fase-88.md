@@ -87,3 +87,18 @@ inteiro (setup, missões, Leitura, Quizzes) foi atualizado e as missões reconfe
 precisa do patch `secret/curadoria/patches/2026-09-30-linux-dia-2-agente.sql` (gerado por
 `scripts/linux-patch/gerar_patch_dia2_agente.py`; **não executado**: aplica a Leitura e os 3 Quizzes com "ana"; a atividade
 `TerminalMission` entra pelo `seed` do deploy). Os outros dias do Linux ainda falam em `ana` até ganharem missões.
+
+## Expansão para todos os dias (30/09/2026)
+
+Pedido do dono: em todo terminal o usuário é `agente`, e missões em todos os dias. Feito para os Dias 1, 3, 4, 5, 7, 8, 9 e 11
+(3 a 5 missões, todas conferidas por `verificar-missoes.mjs` no Linux embutido) além do Dia 2; Dia 10 (SSH) fica sem missões (sem
+`ssh`/`sshd` no laboratório) e só troca o nome; as pontes 6 e 12 passaram a rodar como `agente` (`verificar.mjs` reconferiu os dois).
+- `secret/curadoria/scripts/linux-missoes/gerar_missoes.py` gera tudo (missões, `ana`→`agente` com concordância, bloco de ambiente da
+  Leitura). Dias 8 e 9 sobem o `lab_http.py` como serviço do laboratório (File `lab_http.py` no dia).
+- **Bug real achado no teste:** `serial0_send` do v86 manda só o código de cada caractere; acento digitado virava byte inválido. O
+  worker (e os verificadores) agora digitam em UTF-8 (`emu.bus.send('serial0-input', byte)`), o que também corrige as pontes.
+- Front: a ponte mostra o prompt `agente@srv:~$` e grava o script em `/home/agente`. Mock: `/__mock/reset?at=terminal&lab=N`.
+- Patch de texto para produção: `secret/curadoria/patches/2026-09-30-linux-dias-agente.sql` (gerado por `scripts/linux-patch/gerar_patch_agente.py`,
+  **não executado**; substitui o patch só do Dia 2).
+- Verificação: 669 testes verdes; navegador real com o Dia 8 (servidor de laboratório, 4 missões) e a ponte do Dia 6 como `agente`.
+- O Alpine não tem `ss`, `dig`, `traceroute`, `ping` (sem root): essas partes dos Dias 3, 7 e 9 ficam como leitura.
