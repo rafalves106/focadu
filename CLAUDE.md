@@ -96,7 +96,7 @@ Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` corr
   (Draft) e só aparece pra e-mails em `COURSE_PREVIEW_EMAILS`; `GET /api/courses` passou a filtrar por
   usuário (antes vazava qualquer curso). Semana **sem Projeto Semanal** (`WeeklyTemplate.IsPracticeOnly`):
   fecha só com as Dailies, sem publicação, score = média das Dailies; ponte em Bash via
-  `PracticeLanguage`. Linux curado: Dias 1-7, 10 e 11. Telas de curso sem projeto aguardam o Figma.
+  `PracticeLanguage`. Linux curado por completo (12 dias). Telas de curso sem projeto aguardam o Figma.
   Ver `docs/fase-81/`.
 - **Chat rápido com código formatado + ponte sem analogias (Fase 80, pedido do dono)**: o "Tira dúvidas"
   mostra bloco de código e código inline formatados (`ChatMessageText`); nas pontes não há mais analogia de
