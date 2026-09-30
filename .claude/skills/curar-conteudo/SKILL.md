@@ -94,9 +94,18 @@ Web Security, é o Web Security.
 - **Todo dia liga a um uso em segurança.** O dia de Linux/Python não é "o comando pelo comando": uma
   seção curta diz onde aquilo aparece no Web Security (ex.: `../` → LFI na Semana 4; `/etc/passwd` →
   alvo clássico de leitura). Sem ensinar o ataque, que é assunto do Web Security.
-- **Sem `CodeStep` em dia normal, por enquanto.** O `CodeStep` (Fase 79) hoje é acoplado à ponte (linguagem
-  da ponte + código acumulado). Usar em dia normal exige fase de backend. Até lá, a prática entra no
-  Quiz ("o que esse comando imprime?"), no Cloze ("complete o comando") e no Roleplay.
+- **`CodeStep` em dia normal depende da fase de backend do laboratório.** Hoje o `CodeStep` (Fase 79) é
+  acoplado à ponte (linguagem da ponte + código acumulado). Decidido em 30/09/2026 (rascunho
+  `laboratorio-de-codigo-na-ponte.md`, decisão 9): o curso `python-websec` terá **um exercício de código
+  por dia** (`CodeStep` com bloco `lab`, `runtime: python`, `codeStarter` quando parte de esqueleto). Até o
+  backend existir, **não gere `CodeStep` fora da ponte**: a prática entra no Quiz ("o que esse comando
+  imprime?"), no Cloze ("complete o comando") e no Roleplay.
+- **Bloco `lab` (CURADORIA.md 5.2) em pontes e, depois, nos exercícios do Python.** Todo dia com
+  `CodeStep` ganha `lab` **só depois** de `node secret/curadoria/scripts/lab/verificar.mjs <dia.json>`
+  passar (ele roda cada solução acumulada no runtime do laboratório: Pyodide ou Linux no v86). Lib que
+  não roda no laboratório não ganha shim nem é trocada: aquele dia fica sem `lab`. Refazer o verificador a
+  cada mudança em `codeSolution`, `codeExpectedOutput` ou no arquivo da ponte. `command` é o comando de
+  exemplo (no Linux o aluno digita), `entry` o arquivo que ele cria.
 - Analogias continuam como no Web Security (âncora no texto, a plataforma injeta).
 - **Distrator de quiz pode ser um equívoco típico.** Em pergunta de comportamento ("o que esse comando
   imprime?", "o que acontece se..."), a regra absoluta do Web Security (todas as alternativas
