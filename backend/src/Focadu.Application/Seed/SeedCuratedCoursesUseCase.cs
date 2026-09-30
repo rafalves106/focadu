@@ -1,4 +1,5 @@
 using Focadu.Application.Ports;
+using Focadu.Domain.Enums;
 using Focadu.Domain.Exceptions;
 using Focadu.Domain.Repositories;
 using Focadu.Domain.Weeklies;
@@ -12,6 +13,9 @@ namespace Focadu.Application.Seed;
 ///    curados desde o ultimo deploy (CuratedCourseImporter).
 /// 2. Leva os dias novos pras matriculas que ja existem (hoje, so quem testa a previa): a Daily entra
 ///    na Weekly da semana certa, e a Weekly e criada se a semana for nova.
+/// Fase 82: o importador nunca mexe num dia ja importado, entao uma correcao de curadoria nao chegaria.
+/// Enquanto o curso estiver escondido e sem nenhuma matricula, ele e apagado e recriado do zero a cada
+/// deploy - o que esta no banco e sempre a curadoria atual. Com a 1a matricula (ou publicado) isso para.
 /// </summary>
 public class SeedCuratedCoursesUseCase
 {
@@ -45,6 +49,15 @@ public class SeedCuratedCoursesUseCase
 
             var manifest = CuratedCourseImporter.ParseManifest(await File.ReadAllTextAsync(manifestPath, cancellationToken));
             var existing = (await _courseRepository.GetAllAsync(cancellationToken)).FirstOrDefault(c => c.Name == manifest.Name);
+            var recreated = false;
+            if (existing is not null && await CanRecreateAsync(existing.Id, existing.Status, cancellationToken))
+            {
+                _courseRepository.Remove(await _courseRepository.GetFullTemplateGraphAsync(existing.Id, cancellationToken)
+                    ?? throw new InvalidOperationException("Curso sumiu entre as duas leituras."));
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                existing = null;
+                recreated = true;
+            }
             var courseCreated = existing is null;
 
             var course = existing is null
@@ -63,10 +76,13 @@ public class SeedCuratedCoursesUseCase
                 : await SyncEnrollmentsAsync(course.Id, created, cancellationToken);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-            results.Add(new CuratedCourseSeedResult(manifest.Name, courseCreated, created.Count, dailiesAdded, course.Status.ToString(), skipped));
+            results.Add(new CuratedCourseSeedResult(manifest.Name, courseCreated, created.Count, dailiesAdded, course.Status.ToString(), skipped, recreated));
         }
         return results;
     }
+
+    private async Task<bool> CanRecreateAsync(Guid courseId, CourseStatus status, CancellationToken cancellationToken) =>
+        status == CourseStatus.Draft && (await _enrollmentRepository.GetByCourseIdAsync(courseId, cancellationToken)).Count == 0;
 
     private async Task<(int DailiesAdded, List<string> Skipped)> SyncEnrollmentsAsync(
         Guid courseId, IReadOnlyList<CreatedDay> created, CancellationToken cancellationToken)
@@ -110,4 +126,5 @@ public class SeedCuratedCoursesUseCase
 }
 
 public record CuratedCourseSeedResult(
-    string CourseName, bool Created, int DaysImported, int DailiesAdded, string Status, IReadOnlyList<string> Skipped);
+    string CourseName, bool Created, int DaysImported, int DailiesAdded, string Status, IReadOnlyList<string> Skipped,
+    bool Recreated = false);

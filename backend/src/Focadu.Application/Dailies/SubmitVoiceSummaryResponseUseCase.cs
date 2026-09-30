@@ -111,8 +111,8 @@ public class SubmitVoiceSummaryResponseUseCase
         // Fase 27: perfil e so pra enriquecer o FEEDBACK (ver doc da classe) - usuario nao
         // encontrado (nunca deveria acontecer, JWT ja garante usuario existente) so significa
         // "sem personalizacao", nao falha a submissao.
-        // Fase 79: na ponte (Daily por linguagem) o feedback nao usa analogia de interesse.
-        var user = daily.RequiresProjectLanguage ? null : await _userRepository.GetByIdAsync(userId, cancellationToken);
+        // Fase 79: na ponte o feedback nao usa analogia de interesse (Fase 82: inclui a ponte sem Projeto Semanal).
+        var user = daily.Template.IsBridge ? null : await _userRepository.GetByIdAsync(userId, cancellationToken);
         var evaluation = await _evaluationService.EvaluateAsync(
             new ContentEvaluationRequest(referenceText, transcript, contextText, user?.Interests, user?.AdditionalProfileNotes),
             cancellationToken);

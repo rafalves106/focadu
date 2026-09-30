@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 81 - Cursos de pre-requisito (Linux, Python pra Web Security): seed generico, curso escondido e semana sem projeto**.
+> Ultima fase que atualizou este documento: **Fase 82 - Linux pronto pra publicar: lista de cursos so com matricula, ponte sem projeto reconhecida e curso escondido recriado no seed**.
 
 ## Visao geral do projeto
 
@@ -1305,7 +1305,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 GET | `/api/courses/available` | `GetAvailableCoursesUseCase` (Fase 13) | 200 - so cursos `Active` em que o usuario ainda nao esta matriculado |
 | 🔒 POST | `/api/enrollments` | `EnrollUserInCourseUseCase` (Fase 13) | 201, 409 `ja_matriculado` - gera Weekly/Daily/WeeklyProject-instancia pra todo o curriculo do curso |
 | 🔒 GET | `/api/enrollments/me` | `GetMyEnrollmentsUseCase` (Fase 13) | 200 (lista - hoje no maximo 1) |
-| 🔒 GET | `/api/courses` | `ListCoursesUseCase` | 200 |
+| 🔒 GET | `/api/courses` | `ListCoursesUseCase` | 200 - so os cursos em que o usuario esta matriculado (Fase 82), publicados primeiro |
 | 🔒 GET | `/api/courses/{courseId}` | `GetCourseDetailUseCase` | 200, 404 se nao existe/usuario nao matriculado (Fase 8: `WeeklyOverviewDto.Days` traz status por dia, pro mini-grid de `CourseDetailPage`; Fase 65: `ProjectStatus` por semana e `Title`/`IsNext`/`ReinforcementDailyId`/`CompletedToday` por dia, pro mapa da trilha) |
 | 🔒 GET | `/api/courses/{courseId}/curriculum` | `GetCourseCurriculumUseCase` (Fase 13b) | 200, 404 - curriculo (Course -> Monthly -> WeeklyTemplate), sem exigir matricula; so `/admin/conteudo` usa isso |
 | 🔒 GET | `/api/weeklies/{weeklyId}` | `GetWeeklyDetailUseCase` | 200, 404 se nao existe/nao e do usuario - Fase 15: `WeeklyDetailDto` ganhou `HasPendingWeeklyReinforcement`. Fase 29: ganhou `CourseId` (resolvido via `IMonthlyRepository.GetByIdAsync(weekly.MonthlyId)` - Weekly/instancia nao guarda CourseId direto, so Monthly/template). Fase 39: `DailyOverviewDto` ganhou `Title` (titulo do `CuratedContent` da atividade de Leitura do dia, Video como fallback; nulo se nenhum dos dois existir) - Daily nao tem titulo proprio, so usado por `WeeklyDetailPage` |
@@ -1745,7 +1745,11 @@ Security antes/junto do Web Security; decisoes do dono em 29/09/2026: **sem Proj
   Security (tudo de uma vez, nunca mais mexe): **incremental** - um dia so entra quando o `dia-N.json`
   existe. Os dias novos chegam tambem as matriculas que ja existem (Daily na Weekly da semana; Weekly
   criada se a semana for nova; numero ocupado vira aviso no log, nao derruba o deploy). `published: true`
-  ativa o curso (so ida, nunca esconde de novo).
+  ativa o curso (so ida, nunca esconde de novo). **Fase 82:** como o importador nunca mexe num dia ja
+  importado, um curso **Draft sem nenhuma matricula** e apagado (`ICourseRepository.Remove`, cascata do
+  curriculo) e recriado do zero a cada deploy - o banco sempre reflete a curadoria atual ate a 1a
+  matricula ou a publicacao. O log diz "recriado (escondido e sem matricula)". O Id do curso muda a cada
+  recriacao (sem efeito: ninguem esta matriculado).
 - **`CuratedContentLocator`**: a busca de arquivo de curadoria (CURATED_CONTENT_ROOT / `.git` / repo irmao)
   saiu do seed do Web Security e passou a receber o slug; o do Web Security delega pra ele.
 - **Semana sem projeto:** `WeeklyTemplate.PracticeLanguage` (coluna nova, migration `PracticeOnlyWeeks`)
@@ -1757,12 +1761,16 @@ Security antes/junto do Web Security; decisoes do dono em 29/09/2026: **sem Proj
 - **Ponte do curso sem projeto:** dia normal (sem `DailyTemplate.Language`) com `CodeStep`. A linguagem
   mandada pra IA sai de `WeeklyTemplate.PracticeLanguage` ("Bash") quando o dia nao tem variante; o
   `WeeklyDetailDto.PracticeLanguage` alimenta o rotulo "Seu codigo · Bash" do `CodeStepActivity`.
+  Fase 82: `DailyTemplate.IsBridge` (tem `Language` **ou** tem `CodeStep`) e o que marca a ponte pra
+  "sem analogia" (Fase 80) - antes so `Language` contava e a ponte do Linux gerava "Pra voce".
 - **Curso escondido (Draft) e previa:** `CoursePreviewOptions` (config `CoursePreview:Emails`, env
   `COURSE_PREVIEW_EMAILS` no compose, e-mails separados por virgula). Quem esta na lista ve o curso
-  Draft em `GET /api/courses/available` e `GET /api/courses` e consegue se matricular; os demais nao
-  veem e recebem 404 (`curso_nao_encontrado`) no `POST /api/enrollments`. `GET /api/courses` passou a
-  filtrar por usuario (Draft so pra previa ou matriculado) e a listar os publicados primeiro - antes
-  devolvia todos os cursos pra qualquer usuario, e o front usa essa lista no menu, Start, Ranking e guia.
+  Draft em `GET /api/courses/available` e consegue se matricular; os demais nao veem e recebem 404
+  (`curso_nao_encontrado`) no `POST /api/enrollments`. **`GET /api/courses` lista so os cursos em que o
+  usuario esta matriculado** (Fase 82; publicados primeiro): o front usa essa lista como "os cursos do
+  aluno" no menu, Start, Perfil, Ranking e guia, e pede `GET /api/courses/{id}` (que exige matricula) de
+  cada um - um curso visivel sem matricula na lista derrubava o Start com 404. Descobrir curso novo e so
+  pelo `/available`.
   Curso Archived nunca aceita matricula.
 - **Front ainda nao adaptado** a semana sem projeto (castelo do mapa, visao da semana, start): aguarda
   o desenho no Figma. Enquanto o curso estiver Draft, so quem testa a previa ve essas telas.
@@ -2391,8 +2399,8 @@ pontes curadas (antigas) continuam funcionando como antes.
 - **Migration** `CodeStepBridge`: 3 colunas `text` em `DailyActivities` e `Dailies.CodeRepositoryUrl`.
 - **Sem analogias na ponte** (Fase 80, todas as semanas): a leitura de um conteudo de ponte nao gera o
   "Pra voce" (`IWeeklyTemplateRepository.IsBridgeContentAsync` - conteudo usado por `DailyTemplate` com
-  `Language`; cache ignorado), o resumo falado da ponte avalia sem os interesses do perfil
-  (`Daily.RequiresProjectLanguage`) e o chat rapido recebe `codeBridge` (`POST /api/study-assistant/ask`):
+  `Language` ou com `CodeStep`, Fase 82; cache ignorado), o resumo falado da ponte avalia sem os
+  interesses do perfil (`DailyTemplate.IsBridge`, Fase 82; antes `Daily.RequiresProjectLanguage`) e o chat rapido recebe `codeBridge` (`POST /api/study-assistant/ask`):
   sem perfil e com a instrucao "sintaxe livre, a solucao do passo fica com o aluno".
 - **Curadoria**: formato em `secret/curadoria/CURADORIA.md` (secoes 3 e 5.1); fonte da Semana 1 em
   `secret/curadoria/scripts/ponte/semana-1/` (gerador do `ponte.pcap`, solucoes de referencia, divisao

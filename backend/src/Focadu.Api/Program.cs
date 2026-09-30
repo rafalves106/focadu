@@ -224,7 +224,7 @@ if (args.Contains("seed"))
     foreach (var curated in await scope.ServiceProvider.GetRequiredService<SeedCuratedCoursesUseCase>().ExecuteAsync())
     {
         Console.WriteLine($"Seed: curso '{curated.CourseName}' ({curated.Status}) - " +
-            (curated.Created ? "criado, " : "") + $"{curated.DaysImported} dias importados, {curated.DailiesAdded} Dailies adicionadas.");
+            (curated.Recreated ? "recriado (escondido e sem matricula), " : curated.Created ? "criado, " : "") + $"{curated.DaysImported} dias importados, {curated.DailiesAdded} Dailies adicionadas.");
         foreach (var skipped in curated.Skipped)
             Console.WriteLine($"Seed: Daily NAO adicionada - {skipped}");
     }

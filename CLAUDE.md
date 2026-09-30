@@ -87,9 +87,16 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 81 — Cursos de pré-requisito: seed genérico, curso escondido e semana sem projeto** (29/09/2026).
+Última fase concluída: **Fase 82 — Linux pronto pra publicar: lista de cursos só com matrícula, ponte sem projeto e curso escondido recriado** (30/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Linux pronto pra publicar (Fase 82, teste de ponta a ponta antes de liberar)**: `GET /api/courses` lista
+  só os cursos em que o aluno está matriculado (um curso visível sem matrícula derrubava o `/start` com
+  404 - com o Linux publicado, todo aluno só do Web Security cairia nisso). A ponte do curso sem projeto é
+  reconhecida (`DailyTemplate.IsBridge`: `Language` ou `CodeStep`) e fica sem analogia, como a Fase 80
+  queria. Curso escondido sem nenhuma matrícula é apagado e recriado a cada deploy, pra correção de
+  curadoria chegar (o importador não mexe em dia já importado). Falta: telas de curso sem projeto no
+  Figma e o `published: true`. Ver `docs/fase-82/`.
 - **Cursos de pré-requisito (Fase 81, trilha Linux → Python pra Web Security)**: seed genérico por
   curso (`secret/curadoria/<slug>/curso.json` + `SeedCuratedCoursesUseCase`, incremental: cada deploy traz
   os dias curados desde o anterior, inclusive pras matrículas existentes). O curso nasce **escondido**

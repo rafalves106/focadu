@@ -16,6 +16,6 @@ public interface IWeeklyTemplateRepository
 
     Task<CuratedContent?> GetCuratedContentByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
-    /// <summary>Fase 79: o conteudo e usado por uma ponte (DailyTemplate com Language) - la nao ha analogia "Pra voce".</summary>
+    /// <summary>Fase 79: o conteudo e usado por uma ponte (DailyTemplate.IsBridge: com Language ou com CodeStep, Fase 82) - la nao ha analogia "Pra voce".</summary>
     Task<bool> IsBridgeContentAsync(Guid contentId, CancellationToken cancellationToken = default);
 }

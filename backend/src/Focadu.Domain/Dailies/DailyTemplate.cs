@@ -36,6 +36,14 @@ public class DailyTemplate : Entity
     private readonly List<DailyActivity> _activities = new();
     public IReadOnlyCollection<DailyActivity> Activities => _activities.AsReadOnly();
 
+    /// <summary>
+    /// Fase 82: dia de ponte - uma variante por linguagem (ponte antiga do Web Security) ou um dia com
+    /// passos de codigo ("code comigo", Fase 79). A 2a forma cobre a ponte dos cursos sem Projeto Semanal
+    /// (Linux), cuja linguagem mora na semana (<c>WeeklyTemplate.PracticeLanguage</c>) e nao no dia. Ponte
+    /// nao usa analogia de interesse (Fase 80).
+    /// </summary>
+    public bool IsBridge => Language is not null || _activities.Any(a => a.Type == ActivityType.CodeStep);
+
     private DailyTemplate()
     {
     }

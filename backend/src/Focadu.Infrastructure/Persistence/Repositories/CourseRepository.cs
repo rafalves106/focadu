@@ -41,4 +41,6 @@ public class CourseRepository : ICourseRepository
 
     public async Task AddAsync(Course course, CancellationToken cancellationToken = default) =>
         await _context.Courses.AddAsync(course, cancellationToken);
+
+    public void Remove(Course course) => _context.Courses.Remove(course);
 }

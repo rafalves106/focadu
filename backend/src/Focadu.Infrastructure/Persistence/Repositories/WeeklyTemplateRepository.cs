@@ -1,4 +1,5 @@
 using Focadu.Domain.Content;
+using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
 using Focadu.Domain.Weeklies;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +29,7 @@ public class WeeklyTemplateRepository : IWeeklyTemplateRepository
 
     public async Task<bool> IsBridgeContentAsync(Guid contentId, CancellationToken cancellationToken = default) =>
         await _context.DailyActivities.AnyAsync(
-            a => a.ContentId == contentId && _context.DailyTemplates.Any(t => t.Id == a.DailyTemplateId && t.Language != null),
+            a => a.ContentId == contentId && _context.DailyTemplates.Any(t => t.Id == a.DailyTemplateId
+                && (t.Language != null || _context.DailyActivities.Any(s => s.DailyTemplateId == t.Id && s.Type == ActivityType.CodeStep))),
             cancellationToken);
 }

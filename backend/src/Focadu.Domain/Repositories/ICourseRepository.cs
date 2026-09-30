@@ -18,4 +18,7 @@ public interface ICourseRepository
     Task<IReadOnlyCollection<Course>> GetAllAsync(CancellationToken cancellationToken = default);
 
     Task AddAsync(Course course, CancellationToken cancellationToken = default);
+
+    /// <summary>Fase 82: apaga o curso e o curriculo dele (cascata) - so o seed usa, pra recriar um curso escondido sem matricula.</summary>
+    void Remove(Course course);
 }
