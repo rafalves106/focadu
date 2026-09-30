@@ -25,7 +25,9 @@ public class CuratedCourseImporterTests
     [Fact]
     public void Apply_BuildsTheCourseHiddenWithOnlyTheCuratedDays()
     {
-        var manifest = LoadManifest();
+        // O Linux real ja foi publicado (30/09/2026): o teste fixa o manifesto como nao publicado pra
+        // conferir o curso escondido; a publicacao tem teste proprio abaixo.
+        var manifest = LoadManifest() with { Published = false };
         var course = CuratedCourseImporter.CreateCourse(manifest);
 
         var created = CuratedCourseImporter.Apply(course, manifest, Resolve);

@@ -68,7 +68,8 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
     items: [
       { title: 'Seus interesses', text: 'Viram analogias nas leituras, montadas pra você. Dá pra mudar depois no perfil.' },
       { title: 'Linguagens', text: 'As que você topa usar nos projetos. A escolha de cada projeto vem depois.' },
-      { title: 'O curso', text: 'Cada curso tem a sua trilha. No Web Security, cada semana fecha num projeto; nos cursos de pré-requisito, na ponte.' },
+      { title: 'O curso', text: 'Os cursos são livres: nenhum tranca o outro. "Ver curso" mostra o que ajuda saber antes e qual curso a Focadu recomenda antes.' },
+      { title: 'A trilha', text: 'Cada curso tem a sua. No Web Security, cada semana fecha num projeto; nos cursos de pré-requisito, na ponte.' },
     ],
   },
   start: {

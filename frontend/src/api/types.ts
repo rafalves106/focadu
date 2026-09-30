@@ -767,11 +767,33 @@ export interface ResetPasswordRequest {
 }
 
 // Matricula (Fase 13) - Onboarding/Selecao de Curso.
+/** Fase 84: situacao do aluno num curso recomendado (espelha RecommendedCourseStatus do backend). */
+export const RecommendedCourseStatus = {
+  NotStarted: 0,
+  InProgress: 1,
+  Completed: 2,
+} as const;
+export type RecommendedCourseStatus = (typeof RecommendedCourseStatus)[keyof typeof RecommendedCourseStatus];
+
+export interface RecommendedCourseDto {
+  id: string;
+  name: string;
+  estimatedDuration: string;
+  status: RecommendedCourseStatus;
+}
+
 export interface AvailableCourseDto {
   id: string;
   title: string;
   description: string;
   estimatedDuration: string;
+  /** Fase 84: o que ajuda saber antes (vazio = comeca do zero). */
+  requirements: string[];
+  /** Fase 84: cursos que a Focadu recomenda antes deste - so recomendacao, os cursos sao livres. */
+  recommendedBefore: RecommendedCourseDto[];
+  /** Fase 84: cursos que recomendam este antes ("Prepara pro Web Security"). */
+  preparesFor: string[];
+  preparesText: string | null;
 }
 
 export interface EnrollmentDto {

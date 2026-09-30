@@ -87,15 +87,19 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 83 — Telas de curso sem Projeto Semanal (Linux): castelo fecha a semana, mapa curto, "Rumo à ponte"** (30/09/2026).
+Última fase concluída: **Fase 84 — Cursos livres com recomendação: ficha do curso na escolha de curso** (30/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Cursos livres com recomendação (Fase 84, decisão do dono, Figma "Escolha de curso: recomendação — v2")**:
+  nenhum curso destrava outro. Na escolha de curso cada cartão tem um selo ("Recomendado antes: Linux" ou
+  "Prepara pro Web Security") e "Ver curso" abre a ficha: o que ajuda saber antes, o curso recomendado (com a
+  situação do aluno nele) e "Iniciar", sem trava. Dados em `secret/curadoria/<slug>/recomendacao.json`,
+  reaplicados em todo `seed` (`SyncCourseRecommendationsUseCase`). Linux publicado em 30/09/2026. Ver `docs/fase-84/`.
 - **Telas de curso sem Projeto Semanal (Fase 83, Figma "Cursos de pré-requisito — v2")**: no curso sem
   projeto (Linux) o castelo continua em toda semana, mas é o **fechamento da semana** (cai quando a ponte
   fecha, com "Ir pra Semana N"). Trilha num mapa curto (`mapa/linux/regiao-1`, 2 ilhas), "Pontes" no
   resumo, Start "Rumo à ponte", Ranking sem Projeto Semanal, falas da Focada próprias. API: `IsPracticeOnly` e
-  `IsClosed` nos DTOs de semana. Legenda do arquivo da ponte vem do `bodyText` do `File`. Falta só publicar
-  (`"published": true`). Ver `docs/fase-83/`.
+  `IsClosed` nos DTOs de semana. Legenda do arquivo da ponte vem do `bodyText` do `File`. Ver `docs/fase-83/`.
 - **Linux pronto pra publicar (Fase 82, teste de ponta a ponta antes de liberar)**: `GET /api/courses` lista
   só os cursos em que o aluno está matriculado (um curso visível sem matrícula derrubava o `/start` com
   404 - com o Linux publicado, todo aluno só do Web Security cairia nisso). A ponte do curso sem projeto é

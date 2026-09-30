@@ -14,6 +14,10 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
         builder.Property(c => c.Name).IsRequired().HasMaxLength(200);
         builder.Property(c => c.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(c => c.Description).HasMaxLength(1000);
+        // Fase 84: ficha do curso - mesmo array nativo do Postgres de User.Interests.
+        builder.Property(c => c.Requirements).HasColumnType("text[]").IsRequired();
+        builder.Property(c => c.RecommendedBefore).HasColumnType("text[]").IsRequired();
+        builder.Property(c => c.PreparesText).HasMaxLength(500);
 
         builder.HasMany(c => c.Monthlies)
             .WithOne()

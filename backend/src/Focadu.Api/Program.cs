@@ -229,6 +229,10 @@ if (args.Contains("seed"))
             Console.WriteLine($"Seed: Daily NAO adicionada - {skipped}");
     }
 
+    // Fase 84: ficha do curso (o que ajuda saber antes e o curso recomendado) - reaplicada em todo deploy.
+    var recommended = await scope.ServiceProvider.GetRequiredService<SyncCourseRecommendationsUseCase>().ExecuteAsync();
+    Console.WriteLine($"Seed: ficha do curso atualizada em {recommended.Count} curso(s){(recommended.Count > 0 ? ": " + string.Join(", ", recommended) : "")}.");
+
     // Fase 17: catalogo fixo da loja de cosmeticos - mesmo gatilho `-- seed`. Fase 71: as pecas em
     // pixel art entram por Code, so as que faltam (uma leva nova chega em producao pelo proprio seed).
     var cosmeticSeeder = scope.ServiceProvider.GetRequiredService<SeedCosmeticCatalogUseCase>();

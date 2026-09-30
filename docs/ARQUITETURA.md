@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 83 - Telas de curso sem Projeto Semanal (Linux): castelo como fechamento da semana, mapa curto, "Rumo a ponte"**.
+> Ultima fase que atualizou este documento: **Fase 84 - Cursos livres com recomendacao: ficha do curso na escolha de curso**.
 
 ## Visao geral do projeto
 
@@ -1302,7 +1302,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 GET | `/api/auth/me` | `GetCurrentUserUseCase` (Fase 12) | 200, 401 `nao_autenticado` - Fase 18: `UserDto` ganhou `interests`/`additionalProfileNotes` (aba Informações do Perfil le direto daqui, sem endpoint novo) |
 | 🔒 PUT | `/api/users/me/profile` | `CompleteProfileUseCase` (Fase 13) | 200 - Entrevista de Perfil (Onboarding); sem guarda de "so uma vez", Fase 18 reaproveita pra editar depois |
 | 🔒 GET | `/api/users/me/gamification` | `GetGamificationSummaryUseCase` (Fase 14) | 200 (`GamificationSummaryDto`) - nunca 404, `UserGemBalance`/`UserStreak` sao lazy |
-| 🔒 GET | `/api/courses/available` | `GetAvailableCoursesUseCase` (Fase 13) | 200 - so cursos `Active` em que o usuario ainda nao esta matriculado |
+| 🔒 GET | `/api/courses/available` | `GetAvailableCoursesUseCase` (Fase 13) | 200 - so cursos `Active` (e Draft da previa) em que o usuario ainda nao esta matriculado. Fase 84: cada um traz `Requirements`, `RecommendedBefore` (curso recomendado antes + situacao do aluno nele: `NotStarted`/`InProgress`/`Completed`), `PreparesFor` e `PreparesText` |
 | 🔒 POST | `/api/enrollments` | `EnrollUserInCourseUseCase` (Fase 13) | 201, 409 `ja_matriculado` - gera Weekly/Daily/WeeklyProject-instancia pra todo o curriculo do curso |
 | 🔒 GET | `/api/enrollments/me` | `GetMyEnrollmentsUseCase` (Fase 13) | 200 (lista - hoje no maximo 1) |
 | 🔒 GET | `/api/courses` | `ListCoursesUseCase` | 200 - so os cursos em que o usuario esta matriculado (Fase 82), publicados primeiro |
@@ -1784,6 +1784,16 @@ Security antes/junto do Web Security; decisoes do dono em 29/09/2026: **sem Proj
   Start: "Rumo a ponte" (`BridgePathCard`: dias 1-5 e a ponte como fim da linha). Ranking: "Como subir"
   sem Projeto Semanal (score = media das Dailies). Falas do mapa: `PRACTICE_ONLY_MAP_LINES` (um
   `falas.json` do curso ainda vence). Guia das telas com textos que valem pros dois tipos de curso.
+- **Cursos livres com recomendacao (Fase 84, decisao do dono 30/09/2026, Figma "Escolha de curso:
+  recomendacao — v2"):** nenhum curso destrava outro. `Course` ganhou `Requirements` e `RecommendedBefore`
+  (`text[]`) e `PreparesText` (migration `CourseRecommendation`), vindos de
+  `secret/curadoria/<slug>/recomendacao.json` (`requisitos`, `recomendadoAntes`, `preparaTexto`) pelo
+  `SyncCourseRecommendationsUseCase`, que roda em todo `seed` e sobrescreve (informacao de vitrine, vale
+  tambem pra curso publicado; slug = nome normalizado, igual ao `courseSlug` do front). Na escolha de curso,
+  selo ambar "Recomendado antes: X" (verde "X em andamento"/"X feito" conforme a matricula do aluno no
+  recomendado; "Completed" = todas as semanas `IsModuleComplete`) ou verde "Prepara pro Y · comeca do zero";
+  "Ver curso" abre a ficha com o que ajuda saber antes, a recomendacao e "Comecar pelo X"/"Ir pro X" ao lado
+  de "Iniciar <curso>", que matricula direto.
 - **Legenda do arquivo da ponte:** o `bodyText` de um `CuratedContent` `File` vira a legenda no "Material
   de hoje" (`MaterialSidebar`); sem ele, "Rode tudo contra este arquivo.".
 
@@ -3305,7 +3315,7 @@ diferente - ver "Rotas da Api nao espelham as rotas do frontend" na Fase 2):
 | `/redefinir-senha?token=` | `POST /api/auth/reset-password` | `ResetPasswordPage` (Fase 41) - fora do `<ProtectedRoute/>`, token vem da query string (link do email) |
 | `/onboarding` | `PUT /api/users/me/profile` (so no "Pular tour") | `OnboardingWelcomePage` (Fase 13b) - passo 1/3 |
 | `/onboarding/perfil` | `PUT /api/users/me/profile` | `ProfileInterviewPage` (Fase 13b) - passo 2/3, Entrevista de Perfil. `?edit=1` (Fase 18) - mesma tela em modo edicao, pre-populada, volta pro `/perfil` |
-| `/selecionar-curso` | `GET /api/courses/available` + `POST /api/enrollments` | `CourseSelectionPage` (Fase 13b) - passo 3/3 |
+| `/selecionar-curso` | `GET /api/courses/available` + `POST /api/enrollments` | `CourseSelectionPage` (Fase 13b) - passo 3/3; Fase 84: selo de recomendacao por cartao e ficha do curso (`CourseSheet`) antes da matricula |
 | `/hoje` | `GET /api/today` | Daily ativa de hoje - **os 7 tipos de atividade implementados de ponta a ponta** (Reading/Video desde a Fase 7). Fora do shell `<App/>` da Fase 20 ate a 24 (full-bleed); dentro do shell de novo desde a Fase 25 (ganhou `GlobalNav`); contador de erros saiu do HUD fixo e virou badge no proprio `GlobalNav` desde a Fase 36 (`PenaltyHeaderBadge`) |
 | `/hoje?daily=` | `GET /api/dailies/{dailyId}` | Mesma tela de `/hoje`, mas pra uma Daily especifica (Fase 4 - deep-link pra sessao de reforco; Fase 8: tambem usada como "reprise" de um dia ja concluido, clicado a partir da Visao Semanal) |
 | `/start` (sem params, `?curso=` opcional) | `GET /api/courses` + `GET /api/courses/{id}` (cada curso) + `GET /api/users/me/gamification` + `GET /api/today?courseId=` e `GET /api/weeklies/{id}` do curso escolhido | `StartDashboard` (redesenhada na Fase 66; `WorldMapPage` da Fase 25 segue desativado) |
