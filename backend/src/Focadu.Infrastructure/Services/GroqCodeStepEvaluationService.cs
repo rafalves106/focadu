@@ -17,10 +17,10 @@ public class GroqCodeStepEvaluationService : ICodeStepEvaluationService
 {
     private const string Model = "openai/gpt-oss-120b"; // mesmo modelo dos outros adapters Groq.
 
-    private const string SystemPrompt =
-        "Você é a Focada, mentora da Focadu, plataforma de estudo de segurança web. Você confere UM " +
+    private const string SystemPromptTemplate =
+        "Você é a Focada, mentora {plataforma}. Você confere UM " +
         "passo de um exercício guiado de código (\"code comigo\"): o aluno escreve, passo a passo, um " +
-        "script que analisa um arquivo de captura de rede fixo, roda na máquina dele e manda o trecho " +
+        "script que roda contra o arquivo ou o servidor fixo do dia, roda na máquina dele e manda o trecho " +
         "de código do passo e a saída que apareceu no terminal. Regras: " +
         "(1) Cobre o CONCEITO descrito na rubrica do passo, não estilo nem elegância. Código feio que " +
         "faz a coisa certa passa. " +
@@ -71,7 +71,7 @@ public class GroqCodeStepEvaluationService : ICodeStepEvaluationService
             response_format = new { type = "json_object" },
             messages = new object[]
             {
-                new { role = "system", content = SystemPrompt },
+                new { role = "system", content = BuildSystemPrompt(request.CourseName) },
                 new { role = "user", content = BuildUserPrompt(request) },
             },
         };
@@ -101,6 +101,10 @@ public class GroqCodeStepEvaluationService : ICodeStepEvaluationService
         var completion = await response.Content.ReadFromJsonAsync<GroqChatCompletionResponse>(JsonOptions, cancellationToken);
         return ParseResult(completion?.Choices?.FirstOrDefault()?.Message?.Content);
     }
+
+    /// <summary>Fase 85: cita o curso da ponte (antes: sempre "seguranca web" e "arquivo de captura de rede").</summary>
+    internal static string BuildSystemPrompt(string? courseName) =>
+        SystemPromptTemplate.Replace("{plataforma}", CoursePromptText.Platform(courseName));
 
     internal static string BuildUserPrompt(CodeStepEvaluationRequest request)
     {

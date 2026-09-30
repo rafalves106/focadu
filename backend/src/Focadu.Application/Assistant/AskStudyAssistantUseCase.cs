@@ -40,16 +40,18 @@ public class AskStudyAssistantUseCase
 
     private readonly IUserRepository _userRepository;
     private readonly IStudyAssistantService _assistantService;
+    private readonly ICourseRepository _courseRepository;
 
-    public AskStudyAssistantUseCase(IUserRepository userRepository, IStudyAssistantService assistantService)
+    public AskStudyAssistantUseCase(IUserRepository userRepository, IStudyAssistantService assistantService, ICourseRepository courseRepository)
     {
         _userRepository = userRepository;
         _assistantService = assistantService;
+        _courseRepository = courseRepository;
     }
 
     public async Task<string> ExecuteAsync(
         Guid userId, string question, string? context, IReadOnlyList<StudyAssistantChatTurn>? history, bool codeBridge = false,
-        CancellationToken cancellationToken = default)
+        Guid? courseId = null, CancellationToken cancellationToken = default)
     {
         var trimmedQuestion = (question ?? string.Empty).Trim();
         if (trimmedQuestion.Length == 0)
@@ -60,9 +62,12 @@ public class AskStudyAssistantUseCase
         // Fase 79: na ponte ("code comigo") nada de analogia de interesse - o perfil nem e lido.
         var user = codeBridge ? null : await _userRepository.GetByIdAsync(userId, cancellationToken);
 
+        // Fase 85: o prompt cita o curso da sessao (sem ele, so "Focadu").
+        var courseName = courseId is { } id ? (await _courseRepository.GetByIdAsync(id, cancellationToken))?.Name : null;
+
         var request = new StudyAssistantRequest(
             trimmedQuestion, Truncate(context, MaxContextLength), ClampHistory(history), user?.Interests, user?.AdditionalProfileNotes,
-            codeBridge);
+            codeBridge, courseName);
 
         return await _assistantService.AskAsync(request, cancellationToken);
     }

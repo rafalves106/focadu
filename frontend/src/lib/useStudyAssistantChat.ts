@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api, ApiError, type StudyAssistantHistoryItem } from '../api/client';
-import { isStudyAssistantCodeBridge, useStudyAssistantContext } from './studyAssistantContext';
+import { getStudyAssistantCourse, isStudyAssistantCodeBridge, useStudyAssistantContext } from './studyAssistantContext';
 
 export type StudyAssistantChatMessage = { role: 'user' | 'assistant'; text: string };
 
@@ -51,7 +51,7 @@ export function useStudyAssistantChat() {
     setError(null);
 
     try {
-      const result = await api.askStudyAssistant(trimmed, context, history, isStudyAssistantCodeBridge());
+      const result = await api.askStudyAssistant(trimmed, context, history, isStudyAssistantCodeBridge(), getStudyAssistantCourse());
       setMessages((prev) => [...prev, { role: 'assistant', text: result.answer }]);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Não foi possível responder agora. Tente de novo.');

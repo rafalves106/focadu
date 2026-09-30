@@ -42,3 +42,17 @@ export function setStudyAssistantCodeBridge(value: boolean) {
 export function isStudyAssistantCodeBridge() {
   return codeBridge;
 }
+
+/**
+ * Fase 85: curso da sessao/projeto em tela - o backend cita o curso certo no prompt (antes o chat se
+ * apresentava sempre como do Web Security). Mesmo store externo do contexto.
+ */
+let courseId: string | null = null;
+
+export function setStudyAssistantCourse(value: string | null) {
+  courseId = value;
+}
+
+export function getStudyAssistantCourse() {
+  return courseId;
+}

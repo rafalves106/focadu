@@ -22,8 +22,8 @@ public class GroqAnalogyGenerationService : IAnalogyGenerationService
 {
     private const string Model = "openai/gpt-oss-120b"; // mesmo modelo dos outros adapters Groq - ver nota em GroqContentEvaluationService sobre o catalogo mudar.
 
-    private const string SystemPrompt =
-        "Você ajuda alunos de segurança web da Focadu a entender conceitos técnicos através de " +
+    private const string SystemPromptTemplate =
+        "Você ajuda alunos {plataforma} a entender conceitos técnicos através de " +
         "analogias curtas e realistas. Você recebe um texto técnico dividido em seções numeradas e " +
         "os interesses do aluno. Para CADA seção, escreva uma analogia de no máximo 3 frases curtas " +
         "(cerca de 50 palavras), sempre em português do Brasil (mesmo que o interesse ou o termo " +
@@ -83,7 +83,7 @@ public class GroqAnalogyGenerationService : IAnalogyGenerationService
             response_format = new { type = "json_object" },
             messages = new object[]
             {
-                new { role = "system", content = SystemPrompt },
+                new { role = "system", content = BuildSystemPrompt(request.CourseName) },
                 new { role = "user", content = BuildUserPrompt(request) },
             },
         };
@@ -116,6 +116,10 @@ public class GroqAnalogyGenerationService : IAnalogyGenerationService
 
         return ParseAnalogies(rawContent, request.Sections.Count);
     }
+
+    /// <summary>Fase 85: o prompt cita o curso do conteudo (antes: sempre "alunos de seguranca web").</summary>
+    internal static string BuildSystemPrompt(string? courseName) =>
+        SystemPromptTemplate.Replace("{plataforma}", CoursePromptText.Platform(courseName));
 
     private static string BuildUserPrompt(AnalogyRequest request)
     {

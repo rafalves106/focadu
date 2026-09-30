@@ -116,8 +116,9 @@ public class GetCuratedContentUseCase
         try
         {
             var sections = SplitIntoSections(content.BodyText).Select(StripFencedBlocks).ToList();
+            var courseName = await _weeklyTemplateRepository.GetCourseNameForContentAsync(content.Id, cancellationToken);
             var sectionAnalogies = await _analogyGenerationService.GenerateAsync(
-                new AnalogyRequest(sections, user.Interests, user.AdditionalProfileNotes), cancellationToken);
+                new AnalogyRequest(sections, user.Interests, user.AdditionalProfileNotes, courseName), cancellationToken);
 
             var analogy = new PersonalizedAnalogy(userId, content.Id, sectionAnalogies);
             await _analogyRepository.AddAsync(analogy, cancellationToken);

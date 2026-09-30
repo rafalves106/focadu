@@ -37,9 +37,9 @@ public class GroqContentEvaluationService : IContentEvaluationService
     // GET https://api.groq.com/openai/v1/models antes de trocar de novo.
     private const string Model = "openai/gpt-oss-120b";
 
-    private const string CorrectionSystemPrompt =
-        "Você revisa transcrições automáticas (Whisper) de resumos falados por alunos da Focadu, " +
-        "plataforma de estudo de segurança web, usando o conteúdo de referência como vocabulário " +
+    private const string CorrectionSystemPromptTemplate =
+        "Você revisa transcrições automáticas (Whisper) de resumos falados por alunos {plataforma}, " +
+        "usando o conteúdo de referência como vocabulário " +
         "técnico correto. Sua ÚNICA tarefa é identificar e corrigir trechos que são quase " +
         "certamente erro de reconhecimento de fala - nunca um erro conceitual real do aluno (isso " +
         "é conteúdo, não transcrição, e deve pesar na nota depois, não ser mascarado aqui). " +
@@ -57,8 +57,8 @@ public class GroqContentEvaluationService : IContentEvaluationService
         "\"<transcrição revisada, ou idêntica à original se nada precisava de correção>\"}. Não " +
         "inclua nenhum texto fora desse JSON.";
 
-    private const string GradingSystemPrompt =
-        "Você é um avaliador pedagógico da Focadu, plataforma de estudo de segurança web. Avalie " +
+    private const string GradingSystemPromptTemplate =
+        "Você é um avaliador pedagógico {plataforma}. Avalie " +
         "se o resumo falado pelo aluno (já transcrito e revisado) demonstra compreensão correta " +
         "do conteúdo de referência, e a clareza com que foi comunicado. Responda SEMPRE em JSON " +
         "estrito, exatamente neste formato: {\"score\": <inteiro de 0 a 100>, \"feedback\": " +
@@ -126,7 +126,7 @@ public class GroqContentEvaluationService : IContentEvaluationService
             response_format = new { type = "json_object" },
             messages = new object[]
             {
-                new { role = "system", content = CorrectionSystemPrompt },
+                new { role = "system", content = CorrectionSystemPrompt(request.CourseName) },
                 new { role = "user", content = BuildCorrectionUserPrompt(request) },
             },
         };
@@ -166,7 +166,7 @@ public class GroqContentEvaluationService : IContentEvaluationService
             response_format = new { type = "json_object" },
             messages = new object[]
             {
-                new { role = "system", content = GradingSystemPrompt },
+                new { role = "system", content = GradingSystemPrompt(request.CourseName) },
                 new { role = "user", content = BuildGradingUserPrompt(request, correctedTranscript) },
             },
         };
@@ -192,6 +192,13 @@ public class GroqContentEvaluationService : IContentEvaluationService
     private static string BuildCorrectionUserPrompt(ContentEvaluationRequest request) =>
         $"Conteúdo de referência (vocabulário técnico correto):\n\"\"\"\n{request.ExpectedAnswer}\n\"\"\"\n\n" +
         $"Transcrição bruta do resumo falado pelo aluno:\n\"\"\"\n{request.UserAnswer}\n\"\"\"";
+
+    /// <summary>Fase 85: os prompts citam o curso da atividade (antes: sempre "plataforma de estudo de seguranca web").</summary>
+    internal static string CorrectionSystemPrompt(string? courseName) =>
+        CorrectionSystemPromptTemplate.Replace("{plataforma}", CoursePromptText.Platform(courseName));
+
+    internal static string GradingSystemPrompt(string? courseName) =>
+        GradingSystemPromptTemplate.Replace("{plataforma}", CoursePromptText.Platform(courseName));
 
     private static string BuildGradingUserPrompt(ContentEvaluationRequest request, string correctedTranscript)
     {

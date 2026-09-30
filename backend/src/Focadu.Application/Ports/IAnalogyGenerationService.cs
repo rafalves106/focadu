@@ -14,4 +14,5 @@ public interface IAnalogyGenerationService
 }
 
 /// <summary>Pedido de analogias: uma secao do Reading por item de Sections (ver GetCuratedContentUseCase.SplitIntoSections) e os interesses do aluno que a Entrevista de Perfil capturou.</summary>
-public record AnalogyRequest(IReadOnlyList<string> Sections, IReadOnlyCollection<string> Interests, string? AdditionalNotes);
+/// <param name="CourseName">Fase 85: curso do conteudo, citado no prompt (nulo = so "Focadu").</param>
+public record AnalogyRequest(IReadOnlyList<string> Sections, IReadOnlyCollection<string> Interests, string? AdditionalNotes, string? CourseName = null);

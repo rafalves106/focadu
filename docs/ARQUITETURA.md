@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 84 - Cursos livres com recomendacao: ficha do curso na escolha de curso**.
+> Ultima fase que atualizou este documento: **Fase 85 - Prompts de IA citam o curso certo (antes todos diziam "seguranca web")**.
 
 ## Visao geral do projeto
 
@@ -1794,6 +1794,14 @@ Security antes/junto do Web Security; decisoes do dono em 29/09/2026: **sem Proj
   recomendado; "Completed" = todas as semanas `IsModuleComplete`) ou verde "Prepara pro Y · comeca do zero";
   "Ver curso" abre a ficha com o que ajuda saber antes, a recomendacao e "Comecar pelo X"/"Ir pro X" ao lado
   de "Iniciar <curso>", que matricula direto.
+- **Prompts de IA por curso (Fase 85):** analogia da leitura, correcao e nota do resumo falado, chat rapido,
+  passo de codigo da ponte e revisao do Caderninho citam "da Focadu (curso <nome>)" em vez de "plataforma de
+  estudo de seguranca web" (`CoursePromptText.Platform`; sem curso, so "da Focadu"). Os pedidos ganharam
+  `CourseName` opcional; o curso vem de `IWeeklyTemplateRepository.GetCourseNameAsync(weeklyTemplateId)` /
+  `GetCourseNameForContentAsync(contentId)`, e no chat do `courseId` que o front manda
+  (`setStudyAssistantCourse`, preenchido pela sessao e pelo Projeto Semanal). O passo de codigo nao assume
+  mais "arquivo de captura de rede". Avaliacao do Projeto Semanal e rascunho do LinkedIn seguem com o texto
+  do Web Security (so existem em curso com projeto).
 - **Legenda do arquivo da ponte:** o `bodyText` de um `CuratedContent` `File` vira a legenda no "Material
   de hoje" (`MaterialSidebar`); sem ele, "Rode tudo contra este arquivo.".
 

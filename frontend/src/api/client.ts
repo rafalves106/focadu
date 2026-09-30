@@ -340,10 +340,10 @@ export const api = {
   // esta na tela (ver lib/studyAssistantContext.ts), null quando nao ha nenhum disponivel. `history`
   // e o transcript local do painel ANTES da pergunta atual (ver StudyAssistantWidget.tsx) - o
   // backend clampa pras ultimas trocas, aqui so evita mandar um payload crescente sem necessidade.
-  askStudyAssistant: (question: string, context: string | null, history: StudyAssistantHistoryItem[], codeBridge = false) =>
+  askStudyAssistant: (question: string, context: string | null, history: StudyAssistantHistoryItem[], codeBridge = false, courseId: string | null = null) =>
     request<StudyAssistantAnswerDto>('/api/study-assistant/ask', {
       method: 'POST',
-      body: JSON.stringify({ question, context, history: history.slice(-STUDY_ASSISTANT_MAX_HISTORY), codeBridge }),
+      body: JSON.stringify({ question, context, history: history.slice(-STUDY_ASSISTANT_MAX_HISTORY), codeBridge, courseId }),
       timeoutMs: STUDY_ASSISTANT_TIMEOUT_MS,
     }),
 };

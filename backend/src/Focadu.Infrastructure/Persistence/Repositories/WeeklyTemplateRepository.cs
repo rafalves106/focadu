@@ -32,4 +32,19 @@ public class WeeklyTemplateRepository : IWeeklyTemplateRepository
             a => a.ContentId == contentId && _context.DailyTemplates.Any(t => t.Id == a.DailyTemplateId
                 && (t.Language != null || _context.DailyActivities.Any(s => s.DailyTemplateId == t.Id && s.Type == ActivityType.CodeStep))),
             cancellationToken);
+
+    public async Task<string?> GetCourseNameAsync(Guid weeklyTemplateId, CancellationToken cancellationToken = default) =>
+        await (from w in _context.WeeklyTemplates
+               where w.Id == weeklyTemplateId
+               join m in _context.Monthlies on w.MonthlyId equals m.Id
+               join c in _context.Courses on m.CourseId equals c.Id
+               select c.Name).FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<string?> GetCourseNameForContentAsync(Guid contentId, CancellationToken cancellationToken = default) =>
+        await (from cc in _context.CuratedContents
+               where cc.Id == contentId
+               join w in _context.WeeklyTemplates on cc.WeeklyTemplateId equals w.Id
+               join m in _context.Monthlies on w.MonthlyId equals m.Id
+               join c in _context.Courses on m.CourseId equals c.Id
+               select c.Name).FirstOrDefaultAsync(cancellationToken);
 }

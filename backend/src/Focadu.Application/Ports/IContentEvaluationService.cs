@@ -22,7 +22,9 @@ public record ContentEvaluationRequest(
     string UserAnswer,
     string? ContextText,
     IReadOnlyCollection<string>? UserInterests = null,
-    string? UserNotes = null);
+    string? UserNotes = null,
+    /// <summary>Fase 85: curso da atividade, citado no prompt (nulo = so "Focadu").</summary>
+    string? CourseName = null);
 
 /// <summary>
 /// Resultado da avaliacao: Score de 0 a 100 e um feedback textual gerado pela IA. CorrectedTranscript

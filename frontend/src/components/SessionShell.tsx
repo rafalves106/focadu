@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { ActivityStatus, ActivityType } from '../api/types';
 import { SessionFooterContext, useSession } from '../lib/sessionContext';
 import { stepInfo } from '../lib/sessionSteps';
-import { setStudyAssistantCodeBridge, setStudyAssistantContext } from '../lib/studyAssistantContext';
+import { setStudyAssistantCodeBridge, setStudyAssistantContext, setStudyAssistantCourse } from '../lib/studyAssistantContext';
 import { formatPomodoroTime, usePomodoroTimer } from '../lib/pomodoroTimer';
 import { useIsDesktop } from '../lib/useIsDesktop';
 import { useGuide } from '../contexts/useGuide';
@@ -102,6 +102,13 @@ export function SessionLayout({
     setStudyAssistantContext(assistantContext ?? [title, headerLabel].filter(Boolean).join(' — '));
     return () => setStudyAssistantContext(null);
   }, [assistantContext, title, headerLabel]);
+
+  // Fase 85: o chat cita o curso da sessao.
+  const courseId = weekly?.courseId ?? null;
+  useEffect(() => {
+    setStudyAssistantCourse(courseId);
+    return () => setStudyAssistantCourse(null);
+  }, [courseId]);
 
   // Fase 79: na ponte o chat rapido responde sem analogia e sem entregar o passo.
   const onBridge = !daily.isReinforcement && daily.dayNumber % 6 === 0;

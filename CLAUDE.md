@@ -87,9 +87,13 @@ Ao final de **toda fase de implementação**:
 
 ## Estado atual
 
-Última fase concluída: **Fase 84 — Cursos livres com recomendação: ficha do curso na escolha de curso** (30/09/2026).
+Última fase concluída: **Fase 85 — Prompts de IA citam o curso certo** (30/09/2026).
 
 Marcos recentes (mais detalhe em `docs/ARQUITETURA.md` e nos `docs/fase-N/` correspondentes):
+- **Prompts de IA por curso (Fase 85)**: analogia da leitura, resumo falado, chat rápido, passo de código da
+  ponte e revisão do Caderninho diziam "Focadu, plataforma de estudo de segurança web" pra qualquer curso (no
+  Linux, dúvida de bash virava "fora do assunto" no chat). Agora citam "da Focadu (curso <nome>)"; o chat
+  recebe o `courseId` do front. Projeto Semanal e LinkedIn seguem com o texto do Web Security. Ver `docs/fase-85/`.
 - **Cursos livres com recomendação (Fase 84, decisão do dono, Figma "Escolha de curso: recomendação — v2")**:
   nenhum curso destrava outro. Na escolha de curso cada cartão tem um selo ("Recomendado antes: Linux" ou
   "Prepara pro Web Security") e "Ver curso" abre a ficha: o que ajuda saber antes, o curso recomendado (com a

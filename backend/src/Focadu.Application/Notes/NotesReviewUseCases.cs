@@ -16,13 +16,15 @@ public class ReviewDailyNotesUseCase
     private readonly INoteRepository _noteRepository;
     private readonly INotesReviewRepository _reviewRepository;
     private readonly INotesReviewService _reviewService;
+    private readonly IWeeklyTemplateRepository _weeklyTemplateRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
 
     public ReviewDailyNotesUseCase(
         IWeeklyRepository weeklyRepository, INoteRepository noteRepository, INotesReviewRepository reviewRepository,
-        INotesReviewService reviewService, IUnitOfWork unitOfWork, IClock clock)
+        INotesReviewService reviewService, IUnitOfWork unitOfWork, IClock clock, IWeeklyTemplateRepository weeklyTemplateRepository)
     {
+        _weeklyTemplateRepository = weeklyTemplateRepository;
         _weeklyRepository = weeklyRepository;
         _noteRepository = noteRepository;
         _reviewRepository = reviewRepository;
@@ -48,7 +50,8 @@ public class ReviewDailyNotesUseCase
             throw new ConflictException("limite_revisoes", $"Voce ja usou as {NotesReviewRules.DailyLimit} revisoes de hoje. Volta amanha.");
 
         var (title, material) = NotesReviewRules.Material(weekly, dailyId);
-        var result = await _reviewService.ReviewAsync(new NotesReviewRequest(title, material, notes.Select(n => n.Content).ToList()), cancellationToken);
+        var courseName = await _weeklyTemplateRepository.GetCourseNameAsync(weekly.Template.Id, cancellationToken);
+        var result = await _reviewService.ReviewAsync(new NotesReviewRequest(title, material, notes.Select(n => n.Content).ToList(), courseName), cancellationToken);
 
         var review = new NotesReview(userId, dailyId, NotesReviewRules.Hash(notes), notes.Count, result.Strengths, result.Missing, result.MaterialCheck, DateTime.UtcNow);
         await _reviewRepository.AddAsync(review, cancellationToken);

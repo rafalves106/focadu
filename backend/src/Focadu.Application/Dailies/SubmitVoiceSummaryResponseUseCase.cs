@@ -41,6 +41,7 @@ public class SubmitVoiceSummaryResponseUseCase
     private readonly IClock _clock;
     private readonly IAudioTranscriptionService _transcriptionService;
     private readonly IContentEvaluationService _evaluationService;
+    private readonly IWeeklyTemplateRepository _weeklyTemplateRepository;
 
     public SubmitVoiceSummaryResponseUseCase(
         IWeeklyRepository weeklyRepository,
@@ -48,8 +49,10 @@ public class SubmitVoiceSummaryResponseUseCase
         IUnitOfWork unitOfWork,
         IClock clock,
         IAudioTranscriptionService transcriptionService,
-        IContentEvaluationService evaluationService)
+        IContentEvaluationService evaluationService,
+        IWeeklyTemplateRepository weeklyTemplateRepository)
     {
+        _weeklyTemplateRepository = weeklyTemplateRepository;
         _weeklyRepository = weeklyRepository;
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
@@ -113,8 +116,9 @@ public class SubmitVoiceSummaryResponseUseCase
         // "sem personalizacao", nao falha a submissao.
         // Fase 79: na ponte o feedback nao usa analogia de interesse (Fase 82: inclui a ponte sem Projeto Semanal).
         var user = daily.Template.IsBridge ? null : await _userRepository.GetByIdAsync(userId, cancellationToken);
+        var courseName = await _weeklyTemplateRepository.GetCourseNameAsync(weekly.Template.Id, cancellationToken);
         var evaluation = await _evaluationService.EvaluateAsync(
-            new ContentEvaluationRequest(referenceText, transcript, contextText, user?.Interests, user?.AdditionalProfileNotes),
+            new ContentEvaluationRequest(referenceText, transcript, contextText, user?.Interests, user?.AdditionalProfileNotes, courseName),
             cancellationToken);
 
         return await ActivityResponseRecorder.RecordAsync(

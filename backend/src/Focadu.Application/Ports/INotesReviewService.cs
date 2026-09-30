@@ -11,6 +11,7 @@ public interface INotesReviewService
 
 /// <param name="Material">Texto curado do dia (titulos e corpo das leituras), ja truncado.</param>
 /// <param name="Notes">As notas do aluno naquele dia, na ordem em que foram escritas.</param>
-public record NotesReviewRequest(string DayTitle, string Material, IReadOnlyList<string> Notes);
+/// <param name="CourseName">Fase 85: curso do dia revisado, citado no prompt (nulo = so "Focadu").</param>
+public record NotesReviewRequest(string DayTitle, string Material, IReadOnlyList<string> Notes, string? CourseName = null);
 
 public record NotesReviewResult(string Strengths, string Missing, string MaterialCheck);

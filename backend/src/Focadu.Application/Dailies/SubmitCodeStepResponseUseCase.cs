@@ -27,10 +27,13 @@ public class SubmitCodeStepResponseUseCase
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
     private readonly ICodeStepEvaluationService _evaluationService;
+    private readonly IWeeklyTemplateRepository _weeklyTemplateRepository;
 
     public SubmitCodeStepResponseUseCase(
-        IWeeklyRepository weeklyRepository, IUnitOfWork unitOfWork, IClock clock, ICodeStepEvaluationService evaluationService)
+        IWeeklyRepository weeklyRepository, IUnitOfWork unitOfWork, IClock clock, ICodeStepEvaluationService evaluationService,
+        IWeeklyTemplateRepository weeklyTemplateRepository)
     {
+        _weeklyTemplateRepository = weeklyTemplateRepository;
         _weeklyRepository = weeklyRepository;
         _unitOfWork = unitOfWork;
         _clock = clock;
@@ -65,6 +68,7 @@ public class SubmitCodeStepResponseUseCase
             ?? throw new DomainException("Conclua o passo anterior antes deste.", "passo_anterior_pendente");
 
         var attemptNumber = daily.Responses.Count(r => r.ActivityId == activityId) + 1;
+        var courseName = await _weeklyTemplateRepository.GetCourseNameAsync(weekly.Template.Id, cancellationToken);
         var evaluation = await _evaluationService.EvaluateAsync(
             new CodeStepEvaluationRequest(
                 daily.Template.Language?.ToString() ?? weekly.Template.PracticeLanguage ?? "Python",
@@ -76,7 +80,8 @@ public class SubmitCodeStepResponseUseCase
                 code,
                 output,
                 attemptNumber,
-                CodeStepProgress.MaxAttempts),
+                CodeStepProgress.MaxAttempts,
+                courseName),
             cancellationToken);
 
         return await ActivityResponseRecorder.RecordAsync(

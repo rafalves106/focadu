@@ -935,7 +935,7 @@ api.MapPost("/study-assistant/ask", async (ClaimsPrincipal principal, AskStudyAs
     {
         var history = request?.History?.Select(h => new StudyAssistantChatTurn(h.FromUser, h.Content)).ToList();
         var answer = await useCase.ExecuteAsync(
-            CurrentUserId(principal), request?.Question ?? string.Empty, request?.Context, history, request?.CodeBridge ?? false, ct);
+            CurrentUserId(principal), request?.Question ?? string.Empty, request?.Context, history, request?.CodeBridge ?? false, request?.CourseId, ct);
         return Results.Ok(new AskStudyAssistantResponse(answer));
     })
     .RequireAuthorization()

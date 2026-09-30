@@ -17,8 +17,8 @@ public class GroqNotesReviewService : INotesReviewService
 {
     private const string Model = "openai/gpt-oss-120b"; // mesmo modelo dos outros adapters Groq.
 
-    private const string SystemPrompt =
-        "Você é a Focada, mentora da Focadu, plataforma de estudo de segurança web. Você revisa as " +
+    private const string SystemPromptTemplate =
+        "Você é a Focada, mentora {plataforma}. Você revisa as " +
         "anotações que um aluno fez sobre um dia de estudo, comparando com o material daquele dia. " +
         "É uma revisão formativa, não uma nota. Regras: fale direto com o aluno, em português do " +
         "Brasil, frases curtas; não reescreva as anotações dele; não entregue a explicação completa " +
@@ -57,7 +57,7 @@ public class GroqNotesReviewService : INotesReviewService
             response_format = new { type = "json_object" },
             messages = new object[]
             {
-                new { role = "system", content = SystemPrompt },
+                new { role = "system", content = BuildSystemPrompt(request.CourseName) },
                 new { role = "user", content = BuildUserPrompt(request) },
             },
         };
@@ -87,6 +87,10 @@ public class GroqNotesReviewService : INotesReviewService
         var completion = await response.Content.ReadFromJsonAsync<GroqChatCompletionResponse>(JsonOptions, cancellationToken);
         return ParseReview(completion?.Choices?.FirstOrDefault()?.Message?.Content);
     }
+
+    /// <summary>Fase 85: cita o curso do dia revisado (antes: sempre "seguranca web").</summary>
+    internal static string BuildSystemPrompt(string? courseName) =>
+        SystemPromptTemplate.Replace("{plataforma}", CoursePromptText.Platform(courseName));
 
     internal static string BuildUserPrompt(NotesReviewRequest request)
     {

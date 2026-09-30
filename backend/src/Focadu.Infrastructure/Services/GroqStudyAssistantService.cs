@@ -22,9 +22,8 @@ public class GroqStudyAssistantService : IStudyAssistantService
 {
     private const string Model = "openai/gpt-oss-120b"; // mesmo modelo dos outros adapters Groq - ver nota em GroqContentEvaluationService sobre o catalogo mudar.
 
-    private const string SystemPrompt =
-        "Você é o Suporte Rápido de IA da Focadu, plataforma de estudo de segurança web (curso " +
-        "Web Security). Um aluno te chama através de um botão flutuante DURANTE uma sessão de " +
+    private const string SystemPromptTemplate =
+        "Você é o Suporte Rápido de IA {plataforma}, plataforma de estudo gamificada. Um aluno te chama através de um botão flutuante DURANTE uma sessão de " +
         "estudo pra tirar uma dúvida pontual - o objetivo é ele voltar rápido pro foco, não " +
         "manter uma conversa longa. Responda SEMPRE em português, de forma curta e direta " +
         "(normalmente 2 a 4 frases; use uma lista curta só se a pergunta pedir passos/itens " +
@@ -32,13 +31,13 @@ public class GroqStudyAssistantService : IStudyAssistantService
         "(é o que o aluno está vendo na tela agora) em vez de generalidades - mas se as mensagens " +
         "anteriores da conversa já tiverem estreitado o assunto pra algo mais específico dentro " +
         "desse contexto, mantenha o foco nesse assunto específico em vez de voltar a falar do " +
-        "contexto inteiro. Se a pergunta for sobre segurança web/o curso mas fora do contexto " +
+        "contexto inteiro. Se a pergunta for sobre o assunto do curso mas fora do contexto " +
         "dado, responda mesmo assim com seu conhecimento geral do assunto. Se for claramente " +
         "sobre outra coisa (não é sobre o curso nem sobre estudar), responda rapidamente se for " +
         "trivial ou, se não souber, diga que não sabe - e sempre encerre reconduzindo com " +
         "gentileza pro foco da sessão. Nunca invente fatos técnicos com confiança quando não " +
-        "tiver certeza: prefira dizer que não tem certeza a arriscar uma explicação errada de " +
-        "segurança. Sem títulos nem markdown pesado - texto corrido simples, é uma bolha de chat " +
+        "tiver certeza: prefira dizer que não tem certeza a arriscar uma explicação técnica " +
+        "errada. Sem títulos nem markdown pesado - texto corrido simples, é uma bolha de chat " +
         "pequena. Código sempre formatado: crase simples pra um nome ou trecho curto no meio da " +
         "frase (`pkt[IP].src`) e bloco cercado com a linguagem (```python ... ```) quando tiver mais " +
         "de uma linha - curto, só o necessário pra responder.";
@@ -121,7 +120,7 @@ public class GroqStudyAssistantService : IStudyAssistantService
     /// </summary>
     private static List<object> BuildMessages(StudyAssistantRequest request)
     {
-        var messages = new List<object> { new { role = "system", content = SystemPrompt } };
+        var messages = new List<object> { new { role = "system", content = BuildSystemPrompt(request.CourseName) } };
 
         var contextAndPersonalization = BuildContextSystemMessage(request);
         if (contextAndPersonalization is not null)
@@ -133,6 +132,10 @@ public class GroqStudyAssistantService : IStudyAssistantService
         messages.Add(new { role = "user", content = request.Question });
         return messages;
     }
+
+    /// <summary>Fase 85: cita o curso da sessao (antes: sempre "curso Web Security", e uma duvida de outro curso podia virar "fora do assunto").</summary>
+    internal static string BuildSystemPrompt(string? courseName) =>
+        SystemPromptTemplate.Replace("{plataforma}", CoursePromptText.Platform(courseName));
 
     internal static string? BuildContextSystemMessage(StudyAssistantRequest request)
     {

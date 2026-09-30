@@ -12,7 +12,7 @@ import backArrow from '../assets/pixel/voltar.png';
 import terminalIcon from '../assets/pixel/terminal.png';
 import { CardLabel } from '../components/CardLabel';
 import { QuickNotePanel } from '../components/notebook/QuickNotePanel';
-import { setStudyAssistantContext } from '../lib/studyAssistantContext';
+import { setStudyAssistantContext, setStudyAssistantCourse } from '../lib/studyAssistantContext';
 import lockIcon from '../assets/pixel/cadeado-bloqueado.png';
 import castleIcon from '../assets/pixel/mapa/castelo-pendente.png';
 import { PIXEL_PROSE } from '../lib/pixelProse';
@@ -74,6 +74,13 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
     );
     return () => setStudyAssistantContext(null);
   }, [weekly]);
+
+  // Fase 85: o chat cita o curso do projeto.
+  const assistantCourseId = weekly?.courseId ?? courseId;
+  useEffect(() => {
+    setStudyAssistantCourse(assistantCourseId);
+    return () => setStudyAssistantCourse(null);
+  }, [assistantCourseId]);
 
   // Fase 64: falas da Focada (briefing da curadoria + fala do estado atual do projeto).
   const focadaLines = useMemo(() => (weekly?.project ? buildFocadaLines(weekly.project) : []), [weekly]);

@@ -30,7 +30,9 @@ public record CodeStepEvaluationRequest(
     string StepCode,
     string Output,
     int AttemptNumber,
-    int MaxAttempts);
+    int MaxAttempts,
+    /// <summary>Fase 85: curso da ponte, citado no prompt (nulo = so "Focadu").</summary>
+    string? CourseName = null);
 
 /// <summary>Veredito do passo: passou ou "ajuste isto" - sem nota. Feedback e a fala da Focada.</summary>
 public record CodeStepEvaluationResult(bool Passed, string Feedback);

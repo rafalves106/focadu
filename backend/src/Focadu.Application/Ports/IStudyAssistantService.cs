@@ -37,4 +37,6 @@ public record StudyAssistantRequest(
     IReadOnlyList<StudyAssistantChatTurn>? History = null,
     IReadOnlyCollection<string>? UserInterests = null,
     string? UserNotes = null,
-    bool CodeBridge = false);
+    bool CodeBridge = false,
+    /// <summary>Fase 85: curso da sessao, citado no prompt (nulo = so "Focadu").</summary>
+    string? CourseName = null);

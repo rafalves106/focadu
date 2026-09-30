@@ -7,7 +7,8 @@ namespace Focadu.Api.Contracts;
 /// clampado no cliente, mas quem clampa de verdade (limite de seguranca) e AskStudyAssistantUseCase.
 /// </summary>
 /// <param name="CodeBridge">Fase 79: pergunta feita na ponte "code comigo" - sem analogia, e sintaxe sem entregar o passo.</param>
-public record AskStudyAssistantRequest(string Question, string? Context, IReadOnlyList<AskStudyAssistantHistoryItemRequest>? History, bool? CodeBridge = null);
+/// <param name="CourseId">Fase 85: curso da sessao/projeto em tela - o prompt cita o curso certo.</param>
+public record AskStudyAssistantRequest(string Question, string? Context, IReadOnlyList<AskStudyAssistantHistoryItemRequest>? History, bool? CodeBridge = null, Guid? CourseId = null);
 
 /// <summary>Um turno anterior da conversa - `FromUser=true` e a pergunta do aluno, `false` e a resposta da IA.</summary>
 public record AskStudyAssistantHistoryItemRequest(bool FromUser, string Content);
