@@ -124,6 +124,9 @@ export function TerminalPanel({
 }) {
   const [command, setCommand] = useState('');
   const [recall, setRecall] = useState<number | null>(null);
+  /** Limpar so esconde o historico na tela: ele segue inteiro em `entries` (Focada, missao, setas). */
+  const [clearedAt, setClearedAt] = useState(0);
+  const visible = entries.slice(Math.min(clearedAt, entries.length));
   const logRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -137,10 +140,23 @@ export function TerminalPanel({
     if (!text || busy || disabled) return;
     setCommand('');
     setRecall(null);
+    if (text === 'clear') {
+      clear();
+      return;
+    }
     onRun(text);
   }
 
+  function clear() {
+    setClearedAt(entries.length);
+  }
+
   function handleKeyDown(e: ReactKeyboardEvent<HTMLInputElement>) {
+    if (e.ctrlKey && e.key.toLowerCase() === 'l') {
+      e.preventDefault();
+      clear();
+      return;
+    }
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     if (entries.length === 0) return;
     e.preventDefault();
@@ -153,11 +169,23 @@ export function TerminalPanel({
     <div className={`flex flex-col gap-1.5 border-2 border-stroke bg-base px-3.5 py-2 ${className}`} data-testid="lab-terminal">
       <div className="flex items-center justify-between gap-3">
         <p className="font-pixel-label text-[8px] text-secondary">{title}</p>
-        {serviceLabel && <p className="font-pixel-label text-[8px] text-accent">● {serviceLabel}</p>}
+        <div className="flex items-center gap-3">
+          {serviceLabel && <p className="font-pixel-label text-[8px] text-accent">● {serviceLabel}</p>}
+          <button
+            type="button"
+            onClick={clear}
+            disabled={visible.length === 0}
+            title="Limpar o terminal (Ctrl+L)"
+            className="font-pixel-label text-[8px] text-secondary hover:text-primary disabled:opacity-40"
+            data-testid="lab-terminal-clear"
+          >
+            Limpar
+          </button>
+        </div>
       </div>
       <div ref={logRef} className={`overflow-y-auto font-mono text-xs leading-[14px] text-secondary ${logClassName}`} aria-live="polite">
-        {entries.map((entry, i) => (
-          <div key={i}>
+        {visible.map((entry, i) => (
+          <div key={clearedAt + i}>
             <div>
               <span className="text-accent">{prompt}</span> <span className="text-primary">{entry.command}</span>
             </div>
