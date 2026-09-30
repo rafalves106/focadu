@@ -1,22 +1,35 @@
 ---
 name: curar-conteudo
-description: "Cura o conteúdo didático de um dia do curso Web Security da Focadu (texto cru, resumos falados, vídeo, quiz, cloze, ligar palavras, roleplay) e grava como secret/curadoria/<curso>/semana-N/dia-N.json. Use quando o usuário pedir para curar, montar ou gerar o conteúdo de um dia/semana do curso, revisar um dia.json existente contra o briefing, ou invocar /curar-conteudo."
+description: "Cura o conteúdo didático de um dia de um curso da Focadu (Web Security, Linux, Python pra Web Security) (texto cru, resumos falados, vídeo, quiz, cloze, ligar palavras, roleplay) e grava como secret/curadoria/<curso>/semana-N/dia-N.json. Use quando o usuário pedir para curar, montar ou gerar o conteúdo de um dia/semana do curso, revisar um dia.json existente contra o briefing, ou invocar /curar-conteudo."
 metadata:
-  version: 1.0.0
+  version: 1.1.0
 ---
 
-# Curar Conteúdo — Web Security (Focadu)
+# Curar Conteúdo — Cursos da Focadu
+
+Cursos e slugs (pasta em `secret/curadoria/<slug>/`):
+
+| Curso | Slug | Roteiro e estado atual |
+|---|---|---|
+| Web Security (piloto) | `web-security` | `CURADORIA.md` seções 4 e 5 |
+| Linux (pré-requisito) | `linux` | `linux/ROTEIRO.md` |
+| Python pra Web Security (pré-requisito) | `python-websec` | `python-websec/ROTEIRO.md` |
+
+Se o pedido não deixar claro o curso, pergunte. Sem curso citado e com número de dia que só existe no
+Web Security, é o Web Security.
 
 ## Antes de qualquer coisa
 
 1. Leia **secret/curadoria/CURADORIA.md** por completo — filosofia, molde diário, schema do
-   `.json`, estado atual e o roteiro completo dos 60 dias. É a fonte da verdade; este SKILL
-   só orquestra o processo.
+   `.json`, estado atual e o roteiro completo dos 72 dias do Web Security (6 por semana, o 6º é a
+   ponte). Filosofia, molde, schema e critérios 2.2 valem pra **todos** os cursos. Pra `linux` e
+   `python-websec`, leia também o `ROTEIRO.md` do curso (roteiro dia a dia, estado atual e regras
+   próprias). É a fonte da verdade; este SKILL só orquestra o processo.
 2. Leia pelo menos um `dia-N.json` já pronto (ex: `secret/curadoria/web-security/semana-1/dia-1.json`)
    como referência viva de estrutura e tom — a Semana 1 é a referência de qualidade.
-3. Olhe a pasta `secret/curadoria/web-security/semana-N/` para descobrir o que já existe e
-   qual é o próximo `dayNumber` sem arquivo (cheque também a seção "Estado atual" do
-   CURADORIA.md).
+3. Olhe a pasta `secret/curadoria/<slug>/semana-N/` para descobrir o que já existe e
+   qual é o próximo `dayNumber` sem arquivo (cheque também o "Estado atual" do curso). A numeração
+   é por curso: cada curso começa no Dia 1.
 
 ## Fluxo
 
@@ -42,10 +55,9 @@ metadata:
    revisão em conteúdo novo.
 6. **Valide** o JSON (`python3 -c "import json; json.load(open('...'))"` ou equivalente)
    antes de considerar pronto.
-7. **Grave** em `secret/curadoria/<curso-slug>/semana-N/dia-N.json` (curso piloto:
-   `web-security`).
-8. **Atualize** a tabela "Estado atual" em `secret/curadoria/CURADORIA.md` marcando o dia
-   recém-criado como concluído.
+7. **Grave** em `secret/curadoria/<curso-slug>/semana-N/dia-N.json`.
+8. **Atualize** o "Estado atual" do curso (Web Security: tabela em `CURADORIA.md`; os outros: o
+   `ROTEIRO.md` do curso) marcando o dia recém-criado como concluído.
 
 ## Regras de Ouro (não negociáveis)
 
@@ -71,11 +83,26 @@ metadata:
   3 desfechos `Ideal`/`Suboptimal`/`Poor`.
 - **Sessão total** (leitura + vídeo + atividades): 30 a 60 minutos.
 
+## Regras extras dos cursos de linguagem e ferramenta (`linux`, `python-websec`)
+
+- **Tudo que aparece no texto foi rodado de verdade.** Todo comando, trecho de código e saída
+  mostrados no Texto Cru, no Quiz ou no Cloze vêm de uma execução real, num ambiente descartável
+  (`docker run --rm debian:stable-slim` pro Linux; `python:3.12-slim` pro Python), nunca de
+  memória. Vale a mesma regra das pontes (CURADORIA.md 5.1): foi isso que pegou afirmações erradas antes.
+- **Bloco de código em vez de prosa** pra comando e saída (` ``` ` genérico, CURADORIA.md 2.1). Prompt
+  e saída no mesmo bloco, como aparece no terminal.
+- **Todo dia liga a um uso em segurança.** O dia de Linux/Python não é "o comando pelo comando": uma
+  seção curta diz onde aquilo aparece no Web Security (ex.: `../` → LFI na Semana 4; `/etc/passwd` →
+  alvo clássico de leitura). Sem ensinar o ataque, que é assunto do Web Security.
+- **Sem `CodeStep` em dia normal, por enquanto.** O `CodeStep` (Fase 79) hoje é acoplado à ponte (linguagem
+  da ponte + código acumulado). Usar em dia normal exige fase de backend. Até lá, a prática entra no
+  Quiz ("o que esse comando imprime?"), no Cloze ("complete o comando") e no Roleplay.
+- Analogias continuam como no Web Security (âncora no texto, a plataforma injeta).
+
 ## Referências
 
 - `secret/curadoria/CURADORIA.md` — filosofia, schema, roteiro completo, estado atual.
 - `secret/curadoria/web-security/semana-1/dia-1.json` a `dia-4.json` — exemplos canônicos.
-- `secret/curadoria/web-security/certificacoes.json` (schema em CURADORIA.md seção 6, Fase 45) —
-  cobertura de certificações de mercado por módulo. Não é um passo obrigatório desta skill (é por
-  módulo, não por dia) — revisite esse arquivo quando o trabalho abranger um módulo inteiro
-  (currículo novo ou revisão de conteúdo já existente), não em toda curadoria de dia individual.
+- `secret/curadoria/linux/semana-1/dia-1.json` — referência dos cursos de linguagem/ferramenta.
+- `secret/rascunhos/trilha-pre-requisitos-linux-python.md` — origem e decisões dos cursos `linux` e
+  `python-websec`.
