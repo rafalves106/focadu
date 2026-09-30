@@ -5,10 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "lab:assets": "node scripts/lab-assets.mjs",
+    "predev": "npm run lab:assets",
     "build": "tsc -b && vite build",
+    "prebuild": "npm run lab:assets",
     "lint": "oxlint",
     "preview": "vite preview",
-    "dev:mock": "VITE_API_BASE_URL= vite --config vite.mock.config.ts --port 5199 --strictPort"
+    "dev:mock": "VITE_API_BASE_URL= vite --config vite.mock.config.ts --port 5199 --strictPort",
+    "predev:mock": "npm run lab:assets"
   },
   "dependencies": {
     "react": "^19.2.8",
@@ -21,9 +25,18 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
+    "buffer": "^6.0.3",
+    "esbuild": "^0.28.2",
+    "events": "^3.3.0",
     "oxlint": "^1.75.0",
+    "pcap-parser": "^0.2.1",
+    "process": "^0.11.10",
+    "pyodide": "^314.0.7",
+    "stream-browserify": "^3.0.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
+    "util": "^0.12.5",
+    "v86": "^0.5.462",
     "vite": "^8.2.0"
   }
 }

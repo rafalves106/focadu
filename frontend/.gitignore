@@ -24,3 +24,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Fase 87: laboratorio de codigo - gerados por scripts/lab-assets.mjs (o resto de public/lab/ e versionado)
+public/lab/pyodide/
+public/lab/v86/
+public/lab/js/
+public/lab/manifest.json

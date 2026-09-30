@@ -164,6 +164,57 @@ export interface CodeStepDto {
   maxAttempts: number;
   solution: string | null;
   expectedOutput: string | null;
+  /** Fase 86: este passo roda no laboratorio do dia (`DailyStateDto.lab`); falso/ausente = fluxo da Fase 79 (colar a saida). */
+  labEnabled?: boolean;
+  /** Fase 86: codigo com que o editor abre (nulo = vazio; nas pontes o editor abre com o script acumulado). */
+  codeStarter?: string | null;
+  /** Fase 86: dicas da Focada por passo (0 fora do laboratorio); nao contam como tentativa. */
+  maxHints?: number;
+  /** Fase 86: as dicas ja dadas neste passo, da 1a pra ultima. */
+  hints?: CodeStepHintDto[] | null;
+}
+
+/** Fase 86: uma dica da Focada num passo com laboratorio - tres blocos curtos. */
+export interface CodeStepHintDto {
+  number: number;
+  right: string;
+  wrong: string;
+  improve: string;
+  createdAt: string;
+}
+
+export type LabRuntime = 'python' | 'javascript' | 'bash';
+
+/**
+ * Fase 86: laboratorio de codigo do dia (nulo = dia sem laboratorio). Quem roda o codigo e o navegador do
+ * aluno (src/lab/); `fileContentIds` sao os File do "Material de hoje" que ja vem no ambiente.
+ */
+export interface LabConfigDto {
+  runtime: LabRuntime;
+  /** So no bash: 'basico' ou 'servidor'. */
+  image: 'basico' | 'servidor' | null;
+  fileContentIds: string[];
+  packages: string[];
+  services: string[];
+  /** Arquivo que o aluno cria/edita (auditor.py, investigar.sh). */
+  entry: string;
+  /** Comando de exemplo que roda o `entry` (no Linux, o aluno digita). */
+  command: string;
+  timeoutSeconds: number;
+}
+
+/** Fase 86: o que o laboratorio produziu ao rodar o passo - vai junto do envio e da dica. */
+export interface LabRunPayload {
+  output: string;
+  exitCode: number;
+  /** Linux: historico de comandos digitados, com a saida de cada um. */
+  commands?: { command: string; output: string }[];
+}
+
+export interface CodeStepHintResponse {
+  hint: CodeStepHintDto;
+  hintsUsed: number;
+  hintsLeft: number;
 }
 
 export interface DailyStateDto {
@@ -182,6 +233,8 @@ export interface DailyStateDto {
   pendingReinforcementDailyId: string | null;
   /** Fase 79: repositorio (GitHub ou Forgejo) do script da ponte "code comigo" - opcional, so depois de concluir. */
   codeRepositoryUrl?: string | null;
+  /** Fase 86: laboratorio de codigo do dia - nulo/ausente = dia sem laboratorio. */
+  lab?: LabConfigDto | null;
 }
 
 export interface SubmitActivityResponseResult {

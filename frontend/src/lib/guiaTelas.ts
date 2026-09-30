@@ -220,7 +220,7 @@ export const SESSION_STEP_ITEMS: Record<ActivityType, GuideItem> = {
   [ActivityType.Roleplay]: { title: 'Roleplay', text: 'Você decide o caminho. O melhor final vale 100, o mediano 60, o ruim 20.' },
   [ActivityType.CodeStep]: {
     title: 'Passo de código',
-    text: 'Escreva o que o passo pede, rode na sua máquina contra o arquivo do dia e mande o código com a saída. Ajustar não conta como erro; na 3ª tentativa a solução aparece. Sintaxe? Pergunte no "Tire sua dúvida".',
+    text: 'Escreva o que o passo pede. Com laboratório, você roda o código aqui mesmo e só envia depois de rodar; sem ele, rode na sua máquina e cole a saída. A dica da Focada (3 por passo) não gasta tentativa. Ajustar não conta como erro; na 3ª tentativa a solução aparece.',
   },
 };
 
@@ -242,6 +242,10 @@ export const FAQ: { q: string; a: string }[] = [
   { q: 'O que são Gems e como eu ganho?', a: '+1 por Daily nova, +5 por semana perfeita, +30 por mês perfeito e +2 por reforço todo aprovado. Até 70 por mês. Não expiram e servem pra Loja.' },
   { q: 'Por que caí numa sessão de reforço?', a: 'Porque errou 3 vezes no mesmo dia antes de terminar. O reforço tem só o que você errou e não gasta a Daily do dia.' },
   { q: 'Posso fazer mais de uma Daily por dia?', a: 'Não. Uma Daily nova por dia, por curso. Rever um dia já feito é livre e não mexe em nota.' },
+  {
+    q: 'O laboratório de código roda no servidor?',
+    a: 'Não: roda no seu navegador, só no computador (no celular você lê o enunciado). Na primeira vez baixa de 10 a 25 MB, conforme o curso, e depois fica guardado. Só o código e a saída que você envia vão pra Focada conferir.',
+  },
   { q: 'O que é a ponte do 6º dia?', a: 'Um dia prático que leva a teoria da semana pro código do projeto, na linguagem que você escolher.' },
   { q: 'Como o Projeto Semanal é avaliado?', a: 'Você entrega e a IA lê o seu repositório contra o enunciado. A nota vai de 0 a 100 e vale 30% do Score da semana.' },
   { q: 'Por que preciso publicar o módulo?', a: 'É a prova pública do que você fez. Sem ela, a semana seguinte não abre.' },

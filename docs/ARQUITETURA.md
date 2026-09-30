@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 86 - Laboratorio de codigo (backend): bloco `lab` por dia, `labRun` no envio do passo, dica da Focada e sync no seed**.
+> Ultima fase que atualizou este documento: **Fase 87 - Laboratorio de codigo (front): runtimes Python/JavaScript/Linux no navegador, tela do passo, dica e CSP de /lab/** (Fase 86: backend).
 
 ## Visao geral do projeto
 
@@ -2487,8 +2487,49 @@ codigo nem verifica a saida** (adulteracao ignorada), so guarda a configuracao e
 - **Curadoria**: formato em `secret/curadoria/CURADORIA.md` (secao 5.2) e verificador em
   `secret/curadoria/scripts/lab/` (roda cada solucao acumulada no runtime do laboratorio e compara com a saida
   esperada). Dias com `lab` hoje: pontes Python e JavaScript da Semana 1 do Web Security, Linux Dia 6 e Dia 12.
-- **Fora desta fase**: todo o front (editor, terminal, runtimes no navegador, origem propria em iframe, tela
-  da dica, celular), o verificador de JavaScript, o exercicio por dia do Python pra Web Security.
+- **Fora desta fase**: o front (feito na Fase 87, abaixo), o verificador de JavaScript, o exercicio por dia do
+  Python pra Web Security.
+
+### Laboratorio de codigo (Fase 87, front)
+
+Front do laboratorio (Figma "Laboratorio de codigo — v2 (proposta)", `193:9321`, aprovado em 30/09/2026; contrato HTTP na
+secao acima). O codigo do aluno roda **no navegador dele**, nunca no servidor.
+
+- **Runtimes** em `frontend/public/lab/` (servido em `/lab/`): `runner.html` + `runner.mjs` (anfitriao: recebe
+  `init/run/exec/write/abort/dispose` por `postMessage`, derruba o Worker no timeout/"Parar" e o sobe de novo) e um
+  Worker de modulo por runtime: `py.worker.mjs` (Pyodide 314 + Scapy via micropip com o shim de IPv6; saida com
+  stdout e stderr em ordem, traceback so do arquivo do aluno), `js.worker.mjs` (modulo ES por import dinamico de
+  um Blob, `process.argv`/`console` capturados, `pcap-parser` empacotado com `fs` virtual) e `linux.worker.mjs`
+  (Alpine i386 com Bash no v86; terminal pela serial, cada comando fecha com um marcador `__END<id>:<rc>` que da
+  saida e exit code; o servico do perfil `servidor` sobe no boot e o runner espera um socket em LISTEN em
+  `/proc/net/tcp`). Mesma interface nos tres.
+- **Isolamento**: `/lab/` sai com `Content-Security-Policy: default-src 'none'; script-src 'self'
+  'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src <host>/lab/; frame-ancestors 'self'` (dev: plugin
+  `labHeaders` do `vite.config.ts`; producao: `location /lab/` do `nginx.conf`, que tambem define MIME, gzip do wasm,
+  cache de 1 dia e `try_files $uri =404` sem fallback de SPA). O `connect-src` so com o caminho `/lab/` impede o codigo
+  do aluno de chamar a API (relativa ou absoluta) e qualquer outra origem. Nao ha subdominio nem `sandbox`: iframe
+  com origem opaca nao sobe Worker de modulo no Chrome. Depende do `$http_host` do nginx ser o host usado pelo
+  navegador (nao testado atras do proxy de producao).
+- **App** (`src/lab/`): `LabClient` (iframe escondido em `/lab/runner.html` + protocolo), `LabSession` (um
+  laboratorio por Daily; `ensure` idempotente por runtime/imagem/arquivos/pacotes, `run/exec/write/abort/reset`;
+  progresso coalescido a cada 100 ms), `LabContext`/`useLab` (a `TodayPage` cria a sessao com `useLabSessionOwner`
+  e a derruba ao sair, entao o ambiente persiste entre os passos do dia e zera no dia seguinte) e `labOutput`
+  (`argvFor`, `errorLine`, `runtimeLabel`, `displayOutput`, `toPayload`). Os arquivos do dia saem de
+  `weekly.curatedContents` pelos ids de `lab.fileContentIds` e vao ao runtime por `postMessage`.
+- **Tela** (`components/code/`): `CodeStepActivity` despacha por `codeStep.labEnabled` pra `LabCodeStepActivity` (ou
+  pro fluxo da Fase 79, intacto). `LabCodeStepActivity`: editor (`CodeEditor` com `errorLine` e `minLines`), Rodar/Parar,
+  saida, `LabChip`, `LabProgressBar`, `HintPanel` (3 blocos, `hints` vem do servidor e e refeito com `getDaily`),
+  `TerminalPanel` (Linux; historico de comandos vai no `labRun`), "Enviar passo" so com o codigo atual ja rodado
+  (`ranCode === code`), aviso "Continue no computador" no celular (`useIsDesktop`, nao baixa o runtime).
+- **Assets**: `frontend/scripts/lab-assets.mjs` (`predev`/`prebuild`) copia Pyodide e v86 do `node_modules`, empacota
+  o `pcap-parser` (esbuild) e gera `public/lab/manifest.json` (tamanhos sem compressao, pra barra de progresso); fora
+  do git: `public/lab/{pyodide,v86,js}/` e o manifest. Versionados em `public/lab/`: `vendor/` (wheels do Scapy e do
+  micropip, BIOS do v86) e `linux/` (`vmlinuz` unico e `basico|servidor/initrd.zst`, de
+  `secret/curadoria/scripts/lab/montar_imagem.sh`). A imagem do frontend passa a levar ~50 MB de `/lab/`.
+- **Mock**: `/__mock/reset?at=codigo&lab=python|javascript|bash|servidor|none` (dica e envio com `labRun`, com os
+  `dia-N.json` reais). Guia das telas (`lib/guiaTelas.ts`) atualizado.
+- **Numeros medidos**: 1a carga ~15 MB (Python + Scapy), 13 MB (Linux basico), 22 MB (Linux com servidor), ~0,1 MB
+  (JavaScript); boot do Linux ~5 s e ~25 s com o servidor; RAM ~88 MB (Python), 171 MB e 313 MB (Linux).
 
 ### Dialogo da Focada no Projeto Semanal (Fase 64)
 

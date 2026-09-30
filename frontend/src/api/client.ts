@@ -5,6 +5,7 @@ import {
   type ApiErrorBody,
   type AiProviderStatusDto,
   type AvailableCourseDto,
+  type CodeStepHintResponse,
   type CompleteDailyResult,
   type CosmeticSlot,
   type CourseCurriculumDto,
@@ -17,6 +18,7 @@ import {
   type GamificationSummaryDto,
   type GitHubRepoDto,
   type ListNotesFilter,
+  type LabRunPayload,
   type LoginRequest,
   type MarketplaceCatalogDto,
   type ModulePublicationDto,
@@ -187,11 +189,19 @@ export const api = {
     );
   },
   // Passo de codigo da ponte (Fase 79): codigo do passo + saida do terminal, conferidos pela IA.
-  submitCodeStepResponse: (dailyId: string, activityId: string, code: string, output: string) =>
+  // Fase 86: passo que roda no laboratorio manda `labRun` (saida do laboratorio) no lugar da saida colada.
+  submitCodeStepResponse: (dailyId: string, activityId: string, code: string, output: string, labRun?: LabRunPayload) =>
     request<SubmitActivityResponseResult>(`/api/dailies/${dailyId}/activities/${activityId}/responses/code`, {
       method: 'POST',
-      body: JSON.stringify({ code, output }),
+      body: JSON.stringify(labRun ? { code, labRun } : { code, output }),
       // Mesma chamada unica ao Groq (60s no backend) da revisao do Caderninho.
+      timeoutMs: 65_000,
+    }),
+  // Fase 86: dica da Focada num passo com laboratorio - tres blocos, nao e tentativa, 3 por passo.
+  requestCodeStepHint: (dailyId: string, activityId: string, code: string, labRun?: LabRunPayload) =>
+    request<CodeStepHintResponse>(`/api/dailies/${dailyId}/activities/${activityId}/code-hint`, {
+      method: 'POST',
+      body: JSON.stringify({ code, labRun }),
       timeoutMs: 65_000,
     }),
   // Fase 79: repositorio do script da ponte (opcional) - vazio desliga.

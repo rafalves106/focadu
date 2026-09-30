@@ -6,6 +6,7 @@ import { useSettings } from '../contexts/useSettings';
 import { ActivityType, AnswerMode, ActivityStatus, DailyAccessMode, type DailyStateDto, type CompleteDailyResult, type WeeklyDetailDto } from '../api/types';
 import { classifyApiError, type ApiFailure } from '../lib/apiError';
 import { SessionContext, type SessionContextValue } from '../lib/sessionContext';
+import { LabContext, useLabSessionOwner } from '../lab/labContext';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { QuizActivity } from '../components/QuizActivity';
 import { WordMatchActivity } from '../components/WordMatchActivity';
@@ -106,6 +107,8 @@ export function TodayPage() {
   const [searchParams] = useSearchParams();
   const overrideDailyId = searchParams.get('daily');
   const settings = useSettings();
+  // Fase 87: laboratorio de codigo do dia - vive durante a sessao inteira (o passo e remontado a cada etapa).
+  const lab = useLabSessionOwner();
 
   const [daily, setDaily] = useState<DailyStateDto | null>(null);
   const [step, setStep] = useState<Step | null>(null);
@@ -213,7 +216,11 @@ export function TodayPage() {
   const sorted = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
   const provide = (content: ReactNode, activityId: string | null = null, onBack?: () => void, jump?: (id: string) => void) => {
     const value: SessionContextValue = { daily, weekly: weekly ?? null, activityId, onBack, goToActivity: jump };
-    return <SessionContext.Provider value={value}>{content}</SessionContext.Provider>;
+    return (
+      <LabContext.Provider value={lab}>
+        <SessionContext.Provider value={value}>{content}</SessionContext.Provider>
+      </LabContext.Provider>
+    );
   };
 
   if (daily.accessMode === DailyAccessMode.Blocked) return provide(<BlockedTodayScreen />);

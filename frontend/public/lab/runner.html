@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Laboratório de código</title>
+  </head>
+  <body>
+    <!-- Fase 87: pagina do laboratorio, carregada num iframe escondido pelo app. Sem script inline de proposito:
+         a CSP de /lab/ (connect-src so em /lab/, ver vite.config.ts e nginx.conf) nao deixa o codigo do aluno
+         chamar a API da Focada. -->
+    <script type="module" src="./runner.mjs"></script>
+  </body>
+</html>

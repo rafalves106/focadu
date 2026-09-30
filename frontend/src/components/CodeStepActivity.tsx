@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { ActivityType, ProjectLanguage, type ActivityResponseDto, type DailyActivityDto, type DailyStateDto } from '../api/types';
 import { isFirstOfActivityGroup } from '../lib/activityGroup';
@@ -8,132 +8,9 @@ import { SessionFooter, SessionLayout } from './SessionShell';
 import { BlockIntro } from './session/BlockIntro';
 import { FocadaSays } from './session/FocadaSays';
 import { PixelButton } from './session/PixelButton';
-
-/** Rascunho do passo no navegador - recarregar a pagina nao perde o que o aluno digitou. */
-function draftKey(dailyId: string, activityId: string) {
-  return `focadu:passo-codigo:${dailyId}:${activityId}`;
-}
-
-function readDraft(key: string): { code: string; output: string } | null {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as { code: string; output: string }) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeDraft(key: string, value: { code: string; output: string } | null) {
-  try {
-    if (value) localStorage.setItem(key, JSON.stringify(value));
-    else localStorage.removeItem(key);
-  } catch {
-    // Sem storage (aba anonima, bloqueado): o rascunho so nao sobrevive a um recarregar.
-  }
-}
-
-function lineCount(text: string) {
-  return text === '' ? 1 : text.replace(/\n$/, '').split('\n').length;
-}
-
-/** "**Titulo**\n\ndetalhe" (curadoria) -> titulo em destaque + o resto como Markdown. */
-function splitPrompt(prompt: string | null): { title: string; detail: string } {
-  const [first, ...rest] = (prompt ?? '').split(/\n\s*\n/);
-  return { title: first.replace(/^\*\*|\*\*$/g, '').trim(), detail: rest.join('\n\n').trim() };
-}
-
-const TONE_BORDER = { stroke: 'border-stroke', accent: 'border-accent', project: 'border-project' } as const;
-
-/**
- * Editor do passo (Fase 79, Figma "Ponte: code comigo"): numeros de linha continuando do script dos
- * passos anteriores, Fira Code, sem quebra de linha, Tab indenta. Cresce com o conteudo - quem rola e
- * o cartao da sessao, entao a numeracao nunca desalinha.
- */
-function CodeEditor({
-  value,
-  onChange,
-  startLine = 1,
-  tone = 'stroke',
-  indent = '    ',
-  placeholder,
-  onSubmitShortcut,
-  label,
-}: {
-  value: string;
-  onChange?: (value: string) => void;
-  startLine?: number;
-  tone?: keyof typeof TONE_BORDER;
-  indent?: string;
-  placeholder?: string;
-  onSubmitShortcut?: () => void;
-  label: string;
-}) {
-  const lines = Math.max(lineCount(value), onChange ? 8 : 1);
-  function handleKeyDown(e: ReactKeyboardEvent<HTMLTextAreaElement>) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      e.preventDefault();
-      onSubmitShortcut?.();
-      return;
-    }
-    if (e.key === 'Tab' && !e.shiftKey && onChange) {
-      e.preventDefault();
-      const el = e.currentTarget;
-      const { selectionStart, selectionEnd } = el;
-      onChange(value.slice(0, selectionStart) + indent + value.slice(selectionEnd));
-      requestAnimationFrame(() => el.setSelectionRange(selectionStart + indent.length, selectionStart + indent.length));
-    }
-  }
-
-  return (
-    <div className={`flex overflow-x-auto border-2 bg-surface px-3.5 py-2.5 ${TONE_BORDER[tone]}`}>
-      <pre aria-hidden="true" className="shrink-0 select-none pr-3.5 text-right font-mono text-[13px] leading-5 text-muted">
-        {Array.from({ length: lines }, (_, i) => startLine + i).join('\n')}
-      </pre>
-      {onChange ? (
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          rows={lines}
-          wrap="off"
-          spellCheck={false}
-          autoCapitalize="off"
-          autoComplete="off"
-          aria-label={label}
-          placeholder={placeholder}
-          className="min-w-0 flex-1 resize-none overflow-hidden whitespace-pre bg-transparent font-mono text-[13px] leading-5 text-primary outline-none placeholder:text-muted"
-        />
-      ) : (
-        <pre aria-label={label} className="min-w-0 flex-1 whitespace-pre font-mono text-[13px] leading-5 text-primary">
-          {value}
-        </pre>
-      )}
-    </div>
-  );
-}
-
-function OutputBox({ value, onChange, onSubmitShortcut, placeholder }: { value: string; onChange?: (value: string) => void; onSubmitShortcut?: () => void; placeholder?: string }) {
-  const className = 'w-full border-2 border-stroke bg-base px-3.5 py-2.5 font-mono text-xs leading-[18px] text-secondary outline-none focus:border-accent';
-  if (!onChange) return <pre className={`${className} overflow-x-auto whitespace-pre`}>{value}</pre>;
-  return (
-    <textarea
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onKeyDown={(e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-          e.preventDefault();
-          onSubmitShortcut?.();
-        }
-      }}
-      rows={Math.max(3, lineCount(value))}
-      wrap="off"
-      spellCheck={false}
-      aria-label="Saída do seu terminal"
-      placeholder={placeholder}
-      className={`${className} resize-none overflow-hidden whitespace-pre placeholder:text-muted`}
-    />
-  );
-}
+import { CodeEditor, OutputBox } from './code/codeParts';
+import { draftKey, lineCount, readDraft, splitPrompt, writeDraft } from './code/codeHelpers';
+import { LabCodeStepActivity } from './code/LabCodeStepActivity';
 
 /**
  * Passo de codigo da ponte (Fase 79, "code comigo" - secret/rascunhos/ponte-code-comigo.md; Figma
@@ -148,7 +25,7 @@ function OutputBox({ value, onChange, onSubmitShortcut, placeholder }: { value: 
  *
  * Ajustar nunca e erro da sessao (o conta-giros vira "Tentativas do passo", ver SessionShell).
  */
-export function CodeStepActivity({
+function LegacyCodeStepActivity({
   dailyId,
   daily,
   activity,
@@ -341,4 +218,18 @@ export function CodeStepActivity({
       </SessionFooter>
     </SessionLayout>
   );
+}
+
+/**
+ * Fase 86/87: passo que roda no laboratorio da Focada (`codeStep.labEnabled`, o aluno escreve e RODA na propria
+ * tela) usa `LabCodeStepActivity`; o resto segue o fluxo da Fase 79 (rodar na maquina e colar a saida).
+ */
+export function CodeStepActivity(props: {
+  dailyId: string;
+  daily: DailyStateDto;
+  activity: DailyActivityDto;
+  onDailyRefetched: (daily: DailyStateDto) => void;
+  onContinue: () => void;
+}) {
+  return props.activity.codeStep?.labEnabled ? <LabCodeStepActivity {...props} /> : <LegacyCodeStepActivity {...props} />;
 }

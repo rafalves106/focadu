@@ -13,7 +13,7 @@
  *   /__mock/reset?projeto=pendente|avaliado   (tela do Projeto Semanal)
  *   /__mock/reset?at=ponte                    (Fase 69: a Daily de hoje e a ponte, falta escolher a linguagem)
  *   /__mock/reset?at=Quiz&pausa=1             (Fase 69: streak pausado - projeto da semana aberto)
- *   /__mock/reset?at=codigo[&passo=3]         (Fase 79: ponte "code comigo" da Semana 1 em Python, no passo N)
+ *   /__mock/reset?at=codigo[&passo=3][&lab=python|javascript|bash|servidor|none]   (Fase 79/87: ponte "code comigo"; o laboratorio de codigo roda de verdade no navegador, lab=none volta ao fluxo de colar a saida)
  *   /__mock/loja?agente=0|1&gemas=60          (Fase 71: loja e agente, ver shopMock.ts)
  *   /__mock/squad?as=membro|lider|nenhum      (Fase 72: QG do Squad em /squad; Perfil em /perfil)
  *   /__mock/semana?estado=andamento|publicacao|trancada   (Fase 74: visao da Semana 2; trancada abre a 3)
@@ -40,6 +40,8 @@ type Json = any;
 
 interface Curated {
   dayNumber: number;
+  /** Fase 87: bloco lab do dia (CURADORIA.md 5.2) - o mock o entrega como `lab` do estado da Daily. */
+  lab?: Json;
   curatedContents: { ref: string; type: 'Reading' | 'Video' | 'File'; title: string; externalUrl: string | null; bodyText: string | null }[];
   activities: Json[];
 }
@@ -364,8 +366,8 @@ function studyCalendarDto() {
   };
 }
 
-function loadCurated(root: string, file = 'dia-1.json'): Curated {
-  const path = resolve(root, `../secret/curadoria/web-security/semana-1/${file}`);
+function loadCurated(root: string, file = 'dia-1.json', folder = 'web-security/semana-1'): Curated {
+  const path = resolve(root, `../secret/curadoria/${folder}/${file}`);
   if (!existsSync(path)) throw new Error(`[mock] conteudo curado nao encontrado em ${path} (precisa do repo focadu-secret em secret/)`);
   return JSON.parse(readFileSync(path, 'utf8'));
 }
@@ -410,10 +412,25 @@ function buildState(curated: Curated) {
         options: (n.options ?? []).map((o: Json) => ({ id: randomUUID(), text: o.text, nextNodeId: o.nextNodeKey ? (nodeIdByKey.get(o.nextNodeKey) ?? null) : null })),
       })),
       responses: [] as Json[],
+      // Fase 86: dicas da Focada (3 por passo, nao contam como tentativa).
+      hints: [] as Json[],
     };
   });
 
-  return { contents, activities, penaltyPoints: 0, completedAt: null as string | null, notes: [] as Json[] };
+  const lab = curated.lab
+    ? {
+        runtime: curated.lab.runtime,
+        image: curated.lab.image ?? null,
+        fileContentIds: (curated.lab.files ?? []).map((ref: string) => contentIdByRef.get(ref)),
+        packages: curated.lab.packages ?? [],
+        services: curated.lab.services ?? [],
+        entry: curated.lab.entry,
+        command: curated.lab.command,
+        timeoutSeconds: curated.lab.timeoutSeconds,
+      }
+    : null;
+
+  return { contents, activities, lab, penaltyPoints: 0, completedAt: null as string | null, notes: [] as Json[] };
 }
 
 type State = ReturnType<typeof buildState>;
@@ -493,7 +510,9 @@ function priorCode(state: State, act: State['activities'][number]): string | nul
   return parts.join('\n\n');
 }
 
-function activityDto(act: State['activities'][number], _i = 0, all: State['activities'] = []) {
+const CODE_MAX_HINTS = 3;
+
+function activityDto(act: State['activities'][number], _i = 0, all: State['activities'] = [], labOn = false) {
   const answered = act.responses.length > 0;
   const isCode = act.typeName === 'CodeStep';
   const done = isCode && codeDone(act);
@@ -510,6 +529,10 @@ function activityDto(act: State['activities'][number], _i = 0, all: State['activ
           maxAttempts: CODE_MAX_ATTEMPTS,
           solution: done ? act.codeSolution : null,
           expectedOutput: done ? act.codeExpectedOutput : null,
+          labEnabled: labOn,
+          codeStarter: null,
+          maxHints: labOn ? CODE_MAX_HINTS : 0,
+          hints: labOn ? act.hints : null,
         }
       : null,
     answerMode: act.answerMode,
@@ -552,10 +575,16 @@ function dailyDto(state: State, scenario: Scenario, id = ids.daily, isReinforcem
     penaltyThreshold: PENALTY_THRESHOLD,
     accessMode,
     // Fase 69: sem linguagem escolhida, a ponte vem sem atividades (ver GetTodayUseCase).
-    activities: scenario.mode === 'ponte' && !isReinforcement ? [] : state.activities.map((a, i, all) => activityDto(a, i, all)),
+    activities: scenario.mode === 'ponte' && !isReinforcement ? [] : state.activities.map((a, i, all) => activityDto(a, i, all, labOn(state, scenario, isReinforcement))),
     pendingReinforcementDailyId: scenario.pendingReinforcement && !isReinforcement ? ids.reinforcement : null,
     codeRepositoryUrl: isReinforcement ? null : codeRepositoryUrl,
+    lab: labOn(state, scenario, isReinforcement) ? state.lab : null,
   };
+}
+
+/** Fase 87: o dia de codigo tem laboratorio (`/__mock/reset?at=codigo&lab=python|javascript|bash|servidor`; `lab=none` = fluxo da Fase 79). */
+function labOn(state: State, scenario: Scenario, isReinforcement: boolean) {
+  return scenario.mode === 'codigo' && !isReinforcement && state.lab !== null;
 }
 
 function projectDto(scenario: Scenario) {
@@ -646,12 +675,15 @@ function reinforcementState(curated: Curated): State {
 export function sessionMock(): Plugin {
   let curated: Curated;
   let bridgeCurated: Curated;
+  /** Fase 87: a ponte de codigo de cada laboratorio (python/javascript do Web Security, bash/servidor do Linux). */
+  let labCurated: Record<string, Curated>;
   let state: State;
   let reinforcement: State;
   let scenario: Scenario = { mode: 'normal', pendingReinforcement: false, project: 'pendente' };
 
-  function reset(at = 'Quiz', penalty = 0, extra: Partial<Scenario> = {}, codeStep = 1) {
-    state = buildState(at === 'codigo' ? bridgeCurated : curated);
+  function reset(at = 'Quiz', penalty = 0, extra: Partial<Scenario> = {}, codeStep = 1, labKind = 'python') {
+    state = buildState(at === 'codigo' ? (labCurated[labKind] ?? bridgeCurated) : curated);
+    if (at === 'codigo' && labKind === 'none') state.lab = null;
     reinforcement = reinforcementState(curated);
     if (at === 'codigo') {
       // Fase 79: ponte "code comigo" - leitura feita, passos anteriores a `codeStep` aprovados com a solucao.
@@ -677,6 +709,12 @@ export function sessionMock(): Plugin {
     configResolved(config) {
       curated = loadCurated(config.root);
       bridgeCurated = loadCurated(config.root, 'ponte/python.json');
+      labCurated = {
+        python: bridgeCurated,
+        javascript: loadCurated(config.root, 'ponte/javascript.json'),
+        bash: loadCurated(config.root, 'dia-6.json', 'linux/semana-1'),
+        servidor: loadCurated(config.root, 'dia-12.json', 'linux/semana-2'),
+      };
       reset();
     },
     configureServer(server) {
@@ -692,7 +730,7 @@ export function sessionMock(): Plugin {
             pendingReinforcement: url.searchParams.get('reforco') === '1',
             paused: url.searchParams.get('pausa') === '1',
             ...(projeto ? { project: projeto } : {}),
-          }, Number(url.searchParams.get('passo') ?? 1));
+          }, Number(url.searchParams.get('passo') ?? 1), url.searchParams.get('lab') ?? 'python');
           res.statusCode = 302;
           res.setHeader(
             'Location',
@@ -929,17 +967,42 @@ export function sessionMock(): Plugin {
           const act = target?.activities.find((a) => a.id === m![2]);
           if (!target || !act) return send(res, 404, { error: 'atividade_nao_encontrada', message: 'Atividade não encontrada.' });
           if (codeDone(act) && !target.completedAt) return send(res, 409, { error: 'passo_concluido', message: 'Este passo ja foi concluido.' });
+          // Fase 86: no laboratorio o envio traz `labRun` (saida/historico do laboratorio) e o `output` colado nao vale.
+          const usesLab = labOn(target, scenario, m[1] === ids.reinforcement);
+          if (usesLab && !body.labRun) return send(res, 400, { error: 'rodar_antes_de_enviar', message: 'Rode o codigo no laboratorio antes de enviar o passo.' });
+          const evidence: string = usesLab
+            ? (body.labRun.commands?.length ? body.labRun.commands.map((c: Json) => `$ ${c.command}\n${c.output}`).join('\n') : (body.labRun.output ?? ''))
+            : (body.output ?? '');
           const norm = (t: string) => t.split('\n').map((l) => l.trim().replace(/\s+/g, ' ')).filter(Boolean);
-          const got = new Set(norm(body.output ?? ''));
+          const got = new Set(norm(evidence));
           const ok = norm(act.codeExpectedOutput ?? '').every((l) => got.has(l));
           const feedback = ok
             ? 'Isso! A saída bate e o código faz o que o passo pede, sem número digitado. Bora pro próximo.'
-            : (body.output ?? '').includes("b'")
+            : evidence.includes("b'")
               ? "Os domínios estão certos, mas saíram em bytes (b'...') e com o ponto da raiz do FQDN. Relatório é pra gente ler: o que qname devolve, texto ou bytes?"
               : 'A saída não bate com o que o passo pede. Rode de novo contra o ponte.pcap e confira linha a linha: o que ficou de fora?';
           await new Promise((r) => setTimeout(r, 700));
-          const response = respond(target, act, ok ? 100 : 0, { transcript: body.code ?? '', justification: body.output ?? '', aiFeedback: feedback });
+          const response = respond(target, act, ok ? 100 : 0, { transcript: body.code ?? '', justification: evidence, aiFeedback: feedback });
           return send(res, 200, { response, dailyReinforcementTriggered: false, reinforcementDailyId: null, weeklyReinforcementTriggered: false });
+        }
+        if ((m = path.match(/^\/api\/dailies\/([^/]+)\/activities\/([^/]+)\/code-hint$/)) && method === 'POST') {
+          // Fase 86: sem IA - dica fixa em tres blocos; nao e tentativa, 3 por passo.
+          const target = stateFor(m[1]);
+          const act = target?.activities.find((a) => a.id === m![2]);
+          if (!target || !act) return send(res, 404, { error: 'atividade_nao_encontrada', message: 'Atividade não encontrada.' });
+          if (!labOn(target, scenario, m[1] === ids.reinforcement)) return send(res, 400, { error: 'passo_sem_laboratorio', message: 'Este passo nao tem laboratorio, entao nao tem dica.' });
+          if (!String(body.code ?? '').trim()) return send(res, 400, { error: 'codigo_obrigatorio', message: 'Escreva algum codigo antes de pedir a dica.' });
+          if (act.hints.length >= CODE_MAX_HINTS) return send(res, 400, { error: 'dicas_esgotadas', message: `As ${CODE_MAX_HINTS} dicas deste passo ja foram usadas.` });
+          await new Promise((r) => setTimeout(r, 500));
+          const hint = {
+            number: act.hints.length + 1,
+            right: body.labRun ? 'O código rodou e você já tem uma saída pra comparar com o que o passo pede.' : 'Você já começou a escrever o passo.',
+            wrong: body.labRun && body.labRun.exitCode !== 0 ? 'A execução terminou com erro: olhe a linha marcada no editor.' : 'Confira se a saída tem tudo que o enunciado pede, na ordem certa.',
+            improve: 'Como você pega o que o passo pede sem digitar o valor direto? Pense no que o arquivo do dia oferece.',
+            createdAt: new Date().toISOString(),
+          };
+          act.hints.push(hint);
+          return send(res, 200, { hint, hintsUsed: hint.number, hintsLeft: CODE_MAX_HINTS - hint.number });
         }
         if ((m = path.match(/^\/api\/dailies\/([^/]+)\/code-repository$/)) && method === 'PUT') {
           const url = String(body.url ?? '').trim();
