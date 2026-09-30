@@ -32,7 +32,7 @@ internal static class DailyStateMapper
     private static LabConfigDto? ToLabDto(LabConfig? lab) =>
         lab is null
             ? null
-            : new LabConfigDto(lab.Runtime, lab.Image, lab.FileContentIds, lab.Packages, lab.Services, lab.Entry, lab.Command, lab.TimeoutSeconds);
+            : new LabConfigDto(lab.Runtime, lab.Image, lab.FileContentIds, lab.Packages, lab.Services, lab.Entry, lab.Command, lab.TimeoutSeconds, lab.Setup ?? [], lab.User);
 
     private static DailyActivityDto ToActivityDto(Daily daily, DailyActivity activity)
     {
@@ -97,6 +97,12 @@ internal static class DailyStateMapper
             activity.Id, activity.Type, activity.OrderIndex, activity.ContentId,
             completed ? ActivityStatus.Completed : ActivityStatus.Pending,
             activity.AnswerMode, activity.Prompt, hasAnswered ? activity.ExpectedAnswer : null,
-            quizOptions, wordMatchTerms, wordMatchDefinitions, roleplayNodes, responses, codeStep);
+            quizOptions, wordMatchTerms, wordMatchDefinitions, roleplayNodes, responses, codeStep,
+            Missions: activity.Type == ActivityType.TerminalMission
+                ? activity.TerminalMissionList
+                    .Select(m => new TerminalMissionDto(
+                        m.Title, m.Prompt, m.Hints, m.Note, new TerminalMissionCheckDto(m.Check.Command, m.Check.Output, m.Check.Probe, m.Check.State)))
+                    .ToList()
+                : null);
     }
 }

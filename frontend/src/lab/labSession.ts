@@ -51,7 +51,7 @@ export class LabSession {
     const files = lab.fileContentIds
       .map((id) => contents.find((c) => c.id === id))
       .filter((c): c is CuratedContentDto => c !== undefined && c.externalUrl !== null);
-    const key = JSON.stringify([lab.runtime, lab.image, lab.packages, lab.services, lab.timeoutSeconds, files.map((f) => f.externalUrl)]);
+    const key = JSON.stringify([lab.runtime, lab.image, lab.packages, lab.services, lab.timeoutSeconds, lab.setup, lab.user, files.map((f) => f.externalUrl)]);
     if (this.client && this.key === key && this.starting) return this.starting;
 
     this.teardown();
@@ -89,6 +89,8 @@ export class LabSession {
         packages: lab.packages,
         services: lab.services,
         timeoutSeconds: lab.timeoutSeconds,
+        setup: lab.setup,
+        user: lab.user,
       });
     })().then(
       () => {

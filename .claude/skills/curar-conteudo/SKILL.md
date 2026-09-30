@@ -106,6 +106,25 @@ Web Security, é o Web Security.
   não roda no laboratório não ganha shim nem é trocada: aquele dia fica sem `lab`. Refazer o verificador a
   cada mudança em `codeSolution`, `codeExpectedOutput` ou no arquivo da ponte. `command` é o comando de
   exemplo (no Linux o aluno digita), `entry` o arquivo que ele cria.
+- **Curso `linux` é 100% prático: sem vídeo e sem resumo falado** (decisão do dono, 30/09/2026, depois de
+  achar o dia 1 complicado: ler linha de comando e depois explicar em voz alta não ensina a usar o Linux).
+  Em dia normal do Linux, **não** gere `Video` nem `VoiceSummary` (nem em `curatedContents` nem em
+  `activities`); as regras de Vídeo e Resumos Falados acima valem só pro Web Security (e o Python, até
+  decisão em contrário). O dia fica: `Reading` curta + Quiz (5-6) + Cloze (4) + Ligar Palavras (3 grupos)
+  + Roleplay. Molde completo em CURADORIA.md seção 2.3.
+  - **Texto mínimo, em "missões".** Cada missão é um comando pra digitar, a saída real logo abaixo e 1-2
+    frases dizendo o que reparar. Nada de parágrafo teórico antes do comando, nem seção só de conceito
+    (kernel, FHS em tabela, builtin...): só entra o que o aluno usa naquele dia. Leitura de 2 a 4 minutos.
+  - **A prática é "o que esse comando imprime?" e "qual comando faz X?"**: Quiz e Cloze sobre comando e
+    saída, Ligar Palavras comando↔efeito, Roleplay como missão ("você é a ana num servidor novo..."). A
+    ponte (dia 6 e 12) continua sendo onde o aluno executa de verdade (`CodeStep` + `lab`).
+  - **Dia normal do Linux ganha `TerminalMission` (CURADORIA.md 5.3), logo depois da `Reading`**: 3 a 5
+    missões de comando num Linux embutido, já logado como usuário comum, conferidas no navegador (sem IA,
+    sem nota, sem tentativa). Com ela o texto **nunca** manda rodar `docker run`/instalar Debian: diz que
+    a missão vem a seguir. Toda missão passa por `node secret/curadoria/scripts/lab/verificar-missoes.mjs
+    <dia.json>` (estado inicial não passa, `solution` passa, `wrong` não passa) antes de o dia ir pro ar.
+    Comando que só existe no Debian (`sudo`, `apt`, `systemd`) fica na leitura, não vira missão.
+  - **Nenhum prompt de resposta aberta** que peça "explique com suas palavras" um comando.
 - Analogias continuam como no Web Security (âncora no texto, a plataforma injeta).
 - **Distrator de quiz pode ser um equívoco típico.** Em pergunta de comportamento ("o que esse comando
   imprime?", "o que acontece se..."), a regra absoluta do Web Security (todas as alternativas

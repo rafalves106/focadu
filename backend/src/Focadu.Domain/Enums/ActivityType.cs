@@ -34,5 +34,13 @@ public enum ActivityType
     /// sessao nem entra na nota (ver Daily); depois de CodeStepProgress.MaxAttempts tentativas sem
     /// passar, a solucao de referencia aparece e o passo seguinte parte dela.
     /// </summary>
-    CodeStep = 7
+    CodeStep = 7,
+
+    /// <summary>
+    /// Missao no terminal (dias normais do Linux, Figma "Laboratorio de codigo - v2", quadros 08 a 10):
+    /// o aluno cumpre missoes de comando no Linux embutido (o mesmo v86 da ponte, sem editor), e o
+    /// proprio navegador confere a saida. Sem IA, sem nota e sem tentativa gasta - concluir registra
+    /// uma ActivityResponse fixa (Score 100, como a Leitura). Nao marca o dia como ponte.
+    /// </summary>
+    TerminalMission = 8
 }

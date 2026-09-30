@@ -127,6 +127,52 @@ public static class CuratedDayImporter
         return changed;
     }
 
+    private static List<TerminalMission> ToMissions(ActivityJson json) =>
+        (json.Missions ?? [])
+            .Select(m => new TerminalMission(
+                m.Title ?? "", m.Prompt ?? "", m.Hints ?? [], m.Note ?? "",
+                new TerminalMissionCheck(m.Check?.Command, m.Check?.Output, m.Check?.Probe, m.Check?.State)))
+            .ToList();
+
+    /// <summary>
+    /// Leva as missoes no terminal de um dia-N.json a um DailyTemplate que JA esta no banco, sem reimportar o dia
+    /// (quem esta no meio nao perde progresso): a atividade que falta entra na posicao do arquivo e empurra as
+    /// seguintes; a que ja existe so troca as missoes se mudaram. As demais atividades do arquivo e do banco
+    /// precisam bater em numero e tipo. Dia do arquivo sem missao nao mexe em nada. Devolve true se algo mudou.
+    /// </summary>
+    public static bool ApplyMissions(DailyTemplate dailyTemplate, string jsonFilePath)
+    {
+        var day = Parse(File.ReadAllText(jsonFilePath));
+        if (day.DayNumber != dailyTemplate.DayNumber)
+            throw new InvalidOperationException($"{jsonFilePath}: dayNumber {day.DayNumber} nao bate com o dia {dailyTemplate.DayNumber}.");
+
+        var jsonOthers = day.Activities.Where(a => a.Type != ActivityType.TerminalMission).Select(a => a.Type).ToList();
+        var dbOthers = dailyTemplate.Activities.Where(a => a.Type != ActivityType.TerminalMission).OrderBy(a => a.OrderIndex).Select(a => a.Type).ToList();
+        if (!jsonOthers.SequenceEqual(dbOthers))
+            throw new InvalidOperationException($"{jsonFilePath}: as outras atividades do arquivo nao batem com as do banco - reimporte o dia.");
+
+        var changed = false;
+        for (var i = 0; i < day.Activities.Count; i++)
+        {
+            if (day.Activities[i].Type != ActivityType.TerminalMission) continue;
+            var missions = ToMissions(day.Activities[i]);
+            var existing = dailyTemplate.Activities.FirstOrDefault(a => a.Type == ActivityType.TerminalMission && a.OrderIndex == i);
+            if (existing is null)
+            {
+                dailyTemplate.InsertActivity(ActivityType.TerminalMission, i, day.Activities[i].AnswerMode, day.Activities[i].Prompt)
+                    .ConfigureTerminalMissions(missions);
+                changed = true;
+            }
+            else if (existing.TerminalMissionsJson != TerminalMissions.Serialize(TerminalMissions.Create(missions)) || existing.Prompt != day.Activities[i].Prompt)
+            {
+                existing.ConfigureTerminalMissions(missions, day.Activities[i].Prompt);
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+
     /// <summary>Fase 86: o dia-N.json traz bloco lab (usado pelo sync pra nao abrir o arquivo de novo).</summary>
     public static bool FileHasLab(string jsonFilePath) => Parse(File.ReadAllText(jsonFilePath)).Lab is not null;
 
@@ -135,7 +181,8 @@ public static class CuratedDayImporter
         a is null ? b is null
         : b is not null && a.Runtime == b.Runtime && a.Image == b.Image && a.Entry == b.Entry && a.Command == b.Command
           && a.TimeoutSeconds == b.TimeoutSeconds && a.FileContentIds.SequenceEqual(b.FileContentIds)
-          && a.Packages.SequenceEqual(b.Packages) && a.Services.SequenceEqual(b.Services);
+          && a.Packages.SequenceEqual(b.Packages) && a.Services.SequenceEqual(b.Services)
+          && (a.Setup ?? []).SequenceEqual(b.Setup ?? []) && a.User == b.User;
 
     private static LabConfig BuildLab(CuratedDayJson day, Func<string, Guid?> resolveFile)
     {
@@ -155,7 +202,7 @@ public static class CuratedDayImporter
             if (!fileTitles.Contains(service))
                 throw new InvalidOperationException($"lab.services: '{service}' nao e o titulo de um File listado em lab.files.");
 
-        return LabConfig.Create(lab.Runtime, lab.Image, fileIds, lab.Packages, lab.Services, lab.Entry, lab.Command, lab.TimeoutSeconds);
+        return LabConfig.Create(lab.Runtime, lab.Image, fileIds, lab.Packages, lab.Services, lab.Entry, lab.Command, lab.TimeoutSeconds, lab.Setup, lab.User);
     }
 
     private static void AddActivity(DailyTemplate dailyTemplate, ActivityJson json, int orderIndex, Dictionary<string, Guid> contentByRef)
@@ -174,6 +221,9 @@ public static class CuratedDayImporter
             activity.ConfigureCodeStep(
                 json.CodeSolution ?? "", json.CodeExpectedOutput ?? "", json.CodeRubric ?? "",
                 json.CodeStarter, labDisabled: json.Lab == false);
+
+        if (json.Type == ActivityType.TerminalMission)
+            activity.ConfigureTerminalMissions(ToMissions(json));
 
         foreach (var option in json.QuizOptions ?? [])
             activity.AddQuizOption(option.Text, option.IsCorrect);
@@ -217,7 +267,7 @@ public static class CuratedDayImporter
     /// <summary>Fase 86: bloco <c>lab</c> do dia (CURADORIA.md 5.2). Os nomes dos campos seguem o JSON.</summary>
     private record LabJson(
         string? Runtime, string? Image, List<string>? Files, List<string>? Packages, List<string>? Services,
-        string? Entry, string? Command, int TimeoutSeconds = 0);
+        string? Entry, string? Command, int TimeoutSeconds = 0, List<string>? Setup = null, string? User = null);
 
     private record CuratedContentJson(string Ref, CuratedContentType Type, string Title, string? ExternalUrl, string? BodyText);
 
@@ -228,7 +278,13 @@ public static class CuratedDayImporter
         string? CodeSolution = null, string? CodeExpectedOutput = null, string? CodeRubric = null,
         string? CodeStarter = null,
         /// <summary>Fase 86: <c>"lab": false</c> tira o passo do laboratorio do dia (fluxo antigo). Ausente/true = usa o lab do dia.</summary>
-        bool? Lab = null);
+        bool? Lab = null,
+        /// <summary>So em TerminalMission: as missoes do bloco (CURADORIA.md 5.3).</summary>
+        List<MissionJson>? Missions = null);
+
+    private record MissionJson(string Title, string Prompt, List<string>? Hints, string Note, MissionCheckJson? Check);
+
+    private record MissionCheckJson(string? Command, string? Output, string? Probe, string? State);
 
     private record QuizOptionJson(string Text, bool IsCorrect);
 

@@ -60,6 +60,14 @@ public class DailyActivity : Entity
     /// </summary>
     public bool LabDisabled { get; private set; }
 
+    /// <summary>
+    /// TerminalMission: a lista de missoes (<see cref="TerminalMissions"/>) em JSON. Nao e segredo - o
+    /// navegador do aluno precisa dos enunciados e das regras de conferencia pra rodar a missao.
+    /// </summary>
+    public string? TerminalMissionsJson { get; private set; }
+
+    public IReadOnlyList<TerminalMission> TerminalMissionList => TerminalMissions.Parse(TerminalMissionsJson);
+
     private readonly List<QuizOption> _quizOptions = new();
     public IReadOnlyCollection<QuizOption> QuizOptions => _quizOptions.AsReadOnly();
 
@@ -125,6 +133,7 @@ public class DailyActivity : Entity
             clone.AddWordMatchPair(pair.Term, pair.Definition);
         }
 
+        clone.TerminalMissionsJson = TerminalMissionsJson;
         return clone;
     }
 
@@ -144,6 +153,19 @@ public class DailyActivity : Entity
         CodeRubric = rubric;
         SetLabOptions(starter, labDisabled);
     }
+
+    /// <summary>Missao no terminal: define as missoes do bloco (validadas por <see cref="TerminalMissions.Create"/>).</summary>
+    public void ConfigureTerminalMissions(IEnumerable<TerminalMission> missions, string? prompt = null)
+    {
+        if (Type != ActivityType.TerminalMission)
+            throw new DomainException("Missoes so valem pra atividades do tipo TerminalMission.");
+
+        TerminalMissionsJson = TerminalMissions.Serialize(TerminalMissions.Create(missions));
+        if (prompt is not null) Prompt = prompt;
+    }
+
+    /// <summary>Abre espaco pra uma atividade nova no meio do dia (ver <see cref="Dailies.DailyTemplate.InsertActivity"/>).</summary>
+    internal void ShiftOrder(int by) => OrderIndex += by;
 
     /// <summary>
     /// CodeStep (Fase 86): codigo inicial do editor e opt-out do laboratorio. Separado de

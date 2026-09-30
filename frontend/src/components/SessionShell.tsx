@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { ActivityStatus, ActivityType } from '../api/types';
+import { ActivityStatus, ActivityType, type DailyActivityDto } from '../api/types';
 import { SessionFooterContext, useSession } from '../lib/sessionContext';
 import { stepInfo } from '../lib/sessionSteps';
 import { setStudyAssistantCodeBridge, setStudyAssistantContext, setStudyAssistantCourse } from '../lib/studyAssistantContext';
@@ -16,6 +16,8 @@ import { PomodoroWidget } from './pomodoro/PomodoroWidget';
 import { ScrollArea } from './ScrollArea';
 import { AttemptsGauge } from './session/AttemptsGauge';
 import { ErrorGauge } from './session/ErrorGauge';
+import { MissionsGauge } from './session/MissionsGauge';
+import { useMissionProgress } from '../lab/terminalMissionStore';
 import { StageChain } from './session/StageChain';
 import backArrow from '../assets/pixel/voltar.png';
 import lockIcon from '../assets/pixel/cadeado-bloqueado.png';
@@ -199,6 +201,8 @@ export function SessionLayout({
                 passed={current.responses.some((r) => r.passed)}
                 compact={!isDesktop}
               />
+            ) : current?.type === ActivityType.TerminalMission && current.missions ? (
+              <MissionsGaugeFor activity={current} compact={!isDesktop} />
             ) : (
               <ErrorGauge penaltyPoints={daily.penaltyPoints} penaltyThreshold={daily.penaltyThreshold} compact={!isDesktop} />
             )}
@@ -283,6 +287,13 @@ export function SessionLayout({
       />
     </div>
   );
+}
+
+/** Conta-giros da missao no terminal: quantas missoes da atividade em tela ja foram cumpridas (estado em memoria, ver terminalMissionStore). */
+function MissionsGaugeFor({ activity, compact }: { activity: DailyActivityDto; compact: boolean }) {
+  const total = activity.missions?.length ?? 0;
+  const progress = useMissionProgress(activity.id, total, activity.responses.length > 0);
+  return <MissionsGauge done={progress.passedWith.filter((c) => c !== null).length} total={total} compact={compact} />;
 }
 
 type DrawerTab = 'material' | 'notas' | 'duvida' | 'pomodoro';

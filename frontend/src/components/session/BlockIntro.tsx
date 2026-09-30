@@ -20,7 +20,9 @@ export function BlockIntro({ activity, onStart }: { activity: DailyActivityDto; 
   const count =
     activity.type === ActivityType.CodeStep
       ? daily.activities.filter((a) => a.type === ActivityType.CodeStep).length
-      : (info?.stage.activities.length ?? 1);
+      : activity.type === ActivityType.TerminalMission
+        ? (activity.missions?.length ?? 1)
+        : (info?.stage.activities.length ?? 1);
   const intro = blockIntro(activity.type, activity.answerMode, count, daily.penaltyThreshold, activity.codeStep?.maxAttempts);
 
   useSessionKeys((key) => {

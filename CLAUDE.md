@@ -106,7 +106,7 @@ Hábitos obrigatórios:
 
 ## Estado atual
 
-Última fase concluída: **Fase 87 — Laboratório de código (front)** (30/09/2026; backend na Fase 86).
+Última fase concluída: **Fase 88 — Missão no terminal** (30/09/2026; laboratório de código: Fases 86 e 87).
 
 Histórico completo dos marcos (Fases 25–87, com o porquê de cada decisão): `docs/ESTADO-HISTORICO.md` —
 só abrir quando precisar. Estado técnico vivo: `docs/ARQUITETURA.md`; detalhe por fase: `docs/fase-N/`.
@@ -126,6 +126,9 @@ Resumo do que existe hoje:
   da Focada (3 por passo) não gasta tentativa. O código do aluno roda em Workers de `/lab/` com CSP que só libera
   `connect-src` em `/lab/` (não alcança a API). Formato do bloco em `secret/curadoria/CURADORIA.md` 5.2, verificador
   em `secret/curadoria/scripts/lab/`. Ver `docs/fase-86/`, `docs/fase-87/`.
+- **Missão no terminal (Fase 88)**: nos dias normais do Linux (piloto: Dia 2) a atividade `TerminalMission` dá ao aluno um
+  Linux embutido, já logado como usuário comum, com missões de comando conferidas no navegador (sem IA, sem nota, sem
+  tentativa). Formato em `secret/curadoria/CURADORIA.md` 5.3, verificador `scripts/lab/verificar-missoes.mjs`. Ver `docs/fase-88/`.
 - **Infra**: deploy automático por push (CI/CD), sem homologação, Forgejo interno pros repositórios de Projeto Semanal.
 
 Regras que valem a partir daqui:

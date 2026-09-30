@@ -76,10 +76,10 @@ public class SubmitActivityResponseUseCase
                 ScoreFromSelectedOption(activity, selectedOptionId),
             ActivityType.Cloze => ScoreFromFreeTextAnswer(activity, transcript),
             ActivityType.Roleplay => ScoreFromRoleplayTerminalNode(activity, selectedRoleplayNodeId),
-            // Reading/Video (Fase 7): nao ha avaliacao - concluir a etapa e o proprio "acerto".
+            // Reading/Video (Fase 7) e TerminalMission: nao ha avaliacao no servidor (o laboratorio confere no navegador) - concluir a etapa e o proprio "acerto".
             // Score fixo 100 (sempre Passed) so pra marcar a atividade como feita via o mesmo
             // pipeline de ActivityResponse/PenaltyPoints dos outros tipos, nunca penalizando.
-            ActivityType.Reading or ActivityType.Video => 100,
+            ActivityType.Reading or ActivityType.Video or ActivityType.TerminalMission => 100,
             // CodeStep (Fase 79): avaliado por IA, com codigo + saida - endpoint proprio.
             ActivityType.CodeStep => throw new ValidationException(
                 "tipo_atividade_invalido", "Passos de codigo usam POST .../responses/code."),

@@ -14,6 +14,9 @@ export interface LabInitParams {
   packages: string[];
   services: string[];
   timeoutSeconds: number;
+  /** Linux: linhas de shell como root antes do terminal abrir, e o usuario em que ele entra. */
+  setup?: string[];
+  user?: string | null;
 }
 
 export interface LabRunResult {

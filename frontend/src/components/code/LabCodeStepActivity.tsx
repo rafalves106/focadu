@@ -430,7 +430,7 @@ export function LabCodeStepActivity({
 }
 
 /** O laboratorio nao subiu (navegador sem suporte, arquivo que nao baixou): diz o motivo e deixa tentar de novo. */
-function LabError({ message, onRetry }: { message: string | null; onRetry: () => void }) {
+export function LabError({ message, onRetry }: { message: string | null; onRetry: () => void }) {
   return (
     <div className="flex flex-col items-start gap-3 border-2 border-alert bg-base px-3.5 py-3" role="alert" data-testid="lab-erro">
       <p className="font-pixel text-lg leading-tight text-alert">O laboratório não conseguiu iniciar.</p>

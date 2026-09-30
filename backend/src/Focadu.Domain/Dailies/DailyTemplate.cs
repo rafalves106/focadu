@@ -74,11 +74,13 @@ public class DailyTemplate : Entity
         DayNumber = dayNumber;
     }
 
-    /// <summary>Fase 86: liga (ou desliga, com nulo) o laboratorio do dia. So faz sentido com passo de codigo.</summary>
+    /// <summary>Fase 86: liga (ou desliga, com nulo) o laboratorio do dia. So faz sentido com passo de codigo ou missao no terminal.</summary>
     public void SetLab(LabConfig? lab)
     {
-        if (lab is not null && _activities.All(a => a.Type != ActivityType.CodeStep))
-            throw new DomainException("So um dia com passo de codigo (CodeStep) pode ter laboratorio.", "lab_sem_passo_de_codigo");
+        if (lab is not null && _activities.All(a => a.Type is not (ActivityType.CodeStep or ActivityType.TerminalMission)))
+            throw new DomainException("So um dia com passo de codigo (CodeStep) ou missao no terminal pode ter laboratorio.", "lab_sem_passo_de_codigo");
+        if (lab is { NoEditor: true } && _activities.Any(a => a.Type == ActivityType.CodeStep))
+            throw new DomainException("Um dia com passo de codigo precisa de lab.entry e lab.command.", "lab_entry_obrigatorio");
 
         Lab = lab;
     }
@@ -86,6 +88,18 @@ public class DailyTemplate : Entity
     /// <summary>Fase 86: este passo roda no laboratorio do dia (o dia tem lab e o passo nao saiu dele).</summary>
     public bool StepUsesLab(DailyActivity activity) =>
         Lab is not null && activity.Type == ActivityType.CodeStep && !activity.LabDisabled;
+
+    /// <summary>
+    /// Insere uma atividade na posicao <paramref name="orderIndex"/> de um dia que ja existe, empurrando uma
+    /// posicao as que estavam dali pra frente. Ninguem perde progresso: as respostas guardam o Id da atividade,
+    /// nao a posicao.
+    /// </summary>
+    public DailyActivity InsertActivity(ActivityType type, int orderIndex, AnswerMode answerMode, string? prompt = null)
+    {
+        foreach (var existing in _activities.Where(a => a.OrderIndex >= orderIndex))
+            existing.ShiftOrder(1);
+        return AddActivity(type, orderIndex, answerMode, prompt);
+    }
 
     /// <summary>Ver doc da classe - usado so por Weekly.CreateDailyReinforcement (instancia).</summary>
     internal static DailyTemplate CreateSynthetic(int dayNumber) => new(dayNumber);

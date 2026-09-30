@@ -13,6 +13,7 @@
  *   /__mock/reset?projeto=pendente|avaliado   (tela do Projeto Semanal)
  *   /__mock/reset?at=ponte                    (Fase 69: a Daily de hoje e a ponte, falta escolher a linguagem)
  *   /__mock/reset?at=Quiz&pausa=1             (Fase 69: streak pausado - projeto da semana aberto)
+ *   /__mock/reset?at=terminal                 (missao no terminal do Dia 2 do Linux: Leitura feita, falta a MissionTerminal; o Linux roda de verdade no navegador)
  *   /__mock/reset?at=codigo[&passo=3][&lab=python|javascript|bash|servidor|none]   (Fase 79/87: ponte "code comigo"; o laboratorio de codigo roda de verdade no navegador, lab=none volta ao fluxo de colar a saida)
  *   /__mock/loja?agente=0|1&gemas=60          (Fase 71: loja e agente, ver shopMock.ts)
  *   /__mock/squad?as=membro|lider|nenhum      (Fase 72: QG do Squad em /squad; Perfil em /perfil)
@@ -30,7 +31,7 @@ import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
 import { handleShop, resetShop } from './shopMock';
 
-const TYPE = { Quiz: 0, WordMatch: 1, Cloze: 2, Roleplay: 3, VoiceSummary: 4, Reading: 5, Video: 6, CodeStep: 7 } as const;
+const TYPE = { Quiz: 0, WordMatch: 1, Cloze: 2, Roleplay: 3, VoiceSummary: 4, Reading: 5, Video: 6, CodeStep: 7, TerminalMission: 8 } as const;
 type TypeName = keyof typeof TYPE;
 const PASSING = 80;
 const PENALTY_THRESHOLD = 3;
@@ -396,6 +397,8 @@ function buildState(curated: Curated) {
       answerMode: a.answerMode === 'FreeText' ? 1 : 0,
       prompt: a.prompt ?? null,
       expectedAnswer: a.expectedAnswer ?? null,
+      // Missao no terminal: as missoes do bloco (o mock ignora `solution`/`wrong`, que so o verificador da curadoria usa).
+      missions: (a.missions ?? null) as Json[] | null,
       // Fase 79: passo de codigo da ponte.
       codeSolution: (a.codeSolution ?? null) as string | null,
       codeExpectedOutput: (a.codeExpectedOutput ?? null) as string | null,
@@ -424,9 +427,11 @@ function buildState(curated: Curated) {
         fileContentIds: (curated.lab.files ?? []).map((ref: string) => contentIdByRef.get(ref)),
         packages: curated.lab.packages ?? [],
         services: curated.lab.services ?? [],
-        entry: curated.lab.entry,
-        command: curated.lab.command,
+        entry: curated.lab.entry ?? '',
+        command: curated.lab.command ?? '',
         timeoutSeconds: curated.lab.timeoutSeconds,
+        setup: curated.lab.setup ?? [],
+        user: curated.lab.user ?? null,
       }
     : null;
 
@@ -439,6 +444,7 @@ function score(act: State['activities'][number], body: Json): number {
   switch (act.typeName) {
     case 'Reading':
     case 'Video':
+    case 'TerminalMission':
       return 100;
     case 'Quiz':
       return act.quizOptions.find((o) => o.id === body.selectedOptionId)?.correct ? 100 : 0;
@@ -537,6 +543,7 @@ function activityDto(act: State['activities'][number], _i = 0, all: State['activ
       : null,
     answerMode: act.answerMode,
     prompt: act.prompt,
+    missions: act.missions,
     // Gabarito so depois de responder (igual ao backend).
     expectedAnswer: answered ? act.expectedAnswer : null,
     quizOptions: act.quizOptions.map((o) => ({ id: o.id, text: o.text, isCorrect: answered ? o.correct : null })),
@@ -547,7 +554,7 @@ function activityDto(act: State['activities'][number], _i = 0, all: State['activ
   };
 }
 
-type Mode = 'normal' | 'bloqueado' | 'semana' | 'ponte' | 'codigo';
+type Mode = 'normal' | 'bloqueado' | 'semana' | 'ponte' | 'codigo' | 'terminal';
 type ProjectState = 'pendente' | 'entregue' | 'avaliado';
 interface Scenario {
   mode: Mode;
@@ -569,7 +576,7 @@ function dailyDto(state: State, scenario: Scenario, id = ids.daily, isReinforcem
     weeklyId: ids.weekly,
     dayNumber: (scenario.mode === 'ponte' || scenario.mode === 'codigo') && !isReinforcement ? 6 : 1,
     date: new Date().toISOString().slice(0, 10),
-    status: scenario.mode === 'ponte' && !isReinforcement ? 0 : state.completedAt || (!isReinforcement && scenario.mode !== 'normal') ? 3 : 2,
+    status: scenario.mode === 'ponte' && !isReinforcement ? 0 : state.completedAt || (!isReinforcement && scenario.mode !== 'normal' && scenario.mode !== 'terminal') ? 3 : 2,
     isReinforcement,
     penaltyPoints: state.penaltyPoints,
     penaltyThreshold: PENALTY_THRESHOLD,
@@ -584,7 +591,7 @@ function dailyDto(state: State, scenario: Scenario, id = ids.daily, isReinforcem
 
 /** Fase 87: o dia de codigo tem laboratorio (`/__mock/reset?at=codigo&lab=python|javascript|bash|servidor`; `lab=none` = fluxo da Fase 79). */
 function labOn(state: State, scenario: Scenario, isReinforcement: boolean) {
-  return scenario.mode === 'codigo' && !isReinforcement && state.lab !== null;
+  return (scenario.mode === 'codigo' || scenario.mode === 'terminal') && !isReinforcement && state.lab !== null;
 }
 
 function projectDto(scenario: Scenario) {
@@ -682,6 +689,15 @@ export function sessionMock(): Plugin {
   let scenario: Scenario = { mode: 'normal', pendingReinforcement: false, project: 'pendente' };
 
   function reset(at = 'Quiz', penalty = 0, extra: Partial<Scenario> = {}, codeStep = 1, labKind = 'python') {
+    if (at === 'terminal') {
+      // Missao no terminal (Dia 2 do Linux): as atividades antes dela (a Leitura) ja feitas; o resto e o dia de verdade.
+      state = buildState(labCurated.terminal);
+      reinforcement = reinforcementState(curated);
+      fastForward(state, 'TerminalMission', 0);
+      codeRepositoryUrl = null;
+      scenario = { mode: 'terminal', pendingReinforcement: false, project: 'pendente', ...extra };
+      return;
+    }
     state = buildState(at === 'codigo' ? (labCurated[labKind] ?? bridgeCurated) : curated);
     if (at === 'codigo' && labKind === 'none') state.lab = null;
     reinforcement = reinforcementState(curated);
@@ -714,6 +730,7 @@ export function sessionMock(): Plugin {
         javascript: loadCurated(config.root, 'ponte/javascript.json'),
         bash: loadCurated(config.root, 'dia-6.json', 'linux/semana-1'),
         servidor: loadCurated(config.root, 'dia-12.json', 'linux/semana-2'),
+        terminal: loadCurated(config.root, 'dia-2.json', 'linux/semana-1'),
       };
       reset();
     },

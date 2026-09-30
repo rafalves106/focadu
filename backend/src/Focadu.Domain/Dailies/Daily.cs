@@ -204,7 +204,7 @@ public class Daily : Entity
     /// recompensa consistência) - média ponderada de ActivityResponse.Score (tentativa MAIS
     /// RECENTE de cada Activity, mesmo critério de AllActivitiesPassed) usando os pesos de
     /// EvaluationPolicy.ActivityScoreWeight. Reading/Video ficam de fora (sempre 100, ruído
-    /// artificial - nunca avaliam nada de verdade), e CodeStep tambem (Fase 79: o passo de codigo
+    /// artificial - nunca avaliam nada de verdade), e TerminalMission tambem (mesmo motivo: Score fixo 100); CodeStep tambem (Fase 79: o passo de codigo
     /// da ponte nao vale nota, so "passou / ajuste isto"). Dailies de reforço nunca pontuam (null) - já
     /// têm sua própria recompensa em Gems (Bônus de Superação, Fase 15); incluir no Score
     /// incentivaria errar de propósito pra "score duplo". Null também quando nenhuma atividade
@@ -215,7 +215,7 @@ public class Daily : Entity
         if (IsReinforcement) return null;
 
         var scored = Activities
-            .Where(a => a.Type is not (ActivityType.Reading or ActivityType.Video or ActivityType.CodeStep))
+            .Where(a => a.Type is not (ActivityType.Reading or ActivityType.Video or ActivityType.CodeStep or ActivityType.TerminalMission))
             .Select(a => _responses.Where(r => r.ActivityId == a.Id).OrderBy(r => r.AttemptNumber).LastOrDefault() is { } latest
                 ? (Weight: EvaluationPolicy.ActivityScoreWeight(a.Type), Score: latest.Score)
                 : ((double Weight, int Score)?)null)

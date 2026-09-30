@@ -16,6 +16,7 @@ import { VoiceSummaryActivity } from '../components/VoiceSummaryActivity';
 import { ReadingActivity } from '../components/ReadingActivity';
 import { VideoActivity } from '../components/VideoActivity';
 import { CodeStepActivity } from '../components/CodeStepActivity';
+import { TerminalMissionActivity } from '../components/code/TerminalMissionActivity';
 import { CompletionSummary } from '../components/CompletionSummary';
 import { ReinforcementIntroScreen } from '../components/ReinforcementIntroScreen';
 import {
@@ -268,6 +269,7 @@ export function TodayPage() {
   else if (activity.type === ActivityType.Roleplay) content = <RoleplayActivity {...common} daily={daily} />;
   else if (activity.type === ActivityType.VoiceSummary) content = <VoiceSummaryActivity {...common} daily={daily} />;
   else if (activity.type === ActivityType.CodeStep) content = <CodeStepActivity {...common} daily={daily} />;
+  else if (activity.type === ActivityType.TerminalMission) content = <TerminalMissionActivity {...common} daily={daily} />;
   // Quiz e Cloze/MultipleChoice: mesma mecanica de OptionsAnswer (ver QuizActivity).
   else content = <QuizActivity {...common} daily={daily} />;
 

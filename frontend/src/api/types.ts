@@ -12,6 +12,8 @@ export const ActivityType = {
   Video: 6,
   // Fase 79: passo de codigo da ponte ("code comigo") - codigo + saida conferidos pela IA.
   CodeStep: 7,
+  // Missao no terminal (dias normais do Linux): o proprio navegador confere a saida, sem IA e sem tentativa.
+  TerminalMission: 8,
 } as const;
 export type ActivityType = (typeof ActivityType)[keyof typeof ActivityType];
 
@@ -82,6 +84,7 @@ export const ACTIVITY_TYPE_LABEL: Record<ActivityType, string> = {
   [ActivityType.Reading]: 'Leitura',
   [ActivityType.Video]: 'Vídeo',
   [ActivityType.CodeStep]: 'Passo de código',
+  [ActivityType.TerminalMission]: 'Missão no terminal',
 };
 
 // IsCorrect vem nulo ate a atividade ter uma ActivityResponse - gabarito escondido antes de
@@ -149,6 +152,24 @@ export interface DailyActivityDto {
   responses: ActivityResponseDto[];
   /** Fase 79: so em CodeStep (passo de codigo da ponte) - nulo nos outros tipos. */
   codeStep?: CodeStepDto | null;
+  /** So em TerminalMission: as missoes do bloco, conferidas no navegador. */
+  missions?: TerminalMissionDto[] | null;
+}
+
+/**
+ * Missao do bloco `TerminalMission`. O laboratorio confere depois de cada comando digitado e TODA condicao
+ * informada precisa valer: `command` (regex sobre o comando), `output` (regex sobre a saida dele) e
+ * `probe` + `state` (roda `probe` em silencio e confere a saida dele com a regex `state` - o estado do sistema).
+ * Nada aqui e segredo: o servidor nao confere nada.
+ */
+export interface TerminalMissionDto {
+  title: string;
+  prompt: string;
+  /** Dicas fixas em dois niveis: 1 = o conceito, 2 = o comando. */
+  hints: string[];
+  /** O que reparar, mostrado quando a missao e cumprida. */
+  note: string;
+  check: { command: string | null; output: string | null; probe: string | null; state: string | null };
 }
 
 /**
@@ -201,6 +222,10 @@ export interface LabConfigDto {
   /** Comando de exemplo que roda o `entry` (no Linux, o aluno digita). */
   command: string;
   timeoutSeconds: number;
+  /** Bash: linhas de shell rodadas como root antes do terminal abrir (usuarios, grupos, arquivos). */
+  setup: string[];
+  /** Bash: usuario em que o terminal entra depois do `setup` (nulo = root). */
+  user: string | null;
 }
 
 /** Fase 86: o que o laboratorio produziu ao rodar o passo - vai junto do envio e da dica. */

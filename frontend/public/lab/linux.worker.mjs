@@ -1,7 +1,7 @@
 // Fase 87: runtime Linux do laboratorio - Alpine i386 com Bash num emulador x86 (v86) dentro de um Worker.
 // Imagens montadas por secret/curadoria/scripts/lab/montar_imagem.sh: kernel unico (linux/vmlinuz) e um
 // initramfs por perfil (linux/<basico|servidor>/initrd.zst). O terminal conversa pela porta serial.
-// Mensagens: init { image, files, services } -> progress* + ready | init-error;
+// Mensagens: init { image, files, services, setup, user } -> progress* + ready | init-error;
 //            exec { id, command } / write { id, path, text } -> result | error.
 import { V86 } from './v86/libv86.mjs';
 
@@ -78,7 +78,24 @@ async function writeFile(path, text) {
   await sh(`base64 -d /tmp/up.b64 > ${path}`);
 }
 
-async function init({ image, files, services }) {
+/** Entra no terminal de `user` (a shell de root e trocada: `exec su -`) e deixa o prompt/paste como o resto do laboratorio espera. */
+async function enterAs(user) {
+  serial = '';
+  emu.serial0_send(`exec su - ${user}\n`);
+  const started = Date.now();
+  // A shell nova demora um instante; repete o eco ate ela responder.
+  for (;;) {
+    await sleep(300);
+    serial = '';
+    emu.serial0_send("echo __RE''ADY\n");
+    await sleep(300);
+    if (/__READY\r?\n/.test(serial)) break;
+    if (Date.now() - started > 20000) throw new Error(`Não consegui entrar como ${user} no laboratório.`);
+  }
+  await sh("bind 'set enable-bracketed-paste off'; PS1='~% '");
+}
+
+async function init({ image, files, services, setup = [], user = null }) {
   const initrd = `./linux/${image}/initrd.zst`;
   const urls = ['./linux/vmlinuz', initrd, './vendor/bios/seabios.bin', './vendor/bios/vgabios.bin'];
   const tally = { loaded: 0, last: 0, total: (await Promise.all(urls.map(sizeOf))).reduce((a, b) => a + b, 0) };
@@ -111,9 +128,21 @@ async function init({ image, files, services }) {
   }
   await sh("bind 'set enable-bracketed-paste off'; PS1='~% '");
 
+  // Ambiente do dia (curadoria): linhas de shell como root (usuarios, grupos, arquivos) e depois o terminal entra como `user`.
+  if (setup.length) {
+    say({ type: 'progress', label: 'Montando o ambiente', loaded: 0, total: setup.length });
+    for (const [i, line] of setup.entries()) {
+      const { output, exitCode } = await sh(line);
+      if (exitCode !== 0) throw new Error(`O ambiente do laboratório falhou em "${line}": ${output.trim().slice(0, 200)}`);
+      say({ type: 'progress', label: 'Montando o ambiente', loaded: i + 1, total: setup.length });
+    }
+  }
+  if (user) await enterAs(user);
+  const home = user ? `/home/${user}` : '/root';
+
   say({ type: 'progress', label: 'Preparando os arquivos', loaded: 0, total: Math.max(files.length, 1) });
   for (const [i, f] of files.entries()) {
-    await writeFile(`/root/${f.name}`, f.data);
+    await writeFile(`${home}/${f.name}`, f.data);
     say({ type: 'progress', label: 'Preparando os arquivos', loaded: i + 1, total: files.length });
   }
 
@@ -121,7 +150,7 @@ async function init({ image, files, services }) {
     say({ type: 'progress', label: 'Iniciando o servidor do laboratório', loaded: 0, total: 1 });
     for (const service of services) {
       const exe = service.endsWith('.py') ? 'python3' : 'bash';
-      await sh(`cd /root; (${exe} ${service} >/dev/null 2>&1 &)`);
+      await sh(`cd ${home}; (${exe} ${service} >/dev/null 2>&1 &)`);
     }
     // O Python na CPU emulada leva ~15 s pra abrir a porta: espera aparecer um socket em LISTEN (estado 0A).
     const started = Date.now();

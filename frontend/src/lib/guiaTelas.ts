@@ -222,6 +222,10 @@ export const SESSION_STEP_ITEMS: Record<ActivityType, GuideItem> = {
     title: 'Passo de código',
     text: 'Escreva o que o passo pede. Com laboratório, você roda o código aqui mesmo e só envia depois de rodar; sem ele, rode na sua máquina e cole a saída. A dica da Focada (3 por passo) não gasta tentativa. Ajustar não conta como erro; na 3ª tentativa a solução aparece.',
   },
+  [ActivityType.TerminalMission]: {
+    title: 'Missão no terminal',
+    text: 'Um Linux de verdade roda aqui no navegador, já com você logado. Digite o comando da missão e o laboratório confere sozinho. Não tem nota nem tentativa, e a dica é à vontade. Só no computador.',
+  },
 };
 
 export const REINFORCEMENT_ITEM: GuideItem = {

@@ -104,6 +104,10 @@ export function TerminalPanel({
   disabled,
   serviceLabel,
   placeholder,
+  prompt = '~%',
+  title = 'Terminal do laboratório',
+  logClassName = 'max-h-36 min-h-14',
+  className = '',
 }: {
   entries: TerminalEntry[];
   onRun: (command: string) => void;
@@ -111,6 +115,12 @@ export function TerminalPanel({
   disabled: boolean;
   serviceLabel: string | null;
   placeholder: string;
+  /** Texto do prompt desenhado pelo app (o Bash da VM usa `~%` por dentro). */
+  prompt?: string;
+  title?: string;
+  /** Altura da area do historico (a missao no terminal usa um terminal mais alto). */
+  logClassName?: string;
+  className?: string;
 }) {
   const [command, setCommand] = useState('');
   const [recall, setRecall] = useState<number | null>(null);
@@ -140,16 +150,16 @@ export function TerminalPanel({
   }
 
   return (
-    <div className="flex flex-col gap-1.5 border-2 border-stroke bg-base px-3.5 py-2" data-testid="lab-terminal">
+    <div className={`flex flex-col gap-1.5 border-2 border-stroke bg-base px-3.5 py-2 ${className}`} data-testid="lab-terminal">
       <div className="flex items-center justify-between gap-3">
-        <p className="font-pixel-label text-[8px] text-secondary">Terminal do laboratório</p>
+        <p className="font-pixel-label text-[8px] text-secondary">{title}</p>
         {serviceLabel && <p className="font-pixel-label text-[8px] text-accent">● {serviceLabel}</p>}
       </div>
-      <div ref={logRef} className="max-h-36 min-h-14 overflow-y-auto font-mono text-xs leading-[14px] text-secondary" aria-live="polite">
+      <div ref={logRef} className={`overflow-y-auto font-mono text-xs leading-[14px] text-secondary ${logClassName}`} aria-live="polite">
         {entries.map((entry, i) => (
           <div key={i}>
             <div>
-              <span className="text-accent">~%</span> <span className="text-primary">{entry.command}</span>
+              <span className="text-accent">{prompt}</span> <span className="text-primary">{entry.command}</span>
             </div>
             {entry.output && <pre className="whitespace-pre-wrap">{entry.output}</pre>}
           </div>
@@ -157,7 +167,7 @@ export function TerminalPanel({
         {busy && <p className="text-project">▲ rodando…</p>}
       </div>
       <form onSubmit={submit} className="flex items-center gap-2 font-mono text-xs">
-        <span className="text-accent">~%</span>
+        <span className="text-accent">{prompt}</span>
         <input
           value={command}
           onChange={(e) => setCommand(e.target.value)}

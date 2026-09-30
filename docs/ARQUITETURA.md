@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 87 - Laboratorio de codigo (front): runtimes Python/JavaScript/Linux no navegador, tela do passo, dica e CSP de /lab/** (Fase 86: backend).
+> Ultima fase que atualizou este documento: **Fase 88 - Missao no terminal: o Linux embutido nos dias normais (atividade TerminalMission, lab sem editor com setup/user)** (Fase 87: front do laboratorio; Fase 86: backend).
 
 ## Visao geral do projeto
 
@@ -2489,6 +2489,22 @@ codigo nem verifica a saida** (adulteracao ignorada), so guarda a configuracao e
   esperada). Dias com `lab` hoje: pontes Python e JavaScript da Semana 1 do Web Security, Linux Dia 6 e Dia 12.
 - **Fora desta fase**: o front (feito na Fase 87, abaixo), o verificador de JavaScript, o exercicio por dia do
   Python pra Web Security.
+
+### Missao no terminal (Fase 88)
+
+Atividade `ActivityType.TerminalMission` (8) dos dias normais do Linux (piloto: Dia 2), logo depois da Leitura: so o
+terminal do Linux embutido (v86 da Fase 87), sem editor. O navegador confere cada missao (`frontend/src/lab/terminalMission.ts`:
+regex no comando, na saida e no estado medido por um `probe` silencioso); o servidor so registra a conclusao (Score fixo
+100, fora do Score de Estudo, como a Leitura) e nunca marca o dia como ponte (`DailyTemplate.IsBridge` so olha `CodeStep`).
+- `DailyActivity.TerminalMissionsJson` (coluna texto, migration `TerminalMission`) guarda as missoes (`TerminalMission`,
+  `TerminalMissionCheck`, validadas por `TerminalMissions.Create`); `DailyActivityDto.Missions` as entrega.
+- `LabConfig` ganhou `Setup` (linhas de shell como root antes do terminal abrir) e `User` (`su -` depois do setup);
+  `Entry`/`Command` sao opcionais num dia so de missoes (`LabConfig.NoEditor`; dia com `CodeStep` continua exigindo).
+  `DailyTemplate.SetLab` aceita `CodeStep` ou `TerminalMission`.
+- `CuratedDayImporter.ApplyMissions` (via `SyncLabConfigUseCase`, todo `seed`) insere a atividade num dia que ja esta
+  no banco (`DailyTemplate.InsertActivity` empurra as seguintes; respostas seguem o Id) e e idempotente.
+- Front: `TerminalMissionActivity`, `MissionsGauge`, progresso em memoria (`terminalMissionStore.ts`); celular segue sem as
+  missoes. Mock: `/__mock/reset?at=terminal`. Curadoria: `CURADORIA.md` 5.3 e `scripts/lab/verificar-missoes.mjs`.
 
 ### Laboratorio de codigo (Fase 87, front)
 

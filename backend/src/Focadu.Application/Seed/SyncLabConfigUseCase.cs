@@ -5,10 +5,12 @@ using Focadu.Domain.Repositories;
 namespace Focadu.Application.Seed;
 
 /// <summary>
-/// Fase 86: leva o laboratorio de codigo (bloco <c>lab</c>, codigo inicial e opt-out por passo, secret/curadoria/
+/// Fase 86 (e missao no terminal): leva o laboratorio de codigo (bloco <c>lab</c>, codigo inicial e opt-out por passo, secret/curadoria/
 /// CURADORIA.md 5.2) pros dias que JA estao no banco. Os seeds nunca reimportam um dia existente, e uma
 /// reimportacao apagaria o progresso de quem esta no meio - entao isto so atualiza a configuracao do
-/// DailyTemplate e dos passos (<see cref="CuratedDayImporter.ApplyLab"/>). Roda junto do `seed`, em todo
+/// DailyTemplate e dos passos (<see cref="CuratedDayImporter.ApplyLab"/>). Nos dias cujo arquivo traz a atividade
+/// <c>TerminalMission</c> (dias normais do Linux), ela tambem entra no dia do banco sem reimportar
+/// (<see cref="CuratedDayImporter.ApplyMissions"/>). Roda junto do `seed`, em todo
 /// deploy, e e idempotente: depois da 1a vez nao muda nada.
 ///
 /// Pra cada curso curado (Web Security + os de <see cref="SeedCuratedCoursesUseCase.CourseSlugs"/>) e cada
@@ -55,7 +57,7 @@ public class SyncLabConfigUseCase
 
             foreach (var week in graph.Monthlies.SelectMany(m => m.WeeklyTemplates))
             {
-                foreach (var day in week.DailyTemplates.Where(d => d.Activities.Any(a => a.Type == ActivityType.CodeStep)))
+                foreach (var day in week.DailyTemplates)
                 {
                     var fileName = day.Language is { } language
                         ? Path.Combine("ponte", $"{language.ToString().ToLowerInvariant()}.json")
@@ -65,9 +67,16 @@ public class SyncLabConfigUseCase
                     var path = CuratedContentLocator.Resolve(slug, $"semana-{week.Number}", fileName, required: false);
                     if (path is null) continue;
 
+                    // Dia de ponte (passo de codigo no banco) ou dia cujo arquivo traz missao no terminal.
+                    var hasCodeStep = day.Activities.Any(a => a.Type == ActivityType.CodeStep);
+                    if (!hasCodeStep && !CuratedDayImporter.FileHasActivityType(path, ActivityType.TerminalMission)) continue;
+
                     try
                     {
-                        if (CuratedDayImporter.ApplyLab(week, day, path))
+                        // Missoes primeiro: o laboratorio do dia exige que a atividade ja exista (SetLab).
+                        var missions = CuratedDayImporter.ApplyMissions(day, path);
+                        var lab = CuratedDayImporter.ApplyLab(week, day, path);
+                        if (missions || lab)
                             updated.Add(label);
                     }
                     catch (Exception ex) when (ex is InvalidOperationException or DomainException)

@@ -41,7 +41,9 @@ public record LabConfigDto(
     IReadOnlyCollection<string> Services,
     string Entry,
     string Command,
-    int TimeoutSeconds);
+    int TimeoutSeconds,
+    IReadOnlyCollection<string> Setup,
+    string? User);
 
 /// <summary>Fase 86: uma dica da Focada num passo de codigo com laboratorio (tres blocos curtos).</summary>
 public record CodeStepHintDto(int Number, string Right, string Wrong, string Improve, DateTime CreatedAt);
@@ -60,7 +62,13 @@ public record DailyActivityDto(
     IReadOnlyCollection<WordMatchDefinitionDto> WordMatchDefinitions,
     IReadOnlyCollection<RoleplayNodeDto> RoleplayNodes,
     IReadOnlyCollection<ActivityResponseDto> Responses,
-    CodeStepDto? CodeStep = null);
+    CodeStepDto? CodeStep = null,
+    IReadOnlyCollection<TerminalMissionDto>? Missions = null);
+
+/// <summary>Missao no terminal (ActivityType.TerminalMission): o navegador do aluno confere pelo <see cref="TerminalMissionCheckDto"/>; nada aqui e segredo.</summary>
+public record TerminalMissionDto(string Title, string Prompt, IReadOnlyCollection<string> Hints, string Note, TerminalMissionCheckDto Check);
+
+public record TerminalMissionCheckDto(string? Command, string? Output, string? Probe, string? State);
 
 /// <summary>
 /// Passo de codigo da ponte (Fase 79), so em DailyActivityDto de tipo CodeStep. PriorCode e o

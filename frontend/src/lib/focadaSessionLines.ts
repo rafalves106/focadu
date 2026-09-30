@@ -48,6 +48,12 @@ export function blockIntro(type: ActivityType, answerMode: AnswerMode, count: nu
         text: `Agora é mão na massa: ${count === 1 ? 'um passo' : `${count} passos`} de código, um pedaço do script por vez. Você roda na sua máquina contra o arquivo do dia e me manda o código e a saída. Eu confiro o conceito, não o estilo. Sintaxe é por minha conta, é só perguntar.`,
         rules: ['Código + saída', `${maxAttempts} tentativas por passo`, 'Ajustar não é erro'],
       };
+    case ActivityType.TerminalMission:
+      return {
+        title: 'Missão no terminal',
+        text: `Agora é mão na massa: ${count === 1 ? 'uma missão' : `${count} missões`} num Linux de verdade, que roda aqui no seu navegador e não mexe no seu computador. Você já entra logado. Digite o comando e eu confiro sozinha: sem nota, sem tentativa gasta. Errou? Digita de novo.`,
+        rules: [`${count} ${count === 1 ? 'missão' : 'missões'}`, 'Sem nota', 'Dica à vontade'],
+      };
     default:
       return { title: 'Próxima etapa', text: 'Bora pra próxima, agente.', rules: [] };
   }

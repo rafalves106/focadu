@@ -24,6 +24,9 @@ public class DailyActivityConfiguration : IEntityTypeConfiguration<DailyActivity
         // Fase 86: laboratorio de codigo - codigo inicial do editor e opt-out do passo.
         builder.Property(a => a.CodeStarter);
         builder.Property(a => a.LabDisabled).IsRequired().HasDefaultValue(false);
+        // Missao no terminal: lista de missoes em JSON (texto).
+        builder.Property(a => a.TerminalMissionsJson);
+        builder.Ignore(a => a.TerminalMissionList);
         builder.Property(a => a.DailyTemplateId).IsRequired();
 
         builder.HasMany(a => a.QuizOptions)
