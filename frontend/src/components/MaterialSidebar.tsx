@@ -5,7 +5,7 @@ import playThumbnailActive from '../assets/pixel/play-ativo.png';
 import checkIcon from '../assets/pixel/check.png';
 import { CardLabel } from './CardLabel';
 
-const GROUP_LABEL: Record<number, string> = { 0: 'LEITURA', 1: 'VÍDEO', 2: 'ARQUIVO DA PONTE' };
+const GROUP_LABEL: Record<number, string> = { 0: 'LEITURA', 1: 'VÍDEO', 2: 'ARQUIVO' };
 
 /**
  * "Material de hoje" (design Figma sessao-leitura/sessao-video, Fase 7) - a lista de
