@@ -10,9 +10,11 @@ export interface LabSnapshot {
   error: string | null;
   /** O runtime caiu (timeout/parar) e esta subindo de novo. */
   restarting: boolean;
+  /** Linux: o diretorio atual do terminal (o `cd` do aluno vale entre comandos e entre os passos do dia). */
+  cwd: string | null;
 }
 
-const IDLE: LabSnapshot = { status: 'idle', progress: null, error: null, restarting: false };
+const IDLE: LabSnapshot = { status: 'idle', progress: null, error: null, restarting: false, cwd: null };
 
 /** Nome do arquivo no ambiente: o ultimo trecho do endereco do File ("/ponte/.../ponte.pcap" -> "ponte.pcap"). */
 function fileName(content: CuratedContentDto): string {
@@ -58,7 +60,7 @@ export class LabSession {
     this.key = key;
     const client = new LabClient();
     this.client = client;
-    this.set({ status: 'loading', progress: null, error: null, restarting: false });
+    this.set({ status: 'loading', progress: null, error: null, restarting: false, cwd: null });
     // O download manda um evento por pedaco (centenas por segundo): junta e atualiza a tela no maximo a cada 100 ms,
     // senao o React estoura o limite de atualizacoes aninhadas.
     let latest: LabProgress | null = null;
@@ -72,7 +74,8 @@ export class LabSession {
         if (latest && this.client === client && this.current.status === 'loading') this.set({ progress: latest });
       }, 100);
     };
-    client.onStatus = (status) => this.set({ restarting: status === 'restarting' });
+    // Reiniciar recria o shell, que volta pro home.
+    client.onStatus = (status) => this.set(status === 'restarting' ? { restarting: true, cwd: null } : { restarting: false });
 
     this.starting = (async () => {
       const buffers = await Promise.all(
@@ -122,8 +125,10 @@ export class LabSession {
     return this.guarded((c) => c.run(script, argv, entry));
   }
 
-  exec(command: string): Promise<LabRunResult> {
-    return this.guarded((c) => c.exec(command));
+  async exec(command: string): Promise<LabRunResult> {
+    const result = await this.guarded((c) => c.exec(command));
+    if (result.cwd !== null && result.cwd !== this.current.cwd) this.set({ cwd: result.cwd });
+    return result;
   }
 
   write(path: string, text: string): Promise<void> {

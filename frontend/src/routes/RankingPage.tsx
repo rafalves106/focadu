@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { CourseSwitcher } from '../components/CourseSwitcher';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import type { RankingScope } from '../api/types';
@@ -21,6 +22,7 @@ const SCOPE_SUBTITLE: Record<RankingScope, string> = { weekly: 'semana atual', m
  */
 export function RankingPage({ courseId }: { courseId: string }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [scope, setScope] = useState<RankingScope>('course');
   const { data, error, loading, retry } = useApiResource(() => api.getCourseRanking(courseId, scope), [courseId, scope]);
   const { data: courses } = useApiResource(() => api.getCourses(), []);
@@ -38,7 +40,10 @@ export function RankingPage({ courseId }: { courseId: string }) {
           <img src={backArrow} alt="" className="size-4 pixelated" />
           Voltar pra trilha
         </Link>
-        <h1 className="truncate font-pixel-label text-[9px] text-muted">Ranking · {courseName}</h1>
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-4 gap-y-2">
+          <CourseSwitcher courses={courses} selectedId={courseId} onSelect={(id) => id && navigate(`/start?course=${id}&ranking=1`)} />
+          <h1 className="truncate font-pixel-label text-[9px] text-muted">Ranking · {courseName}</h1>
+        </div>
       </header>
 
       {error ? (

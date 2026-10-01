@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { api } from '../api/client';
+import { pickCourse } from '../lib/courseChoice';
 import { useApiResource } from '../api/useApiResource';
-import { CourseStatus } from '../api/types';
 import logoWordmark from '../assets/pixel/logo-wordmark.png';
 import navHoje from '../assets/pixel/nav-hoje.png';
 import navTrilhas from '../assets/pixel/nav-trilhas.png';
@@ -63,8 +63,8 @@ export function GlobalNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const settings = useSettings();
   const { data: courses } = useApiResource(() => api.getCourses(), []);
-  const activeCourse = courses?.find((c) => c.status === CourseStatus.Active) ?? courses?.[0] ?? null;
-  const courseId = activeCourse?.id ?? null;
+  // 01/10/2026: com 2+ cursos, Trilhas e Ranking abrem o ultimo curso aberto (cada tela tem o seletor).
+  const courseId = pickCourse(courses)?.id ?? null;
 
   const trilhaHref = courseId ? `/start?course=${courseId}` : '/start';
   const rankingHref = courseId ? `/start?course=${courseId}&ranking=1` : '/start';

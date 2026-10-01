@@ -6,6 +6,8 @@ import { lookFromDto, type AgentLook } from '../../lib/agentSprites';
 import { MEDALS } from '../../lib/profileLook';
 import { AgentSprite } from '../agent/AgentSprite';
 import { PixelConfirmDialog } from '../PixelConfirmDialog';
+import { CourseSwitcher } from '../CourseSwitcher';
+import { pickCourse } from '../../lib/courseChoice';
 import { ScrollArea } from '../ScrollArea';
 import { PanelLabel } from './pixelStage';
 import crownIcon from '../../assets/pixel/coroa.png';
@@ -48,7 +50,14 @@ export function SquadRanking({
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { data, retry } = useApiResource(() => api.getSquadRanking(scope, page), [scope, page]);
+  // 01/10/2026: com 2+ cursos, o ranking e de um curso por vez (o ultimo aberto) ou de todos somados.
+  const { data: courses } = useApiResource(() => api.getCourses(), []);
+  const [courseChoice, setCourseChoice] = useState<string | null | undefined>(undefined);
+  const courseId = courseChoice !== undefined ? courseChoice : courses && courses.length > 1 ? (pickCourse(courses)?.id ?? null) : null;
+  const { data, retry } = useApiResource(
+    () => (courses ? api.getSquadRanking(scope, page, courseId) : Promise.resolve(null)),
+    [scope, page, courseId, courses],
+  );
   const looks = new Map(members.map((m) => [m.userId, lookFromDto(m.look)]));
   const isOwner = ownerUserId === userId;
 
@@ -132,6 +141,15 @@ export function SquadRanking({
       >
         Ranking
       </PanelLabel>
+      <CourseSwitcher
+        courses={courses}
+        selectedId={courseId}
+        allLabel="Todos"
+        onSelect={(id) => {
+          setCourseChoice(id);
+          setPage(1);
+        }}
+      />
 
       <ScrollArea className="lg:min-h-0 lg:flex-1" contentClassName="flex flex-col gap-3 lg:pr-4">
         {top.length > 0 && (

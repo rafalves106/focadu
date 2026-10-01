@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 88 - Missao no terminal: o Linux embutido nos dias normais (atividade TerminalMission, lab sem editor com setup/user)** (Fase 87: front do laboratorio; Fase 86: backend).
+> Ultima fase que atualizou este documento: **Fase 90 - Missao no terminal v3: situacao/objetivo/passos por missao, cola "Comandos de hoje", prompt com o diretorio e clear de verdade** (Fase 89: mais de um curso; Fase 88: missao no terminal; Fase 87: front do laboratorio).
 
 ## Visao geral do projeto
 
@@ -1311,7 +1311,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 GET | `/api/weeklies/{weeklyId}` | `GetWeeklyDetailUseCase` | 200, 404 se nao existe/nao e do usuario - Fase 15: `WeeklyDetailDto` ganhou `HasPendingWeeklyReinforcement`. Fase 29: ganhou `CourseId` (resolvido via `IMonthlyRepository.GetByIdAsync(weekly.MonthlyId)` - Weekly/instancia nao guarda CourseId direto, so Monthly/template). Fase 39: `DailyOverviewDto` ganhou `Title` (titulo do `CuratedContent` da atividade de Leitura do dia, Video como fallback; nulo se nenhum dos dois existir) - Daily nao tem titulo proprio, so usado por `WeeklyDetailPage` |
 | 🔒 GET | `/api/weekly-templates/{id}` | `GetWeeklyTemplateDetailUseCase` (Fase 13b) | 200, 404 - WeeklyTemplate (curriculo), sem exigir matricula; so `/admin/conteudo` usa isso |
 | 🔒 GET | `/api/dailies/{dailyId}` | `GetDailyStateUseCase` | 200, 404/400/409 (ver abaixo) |
-| 🔒 GET | `/api/today?courseId=` | `GetTodayUseCase` | 200, 404/409 (ver "GET /api/today" abaixo); `courseId` opcional desde a Fase 66 |
+| 🔒 GET | `/api/today?courseId=` | `GetTodayUseCase` | 200, 404/409 (ver "GET /api/today" abaixo); `courseId` opcional desde a Fase 66. Com 2+ matrículas o front sempre manda (`/hoje` pergunta o curso antes, `TodayCourseChoice`, 01/10/2026) |
 | 🔒 POST | `/api/dailies/{dailyId}/start` | `StartOrResumeDailyUseCase` | 200 |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses` | `SubmitActivityResponseUseCase` | 201 (cria uma nova `ActivityResponse`) |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/audio` | `SubmitVoiceSummaryResponseUseCase` (Fase 5) | 201, `multipart/form-data`, so pra `VoiceSummary` |
@@ -1342,7 +1342,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 POST | `/api/squads` | `CreateSquadUseCase` (Fase 24) | 201 (`SquadDto`), 409 `ja_esta_em_squad` |
 | 🔒 POST | `/api/squads/join` | `JoinSquadUseCase` (Fase 24; pedido desde a Fase 77) | 200 (`SquadJoinRequestDto` pendente - o mesmo se ja havia um aberto pra este squad), 404 `codigo_invalido`, 409 `ja_esta_em_squad`/`pedido_recusado` |
 | 🔒 DELETE | `/api/squads/members/{userId}` | `LeaveSquadUseCase` (se `{userId}` = usuario logado) ou `RemoveMemberUseCase` (Fase 24) | 204, 404 `squad_nao_encontrado`/`membro_nao_encontrado`, 409 `dono_nao_pode_sair`/`dono_nao_pode_se_remover` |
-| 🔒 GET | `/api/squads/me/ranking?scope=&page=` | `GetSquadRankingUseCase` (Fase 24) | 200 (`SquadRankingResultDto`) - gera `JoinCode` na 1a consulta (lazy), `Members` paginado (Fase 24c), 404 `squad_nao_encontrado` |
+| 🔒 GET | `/api/squads/me/ranking?scope=&page=&courseId=` | `GetSquadRankingUseCase` (Fase 24) | 200 (`SquadRankingResultDto`) - gera `JoinCode` na 1a consulta (lazy), `Members` paginado (Fase 24c), 404 `squad_nao_encontrado`; `courseId` opcional (01/10/2026): só a matrícula daquele curso entra no score de cada membro, sem ele todos os cursos somados |
 | 🔒 POST | `/api/dailies/{dailyId}/notes/review` | `ReviewDailyNotesUseCase` (Fase 78) | 200 (`NotesReviewDto`); 400 `sem_notas`, 404 `daily_nao_encontrada`, 409 `limite_revisoes` (10/dia), 502/503 da IA |
 | 🔒 GET | `/api/courses/{courseId}/notes/reviews` | `ListNotesReviewsUseCase` (Fase 78) | 200 (`NotesReviewsDto`: ultima revisao de cada dia com `upToDate`, `remainingToday`, `dailyLimit`) |
 | 🔒 GET | `/api/squads/requests/me` | `GetMySquadJoinRequestUseCase` (Fase 77) | 200 (`SquadJoinRequestDto`, status `pending`/`rejected`) ou 204 sem pedido pra mostrar |
@@ -2489,6 +2489,47 @@ codigo nem verifica a saida** (adulteracao ignorada), so guarda a configuracao e
   esperada). Dias com `lab` hoje: pontes Python e JavaScript da Semana 1 do Web Security, Linux Dia 6 e Dia 12.
 - **Fora desta fase**: o front (feito na Fase 87, abaixo), o verificador de JavaScript, o exercicio por dia do
   Python pra Web Security.
+
+### Missao no terminal v3 (Fase 90)
+
+Dor do dono como aluno (01/10/2026): o `clear` apagava tudo, o prompt nao mostrava o diretorio, era preciso voltar a
+Leitura pra lembrar os comandos e as missoes nao davam objetivo. Figma "Missao no terminal — v3 (proposta)" (`209:10810`,
+aprovado em 01/10/2026).
+- **Dados**: `TerminalMission` ganhou `Situation`, `Goal` e `Steps` (opcionais, aparados na importacao) e entrou
+  `TerminalCommand(Command, Description)` - a cola do dia, na atividade. `TerminalMissionsJson` passou a guardar
+  `{"missions": [...], "commands": [...]}`; `TerminalMissions.Parse` ainda le o formato antigo (so a lista), entao nao
+  houve migration e o `seed` (`ApplyMissions`, que compara o JSON) regrava os dias no formato novo.
+  `DailyActivityDto.Commands` e os campos novos de `TerminalMissionDto` vao pro front.
+- **Prompt com o diretorio**: `linux.worker.mjs` fecha cada comando com `__END<id>:<rc>:<pwd>`; o `runner.mjs` repassa,
+  `LabRunResult.cwd` chega ao app e `LabSession` guarda em `snapshot.cwd` (volta a nulo quando o runtime reinicia).
+  `shellPrompt(user, cwd)` (`lab/labOutput.ts`) desenha `agente@srv:~/pasta$`; cada linha do historico guarda o prompt
+  de quando foi digitada. Vale na missao e no terminal da ponte.
+- **`TerminalPanel`**: o campo segue a ultima linha (sobe pro topo depois do `clear`), `clear`/Ctrl+L/"Limpar" deixam a
+  linha `── tela limpa · ultimo comando: X ──` e o historico segue inteiro nas setas e na conferencia; `fill` poe um
+  texto no campo sem rodar.
+- **`TerminalMissionActivity`**: titulo + chips 1..N no lugar da lista lateral; caixa SITUACAO / OBJETIVO / PASSOS (ou
+  FACA, com o enunciado, em missao de um comando so); cola "Comandos de hoje" ao lado do terminal (clique copia pro
+  campo). Missao cumprida desliga a dica ("Dica · —"). Bloco curado antes do v3 (sem `situation`/`commands`) cai no
+  layout da Fase 88.
+- Curadoria: `CURADORIA.md` 5.3 (campos novos), fonte `scripts/linux-missoes/contexto_missoes.py`; o
+  `verificar-missoes.mjs` recusa missao sem `situation`/`goal` ou dia sem `commands`.
+
+### Mais de um curso (Fase 89)
+
+Com 2+ matriculas, `GET /api/today` sem `?courseId=` responde 409 `multiplas_matriculas_ativas` (Fase 13); o front passou
+a sempre escolher o curso:
+- `/hoje` sem `?daily=`/`?curso=` lista os cursos (`GET /api/courses`) e, com 2+, mostra `TodayCourseChoice` (os save
+  slots do start, `CourseSlots`) com o ultimo curso aberto marcado; "Abrir a sessao" vai pra `/hoje?curso=<id>`, que
+  chama `GET /api/today?courseId=`. Com 1 curso, comportamento de sempre.
+- **Ultimo curso aberto** (`lib/courseChoice.ts`, `localStorage` `focadu:ultimo-curso`): gravado por `/start?course=`,
+  pelos slots do start, pela sessao (curso da Weekly) e pelo seletor do Perfil. `pickCourse` resolve o padrao: o pedido
+  na URL, senao o ultimo aberto, senao o primeiro publicado. Vale pro menu (Trilhas/Ranking), start e Perfil.
+- `CourseSwitcher` (so com 2+ cursos): Trilha ("Trocar de trilha"), Ranking (navega pra `/start?course=&ranking=1`),
+  Perfil (`?curso=`, troca progresso, Score e posicao; os dados gerais nao recarregam) e ranking do QG do Squad (com
+  "Todos").
+- `GET /api/squads/me/ranking?courseId=` (opcional): so a matricula daquele curso entra no score de cada membro (quem
+  nao faz o curso fica com 0); sem ele, todas as matriculas somadas. Meta da semana e feed do QG seguem somando tudo.
+- Mock: `/__mock/reset?cursos=2` (Web Security + Linux; `/api/today` sem curso devolve o 409 como o backend).
 
 ### Missao no terminal (Fase 88)
 

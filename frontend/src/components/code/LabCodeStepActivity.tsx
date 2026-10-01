@@ -5,7 +5,7 @@ import { isFirstOfActivityGroup } from '../../lib/activityGroup';
 import { useSession } from '../../lib/sessionContext';
 import { useIsDesktop } from '../../lib/useIsDesktop';
 import { useLab } from '../../lab/labContext';
-import { argvFor, displayOutput, errorLine, formatSeconds, runtimeLabel, toPayload, toRecord, type LabRunRecord } from '../../lab/labOutput';
+import { argvFor, displayOutput, errorLine, formatSeconds, runtimeLabel, shellPrompt, toPayload, toRecord, type LabRunRecord } from '../../lab/labOutput';
 import { MarkdownBlock } from '../activities/MarkdownBlock';
 import { SessionFooter, SessionLayout } from '../SessionShell';
 import { BlockIntro } from '../session/BlockIntro';
@@ -105,6 +105,7 @@ export function LabCodeStepActivity({
   const ready = snapshot.status === 'ready';
   const loading = snapshot.status === 'loading' || snapshot.status === 'idle';
   const running = snapshot.status === 'running';
+  const terminalPrompt = lab.user ? shellPrompt(lab.user, snapshot.cwd) : undefined;
   const freshRun = lastRun !== null && ranCode === code ? lastRun : null;
   const failedLine = freshRun ? errorLine(freshRun.output, freshRun.exitCode) : null;
   const canSubmit = Boolean(code.trim()) && freshRun !== null && ready && !submitting;
@@ -145,7 +146,7 @@ export function LabCodeStepActivity({
       // Timeout/parar derrubam a VM: ela sobe limpa e o proximo comando regrava o arquivo.
       if (result.timedOut || result.aborted) syncedScript.current = null;
       const record = toRecord(result);
-      const entry: TerminalEntry = { command, output: displayOutput(record, lab.timeoutSeconds), exitCode: result.exitCode };
+      const entry: TerminalEntry = { command, output: displayOutput(record, lab.timeoutSeconds), exitCode: result.exitCode, prompt: terminalPrompt };
       const next = [...entries, entry];
       setEntries(next);
       setLastRun({ ...record, output: entry.output, commands: next });
@@ -336,7 +337,7 @@ export function LabCodeStepActivity({
                   disabled={!ready}
                   serviceLabel={lab.services[0] ? `${lab.services[0]} rodando` : null}
                   placeholder={`digite um comando (ex.: ${lab.command})`}
-                  prompt={lab.user ? `${lab.user}@srv:~$` : undefined}
+                  prompt={terminalPrompt}
                 />
               )
             ) : (

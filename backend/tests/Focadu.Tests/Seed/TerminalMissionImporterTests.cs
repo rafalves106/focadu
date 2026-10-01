@@ -212,4 +212,37 @@ public class TerminalMissionImporterTests
 
         Assert.Equal(100, SubmitActivityResponseUseCase.ResolveScore(activity, null, null, null));
     }
+
+    [Fact]
+    public void Import_ReadsTheV3Context_AndTheCommandSheet()
+    {
+        const string withContext = """
+        { "title": "Ler as permissoes", "prompt": "crie o notas.txt e confira.", "hints": ["Tres passos."], "note": "rw-r-----.",
+          "check": { "command": "^ls\\s+-l" }, "situation": " O time devs le suas notas. ", "goal": "Ver -rw-r-----.",
+          "steps": ["Crie o arquivo", " ", "Confira com ls -l"] }
+        """;
+        var week = NewWeeklyTemplate();
+        CuratedDayImporter.Import(week, Day(withContext).Replace(
+            "\"missions\": [",
+            "\"commands\": [ { \"command\": \"chmod 640 arq\", \"description\": \" dono, grupo, outros \" } ], \"missions\": ["));
+
+        var activity = week.DailyTemplates.Single().Activities.Single(a => a.Type == ActivityType.TerminalMission);
+        var mission = Assert.Single(activity.TerminalMissionList);
+        Assert.Equal("O time devs le suas notas.", mission.Situation);
+        Assert.Equal("Ver -rw-r-----.", mission.Goal);
+        Assert.Equal(["Crie o arquivo", "Confira com ls -l"], mission.Steps);
+        var command = Assert.Single(activity.TerminalCommandList);
+        Assert.Equal(new TerminalCommand("chmod 640 arq", "dono, grupo, outros"), command);
+    }
+
+    [Fact]
+    public void Parse_StillReadsTheOldListOnlyFormat()
+    {
+        const string old = """[{"title":"Quem sou eu","prompt":"p","hints":["h"],"note":"n","check":{"command":"^id"}}]""";
+
+        var mission = Assert.Single(TerminalMissions.Parse(old));
+        Assert.Equal("Quem sou eu", mission.Title);
+        Assert.Null(mission.Situation);
+        Assert.Empty(TerminalMissions.ParseCommands(old));
+    }
 }

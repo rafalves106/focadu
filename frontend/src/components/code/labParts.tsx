@@ -91,11 +91,17 @@ export interface TerminalEntry {
   command: string;
   output: string;
   exitCode: number;
+  /** O prompt de quando o comando foi digitado (o diretorio muda com `cd`). */
+  prompt?: string;
 }
 
 /**
  * Terminal do Linux (Figma, quadro 05): o aluno digita a linha de comando e a saida aparece aqui. Cada
  * comando vira uma entrada do historico - e o historico que vai pra Focada junto com o envio e a dica.
+ *
+ * Terminal v3 (01/10/2026, Figma "Missao no terminal — v3"): o campo segue a ultima linha, como num terminal de
+ * verdade (depois do `clear` ele sobe pro topo), e o `clear` deixa uma linha apagada com o ultimo comando. `fill`
+ * poe um texto no campo sem rodar (a cola "Comandos de hoje").
  */
 export function TerminalPanel({
   entries,
@@ -108,6 +114,7 @@ export function TerminalPanel({
   title = 'Terminal do laboratório',
   logClassName = 'max-h-36 min-h-14',
   className = '',
+  fill = null,
 }: {
   entries: TerminalEntry[];
   onRun: (command: string) => void;
@@ -121,23 +128,47 @@ export function TerminalPanel({
   /** Altura da area do historico (a missao no terminal usa um terminal mais alto). */
   logClassName?: string;
   className?: string;
+  /** Poe `text` no campo (sem rodar); `seq` muda a cada pedido, pra repetir o mesmo texto. */
+  fill?: { text: string; seq: number } | null;
 }) {
   const [command, setCommand] = useState('');
   const [recall, setRecall] = useState<number | null>(null);
   /** Limpar so esconde o historico na tela: ele segue inteiro em `entries` (Focada, missao, setas). */
   const [clearedAt, setClearedAt] = useState(0);
   const visible = entries.slice(Math.min(clearedAt, entries.length));
+  const lastBeforeClear = clearedAt > 0 ? entries[Math.min(clearedAt, entries.length) - 1]?.command : undefined;
   const logRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const el = logRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [entries, busy]);
+  }, [entries, busy, clearedAt]);
+
+  // O campo fica desabilitado enquanto o comando roda e perde o foco: devolve pra quem estava digitando.
+  const typing = useRef(false);
+  useEffect(() => {
+    if (!busy && !disabled && typing.current) inputRef.current?.focus({ preventScroll: true });
+  }, [busy, disabled]);
+
+  // Pedido novo da cola: troca o texto do campo durante o render (sem efeito) e so o foco fica pro efeito.
+  const [appliedFill, setAppliedFill] = useState(fill);
+  if (fill !== appliedFill) {
+    setAppliedFill(fill);
+    if (fill) {
+      setCommand(fill.text);
+      setRecall(null);
+    }
+  }
+  useEffect(() => {
+    if (fill) inputRef.current?.focus();
+  }, [fill]);
 
   function submit(e: FormEvent) {
     e.preventDefault();
     const text = command.trim();
     if (!text || busy || disabled) return;
+    typing.current = true;
     setCommand('');
     setRecall(null);
     if (text === 'clear') {
@@ -175,40 +206,46 @@ export function TerminalPanel({
             type="button"
             onClick={clear}
             disabled={visible.length === 0}
-            title="Limpar o terminal (Ctrl+L)"
+            title="Limpar o terminal (Ctrl+L ou clear)"
             className="font-pixel-label text-[8px] text-secondary hover:text-primary disabled:opacity-40"
             data-testid="lab-terminal-clear"
           >
-            Limpar
+            Limpar · Ctrl+L
           </button>
         </div>
       </div>
-      <div ref={logRef} className={`overflow-y-auto font-mono text-xs leading-[14px] text-secondary ${logClassName}`} aria-live="polite">
+      <div ref={logRef} onClick={() => inputRef.current?.focus()} className={`overflow-y-auto font-mono text-xs leading-[14px] text-secondary ${logClassName}`} aria-live="polite">
+        {lastBeforeClear !== undefined && visible.length === 0 && (
+          <p className="truncate text-muted" data-testid="lab-terminal-cleared">
+            ── tela limpa · último comando: {lastBeforeClear} ──
+          </p>
+        )}
         {visible.map((entry, i) => (
           <div key={clearedAt + i}>
             <div>
-              <span className="text-accent">{prompt}</span> <span className="text-primary">{entry.command}</span>
+              <span className="text-accent">{entry.prompt ?? prompt}</span> <span className="text-primary">{entry.command}</span>
             </div>
             {entry.output && <pre className="whitespace-pre-wrap">{entry.output}</pre>}
           </div>
         ))}
         {busy && <p className="text-project">▲ rodando…</p>}
+        <form onSubmit={submit} className="flex items-center gap-2">
+          <span className="text-accent">{prompt}</span>
+          <input
+            ref={inputRef}
+            value={command}
+            onChange={(e) => setCommand(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={disabled || busy}
+            spellCheck={false}
+            autoCapitalize="off"
+            autoComplete="off"
+            aria-label="Comando do terminal"
+            placeholder={placeholder}
+            className="min-w-0 flex-1 bg-transparent text-primary outline-none placeholder:text-muted disabled:opacity-50"
+          />
+        </form>
       </div>
-      <form onSubmit={submit} className="flex items-center gap-2 font-mono text-xs">
-        <span className="text-accent">{prompt}</span>
-        <input
-          value={command}
-          onChange={(e) => setCommand(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={disabled || busy}
-          spellCheck={false}
-          autoCapitalize="off"
-          autoComplete="off"
-          aria-label="Comando do terminal"
-          placeholder={placeholder}
-          className="min-w-0 flex-1 bg-transparent text-primary outline-none placeholder:text-muted disabled:opacity-50"
-        />
-      </form>
     </div>
   );
 }

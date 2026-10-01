@@ -68,6 +68,9 @@ public class DailyActivity : Entity
 
     public IReadOnlyList<TerminalMission> TerminalMissionList => TerminalMissions.Parse(TerminalMissionsJson);
 
+    /// <summary>Terminal v3: a cola "Comandos de hoje" da atividade (vazia em missao curada antes dela).</summary>
+    public IReadOnlyList<TerminalCommand> TerminalCommandList => TerminalMissions.ParseCommands(TerminalMissionsJson);
+
     private readonly List<QuizOption> _quizOptions = new();
     public IReadOnlyCollection<QuizOption> QuizOptions => _quizOptions.AsReadOnly();
 
@@ -155,12 +158,12 @@ public class DailyActivity : Entity
     }
 
     /// <summary>Missao no terminal: define as missoes do bloco (validadas por <see cref="TerminalMissions.Create"/>).</summary>
-    public void ConfigureTerminalMissions(IEnumerable<TerminalMission> missions, string? prompt = null)
+    public void ConfigureTerminalMissions(IEnumerable<TerminalMission> missions, string? prompt = null, IEnumerable<TerminalCommand>? commands = null)
     {
         if (Type != ActivityType.TerminalMission)
             throw new DomainException("Missoes so valem pra atividades do tipo TerminalMission.");
 
-        TerminalMissionsJson = TerminalMissions.Serialize(TerminalMissions.Create(missions));
+        TerminalMissionsJson = TerminalMissions.Serialize(TerminalMissions.Create(missions), TerminalMissions.CreateCommands(commands));
         if (prompt is not null) Prompt = prompt;
     }
 

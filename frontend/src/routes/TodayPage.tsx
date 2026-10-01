@@ -3,7 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { useSettings } from '../contexts/useSettings';
-import { ActivityType, AnswerMode, ActivityStatus, DailyAccessMode, type DailyStateDto, type CompleteDailyResult, type WeeklyDetailDto } from '../api/types';
+import { ActivityType, AnswerMode, ActivityStatus, DailyAccessMode, type CourseSummaryDto, type DailyStateDto, type CompleteDailyResult, type WeeklyDetailDto } from '../api/types';
+import { rememberCourse } from '../lib/courseChoice';
+import { TodayCourseChoice } from '../components/session/TodayCourseChoice';
 import { classifyApiError, type ApiFailure } from '../lib/apiError';
 import { SessionContext, type SessionContextValue } from '../lib/sessionContext';
 import { LabContext, useLabSessionOwner } from '../lab/labContext';
@@ -107,6 +109,8 @@ function useSessionExitGuard(active: boolean, onIntercept: () => void) {
 export function TodayPage() {
   const [searchParams] = useSearchParams();
   const overrideDailyId = searchParams.get('daily');
+  // 01/10/2026: com 2+ matriculas, "/hoje" pergunta o curso (TodayCourseChoice) e volta com `?curso=`.
+  const courseParam = searchParams.get('curso');
   const settings = useSettings();
   // Fase 87: laboratorio de codigo do dia - vive durante a sessao inteira (o passo e remontado a cada etapa).
   const lab = useLabSessionOwner();
@@ -122,12 +126,14 @@ export function TodayPage() {
   // Fase 15: entrada da sessao de reforco so numa sessao de reforco genuinamente nova (nenhuma
   // atividade respondida) - evita reexibir a cada reload de uma sessao ja em andamento/replay.
   const [reinforcementIntroDismissed, setReinforcementIntroDismissed] = useState(false);
+  const [courseChoice, setCourseChoice] = useState<CourseSummaryDto[] | null>(null);
 
   const weeklyId = daily?.weeklyId ?? null;
   const { data: weekly } = useApiResource<WeeklyDetailDto | null>(
     () => (weeklyId ? api.getWeekly(weeklyId) : Promise.resolve(null)),
     [weeklyId],
   );
+  useEffect(() => rememberCourse(weekly?.courseId), [weekly?.courseId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -137,9 +143,17 @@ export function TodayPage() {
       setError(null);
       setCompletion(null);
       setStep(null);
+      setCourseChoice(null);
 
       try {
-        let state = overrideDailyId ? await api.getDaily(overrideDailyId) : await api.getToday();
+        if (!overrideDailyId && !courseParam) {
+          const courses = await api.getCourses();
+          if (courses.length > 1) {
+            if (!cancelled) setCourseChoice(courses);
+            return;
+          }
+        }
+        let state = overrideDailyId ? await api.getDaily(overrideDailyId) : await api.getToday(courseParam ?? undefined);
         if (state.accessMode === DailyAccessMode.Start || state.accessMode === DailyAccessMode.Resume) {
           state = await api.startDaily(state.id);
         }
@@ -161,7 +175,7 @@ export function TodayPage() {
     return () => {
       cancelled = true;
     };
-  }, [overrideDailyId, attempt]);
+  }, [overrideDailyId, courseParam, attempt]);
 
   // So decide o proximo passo quando ninguem esta "pinado" - no carregamento inicial. Nunca no meio
   // de uma atividade ja em exibicao, mesmo que `daily` mude (resposta enviada) nesse meio tempo.
@@ -210,6 +224,7 @@ export function TodayPage() {
   }
 
   if (loading) return <SessionLoading />;
+  if (courseChoice) return <TodayCourseChoice courses={courseChoice} />;
   if (error?.status === 409) return <DailyRefusedScreen error={error} />;
   if (error) return <ApiErrorScreen error={error} onRetry={() => setAttempt((n) => n + 1)} />;
   if (!daily) return null;

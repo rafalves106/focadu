@@ -101,8 +101,12 @@ internal static class DailyStateMapper
             Missions: activity.Type == ActivityType.TerminalMission
                 ? activity.TerminalMissionList
                     .Select(m => new TerminalMissionDto(
-                        m.Title, m.Prompt, m.Hints, m.Note, new TerminalMissionCheckDto(m.Check.Command, m.Check.Output, m.Check.Probe, m.Check.State)))
+                        m.Title, m.Prompt, m.Hints, m.Note, new TerminalMissionCheckDto(m.Check.Command, m.Check.Output, m.Check.Probe, m.Check.State),
+                        m.Situation, m.Goal, m.Steps))
                     .ToList()
+                : null,
+            Commands: activity.Type == ActivityType.TerminalMission
+                ? activity.TerminalCommandList.Select(c => new TerminalCommandDto(c.Command, c.Description)).ToList()
                 : null);
     }
 }

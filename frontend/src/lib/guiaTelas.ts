@@ -96,6 +96,7 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
       },
       { title: 'Selo vermelho', text: 'Reforço pendente daquele dia. Clique pra ir direto.' },
       { title: 'Resumo e atalhos', text: 'Números do curso e os caminhos pro Ranking, Caderninho e Certificações.', anchor: 'trilha-resumo' },
+      { title: 'Mais de um curso?', text: 'O "Trocar de trilha", embaixo do seu progresso, abre o mapa do outro curso.' },
     ],
   },
   semana: {
@@ -119,6 +120,7 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
       { title: 'Anotação e Suporte Rápido', text: 'Anote sem sair da sessão e tire dúvida curta sobre o que está na tela.', anchor: 'sessao-ferramentas' },
       { title: 'Barra de baixo', text: 'No celular: material, notas, dúvida e Pomodoro.', anchor: 'sessao-barra' },
       { title: 'Teclado', text: 'Teclas 1 a N escolhem, Enter confirma.' },
+      { title: 'Mais de um curso?', text: 'O Hoje pergunta qual curso estudar antes de abrir. Cada curso tem a sua Daily do dia.' },
     ],
   },
   projeto: {
@@ -143,6 +145,7 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
       { title: 'Números', text: 'Ofensiva, Score, posição no ranking e Gems.', anchor: 'perfil-numeros' },
       { title: 'Troféus', text: 'Ofensiva de 7 e de 30, semana perfeita, embaixador e fundador.', anchor: 'perfil-trofeus' },
       { title: 'Últimos 14 dias', text: 'Cada quadrado é um dia. Verde é dia com Daily feita.', anchor: 'perfil-dias' },
+      { title: 'Mais de um curso?', text: 'O seletor no topo troca o curso do progresso, do Score e da posição.' },
     ],
   },
   squad: {
@@ -159,7 +162,7 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
         title: 'Notificações (líder e colíder)',
         text: 'Quem pediu pra entrar e os avisos das decisões. Recusar impede a pessoa de pedir de novo pra este squad; dá pra desfazer.',
       },
-      { title: 'Ranking do squad', text: 'Mesmo Score do ranking do curso, só entre vocês.', anchor: 'squad-ranking' },
+      { title: 'Ranking do squad', text: 'Mesmo Score do ranking do curso, só entre vocês. Com mais de um curso, escolha qual ou "Todos".', anchor: 'squad-ranking' },
     ],
   },
   loja: {
@@ -181,6 +184,7 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
     items: [
       { title: 'Pódio e recortes', text: 'Semana, mês ou o curso inteiro.', anchor: 'ranking-podio' },
       { title: 'Placar', text: 'O top 10. Se você estiver fora, aparece preso no pé.', anchor: 'ranking-placar' },
+      { title: 'Mais de um curso?', text: 'Cada curso tem o seu ranking: troque no seletor do topo.' },
       { title: 'Próximo alvo e como subir', text: 'Quem está logo acima. O resumo falado pesa 2x, roleplay e lacuna 1,5x, e o projeto é 30% da semana.', anchor: 'ranking-dicas' },
     ],
   },
@@ -224,7 +228,7 @@ export const SESSION_STEP_ITEMS: Record<ActivityType, GuideItem> = {
   },
   [ActivityType.TerminalMission]: {
     title: 'Missão no terminal',
-    text: 'Um Linux de verdade roda aqui no navegador, já com você logado. Digite o comando da missão e o laboratório confere sozinho. Não tem nota nem tentativa, e a dica é à vontade. Só no computador.',
+    text: 'Um Linux de verdade roda aqui no navegador, já com você logado. Cada missão diz a situação, o que você vai ver quando der certo e os passos; ao lado, os comandos do dia (clique copia pro terminal). O laboratório confere sozinho, sem nota nem tentativa. clear ou Ctrl+L limpa a tela. Só no computador.',
   },
 };
 

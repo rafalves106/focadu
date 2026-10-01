@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { useAuth } from '../contexts/useAuth';
-import { CourseStatus, type CourseDetailDto, type DailyStateDto, type GamificationSummaryDto, type WeeklyDetailDto } from '../api/types';
+import { type CourseDetailDto, type DailyStateDto, type GamificationSummaryDto, type WeeklyDetailDto } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { StreakLostModal } from '../components/gamification/StreakLostModal';
@@ -17,6 +17,7 @@ import { EmptyStateStartPage } from './EmptyStateStartPage';
 import { findCourseMap, findCourseMapLines } from '../lib/courseMaps';
 import { buildFocadaMapLine } from '../lib/focadaMapLines';
 import { studiedToday } from '../lib/startScreen';
+import { pickCourse, rememberCourse } from '../lib/courseChoice';
 
 interface HubData {
   /** Todos os cursos matriculados, com o detalhe (progresso, semanas, dias). */
@@ -64,8 +65,7 @@ export function StartDashboard() {
 
   const courses = useMemo(() => hub.data?.courses ?? [], [hub.data]);
   const requestedId = searchParams.get('curso');
-  const selectedCourse =
-    courses.find((c) => c.id === requestedId) ?? courses.find((c) => c.status === CourseStatus.Active) ?? courses[0] ?? null;
+  const selectedCourse = pickCourse(courses, requestedId);
   const selectedId = selectedCourse?.id ?? null;
 
   const selected = useApiResource<SelectedData | null>(async () => {
@@ -107,6 +107,7 @@ export function StartDashboard() {
     : null;
 
   function selectCourse(courseId: string) {
+    rememberCourse(courseId);
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);

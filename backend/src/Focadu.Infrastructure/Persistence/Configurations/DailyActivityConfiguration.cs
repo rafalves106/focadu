@@ -27,6 +27,7 @@ public class DailyActivityConfiguration : IEntityTypeConfiguration<DailyActivity
         // Missao no terminal: lista de missoes em JSON (texto).
         builder.Property(a => a.TerminalMissionsJson);
         builder.Ignore(a => a.TerminalMissionList);
+        builder.Ignore(a => a.TerminalCommandList);
         builder.Property(a => a.DailyTemplateId).IsRequired();
 
         builder.HasMany(a => a.QuizOptions)

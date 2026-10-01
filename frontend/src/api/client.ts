@@ -289,8 +289,9 @@ export const api = {
   // Co-Leader (Fase 24b) - o Owner promove/rebaixa; herda a lideranca se o Owner sair.
   promoteSquadCoLeader: (userId: string) => request<void>(`/api/squads/co-leader/${userId}`, { method: 'PUT' }),
   clearSquadCoLeader: () => request<void>('/api/squads/co-leader', { method: 'DELETE' }),
-  getSquadRanking: (scope: RankingScope, page = 1) =>
-    request<SquadRankingResultDto>(`/api/squads/me/ranking?scope=${scope}&page=${page}`),
+  // `courseId` (01/10/2026): so aquele curso no score de cada membro; sem ele, todos os cursos somados.
+  getSquadRanking: (scope: RankingScope, page = 1, courseId: string | null = null) =>
+    request<SquadRankingResultDto>(`/api/squads/me/ranking?scope=${scope}&page=${page}${courseId ? `&courseId=${courseId}` : ''}`),
   // QG do Squad (Fase 72) - cabecalho, escalacao, meta da semana e feed; 404 squad_nao_encontrado = sem squad.
   getSquadHq: () => request<SquadHqDto>('/api/squads/me/hq'),
   // GG numa atividade do feed - toggle (dar de novo tira).

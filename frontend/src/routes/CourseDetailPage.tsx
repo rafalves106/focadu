@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { CourseSwitcher } from '../components/CourseSwitcher';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import { CourseStatus, WeeklyProjectStatus, type WeeklyOverviewDto } from '../api/types';
@@ -45,6 +46,8 @@ const DAY_POINT: Record<number, string> = {
  */
 export function CourseDetailPage({ courseId }: { courseId: string }) {
   const { data: course, error, loading, retry } = useApiResource(() => api.getCourse(courseId), [courseId]);
+  const { data: myCourses } = useApiResource(() => api.getCourses(), []);
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const courseMap = useMemo(() => (course ? findCourseMap(course.name) : null), [course]);
   if (loading) return <Centered text="Carregando curso..." />;
@@ -107,6 +110,12 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
             <SegmentedBar percentage={course.progress.completionPercentage} label="Progresso do treinamento" />
           </div>
         </div>
+        {myCourses && myCourses.length > 1 && (
+          <div className="pixel-box mt-4 flex shrink-0 flex-col gap-3 bg-base p-4">
+            <p className="font-pixel-label text-[10px] text-accent">// Trocar de trilha</p>
+            <CourseSwitcher courses={myCourses} selectedId={courseId} onSelect={(id) => id && navigate(`/start?course=${id}`)} />
+          </div>
+        )}
       </div>
 
       {/* Coluna central: so o mapa da trilha - ou a lista de semanas no celular e em curso sem mapa. */}
@@ -138,7 +147,7 @@ export function CourseDetailPage({ courseId }: { courseId: string }) {
             <Stat label="Reforços" value={`${reinforcementCount}`} />
             <Stat label="Conclusão" value={`${course.progress.completionPercentage}%`} />
           </div>
-          <Link to="/hoje" className="bg-accent py-2.5 text-center font-pixel-label text-[10px] text-base hover:brightness-110">
+          <Link to={`/hoje?curso=${courseId}`} className="bg-accent py-2.5 text-center font-pixel-label text-[10px] text-base hover:brightness-110">
             Continuar estudando
           </Link>
           {/* Atalhos: Ranking (Fase 16, ancorado aqui de proposito - "fica na visualizacao global do

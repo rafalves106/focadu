@@ -71,3 +71,10 @@ export function formatSeconds(ms: number): string {
 export function formatMegabytes(bytes: number): string {
   return `${(bytes / 1048576).toFixed(1).replace('.', ',')}`;
 }
+
+/** Prompt do Linux do laboratorio com o diretorio de verdade: `agente@srv:~/pasta$` (o home vira `~`). */
+export function shellPrompt(user: string, cwd: string | null): string {
+  const home = user === 'root' ? '/root' : `/home/${user}`;
+  const path = !cwd || cwd === home ? '~' : cwd.startsWith(`${home}/`) ? `~${cwd.slice(home.length)}` : cwd;
+  return `${user}@srv:${path}${user === 'root' ? '#' : '$'}`;
+}
