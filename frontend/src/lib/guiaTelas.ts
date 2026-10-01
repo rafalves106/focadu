@@ -228,7 +228,7 @@ export const SESSION_STEP_ITEMS: Record<ActivityType, GuideItem> = {
   },
   [ActivityType.TerminalMission]: {
     title: 'Missão no terminal',
-    text: 'Um Linux de verdade roda aqui no navegador, já com você logado. Digite o comando da missão e o laboratório confere sozinho. Não tem nota nem tentativa, e a dica é à vontade. Só no computador.',
+    text: 'Um Linux de verdade roda aqui no navegador, já com você logado. Cada missão diz a situação, o que você vai ver quando der certo e os passos; ao lado, os comandos do dia (clique copia pro terminal). O laboratório confere sozinho, sem nota nem tentativa. clear ou Ctrl+L limpa a tela. Só no computador.',
   },
 };
 

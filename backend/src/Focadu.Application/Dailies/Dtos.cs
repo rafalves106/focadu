@@ -63,10 +63,16 @@ public record DailyActivityDto(
     IReadOnlyCollection<RoleplayNodeDto> RoleplayNodes,
     IReadOnlyCollection<ActivityResponseDto> Responses,
     CodeStepDto? CodeStep = null,
-    IReadOnlyCollection<TerminalMissionDto>? Missions = null);
+    IReadOnlyCollection<TerminalMissionDto>? Missions = null,
+    /// <summary>TerminalMission (terminal v3): a cola "Comandos de hoje" do bloco.</summary>
+    IReadOnlyCollection<TerminalCommandDto>? Commands = null);
 
 /// <summary>Missao no terminal (ActivityType.TerminalMission): o navegador do aluno confere pelo <see cref="TerminalMissionCheckDto"/>; nada aqui e segredo.</summary>
-public record TerminalMissionDto(string Title, string Prompt, IReadOnlyCollection<string> Hints, string Note, TerminalMissionCheckDto Check);
+public record TerminalMissionDto(
+    string Title, string Prompt, IReadOnlyCollection<string> Hints, string Note, TerminalMissionCheckDto Check,
+    string? Situation = null, string? Goal = null, IReadOnlyCollection<string>? Steps = null);
+
+public record TerminalCommandDto(string Command, string Description);
 
 public record TerminalMissionCheckDto(string? Command, string? Output, string? Probe, string? State);
 

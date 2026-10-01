@@ -154,6 +154,14 @@ export interface DailyActivityDto {
   codeStep?: CodeStepDto | null;
   /** So em TerminalMission: as missoes do bloco, conferidas no navegador. */
   missions?: TerminalMissionDto[] | null;
+  /** So em TerminalMission (terminal v3): a cola "Comandos de hoje" - vazia em bloco curado antes dela. */
+  commands?: TerminalCommandDto[] | null;
+}
+
+/** Um item da cola "Comandos de hoje": sintaxe generica (`chmod 640 arq`) e o que ela faz. */
+export interface TerminalCommandDto {
+  command: string;
+  description: string;
 }
 
 /**
@@ -170,6 +178,12 @@ export interface TerminalMissionDto {
   /** O que reparar, mostrado quando a missao e cumprida. */
   note: string;
   check: { command: string | null; output: string | null; probe: string | null; state: string | null };
+  /** Terminal v3: o porque da missao, numa frase (nulo em missao curada antes). */
+  situation?: string | null;
+  /** Terminal v3: o que o aluno vai ver quando der certo. */
+  goal?: string | null;
+  /** Terminal v3: os passos em palavras, so em missao de mais de um comando. */
+  steps?: string[] | null;
 }
 
 /**

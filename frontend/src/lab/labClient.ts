@@ -27,6 +27,8 @@ export interface LabRunResult {
   /** O aluno mandou parar (exit 130). */
   aborted: boolean;
   ms: number;
+  /** Linux: o diretorio do shell depois do comando (null nos outros runtimes). */
+  cwd: string | null;
 }
 
 interface Reply {
@@ -132,6 +134,7 @@ export class LabClient {
       timedOut: Boolean(reply.timedOut),
       aborted: Boolean(reply.aborted),
       ms: Number(reply.ms ?? 0),
+      cwd: typeof reply.cwd === 'string' ? reply.cwd : null,
     };
   }
 }

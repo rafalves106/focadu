@@ -403,6 +403,7 @@ function buildState(curated: Curated) {
       expectedAnswer: a.expectedAnswer ?? null,
       // Missao no terminal: as missoes do bloco (o mock ignora `solution`/`wrong`, que so o verificador da curadoria usa).
       missions: (a.missions ?? null) as Json[] | null,
+      commands: (a.commands ?? null) as Json[] | null,
       // Fase 79: passo de codigo da ponte.
       codeSolution: (a.codeSolution ?? null) as string | null,
       codeExpectedOutput: (a.codeExpectedOutput ?? null) as string | null,
@@ -548,6 +549,7 @@ function activityDto(act: State['activities'][number], _i = 0, all: State['activ
     answerMode: act.answerMode,
     prompt: act.prompt,
     missions: act.missions,
+    commands: act.commands,
     // Gabarito so depois de responder (igual ao backend).
     expectedAnswer: answered ? act.expectedAnswer : null,
     quizOptions: act.quizOptions.map((o) => ({ id: o.id, text: o.text, isCorrect: answered ? o.correct : null })),

@@ -51,12 +51,15 @@ async function sizeOf(url) {
   return manifest[url.replace(/^\.\//, '')] ?? 0;
 }
 
-/** Roda um comando no Bash da VM e devolve saida + exit code. O marcador `__END<id>:<rc>` fecha o comando. */
+/**
+ * Roda um comando no Bash da VM e devolve saida + exit code + diretorio atual. O marcador `__END<id>:<rc>:<pwd>`
+ * fecha o comando (o `$?` vem antes do `$PWD`, entao ainda e o do comando do aluno).
+ */
 async function sh(command, limitMs = 120000) {
   serial = '';
   const id = Math.random().toString(36).slice(2, 8);
-  type(`${command}\necho __EN''D${id}:$?\n`);
-  const end = new RegExp(`\\r\\n__END${id}:(\\d+)\\r\\n`);
+  type(`${command}\necho __EN''D${id}:$?:$PWD\n`);
+  const end = new RegExp(`\\r\\n__END${id}:(\\d+):([^\\r\\n]*)\\r\\n`);
   const started = Date.now();
   let match = null;
   while (!(match = end.exec(serial))) {
@@ -71,7 +74,7 @@ async function sh(command, limitMs = 120000) {
     .replace(/\r/g, '')
     .replace(/~%+ echo __EN[\s\S]*$/, '')
     .replace(/\n$/, '');
-  return { output, exitCode: Number(match[1]) };
+  return { output, exitCode: Number(match[1]), cwd: match[2] };
 }
 
 async function writeFile(path, text) {
@@ -186,7 +189,7 @@ onmessage = async (e) => {
   } else if (m.type === 'write') {
     try {
       await writeFile(m.path, m.text);
-      say({ type: 'result', id: m.id, output: '', exitCode: 0 });
+      say({ type: 'result', id: m.id, output: '', exitCode: 0, cwd: null });
     } catch (err) {
       say({ type: 'error', id: m.id, message: err instanceof Error ? err.message : String(err) });
     }

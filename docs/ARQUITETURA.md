@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 89 - Mais de um curso: /hoje pergunta o curso e seletor de curso em Trilha, Ranking, Squad e Perfil** (Fase 88: missao no terminal; Fase 87: front do laboratorio; Fase 86: backend).
+> Ultima fase que atualizou este documento: **Fase 90 - Missao no terminal v3: situacao/objetivo/passos por missao, cola "Comandos de hoje", prompt com o diretorio e clear de verdade** (Fase 89: mais de um curso; Fase 88: missao no terminal; Fase 87: front do laboratorio).
 
 ## Visao geral do projeto
 
@@ -2489,6 +2489,30 @@ codigo nem verifica a saida** (adulteracao ignorada), so guarda a configuracao e
   esperada). Dias com `lab` hoje: pontes Python e JavaScript da Semana 1 do Web Security, Linux Dia 6 e Dia 12.
 - **Fora desta fase**: o front (feito na Fase 87, abaixo), o verificador de JavaScript, o exercicio por dia do
   Python pra Web Security.
+
+### Missao no terminal v3 (Fase 90)
+
+Dor do dono como aluno (01/10/2026): o `clear` apagava tudo, o prompt nao mostrava o diretorio, era preciso voltar a
+Leitura pra lembrar os comandos e as missoes nao davam objetivo. Figma "Missao no terminal — v3 (proposta)" (`209:10810`,
+aprovado em 01/10/2026).
+- **Dados**: `TerminalMission` ganhou `Situation`, `Goal` e `Steps` (opcionais, aparados na importacao) e entrou
+  `TerminalCommand(Command, Description)` - a cola do dia, na atividade. `TerminalMissionsJson` passou a guardar
+  `{"missions": [...], "commands": [...]}`; `TerminalMissions.Parse` ainda le o formato antigo (so a lista), entao nao
+  houve migration e o `seed` (`ApplyMissions`, que compara o JSON) regrava os dias no formato novo.
+  `DailyActivityDto.Commands` e os campos novos de `TerminalMissionDto` vao pro front.
+- **Prompt com o diretorio**: `linux.worker.mjs` fecha cada comando com `__END<id>:<rc>:<pwd>`; o `runner.mjs` repassa,
+  `LabRunResult.cwd` chega ao app e `LabSession` guarda em `snapshot.cwd` (volta a nulo quando o runtime reinicia).
+  `shellPrompt(user, cwd)` (`lab/labOutput.ts`) desenha `agente@srv:~/pasta$`; cada linha do historico guarda o prompt
+  de quando foi digitada. Vale na missao e no terminal da ponte.
+- **`TerminalPanel`**: o campo segue a ultima linha (sobe pro topo depois do `clear`), `clear`/Ctrl+L/"Limpar" deixam a
+  linha `── tela limpa · ultimo comando: X ──` e o historico segue inteiro nas setas e na conferencia; `fill` poe um
+  texto no campo sem rodar.
+- **`TerminalMissionActivity`**: titulo + chips 1..N no lugar da lista lateral; caixa SITUACAO / OBJETIVO / PASSOS (ou
+  FACA, com o enunciado, em missao de um comando so); cola "Comandos de hoje" ao lado do terminal (clique copia pro
+  campo). Missao cumprida desliga a dica ("Dica · —"). Bloco curado antes do v3 (sem `situation`/`commands`) cai no
+  layout da Fase 88.
+- Curadoria: `CURADORIA.md` 5.3 (campos novos), fonte `scripts/linux-missoes/contexto_missoes.py`; o
+  `verificar-missoes.mjs` recusa missao sem `situation`/`goal` ou dia sem `commands`.
 
 ### Mais de um curso (Fase 89)
 

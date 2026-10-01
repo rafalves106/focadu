@@ -89,7 +89,7 @@ function call(id, type, payload) {
     const onMessage = (e) => {
       const m = e.data;
       if (m.type === 'result' && m.id === id) {
-        finish({ ok: true, output: m.output, exitCode: m.exitCode, timedOut: false, aborted: false, ms: Math.round(performance.now() - started) });
+        finish({ ok: true, output: m.output, exitCode: m.exitCode, cwd: m.cwd ?? null, timedOut: false, aborted: false, ms: Math.round(performance.now() - started) });
       } else if (m.type === 'error' && m.id === id) {
         finish({ ok: false, error: m.message });
       }

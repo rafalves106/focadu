@@ -131,8 +131,12 @@ public static class CuratedDayImporter
         (json.Missions ?? [])
             .Select(m => new TerminalMission(
                 m.Title ?? "", m.Prompt ?? "", m.Hints ?? [], m.Note ?? "",
-                new TerminalMissionCheck(m.Check?.Command, m.Check?.Output, m.Check?.Probe, m.Check?.State)))
+                new TerminalMissionCheck(m.Check?.Command, m.Check?.Output, m.Check?.Probe, m.Check?.State),
+                m.Situation, m.Goal, m.Steps))
             .ToList();
+
+    private static List<TerminalCommand> ToCommands(ActivityJson json) =>
+        (json.Commands ?? []).Select(c => new TerminalCommand(c.Command ?? "", c.Description ?? "")).ToList();
 
     /// <summary>
     /// Leva as missoes no terminal de um dia-N.json a um DailyTemplate que JA esta no banco, sem reimportar o dia
@@ -156,16 +160,18 @@ public static class CuratedDayImporter
         {
             if (day.Activities[i].Type != ActivityType.TerminalMission) continue;
             var missions = ToMissions(day.Activities[i]);
+            var commands = ToCommands(day.Activities[i]);
             var existing = dailyTemplate.Activities.FirstOrDefault(a => a.Type == ActivityType.TerminalMission && a.OrderIndex == i);
             if (existing is null)
             {
                 dailyTemplate.InsertActivity(ActivityType.TerminalMission, i, day.Activities[i].AnswerMode, day.Activities[i].Prompt)
-                    .ConfigureTerminalMissions(missions);
+                    .ConfigureTerminalMissions(missions, commands: commands);
                 changed = true;
             }
-            else if (existing.TerminalMissionsJson != TerminalMissions.Serialize(TerminalMissions.Create(missions)) || existing.Prompt != day.Activities[i].Prompt)
+            else if (existing.TerminalMissionsJson != TerminalMissions.Serialize(TerminalMissions.Create(missions), TerminalMissions.CreateCommands(commands))
+                     || existing.Prompt != day.Activities[i].Prompt)
             {
-                existing.ConfigureTerminalMissions(missions, day.Activities[i].Prompt);
+                existing.ConfigureTerminalMissions(missions, day.Activities[i].Prompt, commands);
                 changed = true;
             }
         }
@@ -223,7 +229,7 @@ public static class CuratedDayImporter
                 json.CodeStarter, labDisabled: json.Lab == false);
 
         if (json.Type == ActivityType.TerminalMission)
-            activity.ConfigureTerminalMissions(ToMissions(json));
+            activity.ConfigureTerminalMissions(ToMissions(json), commands: ToCommands(json));
 
         foreach (var option in json.QuizOptions ?? [])
             activity.AddQuizOption(option.Text, option.IsCorrect);
@@ -280,9 +286,15 @@ public static class CuratedDayImporter
         /// <summary>Fase 86: <c>"lab": false</c> tira o passo do laboratorio do dia (fluxo antigo). Ausente/true = usa o lab do dia.</summary>
         bool? Lab = null,
         /// <summary>So em TerminalMission: as missoes do bloco (CURADORIA.md 5.3).</summary>
-        List<MissionJson>? Missions = null);
+        List<MissionJson>? Missions = null,
+        /// <summary>So em TerminalMission (terminal v3): a cola "Comandos de hoje".</summary>
+        List<CommandJson>? Commands = null);
 
-    private record MissionJson(string Title, string Prompt, List<string>? Hints, string Note, MissionCheckJson? Check);
+    private record MissionJson(
+        string Title, string Prompt, List<string>? Hints, string Note, MissionCheckJson? Check,
+        string? Situation = null, string? Goal = null, List<string>? Steps = null);
+
+    private record CommandJson(string? Command, string? Description);
 
     private record MissionCheckJson(string? Command, string? Output, string? Probe, string? State);
 
