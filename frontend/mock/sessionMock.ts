@@ -13,6 +13,7 @@
  *   /__mock/reset?projeto=pendente|avaliado   (tela do Projeto Semanal)
  *   /__mock/reset?at=ponte                    (Fase 69: a Daily de hoje e a ponte, falta escolher a linguagem)
  *   /__mock/reset?at=Quiz&pausa=1             (Fase 69: streak pausado - projeto da semana aberto)
+ *   /__mock/reset?at=Quiz&cursos=2            (matriculado em 2 cursos: /hoje pede o curso, seletores em Trilha/Ranking/Squad/Perfil)
  *   /__mock/reset?at=terminal                 (missao no terminal do Dia 2 do Linux; &lab=N abre o dia N: Leitura feita, falta a MissionTerminal; o Linux roda de verdade no navegador)
  *   /__mock/reset?at=codigo[&passo=3][&lab=python|javascript|bash|servidor|none]   (Fase 79/87: ponte "code comigo"; o laboratorio de codigo roda de verdade no navegador, lab=none volta ao fluxo de colar a saida)
  *   /__mock/loja?agente=0|1&gemas=60          (Fase 71: loja e agente, ver shopMock.ts)
@@ -55,8 +56,11 @@ export const MOCK_IDS = {
   daily: '00000000-0000-4000-8000-000000000005',
   reinforcement: '00000000-0000-4000-8000-000000000006',
   project: '00000000-0000-4000-8000-000000000007',
+  /** `&cursos=2`: segundo curso matriculado (Linux), pros seletores de curso. */
+  course2: '00000000-0000-4000-8000-000000000008',
 };
 const ids = MOCK_IDS;
+let multiCourse = false;
 
 // Squad (Fases 70/72): squad do aluno do mock - `/__mock/squad?as=membro|lider|nenhum` troca e abre o QG.
 type SquadRole = 'membro' | 'lider' | 'nenhum';
@@ -747,6 +751,7 @@ export function sessionMock(): Plugin {
         if (path === '/__mock/reset') {
           const at = url.searchParams.get('at') ?? 'Quiz';
           const projeto = url.searchParams.get('projeto') as ProjectState | null;
+          multiCourse = url.searchParams.get('cursos') === '2';
           reset(projeto ? 'semana' : at, Number(url.searchParams.get('penalty') ?? 0), {
             pendingReinforcement: url.searchParams.get('reforco') === '1',
             paused: url.searchParams.get('pausa') === '1',
@@ -845,7 +850,16 @@ export function sessionMock(): Plugin {
             seenGuides,
           });
         if (path === '/api/auth/logout') return send(res, 204);
-        if (path === '/api/courses') return send(res, 200, [{ id: ids.course, name: 'Web Security', status: 1, monthlyCount: 4 }]);
+        if (path === '/api/courses')
+          return send(res, 200, [
+            { id: ids.course, name: 'Web Security', status: 1, monthlyCount: 4 },
+            ...(multiCourse ? [{ id: ids.course2, name: 'Linux', status: 1, monthlyCount: 1 }] : []),
+          ]);
+        if (multiCourse && path === `/api/courses/${ids.course2}`) return send(res, 200, { ...courseDetailDto(), id: ids.course2, name: 'Linux' });
+        if (multiCourse && path === `/api/courses/${ids.course2}/ranking`) return send(res, 200, courseRankingDto(url.searchParams.get('scope') ?? 'course'));
+        // Como o backend: com 2+ matriculas, /api/today sem ?courseId= e 409.
+        if (multiCourse && path === '/api/today' && !url.searchParams.get('courseId'))
+          return send(res, 409, { error: 'multiplas_matriculas_ativas', message: 'Mais de uma matricula ativa encontrada; informe ?courseId= para escolher qual.' });
         const shop = handleShop(path, method, body);
         if (shop) return send(res, shop[0], shop[1]);
         if (path === '/api/users/me/gamification') {

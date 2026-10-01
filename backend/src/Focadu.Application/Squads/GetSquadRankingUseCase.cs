@@ -67,7 +67,11 @@ public class GetSquadRankingUseCase
         _clock = clock;
     }
 
-    public async Task<SquadRankingResultDto> ExecuteAsync(Guid requestingUserId, RankingScope scope, int page = 1, CancellationToken cancellationToken = default)
+    /// <param name="courseId">
+    /// Aluno com 2+ cursos (01/10/2026): conta so a matricula daquele curso (membro que nao faz o curso fica com
+    /// score 0). Sem ele, as matriculas de todos os cursos de cada membro, como sempre foi.
+    /// </param>
+    public async Task<SquadRankingResultDto> ExecuteAsync(Guid requestingUserId, RankingScope scope, int page = 1, Guid? courseId = null, CancellationToken cancellationToken = default)
     {
         page = Math.Max(1, page);
 
@@ -89,7 +93,7 @@ public class GetSquadRankingUseCase
         {
             var enrollments = await _enrollmentRepository.GetByUserIdAsync(membership.UserId, cancellationToken);
             var weeklies = new List<Weekly>();
-            foreach (var enrollment in enrollments)
+            foreach (var enrollment in enrollments.Where(e => courseId is null || e.CourseId == courseId))
                 weeklies.AddRange(await _weeklyRepository.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken));
 
             var user = await _userRepository.GetByIdAsync(membership.UserId, cancellationToken);

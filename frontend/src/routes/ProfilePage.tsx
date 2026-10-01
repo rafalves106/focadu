@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
-import { CourseStatus, type BadgeDto, type GamificationSummaryDto, type MarketplaceCatalogDto, type StudyCalendarDto } from '../api/types';
+import { type BadgeDto, type CourseSummaryDto, type GamificationSummaryDto, type MarketplaceCatalogDto, type StudyCalendarDto } from '../api/types';
 import { buildProfileLine } from '../lib/focadaScreenLines';
+import { pickCourse, rememberCourse } from '../lib/courseChoice';
+import { CourseSwitcher } from '../components/CourseSwitcher';
 import { agentLook } from '../lib/agentSprites';
 import { useAuth } from '../contexts/useAuth';
 import { useSettings } from '../contexts/useSettings';
@@ -17,14 +19,18 @@ import { CustomizationTab } from '../components/profile/CustomizationTab';
 import { ConquestsTab } from '../components/profile/ConquestsTab';
 import backArrow from '../assets/pixel/voltar.png';
 
-interface ProfileData {
+interface ProfileBase {
   gamification: GamificationSummaryDto;
   /** Fase 76: pra fala da Focada saber se o aluno ja estudou hoje (nulo se falhar - a fala se vira sem). */
   calendar: StudyCalendarDto | null;
   catalog: MarketplaceCatalogDto;
   badges: BadgeDto[];
+  courses: CourseSummaryDto[];
+}
+
+interface ProfileCourse {
+  courseId: string;
   course: CourseLine | null;
-  courseId: string | null;
   score: number | null;
   position: number | null;
 }
@@ -32,6 +38,15 @@ interface ProfileData {
 type Overlay = 'guarda-roupa' | 'conquistas' | null;
 
 /** `?abrir=` (Fase 72) e os `?tab=` antigos (Fase 70) - quem linkava pra uma aba cai no modal equivalente. */
+/** Troca um parametro da URL sem perder os outros (`?curso=` e `?abrir=` convivem). */
+function withParam(prev: URLSearchParams, key: string, value: string | null): URLSearchParams {
+  const next = new URLSearchParams(prev);
+  if (value) next.set(key, value);
+  else next.delete(key);
+  if (key === 'abrir') next.delete('tab');
+  return next;
+}
+
 function overlayFromParams(params: URLSearchParams): Overlay {
   const value = params.get('abrir') ?? params.get('tab');
   if (value === 'guarda-roupa' || value === 'customizacao') return 'guarda-roupa';
@@ -55,7 +70,7 @@ export function ProfilePage() {
   // Catalogo recalculado pelas acoes do guarda-roupa (Fase 71) - vale por cima do que veio no load.
   const [catalogOverride, setCatalogOverride] = useState<MarketplaceCatalogDto | null>(null);
 
-  const { data, error, loading, retry } = useApiResource<ProfileData>(async () => {
+  const { data: base, error, loading, retry } = useApiResource<ProfileBase>(async () => {
     const [gamification, catalog, badges, courses, calendar] = await Promise.all([
       api.getGamification(),
       api.getMarketplaceCatalog(),
@@ -63,20 +78,23 @@ export function ProfilePage() {
       api.getCourses(),
       api.getStudyCalendar().catch(() => null),
     ]);
-    const active = courses.find((c) => c.status === CourseStatus.Active) ?? courses[0] ?? null;
-    const [detail, ranking] = active ? await Promise.all([api.getCourse(active.id), api.getCourseRanking(active.id, 'course')]) : [null, null];
-    const currentMonthly = detail?.monthlies.find((m) => m.weeklies.some((w) => w.completedDailies < w.totalDailies)) ?? null;
-    return {
-      gamification,
-      calendar,
-      catalog,
-      badges: badges.badges,
-      courseId: active?.id ?? null,
-      course: detail ? { name: detail.name, region: currentMonthly?.number ?? null, completed: detail.progress.completedDailies, total: detail.progress.totalDailies } : null,
-      score: ranking?.currentUserEntry?.score ?? null,
-      position: ranking?.currentUserEntry?.position ?? null,
-    };
+    return { gamification, calendar, catalog, badges: badges.badges, courses };
   }, []);
+
+  // 01/10/2026: com 2+ cursos, o seletor do topo troca o curso da linha do palco e do score/posicao (`?curso=`).
+  const courseId = pickCourse(base?.courses, searchParams.get('curso'))?.id ?? null;
+  const { data: courseData } = useApiResource<ProfileCourse | null>(async () => {
+    if (!courseId) return null;
+    const [detail, ranking] = await Promise.all([api.getCourse(courseId), api.getCourseRanking(courseId, 'course')]);
+    const currentMonthly = detail.monthlies.find((m) => m.weeklies.some((w) => w.completedDailies < w.totalDailies)) ?? null;
+    return {
+      courseId,
+      course: { name: detail.name, region: currentMonthly?.number ?? null, completed: detail.progress.completedDailies, total: detail.progress.totalDailies },
+      score: ranking.currentUserEntry?.score ?? null,
+      position: ranking.currentUserEntry?.position ?? null,
+    };
+  }, [courseId]);
+  const data = base ? { ...base, ...(courseData?.courseId === courseId ? courseData : { courseId, course: null, score: null, position: null }) } : null;
 
   if (searchParams.get('tab') === 'squad') return <Navigate to="/squad" replace />;
   if (!user) return null;
@@ -85,7 +103,11 @@ export function ProfilePage() {
   if (!data) return null;
 
   const catalog = catalogOverride ?? data.catalog;
-  const open = (next: Overlay) => setSearchParams(next ? { abrir: next } : {});
+  const open = (next: Overlay) => setSearchParams((prev) => withParam(prev, 'abrir', next));
+  const selectCourse = (id: string | null) => {
+    rememberCourse(id);
+    setSearchParams((prev) => withParam(prev, 'curso', id), { replace: true });
+  };
 
   return (
     <div className="flex flex-col gap-4 bg-base px-4 pt-5 pb-10 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:px-16 lg:pt-8 lg:pb-10 lg:short:gap-3 lg:short:pt-5 lg:short:pb-6 lg:tight:pt-4 lg:tight:pb-4">
@@ -94,7 +116,10 @@ export function ProfilePage() {
           <img src={backArrow} alt="" className="size-4 pixelated" />
           Voltar pro start
         </Link>
-        <h1 className="font-pixel-label text-[9px] text-muted">Perfil do agente</h1>
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-4 gap-y-2">
+          <CourseSwitcher courses={data.courses} selectedId={data.courseId} onSelect={selectCourse} />
+          <h1 className="font-pixel-label text-[9px] text-muted">Perfil do agente</h1>
+        </div>
       </header>
 
       <div className="flex flex-col gap-6 lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-6 xl:gap-8">

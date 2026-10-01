@@ -106,7 +106,7 @@ Hábitos obrigatórios:
 
 ## Estado atual
 
-Última fase concluída: **Fase 88 — Missão no terminal** (30/09/2026; laboratório de código: Fases 86 e 87).
+Última fase concluída: **Fase 89 — Mais de um curso** (01/10/2026; missão no terminal: Fase 88; laboratório de código: Fases 86 e 87).
 
 Histórico completo dos marcos (Fases 25–87, com o porquê de cada decisão): `docs/ESTADO-HISTORICO.md` —
 só abrir quando precisar. Estado técnico vivo: `docs/ARQUITETURA.md`; detalhe por fase: `docs/fase-N/`.
@@ -129,6 +129,8 @@ Resumo do que existe hoje:
 - **Missão no terminal (Fase 88)**: nos dias normais do Linux (piloto: Dia 2) a atividade `TerminalMission` dá ao aluno um
   Linux embutido, já logado como usuário comum, com missões de comando conferidas no navegador (sem IA, sem nota, sem
   tentativa). Formato em `secret/curadoria/CURADORIA.md` 5.3, verificador `scripts/lab/verificar-missoes.mjs`. Ver `docs/fase-88/`.
+- **Mais de um curso (Fase 89)**: com 2+ matrículas o "Hoje" pergunta o curso (o último aberto já vem marcado) e Trilha,
+  Ranking, Perfil e o ranking do Squad têm seletor de curso (`CourseSwitcher`, `lib/courseChoice.ts`). Ver `docs/fase-89/`.
 - **Infra**: deploy automático por push (CI/CD), sem homologação, Forgejo interno pros repositórios de Projeto Semanal.
 
 Regras que valem a partir daqui:

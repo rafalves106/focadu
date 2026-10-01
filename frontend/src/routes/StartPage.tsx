@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { App } from '../App';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -10,6 +11,7 @@ import { WeeklyDetailPage } from './WeeklyDetailPage';
 import { RankingPage } from './RankingPage';
 import { CertificationsPage } from './CertificationsPage';
 import { NotebookPage } from './NotebookPage';
+import { rememberCourse } from '../lib/courseChoice';
 
 /**
  * `/start` (Fase 25): fora do shell `<App/>` no roteador - mesmo motivo/tratamento de `/hoje`
@@ -63,6 +65,8 @@ function StartPage() {
   const tabParam = searchParams.get('tab');
   const showCertifications = searchParams.get('certifications') !== null || tabParam === 'certificacoes';
   const showNotebook = searchParams.get('caderninho') !== null || tabParam === 'caderninho';
+  // 01/10/2026: o curso aberto por ultimo vira o padrao de Hoje, Trilhas, Ranking, Squad e Perfil.
+  useEffect(() => rememberCourse(courseId), [courseId]);
 
   if (showProject && weeklyId) {
     return (

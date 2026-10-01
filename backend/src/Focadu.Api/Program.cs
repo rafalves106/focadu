@@ -483,10 +483,12 @@ api.MapDelete("/squads/co-leader", async (ClaimsPrincipal principal, SetSquadCoL
 
 // Ranking (soma/media de Score/Gems dos membros) - tambem onde Squad.JoinCode e gerado (lazy, ver
 // GetSquadRankingUseCase), entao dobra de "tela inicial do squad" pro frontend.
-api.MapGet("/squads/me/ranking", async (ClaimsPrincipal principal, string? scope, int? page, GetSquadRankingUseCase useCase, CancellationToken ct) =>
+// `?courseId=` (01/10/2026, opcional): so a matricula daquele curso entra no score de cada membro; sem ele, todos os cursos somados.
+api.MapGet("/squads/me/ranking", async (ClaimsPrincipal principal, string? scope, int? page, string? courseId, GetSquadRankingUseCase useCase, CancellationToken ct) =>
     {
         var rankingScope = ParseRankingScope(scope);
-        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), rankingScope, page ?? 1, ct));
+        var course = courseId is null ? (Guid?)null : RouteParsing.RequireGuid(courseId, "courseId");
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), rankingScope, page ?? 1, course, ct));
     })
     .RequireAuthorization()
     .WithName("GetSquadRanking");
