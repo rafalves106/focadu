@@ -116,8 +116,8 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
     items: [
       { title: 'Cadeia de etapas', text: 'Onde você está e quanto falta. Dá pra voltar pra etapa anterior sem refazer.', anchor: 'sessao-etapas' },
       { title: 'Conta-giros', text: 'Cada erro antes de terminar o dia soma 1. No 3º, nasce um reforço só com o que você errou.', anchor: 'sessao-contagiros' },
-      { title: 'Material e Pomodoro', text: 'O conteúdo de hoje pra consultar e o timer, se você usa.', anchor: 'sessao-material' },
-      { title: 'Anotação e Suporte Rápido', text: 'Anote sem sair da sessão e tire dúvida curta sobre o que está na tela.', anchor: 'sessao-ferramentas' },
+      { title: 'Material e Pomodoro', text: 'O conteúdo de hoje pra consultar e o timer, se você usa. Em tela de notebook vira um trilho: clique e abre a gaveta.', anchor: 'sessao-material' },
+      { title: 'Anotação e Suporte Rápido', text: 'Anote sem sair da sessão e tire dúvida curta sobre o que está na tela. No notebook ficam no trilho da direita; o ponto âmbar é rascunho não salvo ou resposta nova. Esc fecha a gaveta.', anchor: 'sessao-ferramentas' },
       { title: 'Barra de baixo', text: 'No celular: material, notas, dúvida e Pomodoro.', anchor: 'sessao-barra' },
       { title: 'Teclado', text: 'Teclas 1 a N escolhem, Enter confirma.' },
       { title: 'Mais de um curso?', text: 'O Hoje pergunta qual curso estudar antes de abrir. Cada curso tem a sua Daily do dia.' },
@@ -134,7 +134,7 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
         anchor: 'projeto-repo',
       },
       { title: 'Entregar', text: 'A IA lê o repositório e dá nota de 0 a 100. A nota é 30% do Score da semana.', anchor: 'projeto-entregar' },
-      { title: 'Anotação e chat', text: 'A anotação fica presa ao projeto no Caderninho. O chat tira dúvida sobre o enunciado.', anchor: 'projeto-anotacao' },
+      { title: 'Anotação e chat', text: 'A anotação fica presa ao projeto no Caderninho. O chat tira dúvida sobre o enunciado. No notebook, repositório e chat ficam nos trilhos laterais e abrem como gaveta.', anchor: 'projeto-anotacao' },
     ],
   },
   perfil: {

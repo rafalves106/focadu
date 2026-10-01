@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { ActivityStatus, ActivityType, type DailyActivityDto } from '../api/types';
@@ -6,7 +6,7 @@ import { SessionFooterContext, useSession } from '../lib/sessionContext';
 import { stepInfo } from '../lib/sessionSteps';
 import { setStudyAssistantCodeBridge, setStudyAssistantContext, setStudyAssistantCourse } from '../lib/studyAssistantContext';
 import { formatPomodoroTime, usePomodoroTimer } from '../lib/pomodoroTimer';
-import { useIsDesktop } from '../lib/useIsDesktop';
+import { useIsDesktop, useIsWideSession } from '../lib/useIsDesktop';
 import { useGuide } from '../contexts/useGuide';
 import { StudyAssistantPanel } from './assistant/StudyAssistantPanel';
 import { MaterialSidebar } from './MaterialSidebar';
@@ -19,6 +19,10 @@ import { ErrorGauge } from './session/ErrorGauge';
 import { MissionsGauge } from './session/MissionsGauge';
 import { useMissionProgress } from '../lab/terminalMissionStore';
 import { StageChain } from './session/StageChain';
+import { SideSlot } from './session/SideRails';
+import capeloIcon from '../assets/pixel/capelo.png';
+import terminalIcon from '../assets/pixel/terminal.png';
+import ajudaIcon from '../assets/pixel/ajuda.png';
 import backArrow from '../assets/pixel/voltar.png';
 import lockIcon from '../assets/pixel/cadeado-bloqueado.png';
 
@@ -92,6 +96,25 @@ export function SessionLayout({
   }, [setSessionDetail, activityType, daily.isReinforcement, daily.dayNumber]);
   const [footerEl, setFooterEl] = useState<HTMLDivElement | null>(null);
   const [jumpTarget, setJumpTarget] = useState<{ activityId: string; message: string } | null>(null);
+  // Fase 91: em notebook (largura < 1440 ou altura < 820) as laterais viram trilhos com gavetas.
+  const isWide = useIsWideSession();
+  const rails = isDesktop && !isWide;
+  const [drawer, setDrawer] = useState<'left' | 'right' | null>(null);
+  const drawerRef = useRef(drawer);
+  useEffect(() => {
+    drawerRef.current = drawer;
+  }, [drawer]);
+  const [notesDraft, setNotesDraft] = useState(false);
+  const [unreadReply, setUnreadReply] = useState(false);
+  const closeDrawer = useCallback(() => setDrawer(null), []);
+  const onReply = useCallback(() => {
+    if (drawerRef.current !== 'right') setUnreadReply(true);
+  }, []);
+  const toggleDrawer = (side: 'left' | 'right') => {
+    if (side === 'right') setUnreadReply(false);
+    setDrawer((d) => (d === side ? null : side));
+  };
+  const pomodoro = usePomodoroTimer();
 
   const info = activityId ? stepInfo(daily, activityId) : null;
   const chainMode = chain ?? (info ? 'step' : 'none');
@@ -159,7 +182,7 @@ export function SessionLayout({
   const notes = weekly && (
     <div className="relative shrink-0">
       <div className={notesLocked ? 'pointer-events-none opacity-30' : ''} aria-hidden={notesLocked}>
-        <QuickNotePanel target={{ dailyId: daily.id }} courseId={weekly.courseId} className="h-60 lg:tight:h-56" />
+        <QuickNotePanel target={{ dailyId: daily.id }} courseId={weekly.courseId} className="h-60 lg:tight:h-56" onDraft={setNotesDraft} />
       </div>
       {notesLocked && (
         <div className="absolute inset-x-4 top-12 flex items-center gap-2 border-2 border-stroke bg-base px-3 py-2">
@@ -171,7 +194,11 @@ export function SessionLayout({
   );
 
   return (
-    <div className="flex flex-col gap-5 bg-base px-4 pt-5 pb-20 lg:min-h-0 lg:flex-1 lg:gap-6 lg:overflow-hidden lg:px-8 lg:pt-[45px] lg:pb-12 xl:px-16 lg:[@media(max-height:820px)]:gap-4 lg:[@media(max-height:820px)]:py-6">
+    <div
+      className={`flex flex-col gap-5 bg-base px-4 pt-5 pb-20 lg:min-h-0 lg:flex-1 lg:gap-6 lg:overflow-hidden ${
+        rails ? 'lg:gap-3.5 lg:px-6 lg:pt-5 lg:pb-4' : 'lg:px-8 lg:pt-[45px] lg:pb-12 xl:px-16 lg:[@media(max-height:820px)]:gap-4 lg:[@media(max-height:820px)]:py-6'
+      }`}
+    >
       <header className="flex items-end justify-between gap-3 lg:shrink-0">
         <div className="flex min-w-0 flex-col gap-1.5">
           {weekly && (
@@ -183,11 +210,11 @@ export function SessionLayout({
               Voltar pro mapa
             </Link>
           )}
-          <h1 className="truncate font-pixel text-3xl leading-none text-primary uppercase lg:text-4xl" title={title}>
+          <h1 className="truncate font-pixel text-3xl leading-none text-primary uppercase lg:text-4xl lg:[@media(max-height:820px)]:text-3xl" title={title}>
             {title}
           </h1>
           {weekly && (
-            <p className="truncate font-pixel-label text-[8px] text-muted lg:text-[9px]">
+            <p className="truncate font-pixel-label text-[8px] text-muted lg:text-[9px] lg:[@media(max-height:820px)]:hidden">
               Semana {weekly.number} — {weekly.theme ?? weekly.title}
             </p>
           )}
@@ -210,14 +237,27 @@ export function SessionLayout({
         )}
       </header>
 
-      <div className="flex flex-col gap-6 lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-5 xl:gap-8 xl:short:gap-6">
+      <div className={`relative flex flex-col gap-6 lg:min-h-0 lg:flex-1 lg:flex-row ${rails ? 'lg:gap-3' : 'lg:gap-5 xl:gap-8 xl:short:gap-6'}`}>
         {isDesktop && (
-          <aside data-guia="sessao-material" className="flex w-52 shrink-0 lg:min-h-0 xl:w-64">
+          <SideSlot
+            side="left"
+            rails={rails}
+            open={drawer === 'left'}
+            onToggle={() => toggleDrawer('left')}
+            onClose={closeDrawer}
+            title="Material e Pomodoro"
+            guia="sessao-material"
+            items={[
+              { label: 'Material', icon: capeloIcon },
+              { label: 'Foco', big: formatPomodoroTime(pomodoro.remainingSeconds), live: pomodoro.isRunning },
+            ]}
+            columnClassName="flex w-52 shrink-0 lg:min-h-0 xl:w-64"
+          >
             <ScrollArea className="min-h-0 min-w-0 flex-1" contentClassName="flex min-h-full min-w-0 flex-col gap-6 lg:short:gap-4">
               {material}
               <PomodoroWidget className="min-h-[260px] flex-1 lg:short:min-h-0" />
             </ScrollArea>
-          </aside>
+          </SideSlot>
         )}
 
         <section
@@ -254,12 +294,25 @@ export function SessionLayout({
         </section>
 
         {isDesktop && (
-          <aside data-guia="sessao-ferramentas" className="flex w-52 shrink-0 lg:min-h-0 xl:w-64">
+          <SideSlot
+            side="right"
+            rails={rails}
+            open={drawer === 'right'}
+            onToggle={() => toggleDrawer('right')}
+            onClose={closeDrawer}
+            title="Anotação e dúvida"
+            guia="sessao-ferramentas"
+            items={[
+              { label: 'Notas', icon: terminalIcon, dot: notesDraft },
+              { label: 'Dúvida', icon: ajudaIcon, dot: unreadReply },
+            ]}
+            columnClassName="flex w-52 shrink-0 lg:min-h-0 xl:w-64"
+          >
             <ScrollArea className="min-h-0 min-w-0 flex-1" contentClassName="flex min-h-full min-w-0 flex-col gap-6 lg:short:gap-4">
               {notes}
-              <StudyAssistantPanel className="min-h-[280px] flex-1 lg:short:min-h-[180px]" />
+              <StudyAssistantPanel className="min-h-[280px] flex-1 lg:short:min-h-[180px]" onReply={onReply} />
             </ScrollArea>
-          </aside>
+          </SideSlot>
         )}
       </div>
 

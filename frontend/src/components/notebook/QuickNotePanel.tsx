@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError, api } from '../../api/client';
 import { useApiResource } from '../../api/useApiResource';
@@ -26,11 +26,14 @@ export function QuickNotePanel({
   target,
   courseId,
   className = '',
+  onDraft,
 }: {
   /** Onde a nota fica presa: a Daily da sessao ou, na tela do projeto (Fase 63), o Projeto Semanal. */
   target: { dailyId: string } | { weeklyId: string };
   courseId: string;
   className?: string;
+  /** Fase 91: avisa se ha texto digitado e ainda nao salvo (o trilho da sessao mostra um ponto). */
+  onDraft?: (hasDraft: boolean) => void;
 }) {
   const { data: knownTags } = useApiResource(() => api.listNoteTags(courseId), [courseId]);
   const [content, setContent] = useState('');
@@ -38,6 +41,8 @@ export function QuickNotePanel({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasDraft = content.trim().length > 0;
+  useEffect(() => onDraft?.(hasDraft), [hasDraft, onDraft]);
 
   async function handleSave() {
     if (!content.trim() || saving) return;
