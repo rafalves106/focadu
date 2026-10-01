@@ -24,8 +24,12 @@ import { ScrollArea } from '../ScrollArea';
  * digno de um chat". Pixel art desde 23/09/2026 (`pixel-box`, Silkscreen, VT323, cantos retos); a
  * variante antiga `tall={false}` saiu na Fase 74 (todo mundo ja usava esta).
  */
-export function StudyAssistantPanel({ className = '' }: { className?: string }) {
+export function StudyAssistantPanel({ className = '', onReply }: { className?: string; /** Fase 91: chegou resposta da IA (o trilho mostra um ponto se a gaveta estiver fechada). */ onReply?: () => void }) {
   const { question, setQuestion, messages, sending, error, handleSend, handleClear } = useStudyAssistantChat();
+  const replies = messages.filter((m) => m.role === 'assistant').length;
+  useEffect(() => {
+    if (replies > 0) onReply?.();
+  }, [replies, onReply]);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 

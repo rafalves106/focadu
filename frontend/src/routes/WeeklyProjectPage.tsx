@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
@@ -20,6 +20,10 @@ import { DialogueBox } from '../components/DialogueBox';
 import { PixelConfirmDialog } from '../components/PixelConfirmDialog';
 import { buildFocadaLines } from '../lib/focadaLines';
 import { PixelButton } from '../components/session/PixelButton';
+import { SideSlot } from '../components/session/SideRails';
+import { useIsDesktop, useIsWideSession } from '../lib/useIsDesktop';
+import bandeiraIcon from '../assets/pixel/bandeira.png';
+import ajudaIcon from '../assets/pixel/ajuda.png';
 
 const STATUS_BADGE: Record<number, { label: string; className: string }> = {
   [WeeklyProjectStatus.Pending]: { label: 'Pendente', className: 'border-alert text-alert' },
@@ -61,6 +65,25 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   const [pendingLanguage, setPendingLanguage] = useState<ProjectLanguage | null>(null);
   const [choosingLanguage, setChoosingLanguage] = useState(false);
   const [chooseLanguageError, setChooseLanguageError] = useState<string | null>(null);
+  // Fase 91: em notebook (largura < 1440 ou altura < 820) as colunas viram trilhos com gavetas, como na sessao.
+  const isDesktop = useIsDesktop();
+  const isWide = useIsWideSession();
+  const rails = isDesktop && !isWide;
+  const [drawer, setDrawer] = useState<'left' | 'right' | null>(null);
+  const drawerRef = useRef(drawer);
+  useEffect(() => {
+    drawerRef.current = drawer;
+  }, [drawer]);
+  const [notesDraft, setNotesDraft] = useState(false);
+  const [unreadReply, setUnreadReply] = useState(false);
+  const closeDrawer = useCallback(() => setDrawer(null), []);
+  const onReply = useCallback(() => {
+    if (drawerRef.current !== 'right') setUnreadReply(true);
+  }, []);
+  const toggleDrawer = (side: 'left' | 'right') => {
+    if (side === 'right') setUnreadReply(false);
+    setDrawer((d) => (d === side ? null : side));
+  };
 
   // Fase 32: SessionLayout faz isso sozinho via `assistantContext` (ver SessionShell.tsx) - esta
   // tela nao usa SessionLayout (layout proprio desde a Fase 61, chat em StudyAssistantPanel), entao alimenta o
@@ -146,7 +169,11 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   // cartao rola por dentro com <ScrollArea>. Abaixo de `lg` (3 colunas nao cabem) volta pro fluxo
   // normal empilhado, com rolagem da pagina - ver docs/fase-61.
   return (
-    <div className="flex flex-col gap-6 bg-base px-4 pt-6 pb-8 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:px-8 lg:pt-[45px] lg:pb-12 xl:px-16 lg:short:gap-4 lg:short:pt-6 lg:short:pb-6">
+    <div
+      className={`flex flex-col gap-6 bg-base px-4 pt-6 pb-8 lg:min-h-0 lg:flex-1 lg:overflow-hidden ${
+        rails ? 'lg:gap-3.5 lg:px-6 lg:pt-5 lg:pb-4' : 'lg:px-8 lg:pt-[45px] lg:pb-12 xl:px-16 lg:short:gap-4 lg:short:pt-6 lg:short:pb-6'
+      }`}
+    >
       {/* Topo: "voltar" a esquerda e a barra de progresso CENTRALIZADA (250px), como no Figma. Fase 64
           (pedido do dono): some com o dialogo da Focada - a tela fica so com as 3 colunas; volta-se pelo
           menu (Trilhas) ou pelo navegador. */}
@@ -176,11 +203,24 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col gap-8 lg:flex-row lg:gap-5 xl:gap-8">
+      <div className={`relative flex min-h-0 flex-1 flex-col gap-8 lg:flex-row ${rails ? 'lg:gap-3' : 'lg:gap-5 xl:gap-8'}`}>
         {/* Coluna esquerda (Fase 63): repositorio em cima (altura do conteudo) e referencias ocupando
             o resto - so depois do projeto disponibilizado. */}
         {released && (project.submissionUrl || project.references.length > 0) && (
-          <div data-guia="projeto-repo" className="flex min-h-0 flex-col gap-8 lg:w-[210px] lg:shrink-0 xl:w-[250px] lg:short:gap-5">
+          <SideSlot
+            side="left"
+            rails={rails}
+            open={drawer === 'left'}
+            onToggle={() => toggleDrawer('left')}
+            onClose={closeDrawer}
+            title="Repositório e referências"
+            guia="projeto-repo"
+            items={[
+              ...(project.submissionUrl ? [{ label: 'Repo', icon: terminalIcon }] : []),
+              ...(project.references.length > 0 ? [{ label: 'Refs', icon: bandeiraIcon }] : []),
+            ]}
+            columnClassName="flex min-h-0 flex-col gap-8 lg:w-[210px] lg:shrink-0 xl:w-[250px] lg:short:gap-5"
+          >
             {project.submissionUrl && (
               <RepositoryPanel
                 submissionUrl={project.submissionUrl}
@@ -194,7 +234,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
                 languageName={project.language !== null ? PROJECT_LANGUAGE_NAMES[project.language] : null}
               />
             )}
-          </div>
+          </SideSlot>
         )}
 
         {/* Centro: especificacao rola por dentro; a entrega fica fixa no rodape do cartao, sempre
@@ -337,10 +377,23 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
 
         {/* Coluna direita (Fase 63): anotacao rapida (264px - 240px do Figma + 10%, pedido do dono 23/09/2026 - presa ao PROJETO, nao a uma Daily) + chat
             ocupando o resto da altura. */}
-        <div data-guia="projeto-anotacao" className="flex min-h-0 flex-col gap-8 lg:w-[210px] lg:shrink-0 xl:w-[250px] lg:short:gap-5">
-          <QuickNotePanel target={{ weeklyId }} courseId={weekly.courseId} className="h-[264px]" />
-          <StudyAssistantPanel className="h-[480px] lg:h-auto lg:min-h-0 lg:flex-1" />
-        </div>
+        <SideSlot
+          side="right"
+          rails={rails}
+          open={drawer === 'right'}
+          onToggle={() => toggleDrawer('right')}
+          onClose={closeDrawer}
+          title="Anotação e chat"
+          guia="projeto-anotacao"
+          items={[
+            { label: 'Notas', icon: terminalIcon, dot: notesDraft },
+            { label: 'Chat', icon: ajudaIcon, dot: unreadReply },
+          ]}
+          columnClassName="flex min-h-0 flex-col gap-8 lg:w-[210px] lg:shrink-0 xl:w-[250px] lg:short:gap-5"
+        >
+          <QuickNotePanel target={{ weeklyId }} courseId={weekly.courseId} className="h-[264px] shrink-0" onDraft={setNotesDraft} />
+          <StudyAssistantPanel className="h-[480px] lg:h-auto lg:min-h-[240px] lg:flex-1" onReply={onReply} />
+        </SideSlot>
       </div>
 
       <PixelConfirmDialog

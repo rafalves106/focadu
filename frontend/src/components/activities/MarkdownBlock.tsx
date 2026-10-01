@@ -100,6 +100,11 @@ const INDENTED = /^(?: {2,}|\t)/;
  * cole essa sintaxe numa nota pessoal - efeito esperado do componente compartilhado, nao um caso
  * especial).
  */
+/** So o inline (negrito, italico, codigo, link) num trecho curto - a nota da missao no terminal (Fase 91). */
+export function InlineMarkdown({ text }: { text: string }) {
+  return <>{renderInline(text)}</>;
+}
+
 export function MarkdownBlock({ text }: { text: string }) {
   const blocks: ReactNode[] = [];
   let list: OpenList | null = null;

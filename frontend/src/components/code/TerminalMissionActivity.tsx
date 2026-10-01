@@ -11,6 +11,7 @@ import { displayOutput, shellPrompt, toRecord } from '../../lab/labOutput';
 import { evaluateMission, isCommandNotFound } from '../../lab/terminalMission';
 import { updateMissionProgress, useMissionProgress, type MissionProgress, type MissionStrip } from '../../lab/terminalMissionStore';
 import { SessionFooter, SessionLayout } from '../SessionShell';
+import { InlineMarkdown } from '../activities/MarkdownBlock';
 import { BlockIntro } from '../session/BlockIntro';
 import { PixelButton } from '../session/PixelButton';
 import { OutputBox } from './codeParts';
@@ -391,7 +392,9 @@ function ConferenceStrip({
           <img src={checkIcon} alt="" className="size-4 pixelated" />
           Missão cumprida
         </p>
-        <p className="font-sans text-[13px] leading-snug text-primary">{mission.note}</p>
+        <p className="font-sans text-[13px] leading-snug text-primary">
+          <InlineMarkdown text={mission.note} />
+        </p>
       </div>
     );
   }

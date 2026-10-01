@@ -31,7 +31,7 @@ export function QuizActivity({
   return (
     <SessionLayout>
       {activity.type === ActivityType.Quiz ? (
-        <p className="font-pixel text-[28px] leading-[1.1] text-primary lg:text-[32px]">{activity.prompt}</p>
+        <p className="font-pixel text-[28px] leading-[1.1] text-primary lg:text-[32px] lg:[@media(max-height:820px)]:text-[26px]">{activity.prompt}</p>
       ) : (
         <ClozeSentence text={activity.prompt ?? ''} />
       )}

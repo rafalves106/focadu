@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 90 - Missao no terminal v3: situacao/objetivo/passos por missao, cola "Comandos de hoje", prompt com o diretorio e clear de verdade** (Fase 89: mais de um curso; Fase 88: missao no terminal; Fase 87: front do laboratorio).
+> Ultima fase que atualizou este documento: **Fase 91 - Sessao, laboratorio e Projeto Semanal em telas de notebook: colunas laterais viram trilhos com gavetas abaixo de 1440x820** (Fase 90: missao no terminal v3; Fase 89: mais de um curso).
 
 ## Visao geral do projeto
 
@@ -2489,6 +2489,24 @@ codigo nem verifica a saida** (adulteracao ignorada), so guarda a configuracao e
   esperada). Dias com `lab` hoje: pontes Python e JavaScript da Semana 1 do Web Security, Linux Dia 6 e Dia 12.
 - **Fora desta fase**: o front (feito na Fase 87, abaixo), o verificador de JavaScript, o exercicio por dia do
   Python pra Web Security.
+
+### Sessao em telas menores (Fase 91)
+
+Figma "Sessao em telas menores — v2 (proposta)" (pagina `212:4502`, aprovado em 01/10/2026). Medido no Chromium: a partir de
+1440x900 as 3 colunas cabem; abaixo disso (1366x768, 1280x800, 1280x720) as laterais fixas de 256px espremiam o centro.
+- `useIsWideSession` (`lib/useIsDesktop.ts`): `(min-width: 90rem) and (min-height: 820px)`. Desktop (`lg`) e nao largo =
+  modo trilho; celular segue com a barra de baixo (`MobileDrawer`).
+- `SideSlot` (`components/session/SideRails.tsx`): com espaco, a coluna de sempre; sem espaco, um trilho de 64px e a mesma
+  coluna como gaveta de 340px (absoluta no container das colunas, que e `relative`), com veu. O conteudo fica montado o
+  tempo todo (`invisible`, nao `hidden`: o chat mede a altura do campo), entao rascunho, conversa e Pomodoro nao reiniciam.
+  Esc fecha na captura e e consumido (na sessao o Esc tambem abre as Configuracoes); `pauseSessionKeys`
+  (`lib/useSessionKeys.ts`) pausa os atalhos 1-N/Enter com a gaveta aberta.
+- Trilho vivo: FOCO mostra o tempo do Pomodoro (verde rodando); ponto ambar em NOTAS (`QuickNotePanel.onDraft`) e em
+  DUVIDA/CHAT (`StudyAssistantPanel.onReply`, so com a gaveta fechada).
+- Usado em `SessionLayout` (toda atividade da sessao, inclusive laboratorio e missao no terminal) e no `WeeklyProjectPage`
+  (REPO/REFS a esquerda, NOTAS/CHAT a direita). No modo trilho os respiros do corpo caem pra 16-24px; com altura < 820 a
+  linha "Semana N" some e o titulo e a pergunta do quiz diminuem.
+- Junto: a nota "Missao cumprida" passa pelo `InlineMarkdown` (`MarkdownBlock.tsx`).
 
 ### Missao no terminal v3 (Fase 90)
 

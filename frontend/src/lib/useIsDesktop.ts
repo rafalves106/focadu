@@ -20,3 +20,22 @@ export function useIsDesktop(): boolean {
 
   return matches;
 }
+
+/**
+ * Fase 91 (Figma "Sessao em telas menores — v2"): a partir de 1440x820 as 3 colunas da sessao e do Projeto
+ * Semanal cabem; abaixo disso (notebooks: 1366x768, 1280x800, 1280x720) as laterais viram trilhos com gavetas.
+ */
+const WIDE_QUERY = '(min-width: 90rem) and (min-height: 820px)';
+
+export function useIsWideSession(): boolean {
+  const [matches, setMatches] = useState(() => window.matchMedia(WIDE_QUERY).matches);
+
+  useEffect(() => {
+    const media = window.matchMedia(WIDE_QUERY);
+    const onChange = () => setMatches(media.matches);
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
+
+  return matches;
+}
