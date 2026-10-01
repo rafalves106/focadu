@@ -13,14 +13,14 @@ on:
 jobs:
   deploy:
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
-    runs-on: [self-hosted, macOS, falveshub-server]
+    runs-on: [self-hosted, Linux, focadu-oracle]
     steps:
       - name: Resolver ambiente pela branch
         id: env
         run: |
           branch="${{ github.event.workflow_run.head_branch }}"
           if [ "$branch" = "main" ]; then
-            echo "path=/Users/falves/Dev/Servidor/focadu" >> "$GITHUB_OUTPUT"
+            echo "path=/home/ubuntu/focadu" >> "$GITHUB_OUTPUT"
             echo "compose_file=docker-compose.yml" >> "$GITHUB_OUTPUT"
             echo "frontend_port=5280" >> "$GITHUB_OUTPUT"
           else

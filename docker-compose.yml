@@ -101,7 +101,7 @@ services:
       # ponytail: aponta pra "localhost" porque o teste de hoje roda tudo na mesma máquina - se um
       # dia os alunos acessarem de fora deste host, precisa virar o endereço real alcançável por
       # eles (domínio/IP público ou túnel), não mais localhost.
-      FORGEJO__server__ROOT_URL: http://localhost:${FORGEJO_PORT:-3020}/
+      FORGEJO__server__ROOT_URL: ${FORGEJO_ROOT_URL:-http://localhost:${FORGEJO_PORT:-3020}/}
       # false explicito (nao omitido): START_SSH_SERVER=true entra em conflito com o sshd externo
       # que a propria imagem ja sobe (confirmado ao vivo: "listen tcp :22: bind: address already
       # in use", 18/09/2026) - sshd externo da imagem ja serve git+ssh sozinho. Precisa ser
