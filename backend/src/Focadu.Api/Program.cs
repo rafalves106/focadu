@@ -216,7 +216,9 @@ if (args.Contains("seed"))
 
     Console.WriteLine(result.AlreadyExisted
         ? "Seed: curso 'Web Security' ja existe - nada foi inserido."
-        : $"Seed: curso 'Web Security' criado com sucesso (CourseId={result.CourseId}).");
+        : result.SkippedNoContent
+            ? "Seed: curso 'Web Security' NAO criado - sem conteudo em conteudo/web-security (refacao da curadoria, plano de 02/10/2026)."
+            : $"Seed: curso 'Web Security' criado com sucesso (CourseId={result.CourseId}).");
 
     // Fase 69: pontes curadas depois do seed (e a da Semana 1 nas matriculas que ja existiam).
     var bridgeSync = await scope.ServiceProvider.GetRequiredService<SyncBridgeDaysUseCase>().ExecuteAsync();
@@ -762,7 +764,7 @@ api.MapGet("/github/repositories", async (GetGitHubRepositoriesUseCase useCase, 
 
 // --- Conteudo curado (leitura) ----------------------------------------------------------------
 // Autoria (Create/Update) removida - conteudo curado agora e so via seed (CuratedDayImporter, le
-// secret/curadoria/*.json - ver docs/ARQUITETURA.md). So leitura, usada por ReadingActivity/
+// secret/conteudo/*.json - ver docs/ARQUITETURA.md). So leitura, usada por ReadingActivity/
 // VideoActivity durante a sessao diaria.
 
 api.MapGet("/curated-content/{id}", async (ClaimsPrincipal principal, string id, GetCuratedContentUseCase useCase, CancellationToken ct) =>

@@ -7,7 +7,7 @@ namespace Focadu.Application.Seed;
 
 /// <summary>
 /// Fase 81: monta ou completa um curso de pre-requisito (Linux, Python pra Web Security) a partir do
-/// manifesto secret/curadoria/&lt;slug&gt;/curso.json e dos dia-N.json que ja existem. Diferente do seed do
+/// manifesto secret/conteudo/&lt;slug&gt;/curso.json e dos dia-N.json que ja existem. Diferente do seed do
 /// Web Security (que importa tudo de uma vez e nunca mais mexe), este e incremental: o curso nasce
 /// escondido (Draft) e cada deploy acrescenta os dias curados desde o anterior, sem tocar no que ja
 /// existe. Semanas sem Projeto Semanal: cada WeeklyTemplate recebe a linguagem de pratica do curso
@@ -76,7 +76,7 @@ public static class CuratedCourseImporter
 /// <summary>Um dia importado nesta passada e a semana dele.</summary>
 public record CreatedDay(WeeklyTemplate Week, DailyTemplate Day);
 
-/// <summary>Fase 81: secret/curadoria/&lt;slug&gt;/curso.json.</summary>
+/// <summary>Fase 81: secret/conteudo/&lt;slug&gt;/curso.json.</summary>
 /// <param name="Published">Falso enquanto a curadoria nao terminar: o curso fica fora do catalogo (Draft).</param>
 /// <param name="PracticeLanguage">Linguagem dos passos de codigo das pontes ("Bash", "Python").</param>
 public record CourseManifest(

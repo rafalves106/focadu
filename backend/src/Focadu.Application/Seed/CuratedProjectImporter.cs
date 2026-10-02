@@ -7,7 +7,7 @@ using Focadu.Domain.Weeklies;
 namespace Focadu.Application.Seed;
 
 /// <summary>
-/// Aplica um projeto.json curado (schema documentado em secret/curadoria/CURADORIA.md, secao 3.1,
+/// Aplica um projeto.json curado (schema documentado em secret/conteudo/CURADORIA.md, secao 3.1,
 /// escrito pela skill curar-conteudo) a uma WeeklyTemplate - le { weekNumber, title, specText } e
 /// chama WeeklyTemplate.SetProjectSpec(specText). Irmao de CuratedDayImporter (que faz o mesmo pra
 /// dia-N.json), so que pro Projeto Pratico semanal em vez do conteudo diario.

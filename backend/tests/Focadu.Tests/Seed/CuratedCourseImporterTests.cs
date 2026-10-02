@@ -7,7 +7,7 @@ using Xunit;
 namespace Focadu.Tests.Seed;
 
 /// <summary>
-/// Fase 81: o seed dos cursos de pre-requisito contra a curadoria de verdade (secret/curadoria/linux/),
+/// Fase 81: o seed dos cursos de pre-requisito contra a curadoria de verdade (secret/conteudo/linux/, com o arquivo morto como fixture dos dias antigos),
 /// sem banco - mesmo espirito de CuratedContentAllFilesTests. Pega erro de schema do curso.json ou de
 /// um dia curado antes de o deploy rodar o seed. Fora do CI hospedado (sem o repo focadu-secret), igual
 /// CuratedContentAllFilesTests - ver .github/workflows/ci.yml.
@@ -17,14 +17,15 @@ public class CuratedCourseImporterTests
     private const string Slug = "linux";
 
     private static CourseManifest LoadManifest() =>
-        CuratedCourseImporter.ParseManifest(File.ReadAllText(CuratedContentLocator.Resolve(Slug, null, "curso.json", required: true)!));
+        CuratedCourseImporter.ParseManifest(File.ReadAllText(TestContent.Resolve(Slug, null, "curso.json")!));
 
     private static string? Resolve(string weekFolder, string fileName) =>
-        CuratedContentLocator.Resolve(Slug, weekFolder, fileName, required: false);
+        TestContent.Resolve(Slug, weekFolder, fileName);
 
     [Fact]
     public void Apply_BuildsTheCourseHiddenWithOnlyTheCuratedDays()
     {
+        if (!TestContent.Available) return; // conteudo fora do checkout (CI)
         // O Linux real ja foi publicado (30/09/2026): o teste fixa o manifesto como nao publicado pra
         // conferir o curso escondido; a publicacao tem teste proprio abaixo.
         var manifest = LoadManifest() with { Published = false };
@@ -49,6 +50,7 @@ public class CuratedCourseImporterTests
     [Fact]
     public void Apply_IsIdempotent()
     {
+        if (!TestContent.Available) return; // conteudo fora do checkout (CI)
         var manifest = LoadManifest();
         var course = CuratedCourseImporter.CreateCourse(manifest);
         CuratedCourseImporter.Apply(course, manifest, Resolve);
@@ -59,6 +61,7 @@ public class CuratedCourseImporterTests
     [Fact]
     public void Apply_AddsLaterCuratedDays_AndPublishesWhenTheManifestSays()
     {
+        if (!TestContent.Available) return; // conteudo fora do checkout (CI)
         var manifest = LoadManifest();
         var course = CuratedCourseImporter.CreateCourse(manifest);
         // 1o deploy: so o Dia 1 existia.
@@ -74,6 +77,7 @@ public class CuratedCourseImporterTests
     [Fact]
     public void BridgeDays_HaveCodeSteps_WithExpectedOutput()
     {
+        if (!TestContent.Available) return; // conteudo fora do checkout (CI)
         var manifest = LoadManifest();
         var course = CuratedCourseImporter.CreateCourse(manifest);
         var created = CuratedCourseImporter.Apply(course, manifest, Resolve);

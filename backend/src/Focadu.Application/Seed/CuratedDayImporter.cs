@@ -8,7 +8,7 @@ using Focadu.Domain.Weeklies;
 namespace Focadu.Application.Seed;
 
 /// <summary>
-/// Aplica um dia-N.json curado (schema documentado em secret/curadoria/CURADORIA.md, escrito pela
+/// Aplica um dia-N.json curado (schema documentado em secret/conteudo/CURADORIA.md, escrito pela
 /// skill curar-conteudo) a uma WeeklyTemplate - cria o DailyTemplate do dia, os CuratedContents, e
 /// as DailyActivity em ordem (QuizOptions e o grafo de RoleplayNodes incluidos). Generico por
 /// design: o roteiro real tem 60 dias (ver CURADORIA.md), entao um metodo AddDayN por dia (como o

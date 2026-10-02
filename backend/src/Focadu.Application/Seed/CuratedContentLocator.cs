@@ -1,7 +1,7 @@
 namespace Focadu.Application.Seed;
 
 /// <summary>
-/// Fase 81: acha um arquivo de curadoria de qualquer curso - secret/curadoria/&lt;slug&gt;/[&lt;semana&gt;/]&lt;arquivo&gt;.
+/// Fase 81: acha um arquivo de conteudo curado (a pasta mudou de curadoria/ para conteudo/ no plano de curadoria de 02/10/2026; o conteudo antigo esta arquivado em processo/arquivo/ e nao e lido em runtime) de qualquer curso - secret/conteudo/&lt;slug&gt;/[&lt;semana&gt;/]&lt;arquivo&gt;.
 /// Mesma busca que o seed do Web Security sempre fez (CURATED_CONTENT_ROOT no container; fora dele, sobe
 /// ate o .git e tenta secret/ e o repositorio irmao focadu-secret/), agora parametrizada pelo curso.
 /// </summary>
@@ -17,7 +17,7 @@ public static class CuratedContentLocator
         var contentRoot = Environment.GetEnvironmentVariable("CURATED_CONTENT_ROOT");
         if (!string.IsNullOrWhiteSpace(contentRoot))
         {
-            var fromRoot = Path.Combine([contentRoot, "curadoria", .. relativeSegments]);
+            var fromRoot = Path.Combine([contentRoot, "conteudo", .. relativeSegments]);
             return required || File.Exists(fromRoot) ? fromRoot : null;
         }
 
@@ -28,14 +28,14 @@ public static class CuratedContentLocator
         var repoRoot = dir?.FullName
             ?? throw new InvalidOperationException("Nao foi possivel localizar a raiz do repositorio (procurando por .git) para achar o conteudo curado.");
 
-        var nested = Path.Combine([repoRoot, "secret", "curadoria", .. relativeSegments]);
+        var nested = Path.Combine([repoRoot, "secret", "conteudo", .. relativeSegments]);
         if (File.Exists(nested))
             return nested;
 
         var siblingParent = Directory.GetParent(repoRoot)?.FullName;
         var sibling = siblingParent is null
             ? null
-            : Path.Combine([siblingParent, "focadu-secret", "curadoria", .. relativeSegments]);
+            : Path.Combine([siblingParent, "focadu-secret", "conteudo", .. relativeSegments]);
         if (sibling is not null && File.Exists(sibling))
             return sibling;
 

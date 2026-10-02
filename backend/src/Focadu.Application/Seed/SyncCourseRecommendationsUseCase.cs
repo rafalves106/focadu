@@ -8,7 +8,7 @@ namespace Focadu.Application.Seed;
 
 /// <summary>
 /// Fase 84: ficha do curso na escolha de curso (cursos livres, decisao do dono em 30/09/2026). Pra cada
-/// curso com secret/curadoria/&lt;slug&gt;/recomendacao.json, aplica o que ajuda saber antes, os cursos
+/// curso com secret/conteudo/&lt;slug&gt;/recomendacao.json, aplica o que ajuda saber antes, os cursos
 /// recomendados antes e o texto de "prepara pro". Roda em todo deploy e sobrescreve: e informacao de
 /// vitrine, muda sem mexer no progresso de ninguem (inclusive em curso ja publicado). Sem o arquivo, o
 /// curso fica como esta.
@@ -64,7 +64,7 @@ public class SyncCourseRecommendationsUseCase
     }
 }
 
-/// <summary>Fase 84: secret/curadoria/&lt;slug&gt;/recomendacao.json.</summary>
+/// <summary>Fase 84: secret/conteudo/&lt;slug&gt;/recomendacao.json.</summary>
 /// <param name="Requisitos">O que ajuda saber antes (frases curtas). Vazio = "comeca do zero".</param>
 /// <param name="RecomendadoAntes">Nomes dos cursos que a Focadu recomenda antes deste.</param>
 /// <param name="PreparaTexto">Como este curso prepara pros que o recomendam (opcional).</param>

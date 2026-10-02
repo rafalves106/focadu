@@ -5,7 +5,7 @@ using Focadu.Domain.Repositories;
 namespace Focadu.Application.Seed;
 
 /// <summary>
-/// Fase 86 (e missao no terminal): leva o laboratorio de codigo (bloco <c>lab</c>, codigo inicial e opt-out por passo, secret/curadoria/
+/// Fase 86 (e missao no terminal): leva o laboratorio de codigo (bloco <c>lab</c>, codigo inicial e opt-out por passo, secret/conteudo/
 /// CURADORIA.md 5.2) pros dias que JA estao no banco. Os seeds nunca reimportam um dia existente, e uma
 /// reimportacao apagaria o progresso de quem esta no meio - entao isto so atualiza a configuracao do
 /// DailyTemplate e dos passos (<see cref="CuratedDayImporter.ApplyLab"/>). Nos dias cujo arquivo traz a atividade

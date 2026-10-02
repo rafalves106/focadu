@@ -4,7 +4,7 @@ using Focadu.Domain.Courses;
 namespace Focadu.Application.Seed;
 
 /// <summary>
-/// Aplica um certificacoes.json curado (schema documentado em secret/curadoria/CURADORIA.md,
+/// Aplica um certificacoes.json curado (schema documentado em secret/conteudo/CURADORIA.md,
 /// secao 6) a um Course - primeiro arquivo de curadoria em nivel de CURSO nessa pasta (nao de
 /// dia/semana), pois a cobertura de certificacoes de mercado (CompTIA Security+, eJPT, CEH, PNPT,
 /// lista aberta) e curada por Monthly (modulo), nao por WeeklyTemplate/DailyTemplate. Ver

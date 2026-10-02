@@ -146,7 +146,7 @@ public class TerminalMissionImporterTests
     [Fact]
     public void RealLinuxDay2_ImportsWithFourMissionsAndAnEditorlessLab()
     {
-        var path = CuratedContentLocator.Resolve("linux", "semana-1", "dia-2.json", required: false);
+        var path = TestContent.Resolve("linux", "semana-1", "dia-2.json");
         if (path is null) return; // curadoria fora do checkout (CI)
 
         var week = NewWeeklyTemplate();
@@ -172,7 +172,7 @@ public class TerminalMissionImporterTests
     [InlineData("semana-2", 11)]
     public void RealLinuxDays_HaveMissions_AndTheTerminalUserIsAgente(string week, int dayNumber)
     {
-        var path = CuratedContentLocator.Resolve("linux", week, $"dia-{dayNumber}.json", required: false);
+        var path = TestContent.Resolve("linux", week, $"dia-{dayNumber}.json");
         if (path is null) return; // curadoria fora do checkout (CI)
 
         var template = NewWeeklyTemplate();
@@ -191,7 +191,7 @@ public class TerminalMissionImporterTests
     [InlineData("semana-2", 12)]
     public void RealLinuxBridges_RunTheTerminalAsAgente(string week, int dayNumber)
     {
-        var path = CuratedContentLocator.Resolve("linux", week, $"dia-{dayNumber}.json", required: false);
+        var path = TestContent.Resolve("linux", week, $"dia-{dayNumber}.json");
         if (path is null) return;
 
         var template = NewWeeklyTemplate();

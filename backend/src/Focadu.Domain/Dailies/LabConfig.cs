@@ -4,7 +4,7 @@ namespace Focadu.Domain.Dailies;
 
 /// <summary>
 /// Fase 86: configuracao do laboratorio de codigo de um dia (bloco <c>lab</c> do dia-N.json,
-/// secret/curadoria/CURADORIA.md 5.2, rascunho laboratorio-de-codigo-na-ponte.md). Valor imutavel,
+/// secret/conteudo/CURADORIA.md 5.2, rascunho laboratorio-de-codigo-na-ponte.md). Valor imutavel,
 /// guardado em <see cref="DailyTemplate.Lab"/>: o dia so tem laboratorio quando isto existe. Quem
 /// roda o codigo e o navegador do aluno (Pyodide, Worker de JavaScript ou Linux no v86) - o servidor
 /// nunca executa nada, so guarda a configuracao e o que o aluno enviou.

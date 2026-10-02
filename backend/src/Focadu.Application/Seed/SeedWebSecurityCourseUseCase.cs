@@ -7,7 +7,7 @@ namespace Focadu.Application.Seed;
 
 /// <summary>
 /// Popula o curso piloto "Web Security" (4 Monthlies / 12 WeeklyTemplates / 60 DailyTemplates)
-/// com o curriculo real das 12 semanas (ver secret/curadoria/CURADORIA.md). Idempotente: se o
+/// com o curriculo real das 12 semanas (ver secret/conteudo/CURADORIA.md). Idempotente: se o
 /// Course "Web Security" ja existir (por nome), nao insere nada de novo.
 ///
 /// Fase 13: so cria a estrutura TEMPLATE (Course/Monthly/WeeklyTemplate/DailyTemplate/
@@ -44,6 +44,12 @@ public class SeedWebSecurityCourseUseCase
             return new SeedResult(AlreadyExisted: true, CourseId: null);
         }
 
+        // Plano de curadoria (02/10/2026): o conteudo antigo do Web Security foi arquivado e o curso sera refeito.
+        // Sem o Dia 1 em conteudo/, o seed nao cria o curso (e nao le o arquivo morto), para que a limpeza do
+        // banco nao seja desfeita pelo proximo deploy.
+        if (TryCuratedContentPath("semana-1", "dia-1.json") is null)
+            return new SeedResult(AlreadyExisted: false, CourseId: null, SkippedNoContent: true);
+
         var course = BuildCourse();
         await _courseRepository.AddAsync(course, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -61,6 +67,8 @@ public class SeedWebSecurityCourseUseCase
     private async Task BackfillCertificationCoverageAsync(Course course, CancellationToken cancellationToken)
     {
         if (course.Monthlies.Any(m => m.CertificationCoverages.Count > 0))
+            return;
+        if (TryCuratedContentPath(null, "certificacoes.json") is null)
             return;
 
         ImportCertificationCoverage(course);
@@ -92,7 +100,7 @@ public class SeedWebSecurityCourseUseCase
         AddDay3(semana1);
         AddDay4(semana1);
         AddDay5(semana1);
-        // Fase 25 (fechamento do Mes 1): projeto curado de verdade (secret/curadoria/web-security/
+        // Fase 25 (fechamento do Mes 1): projeto curado de verdade (secret/conteudo/web-security/
         // semana-1/projeto.json, "Sniffer CLI") substitui o placeholder hardcoded original
         // ("Reconhecimento de Trafego HTTP" via DevTools) - divergencia resolvida a favor do
         // roteiro (mais alinhado ao tema de rede da semana), ver CURADORIA.md secao 4.
@@ -242,7 +250,7 @@ public class SeedWebSecurityCourseUseCase
         return refreshed;
     }
 
-    // Fase 21: conteudo curado de verdade (secret/curadoria/web-security/semana-1/dia-1.json),
+    // Fase 21: conteudo curado de verdade (secret/conteudo/web-security/semana-1/dia-1.json),
     // carregado via CuratedDayImporter. Fase 26 (fechamento do curriculo): Dias 2-5 migrados do
     // placeholder hardcoded ("TODO: substituir pelo texto completo curado") pro mesmo importer,
     // agora que a curadoria real dos 5 dias da Semana 1 esta completa (CURADORIA.md secao 4).
@@ -262,7 +270,7 @@ public class SeedWebSecurityCourseUseCase
         CuratedDayImporter.ImportFile(weeklyTemplate, CuratedContentPath("semana-1", "dia-5.json"));
 
     /// <summary>
-    /// Acha secret/curadoria/web-security/&lt;pastaSemana&gt;/&lt;arquivo&gt; - o seed roda via
+    /// Acha secret/conteudo/web-security/&lt;pastaSemana&gt;/&lt;arquivo&gt; - o seed roda via
     /// `dotnet run -- seed`, que pode ser disparado tanto da raiz do repo quanto de backend/, entao
     /// nao da pra assumir Directory.GetCurrentDirectory() direto; sobe ate achar um `.git`.
     ///
@@ -289,5 +297,5 @@ public class SeedWebSecurityCourseUseCase
         CuratedContentLocator.Resolve(CourseSlug, weekFolder, fileName, required);
 }
 
-/// <summary>Resultado do seed: CourseId nulo quando o curso ja existia (nada foi inserido).</summary>
-public record SeedResult(bool AlreadyExisted, Guid? CourseId);
+/// <summary>Resultado do seed: CourseId nulo quando o curso ja existia (nada foi inserido) ou quando nao ha conteudo em conteudo/ (SkippedNoContent).</summary>
+public record SeedResult(bool AlreadyExisted, Guid? CourseId, bool SkippedNoContent = false);
