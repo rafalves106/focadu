@@ -29,7 +29,7 @@ Slugs: `web-security`, `linux`, `python-websec`, `design-patterns`, `arquitetura
 | **D5 Atividades** | ficha, texto final, `processo/molde/regras-de-quiz.md`, `processo/molde/dia.schema.json`, 1 atividade exemplo | Conversa por voz, Quiz, Cloze, Ligar Palavras, Roleplay; monta o `dia-N.json` completo | D6 |
 | **D6 Validação** | nada (script) | Linter em modo completo, `json.load`, log de execução, verificadores do lab; Haiku só para o que script não pega | `PASSOU`; senão volta ao D5 |
 | **D7 Revisão editorial** | (o agente lê) | Agente `revisor-editorial`, em **contexto limpo**, com dia, ficha do dia, ficha do curso, linha editorial e relatório do linter | `aprovado` |
-| **D8 Importar** | nada (comando) | Importador do passo B + teste de importação no app local; marcar `pronto` no `estado.md` | dia aberto no app |
+| **D8 Importar** | nada (comando) | `dotnet run --project backend/src/Focadu.Api -- importar <curso> --dia N` (`--dry-run` antes); depois abrir o dia no app local (`rodar-projeto`) e marcar `pronto` no `estado.md`. Detalhes em `secret/processo/importador.md` | dia aberto no app |
 
 Estado visível no `estado.md`: `a fazer` → `ficha ok` → `validado` (após D6) → `revisado` (após D7) → `pronto` (após D8). Anote também os tokens gastos pelo dia.
 
@@ -56,7 +56,7 @@ Estado visível no `estado.md`: `a fazer` → `ficha ok` → `validado` (após D
 
 - **Cirúrgica:** o linter ou o revisor lista N erros; edite só esses N trechos. Nunca regenere o JSON por causa de um erro.
 - Ajuste depois do D7 volta pelo mesmo caminho: edita o JSON, roda D3/D6, importa de novo. **Nada de SQL à mão** nem edição direta no banco. Emergência em produção: SQL permitido, mas no mesmo dia o JSON é corrigido e importado (o SQL vai para `processo/arquivo/`).
-- O importador (passo B) ainda não existe: até lá o dia para em `revisado`.
+- Dia já com respostas de alunos pede `--confirmar` no importador; dia fora do molde v1 é recusado (`--legado` só na transição).
 
 ## Referências
 
