@@ -250,6 +250,38 @@ if (args.Contains("importar"))
     return;
 }
 
+// `dotnet run --project src/Focadu.Api -- feedback <curso>`: relatorio de clareza do curso (media por dia, onde os
+// alunos travaram por tipo de bloco e os sinais de "reabrir" do plano de curadoria).
+if (args.Contains("feedback"))
+{
+    var feedbackSlugIndex = Array.IndexOf(args, "feedback") + 1;
+    var feedbackSlug = feedbackSlugIndex < args.Length ? args[feedbackSlugIndex] : null;
+    var feedbackManifestPath = feedbackSlug is null ? null : Focadu.Application.Seed.CuratedContentLocator.Resolve(feedbackSlug, null, "curso.json", required: false);
+    if (feedbackManifestPath is null)
+    {
+        Console.Error.WriteLine("uso: feedback <curso> (precisa de conteudo/<curso>/curso.json)");
+        Environment.ExitCode = 2;
+        return;
+    }
+
+    var feedbackCourseName = Focadu.Application.Seed.CuratedCourseImporter.ParseManifest(await File.ReadAllTextAsync(feedbackManifestPath)).Name;
+    using var feedbackScope = app.Services.CreateScope();
+    var feedbackReport = await feedbackScope.ServiceProvider.GetRequiredService<Focadu.Application.Feedback.GetFeedbackReportUseCase>().ExecuteAsync(feedbackCourseName);
+    if (feedbackReport is null)
+    {
+        Console.WriteLine($"Curso '{feedbackCourseName}' ainda nao esta no banco.");
+        return;
+    }
+
+    Console.WriteLine($"Feedback de '{feedbackCourseName}': {feedbackReport.Days.Sum(d => d.Count)} avaliacao(oes) em {feedbackReport.Days.Count} dia(s).");
+    foreach (var line in feedbackReport.Days)
+        Console.WriteLine($"  Semana {line.WeekNumber}, dia {line.DayNumber}: {line.Count} avaliacao(oes), clareza media {line.AverageClarity.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}, {line.BadCount} ruim(ns)" +
+        (line.StuckByType.Count > 0 ? "; travou em " + string.Join(", ", line.StuckByType.Select(t => $"{t.Key} x{t.Value}")) : ""));
+    foreach (var flag in feedbackReport.ReopenFlags)
+        Console.WriteLine($"  REABRIR: {flag}");
+    return;
+}
+
 // `dotnet run --project src/Focadu.Api -- seed`: popula o curso piloto "Web Security" e encerra,
 // sem subir o servidor HTTP. Nao e um endpoint porque a Api ainda nao tem autoria de conteudo.
 if (args.Contains("seed"))
@@ -939,6 +971,24 @@ api.MapPost("/dailies/{dailyId}/complete", async (ClaimsPrincipal principal, str
     })
     .RequireAuthorization()
     .WithName("CompleteDaily");
+
+// --- Feedback do dia (plano de curadoria, 02/10/2026) -----------------------------------------
+// Ao fim do dia o aluno da uma nota de clareza (1 a 5), diz onde travou e comenta. Um por Daily, regravavel.
+api.MapPut("/dailies/{dailyId}/feedback", async (ClaimsPrincipal principal, string dailyId, SubmitDayFeedbackRequest? request, Focadu.Application.Feedback.SubmitDayFeedbackUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(dailyId, "dailyId");
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, request?.Clarity ?? 0, request?.StuckActivityId, request?.Comment, ct));
+    })
+    .RequireAuthorization()
+    .WithName("SubmitDayFeedback");
+
+api.MapGet("/dailies/{dailyId}/feedback", async (ClaimsPrincipal principal, string dailyId, Focadu.Application.Feedback.GetDayFeedbackUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(dailyId, "dailyId");
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
+    })
+    .RequireAuthorization()
+    .WithName("GetDayFeedback");
 
 // --- Caderninho de Anotacoes (Fase 29) ------------------------------------------------------
 

@@ -77,6 +77,9 @@ public class FocaduDbContext : DbContext
     public DbSet<Note> Notes => Set<Note>();
     public DbSet<NotesReview> NotesReviews => Set<NotesReview>();
 
+    // Feedback do aluno ao fim do dia (plano de curadoria, 02/10/2026).
+    public DbSet<DayFeedback> DayFeedbacks => Set<DayFeedback>();
+
     // Forgejo interno (Projeto Semanal) - 1:1 com User, lazy-created (ver EnrollUserInCourseUseCase).
     public DbSet<UserForgejoAccount> UserForgejoAccounts => Set<UserForgejoAccount>();
 

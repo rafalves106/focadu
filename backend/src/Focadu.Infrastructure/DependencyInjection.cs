@@ -63,6 +63,7 @@ public static class DependencyInjection
         services.AddScoped<ISquadRepository, SquadRepository>();
         services.AddScoped<IPersonalizedAnalogyRepository, PersonalizedAnalogyRepository>();
         services.AddScoped<INoteRepository, NoteRepository>();
+        services.AddScoped<IDayFeedbackRepository, DayFeedbackRepository>();
         services.AddScoped<INotesReviewRepository, NotesReviewRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IUserForgejoAccountRepository, UserForgejoAccountRepository>();
