@@ -972,6 +972,15 @@ api.MapPost("/dailies/{dailyId}/complete", async (ClaimsPrincipal principal, str
     .RequireAuthorization()
     .WithName("CompleteDaily");
 
+// Aquecimento (plano de curadoria): 2 perguntas de dias anteriores, sob demanda. Nao e atividade do dia nem entra no Score.
+api.MapGet("/dailies/{dailyId}/warmup", async (ClaimsPrincipal principal, string dailyId, GetWarmupUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(dailyId, "dailyId");
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
+    })
+    .RequireAuthorization()
+    .WithName("GetWarmup");
+
 // --- Feedback do dia (plano de curadoria, 02/10/2026) -----------------------------------------
 // Ao fim do dia o aluno da uma nota de clareza (1 a 5), diz onde travou e comenta. Um por Daily, regravavel.
 api.MapPut("/dailies/{dailyId}/feedback", async (ClaimsPrincipal principal, string dailyId, SubmitDayFeedbackRequest? request, Focadu.Application.Feedback.SubmitDayFeedbackUseCase useCase, CancellationToken ct) =>
