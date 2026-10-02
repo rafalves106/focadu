@@ -23,6 +23,12 @@ public class DailyTemplateConfiguration : IEntityTypeConfiguration<DailyTemplate
         // Fase 69: variante de linguagem do dia (a ponte) - mesma conversao de WeeklyProject.Language.
         builder.Property(d => d.Language).HasConversion<string>().HasMaxLength(20);
 
+        // Plano de curadoria (02/10/2026): molde, hash do arquivo curado e alvos de aprendizagem do dia.
+        builder.Property(d => d.MoldeVersion).HasMaxLength(10);
+        builder.Property(d => d.ContentHash).HasMaxLength(64);
+        builder.Property(d => d.TargetsJson);
+        builder.Ignore(d => d.Targets);
+
         // Fase 86: laboratorio de codigo do dia (nulo = sem laboratorio) - um valor, guardado como JSON em
         // texto. O comparador serializa porque LabConfig tem listas (a igualdade de record as compara por referencia).
         var labJson = new JsonSerializerOptions(JsonSerializerDefaults.Web);

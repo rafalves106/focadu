@@ -71,6 +71,29 @@ public class DailyActivity : Entity
     /// <summary>Terminal v3: a cola "Comandos de hoje" da atividade (vazia em missao curada antes dela).</summary>
     public IReadOnlyList<TerminalCommand> TerminalCommandList => TerminalMissions.ParseCommands(TerminalMissionsJson);
 
+    /// <summary>Molde v1: alvo de aprendizagem do dia ("t1", "t2" ou "t3") que esta atividade cobra. Nulo em atividade antiga.</summary>
+    public string? Target { get; private set; }
+
+    /// <summary>
+    /// VoiceSummary no molde v1: pista mostrada na tela no lugar do texto do bloco. Nao e segredo.
+    /// </summary>
+    public string? Hint { get; private set; }
+
+    /// <summary>
+    /// VoiceSummary no molde v1: a resposta correta da pergunta. E o que a IA compara na devolutiva e
+    /// a primeira parte dela. Nunca vai pro cliente antes da resposta.
+    /// </summary>
+    public string? ReferenceAnswer { get; private set; }
+
+    /// <summary>VoiceSummary no molde v1: e a pergunta final ("explique o dia com as suas palavras").</summary>
+    public bool IsFinalQuestion { get; private set; }
+
+    /// <summary>Pergunta final: os 3 topicos-pista que organizam a fala (JSON).</summary>
+    public string? TopicsJson { get; private set; }
+
+    public IReadOnlyList<string> Topics =>
+        string.IsNullOrWhiteSpace(TopicsJson) ? [] : System.Text.Json.JsonSerializer.Deserialize<List<string>>(TopicsJson) ?? [];
+
     private readonly List<QuizOption> _quizOptions = new();
     public IReadOnlyCollection<QuizOption> QuizOptions => _quizOptions.AsReadOnly();
 
@@ -137,6 +160,7 @@ public class DailyActivity : Entity
         }
 
         clone.TerminalMissionsJson = TerminalMissionsJson;
+        clone.Target = Target;
         return clone;
     }
 
@@ -165,6 +189,33 @@ public class DailyActivity : Entity
 
         TerminalMissionsJson = TerminalMissions.Serialize(TerminalMissions.Create(missions), TerminalMissions.CreateCommands(commands));
         if (prompt is not null) Prompt = prompt;
+    }
+
+    /// <summary>Molde v1: aponta a atividade para um dos alvos do dia (t1, t2, t3).</summary>
+    public void SetTarget(string? target)
+    {
+        if (target is not null && target is not ("t1" or "t2" or "t3"))
+            throw new DomainException("O alvo de aprendizagem deve ser t1, t2 ou t3.", "alvo_invalido");
+        Target = target;
+    }
+
+    /// <summary>
+    /// Molde v1: dados da conversa por voz. <paramref name="referenceAnswer"/> e a resposta correta da pergunta;
+    /// <paramref name="hint"/> a pista da tela; a pergunta final traz 3 topicos.
+    /// </summary>
+    public void ConfigureVoiceQuestion(string? referenceAnswer, string? hint, bool isFinal, IReadOnlyList<string>? topics)
+    {
+        if (Type != ActivityType.VoiceSummary)
+            throw new DomainException("Resposta de referencia e pista so valem pra VoiceSummary.");
+        if (isFinal && topics is not { Count: 3 })
+            throw new DomainException("A pergunta final precisa de exatamente 3 topicos-pista.", "topicos_invalidos");
+        if (!isFinal && topics is { Count: > 0 })
+            throw new DomainException("So a pergunta final tem topicos-pista.", "topicos_invalidos");
+
+        ReferenceAnswer = string.IsNullOrWhiteSpace(referenceAnswer) ? null : referenceAnswer;
+        Hint = string.IsNullOrWhiteSpace(hint) ? null : hint;
+        IsFinalQuestion = isFinal;
+        TopicsJson = topics is { Count: > 0 } ? System.Text.Json.JsonSerializer.Serialize(topics) : null;
     }
 
     /// <summary>Abre espaco pra uma atividade nova no meio do dia (ver <see cref="Dailies.DailyTemplate.InsertActivity"/>).</summary>

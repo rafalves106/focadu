@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Focadu.Domain.Activities;
@@ -34,7 +36,41 @@ public static class CuratedDayImporter
         var day = Parse(json);
 
         var dailyTemplate = weeklyTemplate.AddDailyTemplate(day.DayNumber, language);
-        ApplyDay(weeklyTemplate, dailyTemplate, day);
+        ApplyDay(weeklyTemplate, dailyTemplate, day, json);
+    }
+
+    /// <summary>
+    /// Hash do conteudo de um dia-N.json (SHA-256 em hexa, com fim de linha normalizado): o importador compara
+    /// com <c>DailyTemplate.ContentHash</c> para pular o dia que nao mudou.
+    /// </summary>
+    public static string ComputeHash(string json)
+    {
+        var normalized = json.Replace("\r\n", "\n").TrimEnd();
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized))).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Troca o conteudo de um DailyTemplate que ja existe pelo de <paramref name="json"/> (as atividades antigas saem
+    /// e as do arquivo entram, hash e molde atualizados). Devolve os Ids dos CuratedContents que as atividades antigas
+    /// usavam, pra quem chama remover os que ficaram sem uso. A semelhanca com <see cref="ReimportFile"/> e proposital.
+    /// </summary>
+    public static IReadOnlyCollection<Guid> ReplaceDay(WeeklyTemplate weeklyTemplate, DailyTemplate dailyTemplate, string json)
+    {
+        var day = Parse(json);
+        if (day.DayNumber != dailyTemplate.DayNumber)
+            throw new InvalidOperationException($"dayNumber {day.DayNumber} nao bate com o dia {dailyTemplate.DayNumber}.");
+
+        var previousContentIds = dailyTemplate.Activities.Where(a => a.ContentId is not null).Select(a => a.ContentId!.Value).ToHashSet();
+        dailyTemplate.ClearActivities();
+        ApplyDay(weeklyTemplate, dailyTemplate, day, json);
+        return previousContentIds;
+    }
+
+    /// <summary>Le so o cabecalho do dia (numero e molde), sem aplicar nada.</summary>
+    public static (int DayNumber, string? MoldeVersion) Peek(string json)
+    {
+        var day = Parse(json);
+        return (day.DayNumber, day.MoldeVersion);
     }
 
     /// <summary>
@@ -45,14 +81,14 @@ public static class CuratedDayImporter
     /// </summary>
     public static IReadOnlyCollection<Guid> ReimportFile(WeeklyTemplate weeklyTemplate, DailyTemplate dailyTemplate, string jsonFilePath)
     {
-        var day = Parse(File.ReadAllText(jsonFilePath));
-        if (day.DayNumber != dailyTemplate.DayNumber)
-            throw new InvalidOperationException($"{jsonFilePath}: dayNumber {day.DayNumber} nao bate com o dia {dailyTemplate.DayNumber}.");
-
-        var previousContentIds = dailyTemplate.Activities.Where(a => a.ContentId is not null).Select(a => a.ContentId!.Value).ToHashSet();
-        dailyTemplate.ClearActivities();
-        ApplyDay(weeklyTemplate, dailyTemplate, day);
-        return previousContentIds;
+        try
+        {
+            return ReplaceDay(weeklyTemplate, dailyTemplate, File.ReadAllText(jsonFilePath));
+        }
+        catch (InvalidOperationException ex) when (ex.Message.StartsWith("dayNumber"))
+        {
+            throw new InvalidOperationException($"{jsonFilePath}: {ex.Message}");
+        }
     }
 
     /// <summary>Fase 79: o arquivo ja traz passos de codigo (a ponte no formato "code comigo").</summary>
@@ -63,14 +99,17 @@ public static class CuratedDayImporter
         JsonSerializer.Deserialize<CuratedDayJson>(json, JsonOptions)
             ?? throw new InvalidOperationException("Conteudo curado vazio ou invalido.");
 
-    private static void ApplyDay(WeeklyTemplate weeklyTemplate, DailyTemplate dailyTemplate, CuratedDayJson day)
+    private static void ApplyDay(WeeklyTemplate weeklyTemplate, DailyTemplate dailyTemplate, CuratedDayJson day, string json)
     {
         var contentByRef = new Dictionary<string, Guid>();
         foreach (var content in day.CuratedContents)
         {
             var created = weeklyTemplate.AddCuratedContent(content.Type, content.Title, content.ExternalUrl, content.BodyText);
+            created.SetSource(content.Source);
             contentByRef[content.Ref] = created.Id;
         }
+
+        dailyTemplate.SetCurationInfo(day.MoldeVersion, ComputeHash(json), day.Targets?.Select(x => new LearningTarget(x.Id, x.Text)));
 
         for (var i = 0; i < day.Activities.Count; i++)
             AddActivity(dailyTemplate, day.Activities[i], i, contentByRef);
@@ -222,6 +261,9 @@ public static class CuratedDayImporter
         }
 
         var activity = dailyTemplate.AddActivity(json.Type, orderIndex, json.AnswerMode, json.Prompt, contentId, json.ExpectedAnswer);
+        activity.SetTarget(json.Target);
+        if (json.Type == ActivityType.VoiceSummary && (json.ReferenceAnswer is not null || json.Hint is not null || json.Final == true))
+            activity.ConfigureVoiceQuestion(json.ReferenceAnswer, json.Hint, json.Final == true, json.Topics);
 
         if (json.Type == ActivityType.CodeStep)
             activity.ConfigureCodeStep(
@@ -268,14 +310,18 @@ public static class CuratedDayImporter
         }
     }
 
-    private record CuratedDayJson(int DayNumber, List<CuratedContentJson> CuratedContents, List<ActivityJson> Activities, LabJson? Lab = null);
+    private record CuratedDayJson(
+        int DayNumber, List<CuratedContentJson> CuratedContents, List<ActivityJson> Activities, LabJson? Lab = null,
+        string? MoldeVersion = null, List<TargetJson>? Targets = null);
+
+    private record TargetJson(string Id, string Text);
 
     /// <summary>Fase 86: bloco <c>lab</c> do dia (CURADORIA.md 5.2). Os nomes dos campos seguem o JSON.</summary>
     private record LabJson(
         string? Runtime, string? Image, List<string>? Files, List<string>? Packages, List<string>? Services,
         string? Entry, string? Command, int TimeoutSeconds = 0, List<string>? Setup = null, string? User = null);
 
-    private record CuratedContentJson(string Ref, CuratedContentType Type, string Title, string? ExternalUrl, string? BodyText);
+    private record CuratedContentJson(string Ref, CuratedContentType Type, string Title, string? ExternalUrl, string? BodyText, string? Source = null);
 
     private record ActivityJson(
         ActivityType Type, AnswerMode AnswerMode, string? ContentRef, string? Prompt,
@@ -288,7 +334,9 @@ public static class CuratedDayImporter
         /// <summary>So em TerminalMission: as missoes do bloco (CURADORIA.md 5.3).</summary>
         List<MissionJson>? Missions = null,
         /// <summary>So em TerminalMission (terminal v3): a cola "Comandos de hoje".</summary>
-        List<CommandJson>? Commands = null);
+        List<CommandJson>? Commands = null,
+        /// <summary>Molde v1: alvo de aprendizagem (t1, t2, t3) e dados da conversa por voz.</summary>
+        string? Target = null, string? Hint = null, string? ReferenceAnswer = null, bool? Final = null, List<string>? Topics = null);
 
     private record MissionJson(
         string Title, string Prompt, List<string>? Hints, string Note, MissionCheckJson? Check,

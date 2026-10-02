@@ -47,4 +47,27 @@ public static class CuratedContentLocator
             (sibling is not null ? $" e em '{sibling}'" : "") +
             " - confirme que o repositorio focadu-secret esta clonado ao lado deste, ou que existe uma pasta/symlink 'secret/' local.");
     }
+
+    /// <summary>
+    /// Raiz do repositorio de conteudo (a pasta que tem conteudo/, processo/ e produto/): CURATED_CONTENT_ROOT no
+    /// container; fora dele, secret/ na raiz do repo ou o repositorio irmao focadu-secret/. Nulo se nao achar.
+    /// </summary>
+    public static string? SecretRoot()
+    {
+        var contentRoot = Environment.GetEnvironmentVariable("CURATED_CONTENT_ROOT");
+        if (!string.IsNullOrWhiteSpace(contentRoot))
+            return contentRoot;
+
+        var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
+        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, ".git")))
+            dir = dir.Parent;
+        if (dir is null) return null;
+
+        var nested = Path.Combine(dir.FullName, "secret");
+        if (Directory.Exists(Path.Combine(nested, "conteudo"))) return nested;
+
+        var siblingParent = Directory.GetParent(dir.FullName)?.FullName;
+        var sibling = siblingParent is null ? null : Path.Combine(siblingParent, "focadu-secret");
+        return sibling is not null && Directory.Exists(Path.Combine(sibling, "conteudo")) ? sibling : null;
+    }
 }

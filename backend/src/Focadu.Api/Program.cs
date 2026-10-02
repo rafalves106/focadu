@@ -201,6 +201,54 @@ RankingScope ParseRankingScope(string? scope)
     return parsed;
 }
 
+// `dotnet run --project src/Focadu.Api -- importar <curso> [--dia N] [--dry-run] [--confirmar] [--sem-linter] [--legado]`:
+// importa (ou atualiza) os dias de conteudo/<curso>/ no banco, com linter, hash por dia e dry-run (plano de
+// curadoria, secao 7). Corrigir um dia e editar o JSON e importar de novo - nunca SQL a mao.
+if (args.Contains("importar"))
+{
+    var slugIndex = Array.IndexOf(args, "importar") + 1;
+    var courseSlug = slugIndex < args.Length && !args[slugIndex].StartsWith("--") ? args[slugIndex] : null;
+    if (courseSlug is null)
+    {
+        Console.Error.WriteLine("uso: importar <curso> [--dia N] [--dry-run] [--confirmar] [--sem-linter] [--legado]");
+        Environment.ExitCode = 2;
+        return;
+    }
+
+    int? onlyDay = null;
+    var dayIndex = Array.IndexOf(args, "--dia");
+    if (dayIndex >= 0)
+    {
+        if (dayIndex + 1 >= args.Length || !int.TryParse(args[dayIndex + 1], out var parsedDay) || parsedDay < 1)
+        {
+            Console.Error.WriteLine("--dia precisa de um numero de dia (1 ou mais).");
+            Environment.ExitCode = 2;
+            return;
+        }
+        onlyDay = parsedDay;
+    }
+
+    var options = new ImportOptions(onlyDay, args.Contains("--dry-run"), args.Contains("--confirmar"), args.Contains("--sem-linter"), args.Contains("--legado"));
+    using var importScope = app.Services.CreateScope();
+    var report = await importScope.ServiceProvider.GetRequiredService<ImportCuratedDaysUseCase>().ExecuteAsync(courseSlug, options);
+
+    Console.WriteLine($"Importar '{report.CourseName}'{(report.DryRun ? " (dry-run: nada foi gravado)" : "")}{(report.CourseCreated ? " - curso novo" : "")}");
+    foreach (var day in report.Days)
+    {
+        Console.WriteLine($"  Dia {day.DayNumber}: {day.Status} - {day.Detail}");
+        foreach (var error in day.Errors ?? [])
+            Console.WriteLine($"      {error}");
+    }
+    Console.WriteLine($"  Resumo: {report.Days.Count(d => d.Status == ImportStatus.Created)} novo(s), {report.Days.Count(d => d.Status == ImportStatus.Updated)} atualizado(s), " +
+        $"{report.Days.Count(d => d.Status == ImportStatus.Unchanged)} sem mudanca, {report.Days.Count(d => d.Status is ImportStatus.Rejected or ImportStatus.NeedsConfirmation)} recusado(s); " +
+        $"{report.DailiesAdded} Dailies adicionadas, {report.DailiesReset} recomecadas.");
+    foreach (var skipped in report.Skipped)
+        Console.WriteLine($"  Daily NAO adicionada - {skipped}");
+    if (report.Days.Any(d => d.Status is ImportStatus.Rejected or ImportStatus.NeedsConfirmation))
+        Environment.ExitCode = 1;
+    return;
+}
+
 // `dotnet run --project src/Focadu.Api -- seed`: popula o curso piloto "Web Security" e encerra,
 // sem subir o servidor HTTP. Nao e um endpoint porque a Api ainda nao tem autoria de conteudo.
 if (args.Contains("seed"))

@@ -93,6 +93,7 @@ public static class DependencyInjection
         // na Fase 42).
         services.AddHttpClient<IAudioTranscriptionService, GroqAudioTranscriptionService>(
             client => ConfigureGroqClient(client, GroqAudioTranscriptionAttemptTimeout));
+        services.AddSingleton<IDayLinter, NodeDayLinter>();
         services.AddHttpClient<IContentEvaluationService, GroqContentEvaluationService>(
             client => ConfigureGroqClient(client, GroqContentEvaluationAttemptTimeout));
         // Rascunho de post do LinkedIn (Fase 11) - mesmo cliente/chave do Groq, so um adapter

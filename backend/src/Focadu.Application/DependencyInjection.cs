@@ -50,6 +50,8 @@ public static class DependencyInjection
         services.AddScoped<SeedWebSecurityCourseUseCase>();
         services.AddScoped<SyncBridgeDaysUseCase>();
         services.AddScoped<SeedCuratedCoursesUseCase>();
+        services.AddScoped<CuratedEnrollmentSync>();
+        services.AddScoped<ImportCuratedDaysUseCase>();
         services.AddScoped<SyncLabConfigUseCase>(); // Fase 86
         services.AddScoped<SyncCourseRecommendationsUseCase>();
         services.AddScoped<SeedCosmeticCatalogUseCase>();

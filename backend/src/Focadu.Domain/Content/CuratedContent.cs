@@ -17,6 +17,11 @@ public class CuratedContent : Entity
     /// <summary>Texto de leitura escrito por nós. Nulo quando o conteúdo é apenas um link externo.</summary>
     public string? BodyText { get; private set; }
 
+    /// <summary>Fonte oficial do conteudo (RFC, documentacao). Campo proprio, fora do corpo do texto (molde v1).</summary>
+    public string? Source { get; private set; }
+
+    public void SetSource(string? source) => Source = string.IsNullOrWhiteSpace(source) ? null : source.Trim();
+
     private CuratedContent()
     {
         Title = string.Empty;

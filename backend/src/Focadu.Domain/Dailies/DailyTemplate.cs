@@ -33,6 +33,17 @@ public class DailyTemplate : Entity
     /// </summary>
     public ProjectLanguage? Language { get; private set; }
 
+    /// <summary>Molde do dia no dia-N.json ("v1"). Nulo = dia curado antes do plano de curadoria (02/10/2026).</summary>
+    public string? MoldeVersion { get; private set; }
+
+    /// <summary>SHA-256 do dia-N.json que gerou este dia. O importador compara e pula o dia que nao mudou.</summary>
+    public string? ContentHash { get; private set; }
+
+    /// <summary>Os 3 alvos de aprendizagem do dia (JSON). Nulo em dia antigo.</summary>
+    public string? TargetsJson { get; private set; }
+
+    public IReadOnlyList<LearningTarget> Targets => LearningTarget.Parse(TargetsJson);
+
     private readonly List<DailyActivity> _activities = new();
     public IReadOnlyCollection<DailyActivity> Activities => _activities.AsReadOnly();
 
@@ -72,6 +83,20 @@ public class DailyTemplate : Entity
             throw new DomainException("DayNumber deve ser maior que zero.");
 
         DayNumber = dayNumber;
+    }
+
+    /// <summary>Registra de qual arquivo curado este dia veio: molde, hash do conteudo e alvos de aprendizagem.</summary>
+    public void SetCurationInfo(string? moldeVersion, string? contentHash, IEnumerable<LearningTarget>? targets)
+    {
+        var list = targets?.ToList() ?? [];
+        if (list.Count != 0 && list.Count != 3)
+            throw new DomainException("Um dia tem exatamente 3 alvos de aprendizagem.", "alvos_invalidos");
+        if (list.Select(x => x.Id).Distinct().Count() != list.Count)
+            throw new DomainException("Os alvos de aprendizagem precisam de ids diferentes.", "alvos_invalidos");
+
+        MoldeVersion = string.IsNullOrWhiteSpace(moldeVersion) ? null : moldeVersion;
+        ContentHash = string.IsNullOrWhiteSpace(contentHash) ? null : contentHash;
+        TargetsJson = list.Count == 0 ? null : LearningTarget.Serialize(list);
     }
 
     /// <summary>Fase 86: liga (ou desliga, com nulo) o laboratorio do dia. So faz sentido com passo de codigo ou missao no terminal.</summary>

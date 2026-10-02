@@ -24,19 +24,17 @@ public class SeedCuratedCoursesUseCase
 
     private readonly ICourseRepository _courseRepository;
     private readonly IEnrollmentRepository _enrollmentRepository;
-    private readonly IWeeklyRepository _weeklyRepository;
+    private readonly CuratedEnrollmentSync _enrollmentSync;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IClock _clock;
 
     public SeedCuratedCoursesUseCase(
-        ICourseRepository courseRepository, IEnrollmentRepository enrollmentRepository, IWeeklyRepository weeklyRepository,
-        IUnitOfWork unitOfWork, IClock clock)
+        ICourseRepository courseRepository, IEnrollmentRepository enrollmentRepository, CuratedEnrollmentSync enrollmentSync,
+        IUnitOfWork unitOfWork)
     {
         _courseRepository = courseRepository;
         _enrollmentRepository = enrollmentRepository;
-        _weeklyRepository = weeklyRepository;
+        _enrollmentSync = enrollmentSync;
         _unitOfWork = unitOfWork;
-        _clock = clock;
     }
 
     public async Task<IReadOnlyList<CuratedCourseSeedResult>> ExecuteAsync(CancellationToken cancellationToken = default)
@@ -73,7 +71,7 @@ public class SeedCuratedCoursesUseCase
 
             var (dailiesAdded, skipped) = courseCreated || created.Count == 0
                 ? (0, new List<string>())
-                : await SyncEnrollmentsAsync(course.Id, created, cancellationToken);
+                : await _enrollmentSync.SyncAsync(course.Id, created, cancellationToken);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             results.Add(new CuratedCourseSeedResult(manifest.Name, courseCreated, created.Count, dailiesAdded, course.Status.ToString(), skipped, recreated));
@@ -83,46 +81,6 @@ public class SeedCuratedCoursesUseCase
 
     private async Task<bool> CanRecreateAsync(Guid courseId, CourseStatus status, CancellationToken cancellationToken) =>
         status == CourseStatus.Draft && (await _enrollmentRepository.GetByCourseIdAsync(courseId, cancellationToken)).Count == 0;
-
-    private async Task<(int DailiesAdded, List<string> Skipped)> SyncEnrollmentsAsync(
-        Guid courseId, IReadOnlyList<CreatedDay> created, CancellationToken cancellationToken)
-    {
-        var newByWeek = created.GroupBy(c => c.Week).ToList();
-        var today = _clock.Today();
-        var added = 0;
-        var skipped = new List<string>();
-
-        foreach (var enrollment in await _enrollmentRepository.GetByCourseIdAsync(courseId, cancellationToken))
-        {
-            var weeklies = (await _weeklyRepository.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken)).ToList();
-            foreach (var group in newByWeek)
-            {
-                var template = group.Key;
-                var weekly = weeklies.FirstOrDefault(w => w.WeeklyTemplateId == template.Id);
-                if (weekly is null)
-                {
-                    weekly = new Weekly(enrollment.Id, template, today);
-                    await _weeklyRepository.AddAsync(weekly, cancellationToken);
-                    weeklies.Add(weekly);
-                }
-
-                foreach (var dailyTemplate in group.Select(c => c.Day).OrderBy(d => d.DayNumber))
-                {
-                    try
-                    {
-                        weekly.AddDaily(dailyTemplate, today);
-                        added++;
-                    }
-                    catch (DomainException ex)
-                    {
-                        // Numero ocupado (ex.: um reforco) - registra em vez de derrubar o deploy.
-                        skipped.Add($"Weekly {weekly.Id} (Dia {dailyTemplate.DayNumber}): {ex.Message}");
-                    }
-                }
-            }
-        }
-        return (added, skipped);
-    }
 }
 
 public record CuratedCourseSeedResult(
