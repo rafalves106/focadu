@@ -146,7 +146,7 @@ public class Daily : Entity
     /// </summary>
     public ActivityResponse SubmitActivityResponse(
         Guid activityId, int score, string? transcript = null, string? correctedTranscript = null,
-        string? justification = null, string? aiFeedback = null)
+        string? justification = null, string? aiFeedback = null, string? correctAnswer = null, string? improvementPoints = null)
     {
         if (Status is DailyStatus.Locked or DailyStatus.Available)
             throw new DomainException("A Daily precisa ser iniciada antes de registrar respostas.", "daily_nao_iniciada");
@@ -156,7 +156,7 @@ public class Daily : Entity
 
         var attemptNumber = _responses.Count(r => r.ActivityId == activityId) + 1;
         var response = new ActivityResponse(
-            activityId, attemptNumber, score, transcript, correctedTranscript, justification, aiFeedback);
+            activityId, attemptNumber, score, transcript, correctedTranscript, justification, aiFeedback, correctAnswer, improvementPoints);
         _responses.Add(response);
 
         // Fase 79: ajustar um passo de codigo nao e erro da sessao - tentar de novo faz parte do

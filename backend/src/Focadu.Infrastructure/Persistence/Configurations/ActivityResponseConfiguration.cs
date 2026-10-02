@@ -18,6 +18,9 @@ public class ActivityResponseConfiguration : IEntityTypeConfiguration<ActivityRe
         builder.Property(r => r.CorrectedTranscript);
         builder.Property(r => r.Justification);
         builder.Property(r => r.AiFeedback);
+        // Conversa por voz (molde v1): devolutiva em duas partes.
+        builder.Property(r => r.CorrectAnswer);
+        builder.Property(r => r.ImprovementPoints);
         builder.Property(r => r.CreatedAt).IsRequired();
         builder.Property(r => r.ActivityId).IsRequired();
 

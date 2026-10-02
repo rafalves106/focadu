@@ -41,7 +41,8 @@ internal static class DailyStateMapper
             .OrderBy(r => r.AttemptNumber)
             .Select(r => new ActivityResponseDto(
                 r.Id, r.ActivityId, r.AttemptNumber, r.Score, r.Passed,
-                r.Transcript, r.CorrectedTranscript, r.Justification, r.AiFeedback, r.CreatedAt))
+                r.Transcript, r.CorrectedTranscript, r.Justification, r.AiFeedback, r.CreatedAt,
+                r.CorrectAnswer, r.ImprovementPoints))
             .ToList();
 
         // Gabarito (IsCorrect / ExpectedAnswer / TerminalQuality) só é revelado depois que o
@@ -107,6 +108,10 @@ internal static class DailyStateMapper
                 : null,
             Commands: activity.Type == ActivityType.TerminalMission
                 ? activity.TerminalCommandList.Select(c => new TerminalCommandDto(c.Command, c.Description)).ToList()
-                : null);
+                : null,
+            Hint: activity.Hint,
+            IsFinalQuestion: activity.IsFinalQuestion,
+            Topics: activity.IsFinalQuestion ? activity.Topics : null,
+            Target: activity.Target);
     }
 }

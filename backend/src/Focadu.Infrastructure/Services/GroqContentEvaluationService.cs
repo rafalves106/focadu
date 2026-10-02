@@ -65,6 +65,17 @@ public class GroqContentEvaluationService : IContentEvaluationService
         "\"<até 2 frases em português, direto ao aluno, apontando o que acertou e o que pode " +
         "melhorar>\"}. Não inclua nenhum texto fora desse JSON.";
 
+    // Conversa por voz (molde v1): a IA so mede o CONTEUDO da resposta curta e aponta o que faltou ou ficou impreciso.
+    // A resposta correta nao e gerada aqui - vem da curadoria (referenceAnswer).
+    private const string DebriefSystemPromptTemplate =
+        "Você é um avaliador pedagógico {plataforma}. O aluno respondeu em voz a uma pergunta curta. " +
+        "Você recebe a pergunta, a resposta correta de referência e a resposta do aluno (já transcrita e revisada). " +
+        "Avalie SÓ o conteúdo: se o aluno acertou o essencial da resposta de referência, o que faltou e o que ficou " +
+        "impreciso. Ignore vícios de linguagem, hesitações, repetições e o estilo da fala. Não cobre nada que a pergunta " +
+        "não pediu. Responda SEMPRE em português e em JSON estrito, exatamente neste formato: {\"score\": <inteiro de 0 a " +
+        "100>, \"improvementPoints\": \"<até 3 frases curtas, diretas ao aluno, só sobre o conteúdo: o que faltou ou ficou " +
+        "impreciso; se o conteúdo estiver completo e correto, diga isso em uma frase>\"}. Não inclua nenhum texto fora desse JSON.";
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly HttpClient _httpClient;
@@ -90,7 +101,7 @@ public class GroqContentEvaluationService : IContentEvaluationService
         {
             var correctedTranscript = await CorrectTranscriptAsync(request, cancellationToken);
             var (score, feedback) = await GradeAsync(request, correctedTranscript, cancellationToken);
-            return new ContentEvaluationResult(score, feedback, correctedTranscript);
+            return new ContentEvaluationResult(score, feedback, correctedTranscript, request.Debrief ? feedback : null);
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -166,19 +177,19 @@ public class GroqContentEvaluationService : IContentEvaluationService
             response_format = new { type = "json_object" },
             messages = new object[]
             {
-                new { role = "system", content = GradingSystemPrompt(request.CourseName) },
-                new { role = "user", content = BuildGradingUserPrompt(request, correctedTranscript) },
+                new { role = "system", content = request.Debrief ? DebriefSystemPrompt(request.CourseName) : GradingSystemPrompt(request.CourseName) },
+                new { role = "user", content = request.Debrief ? BuildDebriefUserPrompt(request, correctedTranscript) : BuildGradingUserPrompt(request, correctedTranscript) },
             },
         };
 
         return await HttpRetry.RunAsync(
-            () => GradeOnceAsync(payload, cancellationToken),
+            () => GradeOnceAsync(payload, request.Debrief, cancellationToken),
             ex => HttpRetry.IsTransientFailure(ex, cancellationToken)
                 || ex is ExternalServiceException { Code: "avaliacao_ia_formato_invalido" },
             cancellationToken);
     }
 
-    private async Task<(int Score, string Feedback)> GradeOnceAsync<TPayload>(TPayload payload, CancellationToken cancellationToken)
+    private async Task<(int Score, string Feedback)> GradeOnceAsync<TPayload>(TPayload payload, bool debrief, CancellationToken cancellationToken)
     {
         var response = await _httpClient.PostAsJsonAsync("chat/completions", payload, cancellationToken);
         await HttpRetry.EnsureSuccessAsync(response, cancellationToken);
@@ -186,11 +197,11 @@ public class GroqContentEvaluationService : IContentEvaluationService
         var completion = await response.Content.ReadFromJsonAsync<GroqChatCompletionResponse>(JsonOptions, cancellationToken);
         var rawContent = completion?.Choices?.FirstOrDefault()?.Message?.Content;
 
-        return ParseGrading(rawContent);
+        return debrief ? ParseDebrief(rawContent) : ParseGrading(rawContent);
     }
 
     private static string BuildCorrectionUserPrompt(ContentEvaluationRequest request) =>
-        $"Conteúdo de referência (vocabulário técnico correto):\n\"\"\"\n{request.ExpectedAnswer}\n\"\"\"\n\n" +
+        $"Conteúdo de referência (vocabulário técnico correto):\n\"\"\"\n{request.VocabularyText ?? request.ExpectedAnswer}\n\"\"\"\n\n" +
         $"Transcrição bruta do resumo falado pelo aluno:\n\"\"\"\n{request.UserAnswer}\n\"\"\"";
 
     /// <summary>Fase 85: os prompts citam o curso da atividade (antes: sempre "plataforma de estudo de seguranca web").</summary>
@@ -199,6 +210,14 @@ public class GroqContentEvaluationService : IContentEvaluationService
 
     internal static string GradingSystemPrompt(string? courseName) =>
         GradingSystemPromptTemplate.Replace("{plataforma}", CoursePromptText.Platform(courseName));
+
+    internal static string DebriefSystemPrompt(string? courseName) =>
+        DebriefSystemPromptTemplate.Replace("{plataforma}", CoursePromptText.Platform(courseName));
+
+    internal static string BuildDebriefUserPrompt(ContentEvaluationRequest request, string correctedTranscript) =>
+        $"Pergunta feita ao aluno:\n{request.ContextText}\n\n" +
+        $"Resposta correta de referência:\n\"\"\"\n{request.ExpectedAnswer}\n\"\"\"\n\n" +
+        $"Resposta do aluno (já transcrita e revisada):\n\"\"\"\n{correctedTranscript}\n\"\"\"";
 
     private static string BuildGradingUserPrompt(ContentEvaluationRequest request, string correctedTranscript)
     {
@@ -293,6 +312,34 @@ public class GroqContentEvaluationService : IContentEvaluationService
 
         return (parsed.Score.Value, parsed.Feedback);
     }
+
+    /// <summary>Conversa por voz: nunca inventa nota nem devolutiva se a IA sair do formato (mesmo criterio do ParseGrading).</summary>
+    internal static (int Score, string ImprovementPoints) ParseDebrief(string? rawContent)
+    {
+        if (string.IsNullOrWhiteSpace(rawContent))
+            throw new ExternalServiceException("avaliacao_ia_formato_invalido", "O servico de avaliacao nao retornou nenhum conteudo.");
+
+        GroqDebriefPayload? parsed;
+        try
+        {
+            parsed = JsonSerializer.Deserialize<GroqDebriefPayload>(rawContent, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            throw new ExternalServiceException("avaliacao_ia_formato_invalido", "O servico de avaliacao retornou um formato inesperado (JSON invalido).");
+        }
+
+        if (parsed?.Score is null || string.IsNullOrWhiteSpace(parsed.ImprovementPoints) || parsed.Score is < 0 or > 100)
+        {
+            throw new ExternalServiceException(
+                "avaliacao_ia_formato_invalido",
+                "O servico de avaliacao retornou um formato inesperado (campos ausentes ou score fora de 0-100).");
+        }
+
+        return (parsed.Score.Value, parsed.ImprovementPoints);
+    }
+
+    private record GroqDebriefPayload(int? Score, string? ImprovementPoints);
 
     private record GroqCorrectionPayload(string? CorrectedTranscript);
 

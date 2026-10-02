@@ -25,10 +25,12 @@ internal static class ActivityResponseRecorder
         string? aiFeedback,
         IClock clock,
         IUnitOfWork unitOfWork,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? correctAnswer = null,
+        string? improvementPoints = null)
     {
         var response = daily.SubmitActivityResponse(
-            activityId, score, transcript, correctedTranscript, justification, aiFeedback);
+            activityId, score, transcript, correctedTranscript, justification, aiFeedback, correctAnswer, improvementPoints);
 
         Guid? reinforcementDailyId = null;
         var dailyReinforcementTriggered = false;
@@ -51,7 +53,7 @@ internal static class ActivityResponseRecorder
         var responseDto = new ActivityResponseDto(
             response.Id, response.ActivityId, response.AttemptNumber, response.Score, response.Passed,
             response.Transcript, response.CorrectedTranscript, response.Justification, response.AiFeedback,
-            response.CreatedAt);
+            response.CreatedAt, response.CorrectAnswer, response.ImprovementPoints);
 
         return new SubmitActivityResponseResult(
             responseDto, dailyReinforcementTriggered, reinforcementDailyId, weeklyReinforcementTriggered);

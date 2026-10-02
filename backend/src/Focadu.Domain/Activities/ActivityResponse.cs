@@ -33,6 +33,18 @@ public class ActivityResponse : Entity
     public string? Justification { get; private set; }
 
     public string? AiFeedback { get; private set; }
+
+    /// <summary>
+    /// Conversa por voz (molde v1): a resposta correta da pergunta, copiada do referenceAnswer curado da atividade
+    /// (nunca gerada pela IA). Primeira parte da devolutiva. Nulo nas demais atividades e nas respostas antigas.
+    /// </summary>
+    public string? CorrectAnswer { get; private set; }
+
+    /// <summary>
+    /// Conversa por voz (molde v1): pontos a melhorar no CONTEUDO (o que faltou ou ficou impreciso), gerados pela IA.
+    /// Segunda parte da devolutiva; vicios de linguagem ficam de fora. Nulo nas demais atividades.
+    /// </summary>
+    public string? ImprovementPoints { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     private ActivityResponse()
@@ -41,7 +53,7 @@ public class ActivityResponse : Entity
 
     internal ActivityResponse(
         Guid activityId, int attemptNumber, int score, string? transcript, string? correctedTranscript,
-        string? justification, string? aiFeedback)
+        string? justification, string? aiFeedback, string? correctAnswer = null, string? improvementPoints = null)
     {
         if (score < 0 || score > 100)
             throw new DomainException("Score deve estar entre 0 e 100.");
@@ -57,6 +69,8 @@ public class ActivityResponse : Entity
         CorrectedTranscript = correctedTranscript;
         Justification = justification;
         AiFeedback = aiFeedback;
+        CorrectAnswer = correctAnswer;
+        ImprovementPoints = improvementPoints;
         CreatedAt = DateTime.UtcNow;
     }
 }

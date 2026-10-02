@@ -24,7 +24,15 @@ public record ContentEvaluationRequest(
     IReadOnlyCollection<string>? UserInterests = null,
     string? UserNotes = null,
     /// <summary>Fase 85: curso da atividade, citado no prompt (nulo = so "Focadu").</summary>
-    string? CourseName = null);
+    string? CourseName = null,
+    /// <summary>
+    /// Conversa por voz (molde v1): <c>ExpectedAnswer</c> e a resposta correta curada e <c>ContextText</c> a pergunta. A IA
+    /// devolve a nota e so os pontos a melhorar no conteudo (ignora vicios de linguagem); a resposta correta nao e
+    /// gerada, vem da curadoria.
+    /// </summary>
+    bool Debrief = false,
+    /// <summary>Texto de apoio so para corrigir termos mal reconhecidos na transcricao (ex.: o texto do bloco). Nulo = usa o ExpectedAnswer.</summary>
+    string? VocabularyText = null);
 
 /// <summary>
 /// Resultado da avaliacao: Score de 0 a 100 e um feedback textual gerado pela IA. CorrectedTranscript
@@ -33,4 +41,4 @@ public record ContentEvaluationRequest(
 /// quando o adapter nao suporta essa correcao ou nao houve nada a corrigir (nesse caso, igual a
 /// UserAnswer). Ver GroqContentEvaluationService para o raciocinio do prompt.
 /// </summary>
-public record ContentEvaluationResult(int Score, string Feedback, string? CorrectedTranscript = null);
+public record ContentEvaluationResult(int Score, string Feedback, string? CorrectedTranscript = null, string? ImprovementPoints = null);

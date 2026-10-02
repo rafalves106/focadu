@@ -98,7 +98,11 @@ public class SubmitVoiceSummaryResponseUseCase
         // detalhe o que se espera na resposta (ver dia-1.json), suficiente pra servir de
         // referencia - sem isso, todo VoiceSummary sobre video quebraria sempre.
         var referenceContent = weekly.Template.CuratedContents.FirstOrDefault(c => c.Id == activity.ContentId);
-        var referenceText = referenceContent?.BodyText ?? activity.Prompt;
+
+        // Molde v1 (conversa por voz): a pergunta traz a resposta correta curada. A IA mede o conteudo contra ela e
+        // devolve so os pontos a melhorar; a resposta correta mostrada ao aluno e a da curadoria, nunca a da IA.
+        var debrief = !string.IsNullOrWhiteSpace(activity.ReferenceAnswer);
+        var referenceText = debrief ? activity.ReferenceAnswer : referenceContent?.BodyText ?? activity.Prompt;
         if (string.IsNullOrWhiteSpace(referenceText))
         {
             throw new DomainException(
@@ -113,7 +117,7 @@ public class SubmitVoiceSummaryResponseUseCase
         // ContextText (a pergunta) so agrega informacao quando a referencia principal e outra
         // coisa (o BodyText da leitura) - se ja caiu no fallback do Prompt como referencia,
         // repeti-lo tambem aqui seria redundante.
-        var contextText = referenceContent?.BodyText is not null ? activity.Prompt : null;
+        var contextText = debrief || referenceContent?.BodyText is not null ? activity.Prompt : null;
 
         // Fase 27: perfil e so pra enriquecer o FEEDBACK (ver doc da classe) - usuario nao
         // encontrado (nunca deveria acontecer, JWT ja garante usuario existente) so significa
@@ -122,11 +126,15 @@ public class SubmitVoiceSummaryResponseUseCase
         var user = daily.Template.IsBridge || !_personalization.AnalogiesEnabled ? null : await _userRepository.GetByIdAsync(userId, cancellationToken);
         var courseName = await _weeklyTemplateRepository.GetCourseNameAsync(weekly.Template.Id, cancellationToken);
         var evaluation = await _evaluationService.EvaluateAsync(
-            new ContentEvaluationRequest(referenceText, transcript, contextText, user?.Interests, user?.AdditionalProfileNotes, courseName),
+            new ContentEvaluationRequest(
+                referenceText!, transcript, contextText, user?.Interests, user?.AdditionalProfileNotes, courseName,
+                Debrief: debrief, VocabularyText: debrief ? referenceContent?.BodyText : null),
             cancellationToken);
 
         return await ActivityResponseRecorder.RecordAsync(
             weekly, daily, activityId, evaluation.Score, transcript, evaluation.CorrectedTranscript,
-            justification: null, evaluation.Feedback, _clock, _unitOfWork, cancellationToken);
+            justification: null, evaluation.Feedback, _clock, _unitOfWork, cancellationToken,
+            correctAnswer: debrief ? activity.ReferenceAnswer : null,
+            improvementPoints: debrief ? evaluation.ImprovementPoints ?? evaluation.Feedback : null);
     }
 }

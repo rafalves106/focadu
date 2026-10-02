@@ -65,7 +65,15 @@ public record DailyActivityDto(
     CodeStepDto? CodeStep = null,
     IReadOnlyCollection<TerminalMissionDto>? Missions = null,
     /// <summary>TerminalMission (terminal v3): a cola "Comandos de hoje" do bloco.</summary>
-    IReadOnlyCollection<TerminalCommandDto>? Commands = null);
+    IReadOnlyCollection<TerminalCommandDto>? Commands = null,
+    /// <summary>VoiceSummary (molde v1): pista mostrada na tela no lugar do texto do bloco.</summary>
+    string? Hint = null,
+    /// <summary>VoiceSummary (molde v1): e a pergunta final (explique o dia com suas palavras).</summary>
+    bool IsFinalQuestion = false,
+    /// <summary>Pergunta final: os 3 topicos-pista.</summary>
+    IReadOnlyCollection<string>? Topics = null,
+    /// <summary>Molde v1: alvo de aprendizagem (t1, t2, t3) que a atividade cobra.</summary>
+    string? Target = null);
 
 /// <summary>Missao no terminal (ActivityType.TerminalMission): o navegador do aluno confere pelo <see cref="TerminalMissionCheckDto"/>; nada aqui e segredo.</summary>
 public record TerminalMissionDto(
@@ -133,7 +141,11 @@ public record ActivityResponseDto(
     string? CorrectedTranscript,
     string? Justification,
     string? AiFeedback,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    /// <summary>Conversa por voz: a resposta correta (do referenceAnswer curado), 1a parte da devolutiva.</summary>
+    string? CorrectAnswer = null,
+    /// <summary>Conversa por voz: pontos a melhorar no conteudo, 2a parte da devolutiva.</summary>
+    string? ImprovementPoints = null);
 
 public record SubmitActivityResponseResult(
     ActivityResponseDto Response,
