@@ -1,6 +1,6 @@
 ---
 name: registrar-rascunho
-description: "Detecta quando o usuário traz uma ideia solta e ainda não decidida sobre a Focadu (sinais: 'seria interessante...', 'ideia de um colega/amigo', 'pensei em...', 'e se a gente...', 'seria legal ter...', ou menção explícita a 'rascunho') e a registra como secret/rascunhos/<slug>.md, com nível de elaboração, perguntas em aberto e esboço técnico. Use também quando o usuário pedir explicitamente para anotar/registrar/atualizar um rascunho, ou invocar /registrar-rascunho. NÃO use para pedido de implementação direta (isso é código) nem para dúvidas sobre o que já existe."
+description: "Detecta quando o usuário traz uma ideia solta e ainda não decidida sobre a Focadu (sinais: 'seria interessante...', 'ideia de um colega/amigo', 'pensei em...', 'e se a gente...', 'seria legal ter...', ou menção explícita a 'rascunho') e a registra como secret/produto/rascunhos/<slug>.md, com nível de elaboração, perguntas em aberto e esboço técnico. Use também quando o usuário pedir explicitamente para anotar/registrar/atualizar um rascunho, ou invocar /registrar-rascunho. NÃO use para pedido de implementação direta (isso é código) nem para dúvidas sobre o que já existe."
 metadata:
   version: 1.0.0
 ---
@@ -20,7 +20,7 @@ metadata:
 
 ## Antes de qualquer coisa
 
-1. `ls secret/rascunhos/` e leia pelo menos os 2 arquivos mais recentes por data de modificação
+1. `ls secret/produto/rascunhos/` e leia pelo menos os 2 arquivos mais recentes por data de modificação
    — hoje são `squad-aprovacao-reentrada.md` e `caderninho-de-anotacoes.md`. São o padrão de
    estrutura a seguir. Os arquivos mais antigos da pasta (`visual-ui-ux.md`,
    `sistema-de-atividades.md` etc.) são mirror de um doc externo anterior, mais resumidos —
@@ -28,7 +28,7 @@ metadata:
 2. Confira se já existe um rascunho pro mesmo assunto (grep por palavra-chave do tema). Se
    existir, **atualize** o arquivo existente em vez de criar um duplicado — acrescente uma
    seção ou revise o que já está lá, sem apagar o histórico da ideia original.
-3. `secret/rascunhos/` (dentro de `secret/`, que tem git próprio) é o **único** destino de
+3. `secret/produto/rascunhos/` (dentro de `secret/`, que tem git próprio) é o **único** destino de
    rascunhos deste projeto. Nunca escreva rascunho em `docs/`, no Notion, ou em qualquer lugar
    fora dessa pasta.
 
@@ -36,7 +36,7 @@ metadata:
 
 1. **Extraia a ideia** da mensagem: do que se trata, quem trouxe (se mencionado — colega,
    teste ao vivo, o próprio usuário), qual problema ou vontade motiva.
-2. **Nomeie o arquivo**: slug curto em kebab-case, `secret/rascunhos/<slug>.md`.
+2. **Nomeie o arquivo**: slug curto em kebab-case, `secret/produto/rascunhos/<slug>.md`.
 3. **Classifique o nível de elaboração** (escala abaixo) com base em quanto a mensagem do
    usuário já deixou pensado/decidido.
 4. **Monte o markdown** seguindo o template abaixo.
@@ -59,7 +59,7 @@ metadata:
 ```markdown
 # Rascunho — <Título Curto>
 
-> Ideia/visão ainda não reconciliada com o estado implementado (ver `secret/MESTRE.md`).
+> Ideia/visão ainda não reconciliada com o estado implementado (ver `secret/produto/MESTRE.md`).
 
 **Nível de elaboração:** <🌱 Semente | 🌿 Esboço | 🌳 Detalhado>
 
@@ -96,6 +96,6 @@ outros rascunhos desta pasta.
 
 ## Referências
 
-- `secret/rascunhos/squad-aprovacao-reentrada.md` — melhor exemplo de estrutura completa.
-- `secret/rascunhos/caderninho-de-anotacoes.md` — outro exemplo recente (ainda sem o campo
+- `secret/produto/rascunhos/squad-aprovacao-reentrada.md` — melhor exemplo de estrutura completa.
+- `secret/produto/rascunhos/caderninho-de-anotacoes.md` — outro exemplo recente (ainda sem o campo
   "Nível de elaboração" — foi escrito antes desse SKILL existir).

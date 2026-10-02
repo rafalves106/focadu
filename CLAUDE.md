@@ -33,7 +33,7 @@ focadu/
 ├── frontend/          <- Vite + React + TypeScript (Dockerfile + nginx.conf próprios)
 ├── docker-compose.yml / .env.example   <- stack de produção, ver docs/DOCKER.md
 ├── .github/workflows/ <- ci.yml (build+test+lint) e deploy.yml (runner self-hosted Linux, pós-CI)
-├── .claude/           <- skills (`skills/`), agente `editor-pedagogico-websec` e `launch.json`
+├── .claude/           <- skills (`skills/`), agentes `editor-pedagogico` e `revisor-editorial` e `launch.json`
 ├── whatsapp-service/  <- serviço Node isolado de notificação, fase futura (ainda placeholder)
 └── secret/            <- git próprio, ignorado pelo repo principal (ver .gitignore).
                           Documento de produto/negócio (MESTRE.md) + curadoria de conteúdo
@@ -88,7 +88,7 @@ Regra geral: **o modelo mais barato que dá conta**, e o contexto principal fica
 |---|---|---|
 | Implementar fase, decisões de arquitetura, bug difícil, revisão de segurança | Sessão principal (Sonnet; Opus só se travar) | Precisa do contexto inteiro |
 | Buscar/mapear código ("onde fica X", "quem chama Y") em vários arquivos | Subagente `Explore` (Haiku) | Devolve só a conclusão, não despeja arquivos no contexto |
-| Reescrever texto de aula / analogias | Agente `editor-pedagogico-websec` (Sonnet) | Só lê e devolve Markdown; não precisa de Opus |
+| Reescrever texto de aula (leitura fácil) | Agente `editor-pedagogico` (Sonnet) | Só lê e devolve Markdown; não precisa de Opus |
 | Curar dia (`curar-conteudo`), retrofit visual, rascunho | Skills do projeto, **um dia por vez** | Nunca em lote (estoura contexto) |
 | Rodar testes/build e resumir falhas, varrer logs do Impostor | Subagente ou `Bash` com saída filtrada (`| tail`, `grep`) | Log cru não entra no contexto |
 

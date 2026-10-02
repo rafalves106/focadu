@@ -1,140 +1,67 @@
 ---
 name: curar-conteudo
-description: "Cura o conteúdo didático de um dia de um curso da Focadu (Web Security, Linux, Python pra Web Security) (texto cru, resumos falados, vídeo, quiz, cloze, ligar palavras, roleplay) e grava como secret/curadoria/<curso>/semana-N/dia-N.json. Use quando o usuário pedir para curar, montar ou gerar o conteúdo de um dia/semana do curso, revisar um dia.json existente contra o briefing, ou invocar /curar-conteudo."
+description: "Cura UM dia de um curso da Focadu (Web Security, Linux, Python pra Web Security, Design Patterns, Arquitetura de Software) pelo pipeline do plano de curadoria: texto (D2), linter (D3), revisão de escrita (D4), atividades (D5), validação (D6), revisão editorial (D7) e importação (D8). Grava em secret/conteudo/<curso>/semana-N/dia-N.json. Exige a ficha do dia aprovada (skill ficha-do-dia). Use quando o usuário pedir para curar, montar ou gerar o conteúdo de um dia, corrigir um dia a partir de uma lista do linter ou do revisor, ou invocar /curar-conteudo."
 metadata:
-  version: 1.1.0
+  version: 2.0.0
 ---
 
-# Curar Conteúdo — Cursos da Focadu
+# Curar um dia
 
-Cursos e slugs (pasta em `secret/curadoria/<slug>/`):
+Regras e decisões: `secret/produto/PLANO-CURADORIA.md` (aprovado em 02/10/2026). Se algo divergir, o plano vence. Responda em português do Brasil, direto.
 
-| Curso | Slug | Roteiro e estado atual |
-|---|---|---|
-| Web Security (piloto) | `web-security` | `CURADORIA.md` seções 4 e 5 |
-| Linux (pré-requisito) | `linux` | `linux/ROTEIRO.md` |
-| Python pra Web Security (pré-requisito) | `python-websec` | `python-websec/ROTEIRO.md` |
+**Um dia por sessão. `/clear` entre dias.** Nunca um mês em lote. Cada etapa lê **só** os arquivos da sua lista; não leia outros dias, o roteiro inteiro, `MESTRE.md`, `ARQUITETURA.md` nem `processo/arquivo/`.
 
-Se o pedido não deixar claro o curso, pergunte. Sem curso citado e com número de dia que só existe no
-Web Security, é o Web Security.
+Slugs: `web-security`, `linux`, `python-websec`, `design-patterns`, `arquitetura-de-software`. Sem curso claro, pergunte. Molde A (conceito): web-security, design-patterns, arquitetura-de-software. Molde B (prática): linux, python-websec.
 
-## Antes de qualquer coisa
+## Portões antes de começar
 
-1. Leia **secret/curadoria/CURADORIA.md** por completo — filosofia, molde diário, schema do
-   `.json`, estado atual e o roteiro completo dos 72 dias do Web Security (6 por semana, o 6º é a
-   ponte). Filosofia, molde, schema e critérios 2.2 valem pra **todos** os cursos. Pra `linux` e
-   `python-websec`, leia também o `ROTEIRO.md` do curso (roteiro dia a dia, estado atual e regras
-   próprias). É a fonte da verdade; este SKILL só orquestra o processo.
-2. Leia pelo menos um `dia-N.json` já pronto (ex: `secret/curadoria/web-security/semana-1/dia-1.json`)
-   como referência viva de estrutura e tom — a Semana 1 é a referência de qualidade.
-3. Olhe a pasta `secret/curadoria/<slug>/semana-N/` para descobrir o que já existe e
-   qual é o próximo `dayNumber` sem arquivo (cheque também o "Estado atual" do curso). A numeração
-   é por curso: cada curso começa no Dia 1.
+1. A ficha do dia existe e está `ficha ok` em `secret/processo/cursos/<curso>/estado.md`. Sem ela, pare e mande rodar `/ficha-do-dia`.
+2. O molde está congelado ou o pedido é um **piloto** autorizado pelo dono (plano, Fase 2). Nenhum dia novo fora disso.
+3. **Dia-âncora** (dia 1 do curso ou da semana): cure só ele e pare no D7; o dono lê e aprova antes de qualquer outro dia da semana. Se reprovar, o ajuste vai para a **ficha**, não para o texto.
 
-## Fluxo
+## Etapas
 
-1. **Confirme o dia/semana alvo** com o usuário se não estiver óbvio pelo pedido.
-2. **Receba o conteúdo cru** (o usuário normalmente cola: Texto Cru, 2 Resumos Falados,
-   Vídeo com opções de canal, Quiz, Cloze Test, Ligar Palavras, Roleplay) — ou, se o
-   usuário pedir para você mesmo escrever, siga as Regras de Ouro abaixo à risca.
-3. **Vídeo**: se vier mais de uma opção candidata (ou nenhuma com URL fechada), pesquise
-   com `WebSearch` para confirmar que o vídeo existe de verdade antes de gravar a URL.
-   Prefira PT-BR nativo; dublado só como fallback; nunca invente um link. Decida sozinho e
-   só relate a escolha + motivo (não é necessário perguntar, a menos que nada adequado
-   apareça na busca).
-4. **Monte o JSON** seguindo exatamente o schema documentado no CURADORIA.md — mesmos
-   nomes de campo, mesma forma de tratar `contentRef`, `quizOptions` e `roleplayNodes`.
-   Se uma mensagem vier cortada (limite de caracteres), sinalize a lacuna no lugar certo e
-   peça o restante — nunca invente conteúdo para preencher.
-5. **Revise cada Quiz e Cloze/`MultipleChoice`** contra o checklist de 4 critérios anti-resposta-
-   óbvia em CURADORIA.md seção 2.2 (espelhamento estrutural, distrator fora de assunto, resposta
-   mais longa, termo repetido) — o teste prático é "dá pra eliminar as 3 erradas e acertar só de
-   leitura/lógica, sem saber o assunto de verdade?". Se sim pra qualquer pergunta, reescreva os
-   distratores problemáticos (nunca a resposta certa) antes de seguir. Descoberto ao vivo depois
-   de várias fases já concluídas (ver nota de auditoria em CURADORIA.md seção 4) — não pular essa
-   revisão em conteúdo novo.
-6. **Valide** o JSON (`python3 -c "import json; json.load(open('...'))"` ou equivalente)
-   antes de considerar pronto.
-7. **Grave** em `secret/curadoria/<curso-slug>/semana-N/dia-N.json`.
-8. **Atualize** o "Estado atual" do curso (Web Security: tabela em `CURADORIA.md`; os outros: o
-   `ROTEIRO.md` do curso) marcando o dia recém-criado como concluído.
+| Etapa | Lê | Faz | Portão |
+|---|---|---|---|
+| **D2 Texto** | ficha do dia, `processo/molde/regras-de-leitura.md`, `processo/linha-editorial.md`, 1 texto exemplo curto aprovado do mesmo molde | Escreve os 3 blocos (A) ou a leitura curta com missões (B), com "Em uma frase" e "O que levar daqui" | D3 |
+| **D3 Linter** | nada (script) | `node secret/processo/scripts/linter-dia/src/cli.js <dia.json> --glossario secret/processo/cursos/<curso>/glossario.md` | `PASSOU`; senão volta ao D2 (máx. 2 voltas) |
+| **D4 Revisão de escrita** | texto + lista de erros do linter | Agente `editor-pedagogico`, passando ficha e lista de erros | rodar o linter de novo |
+| **D5 Atividades** | ficha, texto final, `processo/molde/regras-de-quiz.md`, `processo/molde/dia.schema.json`, 1 atividade exemplo | Conversa por voz, Quiz, Cloze, Ligar Palavras, Roleplay; monta o `dia-N.json` completo | D6 |
+| **D6 Validação** | nada (script) | Linter em modo completo, `json.load`, log de execução, verificadores do lab; Haiku só para o que script não pega | `PASSOU`; senão volta ao D5 |
+| **D7 Revisão editorial** | (o agente lê) | Agente `revisor-editorial`, em **contexto limpo**, com dia, ficha do dia, ficha do curso, linha editorial e relatório do linter | `aprovado` |
+| **D8 Importar** | nada (comando) | Importador do passo B + teste de importação no app local; marcar `pronto` no `estado.md` | dia aberto no app |
 
-## Regras de Ouro (não negociáveis)
+Estado visível no `estado.md`: `a fazer` → `ficha ok` → `validado` (após D6) → `revisado` (após D7) → `pronto` (após D8). Anote também os tokens gastos pelo dia.
 
-- **Texto Cru**: técnico, denso, direto ao ponto, baseado em RFCs/documentação oficial/
-  fundamentos de engenharia — nunca um texto genérico "de IA". Sem "bem-vindos ao módulo".
-  5 a 9 minutos de leitura. Deixe âncoras para analogias (motos, JDM, Valorant, CS), mas
-  não escreva a analogia — isso é o motor da plataforma que injeta depois.
-- **Diagramas de fluxo (opcional)**: quando o texto tiver uma sequência real de passos entre
-  atores (handshake, resolução de nomes, fluxo de auth), use um bloco ` ```diagrama ` (sintaxe e
-  exemplos em CURADORIA.md seção 2.1) em vez de só narrar em prosa. Nunca decorativo — só quando
-  a sequência importa de verdade.
-- **Resumos Falados**: 2 perguntas abertas que exigem explicação em voz alta, impossíveis
-  de responder colando de um chat de IA.
-- **Vídeo**: 10 a 15 minutos no máximo, PT-BR de preferência, com título + canal +
-  justificativa de por que assistir.
-- **Quiz** (5-6 passos): todas as alternativas tecnicamente corretas sobre o assunto — só
-  uma responde ao enunciado específico. Proibido distrator obviamente errado (checklist de
-  validação em CURADORIA.md seção 2.2 — ver passo 5 do Fluxo).
-- **Cloze Test** (4 passos): uma lacuna exata por frase.
-- **Ligar Palavras**: exatamente 3 grupos de 4 pares — Conceitos (palavra×palavra),
-  Definições (frase×palavra), Processos (frase×frase).
-- **Roleplay**: aluno no papel do sistema, árvore de decisão terminando em exatamente os
-  3 desfechos `Ideal`/`Suboptimal`/`Poor`.
-- **Sessão total** (leitura + vídeo + atividades): 30 a 60 minutos.
+### D2 e D5: como escrever
 
-## Regras extras dos cursos de linguagem e ferramenta (`linux`, `python-websec`)
+- **Molde A:** 3 blocos de 1 conceito, até 150 palavras cada; cada bloco é um `Reading` próprio em `curatedContents` seguido de um `VoiceSummary` que aponta para ele e para um alvo (`target`). Mais Quiz (3), Cloze (2), Ligar Palavras (1, 4 pares), Roleplay (1, termina em Ideal/Suboptimal/Poor) e a pergunta final por voz com 3 tópicos-pista. Vídeo só como demonstração opcional de até 5 min que o texto não mostra; confirme a URL com `WebSearch`/`--online`, nunca invente.
+- **Molde B:** leitura curta em missões (comando, saída real, 1 frase), `TerminalMission` com 3 a 5 missões (`processo/molde/terminal-mission.md`), Quiz (3), Cloze (2), Ligar Palavras (1), Roleplay como missão. Sem vídeo e sem conversa por voz. Ponte (dia 6): `processo/molde/ponte.md` e `lab.md`.
+- Cada item de Quiz/Cloze/voz aponta para um alvo; cada alvo tem texto e pergunta; nenhuma pergunta cobra o que o texto não ensinou.
+- Conversa por voz: situação de 2 linhas e 1 pergunta; fala da Focada até 200 caracteres (`processo/guias/GUIA-DE-VOZ-FOCADA.md`); `referenceAnswer` com a resposta correta.
+- Schema só com os campos de `dia.schema.json`. Nunca invente chave nova.
 
-- **Tudo que aparece no texto foi rodado de verdade.** Todo comando, trecho de código e saída
-  mostrados no Texto Cru, no Quiz ou no Cloze vêm de uma execução real, num ambiente descartável
-  (`docker run --rm debian:stable-slim` pro Linux; `python:3.12-slim` pro Python), nunca de
-  memória. Vale a mesma regra das pontes (CURADORIA.md 5.1): foi isso que pegou afirmações erradas antes.
-- **Bloco de código em vez de prosa** pra comando e saída (` ``` ` genérico, CURADORIA.md 2.1). Prompt
-  e saída no mesmo bloco, como aparece no terminal.
-- **Todo dia liga a um uso em segurança.** O dia de Linux/Python não é "o comando pelo comando": uma
-  seção curta diz onde aquilo aparece no Web Security (ex.: `../` → LFI na Semana 4; `/etc/passwd` →
-  alvo clássico de leitura). Sem ensinar o ataque, que é assunto do Web Security.
-- **`CodeStep` em dia normal depende da fase de backend do laboratório.** Hoje o `CodeStep` (Fase 79) é
-  acoplado à ponte (linguagem da ponte + código acumulado). Decidido em 30/09/2026 (rascunho
-  `laboratorio-de-codigo-na-ponte.md`, decisão 9): o curso `python-websec` terá **um exercício de código
-  por dia** (`CodeStep` com bloco `lab`, `runtime: python`, `codeStarter` quando parte de esqueleto). Até o
-  backend existir, **não gere `CodeStep` fora da ponte**: a prática entra no Quiz ("o que esse comando
-  imprime?"), no Cloze ("complete o comando") e no Roleplay.
-- **Bloco `lab` (CURADORIA.md 5.2) em pontes e, depois, nos exercícios do Python.** Todo dia com
-  `CodeStep` ganha `lab` **só depois** de `node secret/curadoria/scripts/lab/verificar.mjs <dia.json>`
-  passar (ele roda cada solução acumulada no runtime do laboratório: Pyodide ou Linux no v86). Lib que
-  não roda no laboratório não ganha shim nem é trocada: aquele dia fica sem `lab`. Refazer o verificador a
-  cada mudança em `codeSolution`, `codeExpectedOutput` ou no arquivo da ponte. `command` é o comando de
-  exemplo (no Linux o aluno digita), `entry` o arquivo que ele cria.
-- **Curso `linux` é 100% prático: sem vídeo e sem resumo falado** (decisão do dono, 30/09/2026, depois de
-  achar o dia 1 complicado: ler linha de comando e depois explicar em voz alta não ensina a usar o Linux).
-  Em dia normal do Linux, **não** gere `Video` nem `VoiceSummary` (nem em `curatedContents` nem em
-  `activities`); as regras de Vídeo e Resumos Falados acima valem só pro Web Security (e o Python, até
-  decisão em contrário). O dia fica: `Reading` curta + Quiz (5-6) + Cloze (4) + Ligar Palavras (3 grupos)
-  + Roleplay. Molde completo em CURADORIA.md seção 2.3.
-  - **Texto mínimo, em "missões".** Cada missão é um comando pra digitar, a saída real logo abaixo e 1-2
-    frases dizendo o que reparar. Nada de parágrafo teórico antes do comando, nem seção só de conceito
-    (kernel, FHS em tabela, builtin...): só entra o que o aluno usa naquele dia. Leitura de 2 a 4 minutos.
-  - **A prática é "o que esse comando imprime?" e "qual comando faz X?"**: Quiz e Cloze sobre comando e
-    saída, Ligar Palavras comando↔efeito, Roleplay como missão ("você é a ana num servidor novo..."). A
-    ponte (dia 6 e 12) continua sendo onde o aluno executa de verdade (`CodeStep` + `lab`).
-  - **Dia normal do Linux ganha `TerminalMission` (CURADORIA.md 5.3), logo depois da `Reading`**: 3 a 5
-    missões de comando num Linux embutido, já logado como usuário comum, conferidas no navegador (sem IA,
-    sem nota, sem tentativa). Com ela o texto **nunca** manda rodar `docker run`/instalar Debian: diz que
-    a missão vem a seguir. Toda missão passa por `node secret/curadoria/scripts/lab/verificar-missoes.mjs
-    <dia.json>` (estado inicial não passa, `solution` passa, `wrong` não passa) antes de o dia ir pro ar.
-    Comando que só existe no Debian (`sudo`, `apt`, `systemd`) fica na leitura, não vira missão.
-  - **Nenhum prompt de resposta aberta** que peça "explique com suas palavras" um comando.
-- Analogias continuam como no Web Security (âncora no texto, a plataforma injeta).
-- **Distrator de quiz pode ser um equívoco típico.** Em pergunta de comportamento ("o que esse comando
-  imprime?", "o que acontece se..."), a regra absoluta do Web Security (todas as alternativas
-  verdadeiras) não se aplica: as erradas são o comportamento que um iniciante esperaria, sempre do
-  mesmo subtema e plausíveis. Os 4 critérios da CURADORIA.md 2.2 continuam valendo sem exceção.
+## Regras de ouro
+
+- **Leitura fácil manda** (`processo/linha-editorial.md`). **Sem analogia**: nem no texto, nem âncora para analogia.
+- **Tudo que é número, comando ou saída foi executado de verdade** em ambiente descartável (`debian:stable-slim` para Linux; `python:3.12-slim` para Python; `dotnet` para C#) e registrado em `secret/processo/cursos/<curso>/logs/dia-N.log`. O linter confere o texto contra esse log. Nunca de memória.
+- **Fonte oficial** vai no campo `source` do `curatedContent`, nunca no corpo.
+- Termos novos só do `glossario.md`; mesma coisa, mesma palavra.
+- Diagrama só quando a estrutura é real (`processo/molde/diagramas.md`); bloco de código até 8 linhas com a saída real logo abaixo.
+- `lab` e `TerminalMission` só sobem depois de `verificar.mjs`/`verificar-missoes.mjs` (`processo/scripts/lab`, ou `linter-dia --lab`).
+- Todo dia de Linux/Python liga a um uso em segurança, sem ensinar o ataque.
+- Quiz: os 4 critérios anti-resposta-óbvia (`processo/molde/criterios-anti-resposta-obvia.md`); reescreva distratores, nunca a certa.
+
+## Correção
+
+- **Cirúrgica:** o linter ou o revisor lista N erros; edite só esses N trechos. Nunca regenere o JSON por causa de um erro.
+- Ajuste depois do D7 volta pelo mesmo caminho: edita o JSON, roda D3/D6, importa de novo. **Nada de SQL à mão** nem edição direta no banco. Emergência em produção: SQL permitido, mas no mesmo dia o JSON é corrigido e importado (o SQL vai para `processo/arquivo/`).
+- O importador (passo B) ainda não existe: até lá o dia para em `revisado`.
 
 ## Referências
 
-- `secret/curadoria/CURADORIA.md` — filosofia, schema, roteiro completo, estado atual.
-- `secret/curadoria/web-security/semana-1/dia-1.json` a `dia-4.json` — exemplos canônicos.
-- `secret/curadoria/linux/semana-1/dia-1.json` — referência dos cursos de linguagem/ferramenta.
-- `secret/rascunhos/trilha-pre-requisitos-linux-python.md` — origem e decisões dos cursos `linux` e
-  `python-websec`.
+- `secret/produto/PLANO-CURADORIA.md`; `secret/processo/linha-editorial.md`
+- `secret/processo/molde/`: `molde-v1.md`, `dia.schema.json`, `regras-de-leitura.md`, `regras-de-quiz.md`
+- `secret/processo/scripts/linter-dia/README.md`
+- `secret/processo/cursos/<curso>/`: `roteiro.md`, `estado.md`, `glossario.md`, `fichas/`
+- Agentes: `editor-pedagogico` (D4), `revisor-editorial` (D7). Skill `ficha-do-dia` (D1/S1).
