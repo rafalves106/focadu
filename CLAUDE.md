@@ -100,13 +100,15 @@ Hábitos obrigatórios:
   Web Security) e grava em `secret/curadoria/<curso>/semana-N/dia-N.json`.
 - `registrar-rascunho` — detecta ideia solta/não decidida sobre o produto e registra em
   `secret/rascunhos/<slug>.md`.
+- `criar-curso` — conduz um curso novo inteiro (briefing → fontes → roteiro → dias → validação → publicação), com agentes
+  `pesquisador-fontes` (Haiku), `redator-dia` e `auditor-dia` (Sonnet) e scripts em `secret/curadoria/scripts/curso/`.
 - `aplicar-elementos-visuais` — retrofita um dia já curado com os elementos visuais das Fases
   30/31 (diagrama de fluxo/comparação/camadas/partes, bloco de código), um dia por vez, nunca em
   lote.
 
 ## Estado atual
 
-Última fase concluída: **Fase 91 — Sessão em telas de notebook** (01/10/2026; missão no terminal v3: Fase 90; mais de um curso: Fase 89).
+Última fase concluída: **Fase 92 — Pipeline de curso novo** (02/10/2026; telas de notebook: Fase 91; missão no terminal v3: Fase 90).
 
 Histórico completo dos marcos (Fases 25–87, com o porquê de cada decisão): `docs/ESTADO-HISTORICO.md` —
 só abrir quando precisar. Estado técnico vivo: `docs/ARQUITETURA.md`; detalhe por fase: `docs/fase-N/`.
@@ -129,6 +131,9 @@ Resumo do que existe hoje:
 - **Missão no terminal (Fase 88)**: nos dias normais do Linux (piloto: Dia 2) a atividade `TerminalMission` dá ao aluno um
   Linux embutido, já logado como usuário comum, com missões de comando conferidas no navegador (sem IA, sem nota, sem
   tentativa). Formato em `secret/curadoria/CURADORIA.md` 5.3, verificador `scripts/lab/verificar-missoes.mjs`. Ver `docs/fase-88/`.
+- **Curso novo (Fase 92)**: use `/criar-curso` (skill `criar-curso`, fluxo em `secret/curadoria/PIPELINE-NOVO-CURSO.md`, fontes em
+  `FONTES-CONFIAVEIS.md`). Pesquisa em Haiku, escrita/auditoria em Sonnet, Opus só em escalada; o seed descobre cursos pela pasta
+  `secret/curadoria/<slug>/curso.json`. **Regra zero: curso nunca é cadastrado só no banco** — vive no `focadu-secret/main`. Ver `docs/fase-92/`.
 - **Telas de notebook (Fase 91)**: abaixo de 1440×820 a sessão diária (inclusive laboratório e missão) e o Projeto Semanal
   trocam as colunas laterais por trilhos de 64px que abrem gavetas (`SideSlot`, `useIsWideSession`). Ver `docs/fase-91/`.
 - **Missão no terminal v3 (Fase 90)**: cada missão diz situação, objetivo e passos; ao lado do terminal, a cola "Comandos de

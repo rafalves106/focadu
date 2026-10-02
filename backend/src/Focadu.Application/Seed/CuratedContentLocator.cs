@@ -7,6 +7,43 @@ namespace Focadu.Application.Seed;
 /// </summary>
 public static class CuratedContentLocator
 {
+    /// <summary>Slug do curso piloto: tem seed proprio (<c>SeedWebSecurityCourseUseCase</c>), nunca passa pelo seed generico.</summary>
+    public const string WebSecuritySlug = "web-security";
+
+    /// <summary>
+    /// Fase 92: os cursos curados alem do Web Security = toda pasta de curadoria com <c>curso.json</c>. Curso novo
+    /// existe so de colocar a pasta no focadu-secret - sem lista fixa em codigo. Ordem alfabetica (estavel).
+    /// </summary>
+    public static IReadOnlyList<string> ListCourseSlugs()
+    {
+        var roots = new List<string>();
+        var contentRoot = Environment.GetEnvironmentVariable("CURATED_CONTENT_ROOT");
+        if (!string.IsNullOrWhiteSpace(contentRoot))
+            roots.Add(Path.Combine(contentRoot, "curadoria"));
+        else
+        {
+            var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
+            while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, ".git")))
+                dir = dir.Parent;
+            if (dir is not null)
+            {
+                roots.Add(Path.Combine(dir.FullName, "secret", "curadoria"));
+                var sibling = Directory.GetParent(dir.FullName)?.FullName;
+                if (sibling is not null) roots.Add(Path.Combine(sibling, "focadu-secret", "curadoria"));
+            }
+        }
+
+        return roots
+            .Where(Directory.Exists)
+            .SelectMany(Directory.GetDirectories)
+            .Where(d => File.Exists(Path.Combine(d, "curso.json")))
+            .Select(d => Path.GetFileName(d))
+            .Where(slug => slug != WebSecuritySlug)
+            .Distinct()
+            .OrderBy(slug => slug, StringComparer.Ordinal)
+            .ToList();
+    }
+
     /// <summary>Caminho do arquivo; com <paramref name="required"/> falso devolve null quando ele nao existe.</summary>
     public static string? Resolve(string courseSlug, string? weekFolder, string fileName, bool required)
     {

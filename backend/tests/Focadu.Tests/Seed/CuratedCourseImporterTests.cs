@@ -84,4 +84,35 @@ public class CuratedCourseImporterTests
         Assert.All(steps, s => Assert.False(string.IsNullOrWhiteSpace(s.CodeExpectedOutput)));
         Assert.Null(bridge.Language);
     }
+
+    // Fase 92: toda pasta de curadoria com curso.json entra no seed sozinha. Este teste e a rede de seguranca do
+    // pipeline de curso novo: manifesto invalido, dia faltando ou fora do schema quebra aqui, antes do deploy.
+    [Fact]
+    public void ListCourseSlugs_FindsEveryCuratedCourse_AndEachOneImportsCleanly()
+    {
+        var slugs = CuratedContentLocator.ListCourseSlugs();
+
+        Assert.Contains("linux", slugs);
+        Assert.DoesNotContain(CuratedContentLocator.WebSecuritySlug, slugs);
+
+        foreach (var slug in slugs)
+        {
+            var manifest = CuratedCourseImporter.ParseManifest(
+                File.ReadAllText(CuratedContentLocator.Resolve(slug, null, "curso.json", required: true)!));
+            var course = CuratedCourseImporter.CreateCourse(manifest);
+
+            var created = CuratedCourseImporter.Apply(course, manifest,
+                (week, file) => CuratedContentLocator.Resolve(slug, week, file, required: false));
+
+            var onDisk = manifest.Modules.SelectMany(m => m.Weeks)
+                .SelectMany(w => w.Days.Select(d => CuratedContentLocator.Resolve(slug, $"semana-{w.Number}", $"dia-{d}.json", required: false)))
+                .Count(p => p is not null);
+            Assert.True(created.Count == onDisk, $"{slug}: {created.Count} dias importados, {onDisk} arquivos no disco.");
+            if (manifest.Published)
+            {
+                var expected = manifest.Modules.SelectMany(m => m.Weeks).Sum(w => w.Days.Count);
+                Assert.True(onDisk == expected, $"{slug}: published=true mas so {onDisk} de {expected} dias existem.");
+            }
+        }
+    }
 }

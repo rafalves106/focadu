@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 91 - Sessao, laboratorio e Projeto Semanal em telas de notebook: colunas laterais viram trilhos com gavetas abaixo de 1440x820** (Fase 90: missao no terminal v3; Fase 89: mais de um curso).
+> Ultima fase que atualizou este documento: **Fase 92 - Pipeline de curso novo: seed descobre cursos pela pasta da curadoria, skill `criar-curso`, agentes por modelo e validador** (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -1738,8 +1738,9 @@ Security antes/junto do Web Security; decisoes do dono em 29/09/2026: **sem Proj
 
 - **Manifesto por curso:** `secret/curadoria/<slug>/curso.json` (`name`, `description`,
   `practiceLanguage`, `published`, `modules[].weeks[]` com `number`/`title`/`theme`/`days`). Slugs
-  conhecidos em `SeedCuratedCoursesUseCase.CourseSlugs` (`linux`, `python-websec`); sem `curso.json`, o
-  curso nao existe (hoje so o Linux tem).
+  **descobertos pelo disco** (Fase 92: `CuratedContentLocator.ListCourseSlugs` = toda pasta de `curadoria/` com `curso.json`,
+  menos `web-security`); sem `curso.json`, o curso nao existe. Curso novo = so a pasta no `focadu-secret`, sem mexer em C#.
+  Fluxo completo da pesquisa de fontes a publicacao: `secret/curadoria/PIPELINE-NOVO-CURSO.md` (skill `/criar-curso`).
 - **`SeedCuratedCoursesUseCase`** (roda no `-- seed`, depois do Web Security e das pontes): cria o curso
   **Draft** se nao existir e, em todo deploy, acrescenta os dias curados desde o anterior
   (`CuratedCourseImporter.Apply`, puro, testado contra a curadoria real). Diferente do seed do Web
@@ -2479,7 +2480,7 @@ codigo nem verifica a saida** (adulteracao ignorada), so guarda a configuracao e
   (as atividades mantem os Ids): acha os `File` pelo `externalUrl` preferindo os conteudos que as atividades
   do proprio dia usam (as variantes Python/JavaScript da ponte tem um `File` cada, mesmo `externalUrl`).
 - **Sync no `seed`** (`SyncLabConfigUseCase`, todo deploy, idempotente, depois dos cursos curados): pra cada
-  `DailyTemplate` com `CodeStep` do Web Security e dos cursos de `SeedCuratedCoursesUseCase.CourseSlugs`,
+  `DailyTemplate` com `CodeStep` do Web Security e dos cursos descobertos (`CuratedContentLocator.ListCourseSlugs`),
   abre o arquivo do dia (`semana-N/ponte/<linguagem>.json` ou `semana-N/dia-D.json`) e aplica. Dia com
   problema no arquivo e pulado e listado no log (`Seed: laboratorio NAO aplicado - ...`), o deploy nao cai.
 - **Migration** `LabCodeStep`: `DailyTemplates.LabConfig` (text), `DailyActivities.CodeStarter` (text) e

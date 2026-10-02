@@ -13,7 +13,7 @@ namespace Focadu.Application.Seed;
 /// (<see cref="CuratedDayImporter.ApplyMissions"/>). Roda junto do `seed`, em todo
 /// deploy, e e idempotente: depois da 1a vez nao muda nada.
 ///
-/// Pra cada curso curado (Web Security + os de <see cref="SeedCuratedCoursesUseCase.CourseSlugs"/>) e cada
+/// Pra cada curso curado (Web Security + os de <see cref="CuratedContentLocator.ListCourseSlugs"/>) e cada
 /// DailyTemplate com passo de codigo, abre o arquivo do dia - <c>semana-N/ponte/&lt;linguagem&gt;.json</c> na
 /// variante de linguagem do Web Security, <c>semana-N/dia-D.json</c> nos demais. Um dia cujo arquivo tem
 /// problema (lab invalido, passos que nao batem) e pulado e listado em <see cref="SyncLabConfigResult.Skipped"/>;
@@ -21,7 +21,7 @@ namespace Focadu.Application.Seed;
 /// </summary>
 public class SyncLabConfigUseCase
 {
-    private const string WebSecuritySlug = "web-security";
+    private const string WebSecuritySlug = CuratedContentLocator.WebSecuritySlug;
     private const string WebSecurityName = "Web Security";
 
     private readonly ICourseRepository _courseRepository;
@@ -36,7 +36,7 @@ public class SyncLabConfigUseCase
     public async Task<SyncLabConfigResult> ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var courses = new List<(string Slug, string Name)> { (WebSecuritySlug, WebSecurityName) };
-        foreach (var slug in SeedCuratedCoursesUseCase.CourseSlugs)
+        foreach (var slug in CuratedContentLocator.ListCourseSlugs())
         {
             var manifestPath = CuratedContentLocator.Resolve(slug, null, "curso.json", required: false);
             if (manifestPath is null) continue;

@@ -8,7 +8,8 @@ namespace Focadu.Application.Seed;
 
 /// <summary>
 /// Fase 81: seed dos cursos de pre-requisito (secret/rascunhos/trilha-pre-requisitos-linux-python.md).
-/// Roda junto do `seed`, em todo deploy, e e idempotente. Pra cada curso com curso.json:
+/// Roda junto do `seed`, em todo deploy, e e idempotente. Pra cada pasta de curadoria com curso.json (Fase 92:
+/// descoberta pelo disco, sem lista fixa - ver CuratedContentLocator.ListCourseSlugs):
 /// 1. Cria o curso (escondido, Draft) se ainda nao existir, ou completa o que ja existe com os dias
 ///    curados desde o ultimo deploy (CuratedCourseImporter).
 /// 2. Leva os dias novos pras matriculas que ja existem (hoje, so quem testa a previa): a Daily entra
@@ -19,9 +20,6 @@ namespace Focadu.Application.Seed;
 /// </summary>
 public class SeedCuratedCoursesUseCase
 {
-    /// <summary>Os cursos curados alem do Web Security (pasta em secret/curadoria/).</summary>
-    public static readonly IReadOnlyList<string> CourseSlugs = ["linux", "python-websec"];
-
     private readonly ICourseRepository _courseRepository;
     private readonly IEnrollmentRepository _enrollmentRepository;
     private readonly IWeeklyRepository _weeklyRepository;
@@ -42,7 +40,7 @@ public class SeedCuratedCoursesUseCase
     public async Task<IReadOnlyList<CuratedCourseSeedResult>> ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var results = new List<CuratedCourseSeedResult>();
-        foreach (var slug in CourseSlugs)
+        foreach (var slug in CuratedContentLocator.ListCourseSlugs())
         {
             var manifestPath = CuratedContentLocator.Resolve(slug, null, "curso.json", required: false);
             if (manifestPath is null) continue;
