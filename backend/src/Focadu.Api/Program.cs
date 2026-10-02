@@ -86,6 +86,7 @@ var frontendOptions = new FrontendOptions(
     builder.Configuration["Frontend:BaseUrl"] is { Length: > 0 } frontendBaseUrl ? frontendBaseUrl : "http://localhost:5173");
 
 // Fase 81: e-mails que enxergam os cursos ainda escondidos (Draft). Env var CoursePreview__Emails.
+builder.Services.AddSingleton(Focadu.Application.Shared.PersonalizationOptions.FromSetting(builder.Configuration["Personalization:AnalogiesEnabled"]));
 builder.Services.AddSingleton(Focadu.Application.Enrollments.CoursePreviewOptions.FromSetting(builder.Configuration["CoursePreview:Emails"]));
 builder.Services.AddFocaduApplication();
 builder.Services.AddFocaduInfrastructure(connectionString, groqApiKey, gitHubOptions, forgejoOptions, jwtOptions, smtpOptions, frontendOptions);
@@ -324,6 +325,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+// Chaves de funcionalidade que o front precisa para esconder o que esta desligado (hoje: a analogia "Pra voce").
+app.MapGet("/api/features", (Focadu.Application.Shared.PersonalizationOptions personalization) =>
+    Results.Ok(new { personalizedAnalogies = personalization.AnalogiesEnabled }));
 
 var api = app.MapGroup("/api");
 

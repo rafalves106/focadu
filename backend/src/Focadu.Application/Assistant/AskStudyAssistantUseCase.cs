@@ -42,8 +42,11 @@ public class AskStudyAssistantUseCase
     private readonly IStudyAssistantService _assistantService;
     private readonly ICourseRepository _courseRepository;
 
-    public AskStudyAssistantUseCase(IUserRepository userRepository, IStudyAssistantService assistantService, ICourseRepository courseRepository)
+    private readonly Shared.PersonalizationOptions _personalization;
+
+    public AskStudyAssistantUseCase(IUserRepository userRepository, IStudyAssistantService assistantService, ICourseRepository courseRepository, Shared.PersonalizationOptions personalization)
     {
+        _personalization = personalization;
         _userRepository = userRepository;
         _assistantService = assistantService;
         _courseRepository = courseRepository;
@@ -60,7 +63,7 @@ public class AskStudyAssistantUseCase
             throw new ValidationException("pergunta_muito_longa", $"A pergunta pode ter no maximo {MaxQuestionLength} caracteres.");
 
         // Fase 79: na ponte ("code comigo") nada de analogia de interesse - o perfil nem e lido.
-        var user = codeBridge ? null : await _userRepository.GetByIdAsync(userId, cancellationToken);
+        var user = codeBridge || !_personalization.AnalogiesEnabled ? null : await _userRepository.GetByIdAsync(userId, cancellationToken);
 
         // Fase 85: o prompt cita o curso da sessao (sem ele, so "Focadu").
         var courseName = courseId is { } id ? (await _courseRepository.GetByIdAsync(id, cancellationToken))?.Name : null;

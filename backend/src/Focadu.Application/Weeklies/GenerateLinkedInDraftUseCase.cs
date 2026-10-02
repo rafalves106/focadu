@@ -24,11 +24,13 @@ public class GenerateLinkedInDraftUseCase
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDraftGenerationService _draftGenerationService;
+    private readonly PersonalizationOptions _personalization;
 
     public GenerateLinkedInDraftUseCase(
         IWeeklyRepository weeklyRepository, IUserRepository userRepository, IUnitOfWork unitOfWork,
-        IDraftGenerationService draftGenerationService)
+        IDraftGenerationService draftGenerationService, PersonalizationOptions personalization)
     {
+        _personalization = personalization;
         _weeklyRepository = weeklyRepository;
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
@@ -47,7 +49,7 @@ public class GenerateLinkedInDraftUseCase
             .ToList();
 
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
-        var personalization = PersonalizationPromptBuilder.BuildInstruction(user?.Interests, user?.AdditionalProfileNotes);
+        var personalization = PersonalizationPromptBuilder.BuildInstruction(_personalization.Interests(user?.Interests), _personalization.Notes(user?.AdditionalProfileNotes));
 
         var prompt = BuildPrompt(weekly.Theme ?? weekly.Title, keyConcepts, personalization);
         var draft = await _draftGenerationService.GenerateAsync(prompt, cancellationToken);

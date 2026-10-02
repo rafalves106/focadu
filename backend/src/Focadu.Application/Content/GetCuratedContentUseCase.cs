@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
+using Focadu.Application.Shared;
 using Focadu.Domain.Content;
 using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
@@ -40,14 +41,17 @@ public class GetCuratedContentUseCase
     private readonly IPersonalizedAnalogyRepository _analogyRepository;
     private readonly IAnalogyGenerationService _analogyGenerationService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly PersonalizationOptions _personalization;
 
     public GetCuratedContentUseCase(
         IWeeklyTemplateRepository weeklyTemplateRepository,
         IUserRepository userRepository,
         IPersonalizedAnalogyRepository analogyRepository,
         IAnalogyGenerationService analogyGenerationService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        PersonalizationOptions personalization)
     {
+        _personalization = personalization;
         _weeklyTemplateRepository = weeklyTemplateRepository;
         _userRepository = userRepository;
         _analogyRepository = analogyRepository;
@@ -102,6 +106,9 @@ public class GetCuratedContentUseCase
     private async Task<IReadOnlyList<string>> GetOrGeneratePersonalizedAnalogiesAsync(
         Guid userId, CuratedContent content, CancellationToken cancellationToken)
     {
+        // Plano de curadoria (02/10/2026): analogias desligadas por configuracao; o codigo abaixo fica para a ideia voltar.
+        if (!_personalization.AnalogiesEnabled) return [];
+
         if (content.Type != CuratedContentType.Reading || content.BodyText is null) return [];
 
         // Fase 79 (decisao do dono): a ponte e pratica - analogia de hobby nao ajuda a escrever codigo.

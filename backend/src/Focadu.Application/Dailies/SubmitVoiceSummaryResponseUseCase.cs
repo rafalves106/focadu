@@ -1,5 +1,6 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
+using Focadu.Application.Shared;
 using Focadu.Domain.Enums;
 using Focadu.Domain.Exceptions;
 using Focadu.Domain.Repositories;
@@ -42,6 +43,7 @@ public class SubmitVoiceSummaryResponseUseCase
     private readonly IAudioTranscriptionService _transcriptionService;
     private readonly IContentEvaluationService _evaluationService;
     private readonly IWeeklyTemplateRepository _weeklyTemplateRepository;
+    private readonly PersonalizationOptions _personalization;
 
     public SubmitVoiceSummaryResponseUseCase(
         IWeeklyRepository weeklyRepository,
@@ -50,8 +52,10 @@ public class SubmitVoiceSummaryResponseUseCase
         IClock clock,
         IAudioTranscriptionService transcriptionService,
         IContentEvaluationService evaluationService,
-        IWeeklyTemplateRepository weeklyTemplateRepository)
+        IWeeklyTemplateRepository weeklyTemplateRepository,
+        PersonalizationOptions personalization)
     {
+        _personalization = personalization;
         _weeklyTemplateRepository = weeklyTemplateRepository;
         _weeklyRepository = weeklyRepository;
         _userRepository = userRepository;
@@ -115,7 +119,7 @@ public class SubmitVoiceSummaryResponseUseCase
         // encontrado (nunca deveria acontecer, JWT ja garante usuario existente) so significa
         // "sem personalizacao", nao falha a submissao.
         // Fase 79: na ponte o feedback nao usa analogia de interesse (Fase 82: inclui a ponte sem Projeto Semanal).
-        var user = daily.Template.IsBridge ? null : await _userRepository.GetByIdAsync(userId, cancellationToken);
+        var user = daily.Template.IsBridge || !_personalization.AnalogiesEnabled ? null : await _userRepository.GetByIdAsync(userId, cancellationToken);
         var courseName = await _weeklyTemplateRepository.GetCourseNameAsync(weekly.Template.Id, cancellationToken);
         var evaluation = await _evaluationService.EvaluateAsync(
             new ContentEvaluationRequest(referenceText, transcript, contextText, user?.Interests, user?.AdditionalProfileNotes, courseName),
