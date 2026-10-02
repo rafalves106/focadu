@@ -194,8 +194,8 @@ Resumo do que existe hoje:
   Ranking, Perfil e o ranking do Squad têm seletor de curso (`CourseSwitcher`, `lib/courseChoice.ts`). Ver `docs/fase-89/`.
 - **Infra**: deploy automático por push (CI/CD) na Oracle Cloud, em runner self-hosted Linux ARM64
   (`[self-hosted, Linux, focadu-oracle]`), sem homologação, Forgejo interno pros repositórios de Projeto
-  Semanal. Guia em `docs/DOCKER.md` — conferir se ele já reflete a Oracle (as Fases 40/43 o escreveram
-  pra um host Mac/Windows).
+  Semanal. Detalhes na seção "Host de produção e deploy" abaixo; `docs/DOCKER.md` ainda tem trechos de
+  quando o host era um Mac.
 
 Regras que valem a partir daqui:
 - **Toda tela é desenhada no Figma e aprovada antes do código** (decisão do dono, Fase 74).
@@ -206,23 +206,27 @@ Regras que valem a partir daqui:
 Pendências conhecidas: auditoria estática de segurança (SAST) dos repositórios de projeto semanal (escopo
 definido na Fase 24c, não implementada).
 
-## Host de produção e deploy (de `/Users/falves/Dev/Servidor/CONTEXTO.md`, 21/09/2026)
+## Host de produção e deploy
 
-Leia o `CONTEXTO.md` daquela pasta antes de mexer em deploy; resumo do que importa pro Focadu:
+**Produção roda na VM da Oracle Cloud** (runner `oracle-focadu`, máquina `focadu-vm-vnic`, Linux ARM64),
+confirmado no log do Deploy de 02/10/2026 (`deploy.yml`: `[self-hosted, Linux, focadu-oracle]`). **Não é
+mais o Mac** — o `/Users/falves/Dev/Servidor/CONTEXTO.md` (21/09, deploy no Mac via `falveshub-server`)
+e partes de `docs/DOCKER.md` estão desatualizados nisso; o `deploy.yml` é a verdade.
 
-- Público: `focadu.falveshub.com` via Cloudflare Tunnel (`falveshub-server`, domínio `falveshub.com`).
-  Compose de produção: front `:5280`, api `:5282`, db `:5432`. Código em `…/Servidor/focadu`, com
-  `rafalves106/focadu-secret` (privado, conteúdo editorial) clonado dentro de `secret/`.
-- Push em `main` → CI → `deploy.yml` (via `workflow_run`) → `git reset --hard origin/main` →
-  `docker compose up -d --build` → healthcheck. **O `reset --hard` roda no próprio diretório de
-  trabalho do host: edição não commitada em arquivo versionado lá se perde no deploy.**
+- Público: `focadu.falveshub.com` (Cloudflare Tunnel, domínio `falveshub.com`). Compose de produção:
+  front `:5280`, api `:5282`, db `:5432`; containers `focadu-frontend/-backend/-postgres/-forgejo`.
+  `rafalves106/focadu-secret` (privado, conteúdo editorial) fica clonado em `secret/` na VM.
+- Push em `main` → CI (`ci.yml`, em `ubuntu-latest`) → `deploy.yml` (via `workflow_run`, na VM) →
+  `git reset --hard origin/main` no código e no `secret/` → `docker compose up -d --build` → seed
+  idempotente → healthcheck. **O `reset --hard` roda no próprio diretório de trabalho da VM: edição
+  não commitada em arquivo versionado lá se perde no deploy.** Um commit só de docs também dispara
+  o deploy inteiro.
+- O `.env` de produção (JWT, Groq, SMTP, Forgejo; nunca versionado) mora na VM. `GITHUB_TOKEN` fica
+  **deliberadamente em branco** (a prova pública de projeto usa o Forgejo interno) — não preencher sem
+  perguntar.
 - Homologação (`focadu-hml`, branch `develop`) foi **descontinuada** (17/09, Fases 49/50/53) — não
   recriar. A rota `hml-focadu.falveshub.com` ainda dava 502 em 21/09 (remover no Cloudflare Zero Trust).
-- `GITHUB_TOKEN` do Focadu fica **deliberadamente em branco** (vai ser trocado por solução open source,
-  hoje o Forgejo interno) — não preencher sem perguntar. `.env` real tem JWT, Groq, SMTP e Forgejo.
-- **Divergência a confirmar**: o `CONTEXTO.md` (21/09) diz runner macOS neste Mac; o `deploy.yml` desde
-  30/09 usa `[self-hosted, Linux, focadu-oracle]` (Oracle Cloud, ARM64). Tratar o `deploy.yml` como o
-  verdadeiro e o `CONTEXTO.md`/`docs/DOCKER.md` como possivelmente desatualizados.
+- O checkout em `/Users/falves/Dev/Servidor/focadu` (Mac) não é mais usado pelo deploy.
 
 ## Histórico por fase (1–91, uma linha cada)
 
