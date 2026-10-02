@@ -20,7 +20,7 @@ namespace Focadu.Application.Seed;
 public class SeedCuratedCoursesUseCase
 {
     /// <summary>Os cursos curados alem do Web Security (pasta em secret/curadoria/).</summary>
-    public static readonly IReadOnlyList<string> CourseSlugs = ["linux", "python-websec"];
+    public static readonly IReadOnlyList<string> CourseSlugs = ["linux", "python-websec", "design-patterns"];
 
     private readonly ICourseRepository _courseRepository;
     private readonly IEnrollmentRepository _enrollmentRepository;
