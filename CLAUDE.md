@@ -29,8 +29,11 @@ currículo compartilhado (admin-authored); `Weekly`/`Daily`/`ActivityResponse`/`
 focadu/
 ├── CLAUDE.md          <- este arquivo
 ├── docs/              <- documentação de todo o projeto (não só backend), ver mapa abaixo
-├── backend/           <- .NET, Hexagonal (Ports & Adapters) + DDD
-├── frontend/          <- Vite + React + TypeScript
+├── backend/           <- .NET, Hexagonal (Ports & Adapters) + DDD (Dockerfile próprio)
+├── frontend/          <- Vite + React + TypeScript (Dockerfile + nginx.conf próprios)
+├── docker-compose.yml / .env.example   <- stack de produção, ver docs/DOCKER.md
+├── .github/workflows/ <- ci.yml (build+test+lint) e deploy.yml (runner self-hosted Linux, pós-CI)
+├── .claude/           <- skills (`skills/`), agente `editor-pedagogico-websec` e `launch.json`
 ├── whatsapp-service/  <- serviço Node isolado de notificação, fase futura (ainda placeholder)
 └── secret/            <- git próprio, ignorado pelo repo principal (ver .gitignore).
                           Documento de produto/negócio (MESTRE.md) + curadoria de conteúdo
@@ -55,6 +58,8 @@ focadu/
 | Arquivo | O que é | Quando muda |
 |---|---|---|
 | `docs/ARQUITETURA.md` | **Fonte da verdade técnica.** Retrato sempre atual do estado do projeto (schema, endpoints, decisões, pendências). É grande (~200KB) — busque a seção relevante em vez de ler tudo; o cabeçalho tem a linha "Última fase que atualizou este documento", que é a forma mais barata de saber em que fase o projeto está. | Toda fase, editado em cima do que existe, nunca recriado do zero. |
+| `docs/ESTADO-HISTORICO.md` | Marcos das Fases 25–87 com o porquê de cada decisão, arquivado deste arquivo em 30/09/2026. | Não editar; só consultar. |
+| `docs/DOCKER.md` | Guia prático de Docker/deploy: subir local, variáveis (`.env`), runbook, runner. | Quando o deploy mudar. |
 | `docs/CONVENCOES.md` | A própria convenção de documentação/fechamento de fase descrita abaixo. | Só se a convenção em si mudar. |
 | `docs/fase-N/resumo-implementacao-fase-N.md` | Histórico imutável de cada fase (o que foi feito, decisões, dúvidas em aberto). | Escrito uma vez ao fechar a fase N, nunca editado depois. |
 | `secret/MESTRE.md` | Princípios de decisão, filosofia de produto e regras de negócio ("o porquê"), em repo próprio e ignorado. Não duplica o nível de detalhe técnico do `ARQUITETURA.md`. | Quando o escopo de produto muda (passo 4 do fechamento de fase). |
@@ -103,6 +108,58 @@ Hábitos obrigatórios:
 - `aplicar-elementos-visuais` — retrofita um dia já curado com os elementos visuais das Fases
   30/31 (diagrama de fluxo/comparação/camadas/partes, bloco de código), um dia por vez, nunca em
   lote.
+- `rodar-projeto` — sobe Postgres (Docker) + API .NET + frontend Vite em background e confirma com
+  smoke test. Usar em vez de montar os comandos à mão.
+
+## Comandos de verificação
+
+- Backend: `dotnet build backend/Focadu.slnx` e `dotnet test backend/tests/Focadu.Tests/Focadu.Tests.csproj`
+  (avisos de conflito de versão do EF Core em `Focadu.Tests.csproj` são pré-existentes). O CI hospedado
+  exclui `CuratedContentAllFilesTests`, `CertificationCoverageFileTests` e `CuratedCourseImporterTests`
+  (precisam do repo `focadu-secret`) — **rodá-los localmente depois de editar qualquer curadoria**.
+- Frontend (em `frontend/`): `npx tsc -b`, `npm run lint` (oxlint) e `npm run build`. Não existe
+  framework de teste de frontend.
+- Seed: `dotnet run --project backend/src/Focadu.Api -- seed` (idempotente por Curso). Migrations
+  aplicam sozinhas no boot da Api; gerar nova com `dotnet ef migrations add` (não precisa de Postgres,
+  via `FocaduDbContextFactory`).
+- Chaves externas (`Groq:ApiKey`, `GitHub:Token`, `Smtp:*`, `Frontend:BaseUrl`) via user-secrets/env;
+  ausentes **não impedem o boot** — só falham, com erro claro, quando o recurso é usado.
+
+## Convenções e armadilhas já descobertas (leia antes de mexer em código)
+
+Cada uma custou um bug real ou uma conversa; o porquê está em `docs/fase-N/` e `docs/ESTADO-HISTORICO.md`.
+
+- **Score é sempre calculado no servidor**, nunca recebido do cliente (Fases 3/4). Gabarito
+  (`IsCorrect`, `ExpectedAnswer`, `TerminalQuality`) vai `null` no DTO até a 1ª resposta.
+- **Template vs. Instância** (Fase 13a): `Weekly`/`Daily` de instância expõem `Number`/`Title`/
+  `Activities` como *pass-through* do template — nunca duplicar. Dado derivável (`DailyStatus`,
+  ranking, badges, Score) é **calculado sob demanda**, não persistido.
+- **"Qual Daily vem a seguir" é por progresso, não por calendário** (`DailySequencing`, Fase 38b).
+  `Daily.Date` serve só pra exibição e pra distinguir Replay/ReadOnly, nunca pra liberar conteúdo.
+- **Tempo**: `IClock.Today()` usa `DateTime.Now` de propósito (dia vivido pelo usuário); timestamps
+  de auditoria são UTC. O container precisa de `TZ=America/Sao_Paulo` no compose (Fase 43).
+- **EF Core**: `Guid` gerado no domínio com `ValueGenerated.Never` centralizado em
+  `FocaduDbContext.OnModelCreating` (sem isso o tracker emite `UPDATE` em vez de `INSERT`); enums
+  como string. Bug de EF/Postgres só aparece rodando contra banco real, nunca em teste de domínio.
+- **Testes**: só domínio puro e funções `internal static` da Application (`InternalsVisibleTo`).
+  Sem fakes de repositório e sem teste dos adapters Groq — avaliação por IA é verificada ao vivo.
+- **Adapters Groq**: JSON mode quando a saída é estruturada; **"em português" explícito em todo
+  prompt** (Fase 38b); resposta malformada vira `ExternalServiceException`, nunca nota inventada.
+  Resumo Falado = 2 chamadas (correção da transcrição, depois nota — Fase 42); a nota mede completude
+  contra a **instrução** da atividade, não contra o conteúdo curado inteiro. Personalização por
+  interesses só entra no feedback, nunca no Score.
+- **Erros da Api**: sempre o envelope `{ error, message }`; `DomainException.Code` decide o status
+  (`ApiExceptionHandler`).
+- **Frontend**: estado que sobrevive à navegação vive em store módulo-level com `useSyncExternalStore`
+  (`lib/`); hook e componente nunca no mesmo arquivo (quebra fast refresh). **As sessões automatizadas
+  não têm navegador: o Claude não confere layout, áudio ou microfone ao vivo — avisar o Falves do que
+  ficou sem verificação visual** em vez de afirmar que funciona.
+- **Seed/curadoria**: seed é idempotente por Curso e não recarrega edição de dia já seedado. Pra ver
+  edição em banco local: `UPDATE` direto em `CuratedContents.BodyText` (preserva progresso) ou recriar
+  o curso.
+- **Processo**: onde o prompt é ambíguo em schema/domínio, perguntar ao Falves antes (padrão desde a
+  Fase 1). **Nunca** adicionar linha `Co-Authored-By`/atribuição ao Claude em commits ou PRs deste
+  repositório (preferência do Falves, ver memória do projeto).
 
 ## Estado atual
 
@@ -135,7 +192,10 @@ Resumo do que existe hoje:
   hoje" (clique copia pro campo); prompt com o diretório atual e `clear` que deixa o último comando visível. Ver `docs/fase-90/`.
 - **Mais de um curso (Fase 89)**: com 2+ matrículas o "Hoje" pergunta o curso (o último aberto já vem marcado) e Trilha,
   Ranking, Perfil e o ranking do Squad têm seletor de curso (`CourseSwitcher`, `lib/courseChoice.ts`). Ver `docs/fase-89/`.
-- **Infra**: deploy automático por push (CI/CD), sem homologação, Forgejo interno pros repositórios de Projeto Semanal.
+- **Infra**: deploy automático por push (CI/CD) na Oracle Cloud, em runner self-hosted Linux ARM64
+  (`[self-hosted, Linux, focadu-oracle]`), sem homologação, Forgejo interno pros repositórios de Projeto
+  Semanal. Guia em `docs/DOCKER.md` — conferir se ele já reflete a Oracle (as Fases 40/43 o escreveram
+  pra um host Mac/Windows).
 
 Regras que valem a partir daqui:
 - **Toda tela é desenhada no Figma e aprovada antes do código** (decisão do dono, Fase 74).
@@ -145,3 +205,77 @@ Regras que valem a partir daqui:
 
 Pendências conhecidas: auditoria estática de segurança (SAST) dos repositórios de projeto semanal (escopo
 definido na Fase 24c, não implementada).
+
+## Host de produção e deploy (de `/Users/falves/Dev/Servidor/CONTEXTO.md`, 21/09/2026)
+
+Leia o `CONTEXTO.md` daquela pasta antes de mexer em deploy; resumo do que importa pro Focadu:
+
+- Público: `focadu.falveshub.com` via Cloudflare Tunnel (`falveshub-server`, domínio `falveshub.com`).
+  Compose de produção: front `:5280`, api `:5282`, db `:5432`. Código em `…/Servidor/focadu`, com
+  `rafalves106/focadu-secret` (privado, conteúdo editorial) clonado dentro de `secret/`.
+- Push em `main` → CI → `deploy.yml` (via `workflow_run`) → `git reset --hard origin/main` →
+  `docker compose up -d --build` → healthcheck. **O `reset --hard` roda no próprio diretório de
+  trabalho do host: edição não commitada em arquivo versionado lá se perde no deploy.**
+- Homologação (`focadu-hml`, branch `develop`) foi **descontinuada** (17/09, Fases 49/50/53) — não
+  recriar. A rota `hml-focadu.falveshub.com` ainda dava 502 em 21/09 (remover no Cloudflare Zero Trust).
+- `GITHUB_TOKEN` do Focadu fica **deliberadamente em branco** (vai ser trocado por solução open source,
+  hoje o Forgejo interno) — não preencher sem perguntar. `.env` real tem JWT, Groq, SMTP e Forgejo.
+- **Divergência a confirmar**: o `CONTEXTO.md` (21/09) diz runner macOS neste Mac; o `deploy.yml` desde
+  30/09 usa `[self-hosted, Linux, focadu-oracle]` (Oracle Cloud, ARM64). Tratar o `deploy.yml` como o
+  verdadeiro e o `CONTEXTO.md`/`docs/DOCKER.md` como possivelmente desatualizados.
+
+## Histórico por fase (1–91, uma linha cada)
+
+Detalhe de cada uma em `docs/fase-N/resumo-implementacao-fase-N.md`; o porquê das decisões 25–87 em
+`docs/ESTADO-HISTORICO.md`. 13a/13b/27b/38b existem como fases próprias; 24b/24c só têm commit.
+
+**Fundação (1–11)**
+- **1** Domínio e schema .NET hexagonal/DDD: penalidade (3 pts → Daily de reforço), 2 dias fracos → reforço semanal, nota de corte 80.
+- **2** Monorepo Git + API real (8 endpoints, envelope `{error,message}` com `DomainException.Code`).
+- **3** Score no servidor (Quiz/WordMatch), seed do curso, 1º frontend; achou o bug do EF (`ValueGenerated.Never`) e o CORS.
+- **4** Autoria de conteúdo curado, conclusão da Daily, telas WordMatch/Cloze/Roleplay; Score no servidor pros 4 tipos.
+- **5** Voz: Whisper + Groq, `ActivityType.VoiceSummary`; `GET /api/today` determinístico.
+- **6** Tela `/admin/conteudo` de autoria; diagramas da Semana 1. **7** Leitura e Vídeo, Projeto Semanal, menu de configurações.
+- **8** Telas de navegação (Start, visão da semana, detalhe do curso). **9** Polimento das atividades (IntroCard, OptionCard, resumo de conclusão).
+- **10** Estados de erro (`ApiErrorScreen`, `ErrorBoundary`, timeout). **11** Publicação pública (commit no GitHub + LinkedIn), bloqueio entre semanas.
+
+**Multiusuário e gamificação (12–24)**
+- **12** Auth JWT em cookie `HttpOnly`, splash/login. **13a** Template vs. Instância + matrícula (`Enrollment`). **13b** Onboarding com interesses + correção do `/admin/conteudo`.
+- **14** Gems (cap mensal 20/20/30) + Streak. **15** Bônus de superação em reforço (+2). **16** Score de estudo ponderado + ranking. **17** Marketplace de cosméticos, badges e indicação.
+- **18** Perfil em 3 abas. **19/20** Fidelidade visual (sessão diária; navegação/perfil; `/hoje` fora do shell).
+- **21** Avaliação de projeto por IA (lê o repo), analogias "Pra você", narração de voz, `CuratedDayImporter`. **22** Modal global de sessão expirada.
+- **23** Ligar Palavras em 2 colunas (`WordMatchPair`). **24** Squad (24b sucessão de liderança, 24c paginação do ranking e checks do SAST).
+
+**Currículo e IA (25–35)**
+- **25** Mapa 2D navegável (hoje desativado). **26** Currículo Web Security completo (60 dias/12 projetos), seed genérico, teste que varre toda a curadoria.
+- **27** Analogia estendida a voz e LinkedIn; **27b** avaliação automática do projeto ao submeter. **28** Badge de status da IA. **29** Caderninho de anotações.
+- **30/31** Diagramas no Texto Cru (4 tipos) e bloco de código. **32** Suporte Rápido de IA; **33** histórico curto + `/clear`.
+- **34** `cursor:pointer` global. **35** Reler anotações antes de gravar o Resumo Falado.
+
+**Sessão e correções ao vivo (36–45)**
+- **36** "Etapa anterior", contador de erros no header, Pomodoro. **37** Sessão em 2 colunas + chat fixo.
+- **38/38b** Bloqueio do Projeto Semanal, carrossel de cursos, **sequenciamento por progresso** (`DailySequencing`). **39** Correção de transcrição + título do dia.
+- **40** Docker + CI/CD de deploy. **41** Redefinição de senha por SMTP. **42** Nota injusta do Resumo Falado (2 chamadas). **43** `TZ=America/Sao_Paulo` no container.
+- **44** Flash "tudo errado" em Ligar Palavras. **45** Certificações de mercado por módulo (informativo).
+
+**Forgejo, travas e conteúdo (46–60)**
+- **46** Repositórios de Projeto Semanal no Forgejo interno (fork do template na matrícula). **47/48** Analogia sem contexto forçado + guarda de idioma.
+- **49/50/53** Fim da homologação e da branch `develop`; docs do host corrigidas. **51/52** Itálico e código inline (crase) no Texto Cru.
+- **54** Travas de acesso (reforço no mesmo dia, "1 Daily por dia" na matrícula inteira, projeto libera a próxima semana). **55** Reforço fora da cota; projeto pendente bloqueia todas as semanas seguintes.
+- **56** Botão de reforço sempre visível. **57** Reforço puxa as anotações do dia base. **58** Projeto Semanal renderiza Markdown.
+- **59** Linguagem do Projeto Semanal (Python/JavaScript, piloto Semana 1). **60** Token do Forgejo gerado sob demanda (não fica no banco).
+
+**Pixel art e telas sem rolagem (61–76)**
+- **61** Projeto Semanal sem rolagem externa. **62** Menu global do Figma. **63** Projeto Semanal v2 + anotação presa ao projeto.
+- **64** Identidade pixel art + a Focada (mascote/mentora). **65** Mapa da trilha. **66** Start com vários cursos. **67** Casca global sem rolagem. **68** Sessão diária.
+- **69** Semana de 6 dias (ponte, 72 dias) + ofensiva com folga e pausa. **70** Perfil e Squad. **71** Loja, agente e vitrine semanal. **72** Perfil "tela do agente" e QG do Squad.
+- **73** Ranking (placar de fliperama). **74** Visão da semana, Certificações, Caderninho e telas de entrada. **75** Guia das telas ("?" + tour). **76** A Focada em Ranking, Perfil e QG.
+
+**Squad, ponte e cursos (77–85)**
+- **77** Squad com pedidos de entrada. **78** Revisão por IA do Caderninho. **79** Ponte "code comigo" (6 passos de código). **80** Chat com código formatado; ponte sem analogias.
+- **81** Cursos de pré-requisito (seed genérico, curso escondido, semana sem projeto). **82** Linux pronto pra publicar. **83** Telas de curso sem Projeto Semanal.
+- **84** Cursos livres com recomendação. **85** Prompts de IA citam o curso certo.
+
+**Laboratório e telas pequenas (86–91)**
+- **86/87** Laboratório de código (backend; front com Pyodide/JavaScript/Bash em v86, tudo no navegador). **88** Missão no terminal (Linux embutido). **89** Mais de um curso (Hoje pergunta o curso).
+- **90** Missão no terminal v3. **91** Sessão, laboratório e Projeto Semanal em telas de notebook (trilhos e gavetas).
