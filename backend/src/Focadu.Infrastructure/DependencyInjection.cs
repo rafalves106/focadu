@@ -68,6 +68,7 @@ public static class DependencyInjection
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IUserForgejoAccountRepository, UserForgejoAccountRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IUserResetService, UserResetService>();
         services.AddSingleton<IClock, SystemClock>();
 
         // Autenticacao (Fase 12) - JwtOptions.SecretKey e exigida no boot (Program.cs falha antes

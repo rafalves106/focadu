@@ -104,6 +104,7 @@ public static class DependencyInjection
         services.AddScoped<DeleteNoteUseCase>();
         services.AddScoped<ListNotesUseCase>();
         services.AddScoped<GetWarmupUseCase>();
+        services.AddScoped<Users.ResetUsersUseCase>();
         services.AddScoped<Feedback.SubmitDayFeedbackUseCase>();
         services.AddScoped<Feedback.GetDayFeedbackUseCase>();
         services.AddScoped<Feedback.GetFeedbackReportUseCase>();

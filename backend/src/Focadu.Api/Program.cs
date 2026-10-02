@@ -250,6 +250,40 @@ if (args.Contains("importar"))
     return;
 }
 
+// `dotnet run --project src/Focadu.Api -- resetar-usuarios --manter <email> [--confirmar --backup-feito]`: apaga todos os
+// usuarios menos o do dono e zera o progresso dele (plano de curadoria, 02/10/2026). DESTRUTIVO: sem --confirmar e dry-run
+// (so conta); apagar de verdade exige --confirmar e --backup-feito. Rodar primeiro em banco local, depois em producao.
+if (args.Contains("resetar-usuarios"))
+{
+    var keepIndex = Array.IndexOf(args, "--manter");
+    var keepEmail = keepIndex >= 0 && keepIndex + 1 < args.Length ? args[keepIndex + 1] : null;
+    var resetTarget = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+    Console.WriteLine($"Banco alvo: host={resetTarget.Host} porta={resetTarget.Port} banco={resetTarget.Database}");
+
+    try
+    {
+        using var resetScope = app.Services.CreateScope();
+        var resetResult = await resetScope.ServiceProvider.GetRequiredService<Focadu.Application.Users.ResetUsersUseCase>()
+            .ExecuteAsync(keepEmail, args.Contains("--confirmar"), args.Contains("--backup-feito"));
+
+        Console.WriteLine(resetResult.Executed
+            ? $"APAGADO. Ficou so '{resetResult.Plan.KeptEmail}' ({resetResult.Plan.UsersToDelete} usuario(s) removido(s))."
+            : $"DRY-RUN (nada foi apagado). Fica '{resetResult.Plan.KeptEmail}'; seriam removidos {resetResult.Plan.UsersToDelete} usuario(s).");
+        foreach (var count in resetResult.Plan.Counts)
+            Console.WriteLine($"  {count.Key}: {count.Value}");
+        if (resetResult.Plan.ForgejoUsernames.Count > 0)
+            Console.WriteLine($"  Contas do Forgejo a limpar a mao ({resetResult.Plan.ForgejoUsernames.Count}): {string.Join(", ", resetResult.Plan.ForgejoUsernames)}");
+        if (!resetResult.Executed)
+            Console.WriteLine("  Para apagar: repita com --confirmar --backup-feito (so depois de fazer o backup).");
+    }
+    catch (Exception ex) when (ex is Focadu.Application.Exceptions.ValidationException or Focadu.Application.Exceptions.NotFoundException)
+    {
+        Console.Error.WriteLine(ex.Message);
+        Environment.ExitCode = 2;
+    }
+    return;
+}
+
 // `dotnet run --project src/Focadu.Api -- feedback <curso>`: relatorio de clareza do curso (media por dia, onde os
 // alunos travaram por tipo de bloco e os sinais de "reabrir" do plano de curadoria).
 if (args.Contains("feedback"))
