@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { splitFences } from '../../lib/markdown';
+import { isHttpExchangeKind, splitFences } from '../../lib/markdown';
 import { DiagramBlock } from './DiagramBlock';
+import { HttpExchangeBlock } from './HttpExchangeBlock';
 
 // Inline: "**negrito**", "*italico*", "`codigo`" e "[texto](url)" - unica sintaxe inline suportada
 // (Fase 29, Caderninho de Anotacoes: o aluno escreve negrito/link de verdade nas notas, ver
@@ -173,6 +174,8 @@ export function MarkdownBlock({ text }: { text: string }) {
       flushList();
       if (segment.lang === 'diagrama') {
         blocks.push(<DiagramBlock key={blocks.length} text={segment.text} />);
+      } else if (isHttpExchangeKind(segment.lang)) {
+        blocks.push(<HttpExchangeBlock key={blocks.length} kind={segment.lang} text={segment.text} />);
       } else {
         blocks.push(
           <pre

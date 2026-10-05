@@ -168,3 +168,10 @@ export function parseDiagram(text: string): DiagramData {
       return { kind: 'sequencia', steps: parseDiagramSteps(body) };
   }
 }
+
+/** Bloco de troca HTTP no Texto Cru ("```requisicao" / "```resposta") - direcao explicita, ver HttpExchangeBlock. */
+export type HttpExchangeKind = 'requisicao' | 'resposta';
+
+export function isHttpExchangeKind(lang: string): lang is HttpExchangeKind {
+  return lang === 'requisicao' || lang === 'resposta';
+}
