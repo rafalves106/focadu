@@ -1,0 +1,18 @@
+name: VM - autorizar chave SSH
+
+# Uso unico (05/10/2026): grava a chave publica do Mac do dono no authorized_keys da VM de producao,
+# pelo runner self-hosted, pra dar acesso SSH sem a chave original da instancia. So chave publica.
+on:
+  workflow_dispatch:
+
+jobs:
+  key:
+    runs-on: [self-hosted, Linux, focadu-oracle]
+    steps:
+      - run: |
+          key='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJJQRTkao0/kp946bqeRLqjlzhtkVdzPZS2cVNo7AnXS claude-focadu-oracle'
+          whoami
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
+          grep -qxF "$key" ~/.ssh/authorized_keys || echo "$key" >> ~/.ssh/authorized_keys
+          echo "ok"
