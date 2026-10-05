@@ -50,7 +50,9 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
   // Regras de fechamento so importam enquanto a semana nao fechou.
   const weekClosed = weekly.requiresPublicationToUnlock || weekly.project?.status === WeeklyProjectStatus.Evaluated || (weekly.isClosed ?? false);
   const practiceOnly = weekly.isPracticeOnly ?? false;
-  const bridgeDay = String(Math.max(0, ...weekly.dailies.filter((d) => !d.isReinforcement).map((d) => d.dayNumber))).padStart(2, '0');
+  // Molde v1: a ponte vem marcada no DTO (DailyOverviewDto.isBridge), nao e mais "o ultimo/6o dia".
+  const bridgeDayNumber = weekly.dailies.find((d) => d.isBridge)?.dayNumber ?? null;
+  const bridgeDay = bridgeDayNumber != null ? String(bridgeDayNumber).padStart(2, '0') : null;
   const weekLink = (id: string) => `/start?course=${courseId}&weekly=${id}`;
 
   const label = [`Semana ${String(weekly.number).padStart(2, '0')}`, monthly && `Módulo ${monthly.number}`, monthly?.title].filter(Boolean);
@@ -125,9 +127,11 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
               <PixelPanel label="Como a semana fecha">
                 <ul className="flex flex-col gap-1.5 font-pixel text-[19px] leading-tight text-secondary">
                   <li>· 1 Daily por dia. Reforço não gasta a cota.</li>
-                  <li>
-                    · Dia {bridgeDay} é a ponte: um script {weekly.practiceLanguage?.toLowerCase() ?? ''}, passo a passo.
-                  </li>
+                  {bridgeDay && (
+                    <li>
+                      · Dia {bridgeDay} é a ponte: um script {weekly.practiceLanguage?.toLowerCase() ?? ''}, passo a passo.
+                    </li>
+                  )}
                   <li>· Sem projeto nem publicação: a semana fecha com os 6 dias.</li>
                 </ul>
               </PixelPanel>
@@ -138,7 +142,7 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
                 <PixelPanel label="Como a semana fecha">
                   <ul className="flex flex-col gap-1.5 font-pixel text-[19px] leading-tight text-secondary">
                     <li>· 1 Daily por dia. Reforço não gasta a cota.</li>
-                    <li>· O 6º dia é a ponte: prática, na sua linguagem.</li>
+                    {bridgeDay && <li>· O Dia {bridgeDay} é a ponte: prática, na sua linguagem.</li>}
                     <li>· O castelo abre depois da ponte. A Semana {weekly.number + 1} só abre com ele avaliado.</li>
                   </ul>
                 </PixelPanel>

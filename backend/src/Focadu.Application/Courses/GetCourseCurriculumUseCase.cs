@@ -1,3 +1,4 @@
+using Focadu.Application.Enrollments;
 using Focadu.Application.Exceptions;
 using Focadu.Domain.Repositories;
 
@@ -13,16 +14,22 @@ namespace Focadu.Application.Courses;
 public class GetCourseCurriculumUseCase
 {
     private readonly ICourseRepository _courseRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly CoursePreviewOptions _preview;
 
-    public GetCourseCurriculumUseCase(ICourseRepository courseRepository)
+    public GetCourseCurriculumUseCase(ICourseRepository courseRepository, IUserRepository userRepository, CoursePreviewOptions preview)
     {
         _courseRepository = courseRepository;
+        _userRepository = userRepository;
+        _preview = preview;
     }
 
-    public async Task<CourseCurriculumDto> ExecuteAsync(Guid courseId, CancellationToken cancellationToken = default)
+    public async Task<CourseCurriculumDto> ExecuteAsync(Guid userId, Guid courseId, CancellationToken cancellationToken = default)
     {
         var course = await _courseRepository.GetByIdAsync(courseId, cancellationToken)
             ?? throw new NotFoundException("curso_nao_encontrado", "Curso nao encontrado.");
+        if (!await DraftCourseAccess.CanSeeAsync(course.Status, userId, _userRepository, _preview, cancellationToken))
+            throw new NotFoundException("curso_nao_encontrado", "Curso nao encontrado.");
 
         var monthlyDtos = course.Monthlies
             .OrderBy(m => m.Number)

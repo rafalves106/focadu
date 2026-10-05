@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 91 - Sessao, laboratorio e Projeto Semanal em telas de notebook: colunas laterais viram trilhos com gavetas abaixo de 1440x820** (Fase 90: missao no terminal v3; Fase 89: mais de um curso).
+> Ultima fase que atualizou este documento: **Fase 92 - Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso** (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -1313,6 +1313,9 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 GET | `/api/dailies/{dailyId}` | `GetDailyStateUseCase` | 200, 404/400/409 (ver abaixo) |
 | 🔒 GET | `/api/today?courseId=` | `GetTodayUseCase` | 200, 404/409 (ver "GET /api/today" abaixo); `courseId` opcional desde a Fase 66. Com 2+ matrículas o front sempre manda (`/hoje` pergunta o curso antes, `TodayCourseChoice`, 01/10/2026) |
 | 🔒 POST | `/api/dailies/{dailyId}/start` | `StartOrResumeDailyUseCase` | 200 |
+| 🔒 GET | `/api/dailies/{dailyId}/warmup` | `GetWarmupUseCase` (Fase 92) | 200 - 2 Quiz/Cloze ja respondidos em dias anteriores |
+| 🔒 PUT/GET | `/api/dailies/{dailyId}/feedback` | `SubmitDayFeedbackUseCase`/`GetDayFeedbackUseCase` (Fase 92) | 200 - so depois de concluir a Daily |
+| GET | `/api/features` | `PersonalizationOptions` (Fase 92) | 200 `{ personalizedAnalogies }` |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses` | `SubmitActivityResponseUseCase` | 201 (cria uma nova `ActivityResponse`) |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/audio` | `SubmitVoiceSummaryResponseUseCase` (Fase 5) | 201, `multipart/form-data`, so pra `VoiceSummary` |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/code` | `SubmitCodeStepResponseUseCase` (Fase 79; Fase 86: `labRun`) | 201 (`SubmitActivityResponseResult`), so pra `CodeStep`: `{ code, output, labRun? }`, avaliado por IA; passo com laboratorio exige `labRun` (400 `rodar_antes_de_enviar`) e ignora `output`; 409 `passo_concluido`/`passo_anterior_pendente` |
@@ -2489,6 +2492,33 @@ codigo nem verifica a saida** (adulteracao ignorada), so guarda a configuracao e
   esperada). Dias com `lab` hoje: pontes Python e JavaScript da Semana 1 do Web Security, Linux Dia 6 e Dia 12.
 - **Fora desta fase**: o front (feito na Fase 87, abaixo), o verificador de JavaScript, o exercicio por dia do
   Python pra Web Security.
+
+### Plano de curadoria, Fase 1 (Fase 92)
+
+Refacao dos cursos (`secret/produto/PLANO-CURADORIA.md`, 02/10/2026). Detalhe dos comandos em `secret/processo/importador.md`.
+- **Conteudo:** a Api le `secret/conteudo/<curso>/` (`CuratedContentLocator`; `CURATED_CONTENT_ROOT` aponta pra raiz do
+  repo de conteudo, que tem `conteudo/`, `processo/`, `produto/`). Conteudo anterior arquivado em `processo/arquivo/`, nao lido.
+- **`importar <curso>`** (`ImportCuratedDaysUseCase`): linter (`NodeDayLinter`, precisa de Node; `--sem-linter` no
+  container), recusa `moldeVersion` != `v1` (`--legado` aceita), `ContentHash` decide pular/criar/substituir o dia inteiro,
+  dia com respostas pede `--confirmar` (respostas das atividades trocadas somem, Dailies nao concluidas recomecam),
+  `--dry-run`. `CuratedEnrollmentSync` leva dias novos as matriculas (tambem usado pelo seed generico). O seed do deploy
+  continua so criando/completando; corrigir dia e sempre `importar`, nunca SQL.
+- **Molde v1 no banco:** `DailyTemplate` guarda `MoldeVersion` e `TargetsJson` (`LearningTarget`, 3 alvos); `CuratedContent.Source`;
+  `DailyActivity.Target` e, no VoiceSummary, `Hint`, `ReferenceAnswer`, `IsFinalQuestion`, `TopicsJson`.
+- **Analogia "Pra voce" desligada** por `Personalization:AnalogiesEnabled` (padrao `false`); `GET /api/features`
+  devolve `personalizedAnalogies`.
+- **Devolutiva da voz:** a avaliacao Groq devolve resposta correta e pontos a melhorar (`VoiceDebrief`), mostrada no `FeedbackPanel`.
+- **Feedback do dia** (`DayFeedback`): `PUT/GET /api/dailies/{id}/feedback`, so depois de concluir, um por Daily;
+  `DayFeedbackScreen` ao fim da sessao (pulavel); comando `feedback <curso>` gera o relatorio de clareza.
+- **Aquecimento:** `GET /api/dailies/{id}/warmup` (2 Quiz/Cloze de dias anteriores, menor nota primeiro; nao e atividade
+  do dia); `WarmupScreen` antes da sessao (pulavel).
+- **`resetar-usuarios --manter <email>`**: dry-run por padrao, `--confirmar` exige `--backup-feito`; apaga todos os outros
+  usuarios e zera o progresso do dono. Contas do Forgejo ficam pra limpar a mao.
+- **Curso em Draft** visivel ao dono (`DraftCourseAccess`) em `/courses/{id}/curriculum` e `/weekly-templates/{id}`.
+- **Trilha:** `CourseTrail` (`components/courseMap/`) gera a trilha so dos dados do curso; o mapa por regioes
+  (`CourseMap.tsx`, `lib/courseMaps.ts`) foi apagado. Ponte marcada por `IsBridge` nos DTOs de resumo da Daily.
+- **Seed do Web Security:** nao cria o curso sem `conteudo/web-security/semana-1/dia-1.json`. `arquitetura-de-software`
+  entra no seed generico (Draft).
 
 ### Sessao em telas menores (Fase 91)
 

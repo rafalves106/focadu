@@ -19,6 +19,8 @@ import { ReadingActivity } from '../components/ReadingActivity';
 import { VideoActivity } from '../components/VideoActivity';
 import { CodeStepActivity } from '../components/CodeStepActivity';
 import { TerminalMissionActivity } from '../components/code/TerminalMissionActivity';
+import { WarmupScreen } from '../components/session/WarmupScreen';
+import { DayFeedbackScreen } from '../components/session/DayFeedbackScreen';
 import { CompletionSummary } from '../components/CompletionSummary';
 import { ReinforcementIntroScreen } from '../components/ReinforcementIntroScreen';
 import {
@@ -126,6 +128,10 @@ export function TodayPage() {
   // Fase 15: entrada da sessao de reforco so numa sessao de reforco genuinamente nova (nenhuma
   // atividade respondida) - evita reexibir a cada reload de uma sessao ja em andamento/replay.
   const [reinforcementIntroDismissed, setReinforcementIntroDismissed] = useState(false);
+  // Aquecimento (molde v1) so abre numa sessao nova: nao em reforco, replay nem sessao ja em andamento.
+  const [warmupDone, setWarmupDone] = useState(true);
+  // Feedback do dia: abre entre "Fechar o dia" e a recompensa; "Pular" ou enviar fecha.
+  const [feedbackDone, setFeedbackDone] = useState(false);
   const [courseChoice, setCourseChoice] = useState<CourseSummaryDto[] | null>(null);
 
   const weeklyId = daily?.weeklyId ?? null;
@@ -142,6 +148,7 @@ export function TodayPage() {
       setLoading(true);
       setError(null);
       setCompletion(null);
+      setFeedbackDone(false);
       setStep(null);
       setCourseChoice(null);
 
@@ -160,6 +167,9 @@ export function TodayPage() {
         if (!cancelled) {
           setDaily(state);
           setReinforcementIntroDismissed(state.activities.some((a) => a.responses.length > 0));
+          setWarmupDone(
+            state.isReinforcement || state.accessMode === DailyAccessMode.Replay || state.activities.some((a) => a.responses.length > 0),
+          );
           setReplayBaseline(
             state.accessMode === DailyAccessMode.Replay ? new Map(state.activities.map((a) => [a.id, a.responses.length])) : null,
           );
@@ -243,10 +253,13 @@ export function TodayPage() {
   if (daily.accessMode === DailyAccessMode.WeekPendingClosure) return provide(<WeekClosureScreen />);
   if (daily.accessMode === DailyAccessMode.NeedsProjectLanguage) return provide(<BridgeLanguageScreen onChosen={() => setAttempt((n) => n + 1)} />);
   if (!step) return null;
+  if (completion && !feedbackDone && !daily.isReinforcement) return provide(<DayFeedbackScreen daily={daily} onDone={() => setFeedbackDone(true)} />);
   if (completion) return provide(<CompletionSummary result={completion} />);
   if (daily.isReinforcement && !reinforcementIntroDismissed) {
     return provide(<ReinforcementIntroScreen onStart={() => setReinforcementIntroDismissed(true)} />);
   }
+
+  if (!warmupDone) return provide(<WarmupScreen dailyId={daily.id} onDone={() => setWarmupDone(true)} />);
 
   if (step.kind === 'done') {
     const last = sorted.at(-1);

@@ -1,8 +1,10 @@
 ---
 name: curar-conteudo
 description: "Cura UM dia de um curso da Focadu (Web Security, Linux, Python pra Web Security, Design Patterns, Arquitetura de Software) pelo pipeline do plano de curadoria: texto (D2), linter (D3), revisão de escrita (D4), atividades (D5), validação (D6), revisão editorial (D7) e importação (D8). Grava em secret/conteudo/<curso>/semana-N/dia-N.json. Exige a ficha do dia aprovada (skill ficha-do-dia). Use quando o usuário pedir para curar, montar ou gerar o conteúdo de um dia, corrigir um dia a partir de uma lista do linter ou do revisor, ou invocar /curar-conteudo."
+model: sonnet
+effort: medium
 metadata:
-  version: 2.0.0
+  version: 2.1.0
 ---
 
 # Curar um dia
@@ -23,12 +25,13 @@ Slugs: `web-security`, `linux`, `python-websec`, `design-patterns`, `arquitetura
 
 | Etapa | Lê | Faz | Portão |
 |---|---|---|---|
-| **D2 Texto** | ficha do dia, `processo/molde/regras-de-leitura.md`, `processo/linha-editorial.md`, 1 texto exemplo curto aprovado do mesmo molde | Escreve os 3 blocos (A) ou a leitura curta com missões (B), com "Em uma frase" e "O que levar daqui" | D3 |
-| **D3 Linter** | nada (script) | `node secret/processo/scripts/linter-dia/src/cli.js <dia.json> --glossario secret/processo/cursos/<curso>/glossario.md` | `PASSOU`; senão volta ao D2 (máx. 2 voltas) |
+| **D2 Texto** | ficha do dia, `processo/molde/regras-de-leitura.md`, `processo/linha-editorial.md`, no molde B também `processo/molde/regras-molde-b.md`, 1 texto exemplo curto aprovado do mesmo molde (molde B: `conteudo/linux/semana-1/dia-1.json`) | Escreve os 3 blocos (A) ou a leitura curta com missões (B), com "Em uma frase" e "O que levar daqui" | D3 |
+| **D3 Linter** | nada (script) | `node secret/processo/scripts/linter-dia/src/cli.js <dia.json> --glossario secret/processo/cursos/<curso>/glossario.md --log secret/processo/cursos/<curso>/logs/dia-N.log` | `PASSOU`; senão volta ao D2 (máx. 2 voltas) |
 | **D4 Revisão de escrita** | texto + lista de erros do linter | Agente `editor-pedagogico`, passando ficha e lista de erros | rodar o linter de novo |
-| **D5 Atividades** | ficha, texto final, `processo/molde/regras-de-quiz.md`, `processo/molde/dia.schema.json`, 1 atividade exemplo | Conversa por voz, Quiz, Cloze, Ligar Palavras, Roleplay; monta o `dia-N.json` completo | D6 |
+| **D5 Atividades** | ficha, texto final, `processo/molde/regras-de-quiz.md` (molde B: e as regras 12 e 13 de `regras-molde-b.md`), `processo/molde/dia.schema.json`, 1 atividade exemplo | Conversa por voz, Quiz, Cloze, Ligar Palavras, Roleplay; monta o `dia-N.json` completo | D6 |
 | **D6 Validação** | nada (script) | Linter em modo completo, `json.load`, log de execução, verificadores do lab; Haiku só para o que script não pega | `PASSOU`; senão volta ao D5 |
 | **D7 Revisão editorial** | (o agente lê) | Agente `revisor-editorial`, em **contexto limpo**, com dia, ficha do dia, ficha do curso, linha editorial e relatório do linter | `aprovado` |
+| **D7b Leitura por persona** (só dia-âncora) | (o agente lê) | Um agente em contexto limpo lê o dia como o aluno lê (Reading, missões, atividades) no papel de uma persona do público-alvo e grava `secret/processo/cursos/<curso>/avaliacao-persona-<persona>-dia-N.md` (onde trava, sugestão, prioridade). Personas de referência: usuária de Windows que nunca abriu terminal; pessoa com dificuldade de leitura e ansiedade. Ponto de prioridade alta volta ao D2/D5 antes de o dono ler | sem ponto alto |
 | **D8 Importar** | nada (comando) | `dotnet run --project backend/src/Focadu.Api -- importar <curso> --dia N` (`--dry-run` antes); depois abrir o dia no app local (`rodar-projeto`) e marcar `pronto` no `estado.md`. Detalhes em `secret/processo/importador.md` | dia aberto no app |
 
 Estado visível no `estado.md`: `a fazer` → `ficha ok` → `validado` (após D6) → `revisado` (após D7) → `pronto` (após D8). Anote também os tokens gastos pelo dia.
@@ -36,7 +39,7 @@ Estado visível no `estado.md`: `a fazer` → `ficha ok` → `validado` (após D
 ### D2 e D5: como escrever
 
 - **Molde A:** 3 blocos de 1 conceito, até 150 palavras cada; cada bloco é um `Reading` próprio em `curatedContents` seguido de um `VoiceSummary` que aponta para ele e para um alvo (`target`). Mais Quiz (3), Cloze (2), Ligar Palavras (1, 4 pares), Roleplay (1, termina em Ideal/Suboptimal/Poor) e a pergunta final por voz com 3 tópicos-pista. Vídeo só como demonstração opcional de até 5 min que o texto não mostra; confirme a URL com `WebSearch`/`--online`, nunca invente.
-- **Molde B:** leitura curta em missões (comando, saída real, 1 frase), `TerminalMission` com 3 a 5 missões (`processo/molde/terminal-mission.md`), Quiz (3), Cloze (2), Ligar Palavras (1), Roleplay como missão. Sem vídeo e sem conversa por voz. Ponte (dia 6): `processo/molde/ponte.md` e `lab.md`.
+- **Molde B:** segue `processo/molde/regras-molde-b.md` (Digite / O terminal responde em blocos separados, silêncio do terminal, "só olha" ou "muda", erro traduzido, ponte Windows com armadilha, até 4 comandos novos, cenário Loja Verde no Linux). Leitura em missões (cada comando: pergunta, nome, exemplo com saída real, o que a saída mostra), `TerminalMission` com 3 a 5 missões (`processo/molde/terminal-mission.md`), Quiz (3), Cloze (2), Ligar Palavras (1), Roleplay como missão. Sem vídeo e sem conversa por voz. Ponte (dia 6): `processo/molde/ponte.md` e `lab.md`.
 - Cada item de Quiz/Cloze/voz aponta para um alvo; cada alvo tem texto e pergunta; nenhuma pergunta cobra o que o texto não ensinou.
 - Conversa por voz: situação de 2 linhas e 1 pergunta; fala da Focada até 200 caracteres (`processo/guias/GUIA-DE-VOZ-FOCADA.md`); `referenceAnswer` com a resposta correta.
 - Schema só com os campos de `dia.schema.json`. Nunca invente chave nova.
@@ -51,6 +54,19 @@ Estado visível no `estado.md`: `a fazer` → `ficha ok` → `validado` (após D
 - `lab` e `TerminalMission` só sobem depois de `verificar.mjs`/`verificar-missoes.mjs` (`processo/scripts/lab`, ou `linter-dia --lab`).
 - Todo dia de Linux/Python liga a um uso em segurança, sem ensinar o ataque.
 - Quiz: os 4 critérios anti-resposta-óbvia (`processo/molde/criterios-anti-resposta-obvia.md`); reescreva distratores, nunca a certa.
+
+## Armadilhas já vistas (piloto Web Security Dia 1, 05/10/2026)
+
+Cada uma passou pelo linter e só apareceu na revisão ou no teste no app. Confira no D2/D5, antes do D7:
+
+- **Roleplay começa no nó `start`**, não terminal. Outro nome abria o Roleplay num desfecho (o linter agora reprova).
+- **Uma palavra, um sentido no dia.** "Texto" virou ao mesmo tempo "o conteúdo da página" e "a requisição é só texto", e a lacuna ficou ambígua. Escolha outra palavra para um dos sentidos.
+- **O exemplo diz quem rodou de verdade.** Saída do `curl` é "um programa de teste mandou", não "o navegador manda". Se o bloco mostra só parte da saída, o texto avisa que é recorte. "A mesma resposta" só com a comparação registrada no log.
+- **Nada no código fica sem nome.** Sigla ou número que aparece no bloco (`HTTP/1.1` e `HTTP/1.0`) ganha meia frase ou um "o próximo bloco explica", sem antecipar termo de dia futuro.
+- **Uma pergunta por conversa por voz** (não "e por quê? E o que...?"); o Quiz muda o ângulo da voz do mesmo bloco (`processo/molde/regras-de-quiz.md`, "Repetição entre peças").
+- **Negrito só nos `newTerms`.** Termo de apoio da ficha leva meia frase, sem negrito.
+- **Sem afirmação numérica solta** ("dezenas de requisições") que o log não mostra.
+- **Primeiro dia de um curso:** o importador (D8) exige `conteudo/<curso>/curso.json`; sem ele, crie a partir do `roteiro.md` com `published: false` e avise o dono.
 
 ## Correção
 

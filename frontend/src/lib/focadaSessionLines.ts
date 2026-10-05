@@ -15,7 +15,7 @@ export function blockIntro(type: ActivityType, answerMode: AnswerMode, count: nu
     case ActivityType.Quiz:
       return {
         title: 'Hora do quiz',
-        text: `${count === 1 ? 'Uma pergunta' : `${count} perguntas`} sobre o que você acabou de ler e ver. Uma tentativa cada — a certa aparece logo depois. ${reinforcementTail}`,
+        text: `${count === 1 ? 'Uma pergunta' : `${count} perguntas`} sobre o que você acabou de estudar. Uma tentativa cada — a certa aparece logo depois. ${reinforcementTail}`,
         rules: [`${count} ${count === 1 ? 'questão' : 'questões'}`, '1 tentativa', 'Teclas 1–4 + Enter'],
       };
     case ActivityType.Cloze:

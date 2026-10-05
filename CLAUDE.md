@@ -102,6 +102,9 @@ Hábitos obrigatórios:
 
 ## Skills do projeto já configuradas
 
+- `curadoria` — porta de entrada: `/curadoria <curso> [dia N]` lê o estado do curso e dispara a próxima etapa
+  (`ficha-do-curso` em Opus/alto, `glossario-do-curso` em Sonnet/médio com contexto limpo, `ficha-do-dia` em
+  Sonnet/baixo, `curar-conteudo` em Sonnet/médio). Entre etapas, `/clear` e `/curadoria <curso>` de novo.
 - `curar-conteudo` — cura conteúdo didático de um dia de qualquer curso (Web Security, Linux, Python pra
   Web Security) e grava em `secret/curadoria/<curso>/semana-N/dia-N.json`.
 - `registrar-rascunho` — detecta ideia solta/não decidida sobre o produto e registra em
@@ -164,7 +167,7 @@ Cada uma custou um bug real ou uma conversa; o porquê está em `docs/fase-N/` e
 
 ## Estado atual
 
-Última fase concluída: **Fase 91 — Sessão em telas de notebook** (01/10/2026; missão no terminal v3: Fase 90; mais de um curso: Fase 89).
+Última fase concluída: **Fase 92 — Plano de curadoria, Fase 1** (05/10/2026; telas de notebook: Fase 91; missão no terminal v3: Fase 90).
 
 Histórico completo dos marcos (Fases 25–87, com o porquê de cada decisão): `docs/ESTADO-HISTORICO.md` —
 só abrir quando precisar. Estado técnico vivo: `docs/ARQUITETURA.md`; detalhe por fase: `docs/fase-N/`.
@@ -187,6 +190,11 @@ Resumo do que existe hoje:
 - **Missão no terminal (Fase 88)**: nos dias normais do Linux (piloto: Dia 2) a atividade `TerminalMission` dá ao aluno um
   Linux embutido, já logado como usuário comum, com missões de comando conferidas no navegador (sem IA, sem nota, sem
   tentativa). Formato em `secret/curadoria/CURADORIA.md` 5.3, verificador `scripts/lab/verificar-missoes.mjs`. Ver `docs/fase-88/`.
+- **Refação dos cursos (Fase 92)**: plano em `secret/produto/PLANO-CURADORIA.md`. A Api lê `secret/conteudo/`; dia novo entra
+  pelo comando `importar <curso>` (linter, molde v1, hash, `--confirmar`), nunca SQL. Analogia "Pra você" desligada por flag;
+  conversa por voz com devolutiva; aquecimento e feedback do dia; trilha gerada dos dados do curso (mapa por regiões apagado).
+  Pilotos no ar desde 05/10/2026 (Linux, Web Security e Arquitetura, Dia 1), usuários resetados; os dias antigos do Web
+  Security (2-72) seguem no banco até a limpeza. Ver `docs/fase-92/`.
 - **Telas de notebook (Fase 91)**: abaixo de 1440×820 a sessão diária (inclusive laboratório e missão) e o Projeto Semanal
   trocam as colunas laterais por trilhos de 64px que abrem gavetas (`SideSlot`, `useIsWideSession`). Ver `docs/fase-91/`.
 - **Missão no terminal v3 (Fase 90)**: cada missão diz situação, objetivo e passos; ao lado do terminal, a cola "Comandos de
@@ -229,7 +237,7 @@ e partes de `docs/DOCKER.md` estão desatualizados nisso; o `deploy.yml` é a ve
   recriar. A rota `hml-focadu.falveshub.com` ainda dava 502 em 21/09 (remover no Cloudflare Zero Trust).
 - O checkout em `/Users/falves/Dev/Servidor/focadu` (Mac) não é mais usado pelo deploy.
 
-## Histórico por fase (1–91, uma linha cada)
+## Histórico por fase (1–92, uma linha cada)
 
 Detalhe de cada uma em `docs/fase-N/resumo-implementacao-fase-N.md`; o porquê das decisões 25–87 em
 `docs/ESTADO-HISTORICO.md`. 13a/13b/27b/38b existem como fases próprias; 24b/24c só têm commit.
@@ -284,3 +292,6 @@ Detalhe de cada uma em `docs/fase-N/resumo-implementacao-fase-N.md`; o porquê d
 **Laboratório e telas pequenas (86–91)**
 - **86/87** Laboratório de código (backend; front com Pyodide/JavaScript/Bash em v86, tudo no navegador). **88** Missão no terminal (Linux embutido). **89** Mais de um curso (Hoje pergunta o curso).
 - **90** Missão no terminal v3. **91** Sessão, laboratório e Projeto Semanal em telas de notebook (trilhos e gavetas).
+
+**Refação dos cursos (92–)**
+- **92** Plano de curadoria, Fase 1: `importar`, molde v1, voz com devolutiva, feedback do dia, aquecimento, `resetar-usuarios`, trilha gerada; virada dos 3 pilotos.

@@ -1,6 +1,8 @@
 ---
 name: ficha-do-dia
 description: "Escreve a ficha de 1 página de um dia (etapa D1) ou de uma semana (etapa S1) de um curso da Focadu, em secret/processo/cursos/<curso>/fichas/. A ficha é o portão mais barato da curadoria: o dono lê em 1 minuto e aprova antes de qualquer texto ser escrito. Use quando o usuário pedir a ficha do dia N, a ficha da semana N, ou invocar /ficha-do-dia. NÃO escreve o texto do dia nem o dia-N.json (isso é /curar-conteudo)."
+model: sonnet
+effort: low
 metadata:
   version: 1.0.0
 ---

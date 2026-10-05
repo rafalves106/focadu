@@ -1,6 +1,10 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
 using Focadu.Application.Shared;
+using Focadu.Domain.Activities;
+using Focadu.Domain.Content;
+using Focadu.Domain.Dailies;
+using Focadu.Domain.Weeklies;
 using Focadu.Domain.Enums;
 using Focadu.Domain.Exceptions;
 using Focadu.Domain.Repositories;
@@ -128,7 +132,7 @@ public class SubmitVoiceSummaryResponseUseCase
         var evaluation = await _evaluationService.EvaluateAsync(
             new ContentEvaluationRequest(
                 referenceText!, transcript, contextText, user?.Interests, user?.AdditionalProfileNotes, courseName,
-                Debrief: debrief, VocabularyText: debrief ? referenceContent?.BodyText : null),
+                Debrief: debrief, VocabularyText: debrief ? VocabularyFor(weekly, daily, activity, referenceContent) : null),
             cancellationToken);
 
         return await ActivityResponseRecorder.RecordAsync(
@@ -136,5 +140,24 @@ public class SubmitVoiceSummaryResponseUseCase
             justification: null, evaluation.Feedback, _clock, _unitOfWork, cancellationToken,
             correctAnswer: debrief ? activity.ReferenceAnswer : null,
             improvementPoints: debrief ? evaluation.ImprovementPoints ?? evaluation.Feedback : null);
+    }
+
+    /// <summary>
+    /// Vocabulario pra corrigir a transcricao: o texto do bloco da pergunta. Na pergunta final (dia inteiro), os textos de
+    /// todas as leituras do dia - so o bloco apontado deixava de fora os termos dos outros blocos.
+    /// </summary>
+    internal static string? VocabularyFor(Weekly weekly, Daily daily, DailyActivity activity, CuratedContent? referenceContent)
+    {
+        if (!activity.IsFinalQuestion) return referenceContent?.BodyText;
+        var readingIds = daily.Template.Activities
+            .Where(a => a.Type == ActivityType.Reading && a.ContentId is not null)
+            .OrderBy(a => a.OrderIndex)
+            .Select(a => a.ContentId!.Value)
+            .ToList();
+        var texts = readingIds
+            .Select(id => weekly.Template.CuratedContents.FirstOrDefault(c => c.Id == id)?.BodyText)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .ToList();
+        return texts.Count > 0 ? string.Join("\n\n", texts) : referenceContent?.BodyText;
     }
 }

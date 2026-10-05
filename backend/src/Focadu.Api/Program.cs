@@ -743,10 +743,10 @@ api.MapGet("/courses/{courseId}", async (ClaimsPrincipal principal, string cours
 // Curriculo (Course -> Monthly -> WeeklyTemplate), sem exigir matricula (Fase 13b) - so
 // `/admin/conteudo` usa isso, pra navegar ate uma WeeklyTemplate sem depender de Enrollment como
 // GetCourseDetail acima exige (ver docs/fase-13a, "Pendencia conhecida").
-api.MapGet("/courses/{courseId}/curriculum", async (string courseId, GetCourseCurriculumUseCase useCase, CancellationToken ct) =>
+api.MapGet("/courses/{courseId}/curriculum", async (ClaimsPrincipal principal, string courseId, GetCourseCurriculumUseCase useCase, CancellationToken ct) =>
     {
         var id = RouteParsing.RequireGuid(courseId, "courseId");
-        return Results.Ok(await useCase.ExecuteAsync(id, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
     })
     .RequireAuthorization()
     .WithName("GetCourseCurriculum");
@@ -775,10 +775,10 @@ api.MapGet("/weeklies/{weeklyId}", async (ClaimsPrincipal principal, string week
 
 // WeeklyTemplate (curriculo), sem exigir matricula (Fase 13b) - mesma motivacao do curriculum
 // acima, so pra `/admin/conteudo` listar/curar CuratedContent de uma semana.
-api.MapGet("/weekly-templates/{id}", async (string id, GetWeeklyTemplateDetailUseCase useCase, CancellationToken ct) =>
+api.MapGet("/weekly-templates/{id}", async (ClaimsPrincipal principal, string id, GetWeeklyTemplateDetailUseCase useCase, CancellationToken ct) =>
     {
         var templateId = RouteParsing.RequireGuid(id, "id");
-        return Results.Ok(await useCase.ExecuteAsync(templateId, ct));
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), templateId, ct));
     })
     .RequireAuthorization()
     .WithName("GetWeeklyTemplateDetail");

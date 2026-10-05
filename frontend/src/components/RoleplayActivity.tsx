@@ -31,7 +31,14 @@ export function RoleplayActivity({
   onContinue: () => void;
 }) {
   const nodesById = new Map(activity.roleplayNodes.map((n) => [n.id, n]));
-  const startNode = activity.roleplayNodes.find((n) => n.nodeKey === 'start') ?? activity.roleplayNodes[0];
+  // Nó inicial: o "start" da convencao; sem ele, o nó nao terminal para onde nenhuma opcao aponta. A API nao garante
+  // a ordem dos nós, entao cair no primeiro da lista abria o Roleplay num desfecho (piloto Web Security Dia 1).
+  const targets = new Set(activity.roleplayNodes.flatMap((n) => n.options.map((o) => o.nextNodeId)));
+  const startNode =
+    activity.roleplayNodes.find((n) => n.nodeKey === 'start') ??
+    activity.roleplayNodes.find((n) => !n.isTerminal && !targets.has(n.id)) ??
+    activity.roleplayNodes.find((n) => !n.isTerminal) ??
+    activity.roleplayNodes[0];
 
   const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || activity.responses.length > 0);
   const [currentNodeId, setCurrentNodeId] = useState<string | null>(startNode?.id ?? null);

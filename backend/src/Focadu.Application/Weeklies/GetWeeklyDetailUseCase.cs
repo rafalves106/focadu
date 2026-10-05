@@ -64,7 +64,8 @@ public class GetWeeklyDetailUseCase
                 d.Id == nextDailyId, ResolveDailyTitle(d),
                 d.Activities.Count,
                 d.Activities.Count(a => d.Responses.Any(r => r.ActivityId == a.Id)),
-                d.Activities.Count(a => d.Responses.Any(r => r.ActivityId == a.Id && r.Passed))))
+                d.Activities.Count(a => d.Responses.Any(r => r.ActivityId == a.Id && r.Passed)),
+                d.Template.IsBridge))
             .ToList();
 
         var contentDtos = weekly.Template.CuratedContents

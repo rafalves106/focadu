@@ -5,9 +5,14 @@
  * exatamente - nao mexe em nada se o texto nao seguir essa convencao.
  */
 export function stripRedundantTitleHeading(bodyText: string, title: string): string {
-  const match = bodyText.trimStart().match(/^###\s+(.+?)\s*(?:\n|$)/);
-  if (!match || match[1].trim() !== title.trim()) return bodyText;
-  return bodyText.trimStart().slice(match[0].length);
+  // Procura o "### Titulo" igual ao titulo em qualquer linha, nao so na primeira: no molde v1 da
+  // curadoria a leitura abre com a caixa "> Em uma frase" antes do "###".
+  for (const match of bodyText.matchAll(/^###\s+(.+?)\s*$/gm)) {
+    if (match[1].trim() !== title.trim()) continue;
+    const end = match.index! + match[0].length;
+    return (bodyText.slice(0, match.index) + bodyText.slice(end).replace(/^\n/, '')).trim();
+  }
+  return bodyText;
 }
 
 export interface ProseSegment {

@@ -43,7 +43,9 @@ public record DailyOverviewDto(
     string? Title,
     int TotalActivities,
     int CompletedActivities,
-    int PassedActivities);
+    int PassedActivities,
+    /// <summary>Molde v1: dia de ponte (DailyTemplate.IsBridge - variante por linguagem ou dia "code comigo"). WeekTrail/WeeklyDetailPage marcam a ponte por este campo, nao mais adivinhando pela posicao (6o/ultimo dia).</summary>
+    bool IsBridge = false);
 
 /// <summary>
 /// Fase 59: em que ponto da escolha de linguagem o aluno esta num Projeto Semanal. Estado derivado

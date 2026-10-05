@@ -53,7 +53,10 @@ export function ReadingActivity({
     () => api.getCuratedContent(activity.contentId!),
     [activity.contentId],
   );
-  const { preamble, sections } = useMemo(() => splitReadingSections(content?.bodyText ?? ''), [content?.bodyText]);
+  const { preamble, sections } = useMemo(
+    () => splitReadingSections(stripRedundantTitleHeading(content?.bodyText ?? '', content?.title ?? '')),
+    [content?.bodyText, content?.title],
+  );
 
   // Fase 36: revisitando via "Etapa anterior", deixa claro que a leitura ja foi concluida.
   const alreadyCompleted = activity.responses.length > 0;
@@ -117,7 +120,7 @@ export function ReadingActivity({
       {/* Fase 68: texto curado tambem em VT323 (pedido do dono: sessao inteira na fonte pixel). */}
       <div className={PIXEL_PROSE}>
         {!content.bodyText && <p className="font-pixel text-lg leading-tight text-secondary">Conteúdo ainda não cadastrado.</p>}
-        {preamble && <MarkdownBlock text={stripRedundantTitleHeading(preamble, content.title)} />}
+        {preamble && <MarkdownBlock text={preamble} />}
         {/* Uma analogia por seção "####" (mesma ordem de splitReadingSections). */}
         {sections.map((section, i) => (
           <div key={i} className={preamble || i > 0 ? 'mt-5' : ''}>
@@ -132,6 +135,8 @@ export function ReadingActivity({
         ))}
       </div>
 
+      {content.source && <ReadingSources source={content.source} />}
+
       {error && <p className="font-pixel text-lg leading-tight text-alert">{error}</p>}
 
       <SessionFooter>
@@ -141,5 +146,30 @@ export function ReadingActivity({
         </PixelButton>
       </SessionFooter>
     </SessionLayout>
+  );
+}
+
+/**
+ * Fontes oficiais da leitura (campo `source` do molde v1): "Nome: url; Nome: url". Cada item com URL
+ * vira link; item sem URL fica como texto.
+ */
+function ReadingSources({ source }: { source: string }) {
+  const items = source.split(/;\s+/).map((item) => {
+    const match = item.match(/^(.*?):\s*(https?:\/\/\S+)$/);
+    return match ? { label: match[1], url: match[2] } : { label: item, url: null };
+  });
+  return (
+    <div className="mt-5 flex flex-col gap-1 border-t border-stroke pt-3">
+      <p className="font-pixel-label text-[8px] text-muted">Fontes</p>
+      {items.map((item, i) =>
+        item.url ? (
+          <a key={i} href={item.url} target="_blank" rel="noreferrer" className="font-pixel text-base leading-tight text-accent underline">
+            {item.label}
+          </a>
+        ) : (
+          <p key={i} className="font-pixel text-base leading-tight text-secondary">{item.label}</p>
+        ),
+      )}
+    </div>
   );
 }

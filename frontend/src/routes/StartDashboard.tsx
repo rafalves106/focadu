@@ -14,7 +14,6 @@ import { AgentCard } from '../components/start/AgentCard';
 import { DailyMissionCard } from '../components/start/DailyMissionCard';
 import { WeekPathCard } from '../components/start/WeekPathCard';
 import { EmptyStateStartPage } from './EmptyStateStartPage';
-import { findCourseMap, findCourseMapLines } from '../lib/courseMaps';
 import { buildFocadaMapLine } from '../lib/focadaMapLines';
 import { studiedToday } from '../lib/startScreen';
 import { pickCourse, rememberCourse } from '../lib/courseChoice';
@@ -80,11 +79,12 @@ export function StartDashboard() {
     }
   }, [selectedId]);
 
-  const monthTitles = useMemo(() => {
-    const regions = selectedCourse ? findCourseMap(selectedCourse.name) : null;
-    return new Map([...(regions?.values() ?? [])].map((r) => [r.monthlyNumber, r.titulo]));
-  }, [selectedCourse]);
-  const focadaLine = useMemo(() => (selectedCourse ? buildFocadaMapLine(selectedCourse, monthTitles, findCourseMapLines(selectedCourse.name)) : null), [selectedCourse, monthTitles]);
+  // Molde v1: titulos de modulo direto do curso (sem arte por curso) e falas padrao da Focada (sem falas.json por curso).
+  const monthTitles = useMemo(
+    () => new Map((selectedCourse?.monthlies ?? []).map((m) => [m.number, m.title])),
+    [selectedCourse],
+  );
+  const focadaLine = useMemo(() => (selectedCourse ? buildFocadaMapLine(selectedCourse, monthTitles) : null), [selectedCourse, monthTitles]);
 
   // Derivado direto do fetch (nao um effect) - so precisa "lembrar" um dismiss local pra nao
   // reaparecer no mesmo carregamento depois que StreakLostModal ja chamou acknowledgeStreakBreak.

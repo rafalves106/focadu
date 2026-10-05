@@ -24,6 +24,8 @@ export function FeedbackPanel({
   showScore = false,
   transcript,
   aiFeedback,
+  correctAnswer,
+  improvementPoints,
   detail,
   roleplayQuality,
   seed,
@@ -36,6 +38,9 @@ export function FeedbackPanel({
   showScore?: boolean;
   transcript?: string | null;
   aiFeedback?: string | null;
+  /** Conversa por voz (molde v1): devolutiva em duas partes, resposta certa e depois pontos a melhorar. */
+  correctAnswer?: string | null;
+  improvementPoints?: string | null;
   /** Linha extra especifica do tipo (ex: resposta esperada da lacuna). */
   detail?: ReactNode;
   roleplayQuality?: TerminalQuality | null;
@@ -53,6 +58,23 @@ export function FeedbackPanel({
     if (key === 'Enter' && onContinue) onContinue();
   }, !!onContinue);
 
+  const debrief = correctAnswer
+    ? (
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="font-pixel-label text-[10px] text-accent">Resposta certa</p>
+            <p>{correctAnswer}</p>
+          </div>
+          {improvementPoints && (
+            <div>
+              <p className="font-pixel-label text-[10px] text-project">Pontos a melhorar</p>
+              <p>{improvementPoints}</p>
+            </div>
+          )}
+        </div>
+      )
+    : null;
+
   const focada = (
     <FocadaSays
       expression={passed ? 'comemorando' : 'acolhedora'}
@@ -61,7 +83,8 @@ export function FeedbackPanel({
       tone={focadaInContent && passed ? 'accent' : 'metal'}
       className={focadaInContent ? '' : 'min-w-0 flex-1 basis-80'}
     >
-      {reinforcementNow ? REINFORCEMENT_CREATED : (aiFeedback ?? feedbackLine(passed, seed, roleplayQuality))}
+      {/* A devolutiva (resposta certa + pontos a melhorar) vence o aviso de reforco: o aviso ja tem caixa propria abaixo. */}
+      {debrief ?? (reinforcementNow ? REINFORCEMENT_CREATED : (aiFeedback ?? feedbackLine(passed, seed, roleplayQuality)))}
     </FocadaSays>
   );
 

@@ -1,3 +1,4 @@
+using Focadu.Application.Enrollments;
 using Focadu.Application.Exceptions;
 using Focadu.Application.Shared;
 using Focadu.Domain.Repositories;
@@ -14,16 +15,24 @@ namespace Focadu.Application.Weeklies;
 public class GetWeeklyTemplateDetailUseCase
 {
     private readonly IWeeklyTemplateRepository _weeklyTemplateRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly CoursePreviewOptions _preview;
 
-    public GetWeeklyTemplateDetailUseCase(IWeeklyTemplateRepository weeklyTemplateRepository)
+    public GetWeeklyTemplateDetailUseCase(
+        IWeeklyTemplateRepository weeklyTemplateRepository, IUserRepository userRepository, CoursePreviewOptions preview)
     {
         _weeklyTemplateRepository = weeklyTemplateRepository;
+        _userRepository = userRepository;
+        _preview = preview;
     }
 
-    public async Task<WeeklyTemplateDetailDto> ExecuteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<WeeklyTemplateDetailDto> ExecuteAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
     {
         var template = await _weeklyTemplateRepository.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException("semana_nao_encontrada", "Semana nao encontrada.");
+        var status = await _weeklyTemplateRepository.GetCourseStatusAsync(id, cancellationToken);
+        if (!await DraftCourseAccess.CanSeeAsync(status, userId, _userRepository, _preview, cancellationToken))
+            throw new NotFoundException("semana_nao_encontrada", "Semana nao encontrada.");
 
         var contentDtos = template.CuratedContents
             .Select(c => new CuratedContentDto(c.Id, c.Type, c.Title, c.ExternalUrl, c.BodyText))

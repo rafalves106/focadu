@@ -13,6 +13,7 @@ O critério que manda em qualquer dúvida é **leitura fácil**. A linha editori
 
 - `secret/processo/linha-editorial.md`
 - `secret/processo/molde/regras-de-leitura.md`
+- `secret/processo/molde/regras-molde-b.md` (só dia do molde B: Linux, Python pra Web Security)
 
 ## O que você recebe
 

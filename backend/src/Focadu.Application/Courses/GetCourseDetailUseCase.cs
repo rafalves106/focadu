@@ -92,7 +92,8 @@ public class GetCourseDetailUseCase
                         d.Id == nextDailyId,
                         d.ReinforcementDailyId,
                         // CompletedAt e UTC; "today" e hora local (IClock) - mesma conversao de Weekly.EvaluateDailyAccess.
-                        d.CompletedAt.HasValue && DateOnly.FromDateTime(d.CompletedAt.Value.ToLocalTime()) == today))
+                        d.CompletedAt.HasValue && DateOnly.FromDateTime(d.CompletedAt.Value.ToLocalTime()) == today,
+                        d.Template.IsBridge))
                     .ToList();
 
                 weeklyDtos.Add(new WeeklyOverviewDto(

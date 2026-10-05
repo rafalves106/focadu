@@ -100,6 +100,16 @@ const INDENTED = /^(?: {2,}|\t)/;
  * cole essa sintaxe numa nota pessoal - efeito esperado do componente compartilhado, nao um caso
  * especial).
  */
+function renderQuote(key: string, lines: string[]) {
+  return (
+    <div key={key} className="rounded-xl border-l-4 border-accent bg-base px-4 py-3 text-sm font-semibold leading-[1.5] text-primary">
+      {lines.map((l, i) => (
+        <p key={i}>{renderInline(l)}</p>
+      ))}
+    </div>
+  );
+}
+
 /** So o inline (negrito, italico, codigo, link) num trecho curto - a nota da missao no terminal (Fase 91). */
 export function InlineMarkdown({ text }: { text: string }) {
   return <>{renderInline(text)}</>;
@@ -155,6 +165,9 @@ export function MarkdownBlock({ text }: { text: string }) {
     return true;
   }
 
+  let quoteLines: string[] | null = null;
+  let quoteKey = '';
+
   for (const segment of splitFences(text)) {
     if (segment.kind === 'fence') {
       flushList();
@@ -177,6 +190,7 @@ export function MarkdownBlock({ text }: { text: string }) {
       const line = rawLine.trim();
       if (!line) {
         flushList();
+        quoteLines = null;
         continue;
       }
 
@@ -201,6 +215,24 @@ export function MarkdownBlock({ text }: { text: string }) {
         );
         continue;
       }
+
+      // Caixa de destaque "> texto" (molde v1 da curadoria: "Em uma frase" no topo de toda leitura).
+      // Linhas "> " seguidas viram uma caixa so.
+      const quote = line.match(/^>\s?(.*)/);
+      if (quote) {
+        flushList();
+        const last = blocks.at(-1);
+        if (quoteLines && last && (last as { key?: unknown }).key === quoteKey) {
+          quoteLines.push(quote[1]);
+          blocks[blocks.length - 1] = renderQuote(quoteKey, quoteLines);
+        } else {
+          quoteLines = [quote[1]];
+          quoteKey = String(blocks.length);
+          blocks.push(renderQuote(quoteKey, quoteLines));
+        }
+        continue;
+      }
+      quoteLines = null;
 
       const bullet = line.match(/^-\s+(.+)/);
       if (bullet) {

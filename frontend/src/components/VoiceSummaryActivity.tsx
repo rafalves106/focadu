@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
-import type { DailyActivityDto, DailyStateDto } from '../api/types';
+import { ActivityType, type DailyActivityDto, type DailyStateDto } from '../api/types';
 import { getRecordingLimitMinutes } from '../lib/settings';
 import { useSession } from '../lib/sessionContext';
 import { FeedbackPanel } from './FeedbackPanel';
@@ -216,16 +216,50 @@ export function VoiceSummaryActivity({
 
   const clock = (total: number) => `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
   const recording = state === 'recording';
+  // Molde v1: cada dia tem 3 blocos de conversa por voz e a pergunta final; "Bloco N de 3" so aparece nesses dias.
+  const voiceBlocks = daily.activities
+    .filter((a) => a.type === ActivityType.VoiceSummary && !a.isFinalQuestion)
+    .sort((a, b) => a.orderIndex - b.orderIndex);
+  const blockIndex = voiceBlocks.findIndex((a) => a.id === activity.id);
+  const conversationLabel = activity.isFinalQuestion
+    ? 'Pergunta final'
+    : activity.hint && blockIndex >= 0
+      ? `Bloco ${blockIndex + 1} de ${voiceBlocks.length}`
+      : null;
   const busy = recording || state === 'submitting';
+  // Molde v1: na tela aparecem o titulo do bloco e a pista, nao o texto.
+  const blockTitle = !activity.isFinalQuestion && activity.contentId
+    ? weekly?.curatedContents.find((c) => c.id === activity.contentId)?.title ?? null
+    : null;
 
   return (
     <SessionLayout notesLocked={busy} hideBack={busy}>
       {state !== 'answered' && (
         <>
+          {blockTitle && <p className="font-pixel-label text-[10px] text-project">{blockTitle}</p>}
           <p className="font-pixel text-2xl leading-[1.15] text-primary lg:text-[26px] lg:short:text-[22px] lg:tight:text-xl">
             <VoicedPrompt text={activity.prompt ?? ''} spokenChars={spokenChars} highlight={voiceSupported} />
           </p>
+          {activity.hint && (
+            <p className="font-pixel text-xl leading-tight text-secondary">
+              <span className="font-pixel-label text-[10px] text-project">Pista </span>
+              {activity.hint}
+            </p>
+          )}
+          {activity.isFinalQuestion && activity.topics && activity.topics.length > 0 && (
+            <div className="flex flex-col gap-1.5 border-2 border-stroke bg-surface px-4 py-3">
+              <p className="font-pixel-label text-[10px] text-project">Organize sua fala nestes 3 tópicos</p>
+              <ol className="flex flex-col gap-1">
+                {activity.topics.map((topic, i) => (
+                  <li key={i} className="font-pixel text-xl leading-tight text-primary">
+                    {i + 1}. {topic}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
+            {conversationLabel && <PixelChip tone="accent">{conversationLabel}</PixelChip>}
             <PixelChip>Só por voz</PixelChip>
             <PixelChip>Até {Math.round(maxRecordingSeconds / 60)} min</PixelChip>
             <PixelChip>Vale 2× no score</PixelChip>
@@ -298,6 +332,8 @@ export function VoiceSummaryActivity({
           seed={activity.id}
           transcript={lastResponse.transcript}
           aiFeedback={lastResponse.aiFeedback}
+          correctAnswer={lastResponse.correctAnswer}
+          improvementPoints={lastResponse.improvementPoints}
           onContinue={onContinue}
         />
       )}

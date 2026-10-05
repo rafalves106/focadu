@@ -24,4 +24,10 @@ public interface IWeeklyTemplateRepository
 
     /// <summary>Fase 85: nome do curso a que este conteudo curado pertence.</summary>
     Task<string?> GetCourseNameForContentAsync(Guid contentId, CancellationToken cancellationToken = default);
+
+    /// <summary>Status do curso desta semana-modelo: curso em rascunho (Draft) so aparece pra quem tem previa.</summary>
+    Task<Enums.CourseStatus?> GetCourseStatusAsync(Guid weeklyTemplateId, CancellationToken cancellationToken = default);
+
+    /// <summary>Status do curso a que este conteudo curado pertence (mesma regra do rascunho).</summary>
+    Task<Enums.CourseStatus?> GetCourseStatusForContentAsync(Guid contentId, CancellationToken cancellationToken = default);
 }

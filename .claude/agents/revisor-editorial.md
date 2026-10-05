@@ -19,6 +19,7 @@ Você recebe os caminhos. Leia exatamente:
 2. `secret/processo/linha-editorial.md`.
 3. A ficha do curso (`secret/processo/cursos/<curso>/ficha-curso.md`) e, se existir, `assumidos.md` e `glossario.md`.
 4. A ficha do dia (`secret/processo/cursos/<curso>/fichas/dia-N.ficha.md`).
+4b. Se o dia for do molde B (`moldeTipo: "B"`): `secret/processo/molde/regras-molde-b.md`.
 5. O relatório do linter do dia (deve estar `PASSOU`; se estiver `REPROVOU`, devolva `ajustes: voltar ao D3/D6` e pare).
 
 **Não leia** outros dias, o roteiro, `MESTRE.md`, `ARQUITETURA.md` nem patches. Se faltar um arquivo da lista, peça-o e pare.
@@ -39,6 +40,7 @@ Você recebe os caminhos. Leia exatamente:
 - A resposta certa é mesmo a **única** certa? A errada é plausível no mesmo subtema?
 - `referenceAnswer` das perguntas de voz está correta e cabe em 1 a 3 frases? Cada fala da Focada tem até 200 caracteres e segue o `processo/guias/GUIA-DE-VOZ-FOCADA.md`?
 - Afirmação técnica duvidosa. Número, comando e saída devem ter vindo de execução real: se algo parecer inventado ou errado, sinalize.
+- **Molde B** (`regras-molde-b.md`), regra por regra: rótulos "Digite" / "O terminal responde" antes de todo bloco; prompt explicado no Dia 1; aviso de silêncio e conferência depois de comando mudo; cada comando diz se só olha ou se muda; erro em inglês traduzido; ponte Windows por conceito novo, com a armadilha quando ela engana; até 4 comandos novos; o aluno não cria arquivo para a missão funcionar; Cloze com uma única resposta possível.
 - A ficha do dia e o texto batem (termos novos, "O que levar daqui", problema de abertura, erro comum, uso em segurança)?
 
 **Se o nível declarado e o conteúdo não batem**, o ajuste volta para a **ficha do curso**, não para o texto: escreva isso explicitamente.

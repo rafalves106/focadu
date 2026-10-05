@@ -57,13 +57,13 @@ export function WeekTrail({
   const remaining = days.filter((d) => d.status !== DailyStatus.Completed).length;
   return (
     <ol className="flex flex-col" aria-label={`Dias da Semana ${weekly.number}`}>
-      {days.map((day, i) => {
+      {days.map((day) => {
         const state = dayState(day, weekLocked);
         const summary = overview?.days.find((d) => d.id === day.id);
         const reinforcement = overview && summary ? pendingReinforcementOf(overview, summary) : null;
         return (
           <Fragment key={day.id}>
-            <DayRow day={day} state={state} bridge={days.length === 6 && i === 5} reinforcementId={reinforcement?.id ?? null} compact={compact} />
+            <DayRow day={day} state={state} bridge={day.isBridge ?? false} reinforcementId={reinforcement?.id ?? null} compact={compact} />
             <li aria-hidden="true" className="pl-[26px] sm:pl-[30px]">
               <span className={`block w-1 ${compact ? 'h-1' : 'h-2 lg:short:h-1'} ${state === 'done' ? 'bg-accent' : 'bg-stroke'}`} />
             </li>

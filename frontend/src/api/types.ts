@@ -134,6 +134,10 @@ export interface ActivityResponseDto {
   justification: string | null;
   aiFeedback: string | null;
   createdAt: string;
+  /** Conversa por voz (molde v1): resposta correta da curadoria, 1a parte da devolutiva. */
+  correctAnswer?: string | null;
+  /** Conversa por voz (molde v1): pontos a melhorar no conteudo, 2a parte da devolutiva. */
+  improvementPoints?: string | null;
 }
 
 export interface DailyActivityDto {
@@ -156,6 +160,44 @@ export interface DailyActivityDto {
   missions?: TerminalMissionDto[] | null;
   /** So em TerminalMission (terminal v3): a cola "Comandos de hoje" - vazia em bloco curado antes dela. */
   commands?: TerminalCommandDto[] | null;
+  /** VoiceSummary (molde v1): pista mostrada no lugar do texto do bloco. */
+  hint?: string | null;
+  /** VoiceSummary (molde v1): e a pergunta final ("explique o dia com suas palavras"). */
+  isFinalQuestion?: boolean;
+  /** Pergunta final: os 3 topicos-pista. */
+  topics?: string[] | null;
+  /** Molde v1: alvo de aprendizagem (t1, t2, t3) que a atividade cobra. */
+  target?: string | null;
+}
+
+/** Aquecimento (molde v1): pergunta de dia anterior que o aluno ja respondeu; o gabarito ja foi revelado antes. */
+export interface WarmupQuestionDto {
+  activityId: string;
+  sourceDailyId: string;
+  weekNumber: number;
+  dayNumber: number;
+  type: ActivityType;
+  answerMode: AnswerMode;
+  prompt: string | null;
+  expectedAnswer: string | null;
+  quizOptions: QuizOptionDto[];
+  lastScore: number;
+}
+
+/** Feedback do dia: clareza 1 a 5, onde travou e comentario. Um por Daily, regravavel. */
+export interface DayFeedbackDto {
+  dailyId: string;
+  clarity: number;
+  stuckActivityId: string | null;
+  stuckActivityType: ActivityType | null;
+  comment: string | null;
+  updatedAt: string;
+}
+
+export interface SubmitDayFeedbackBody {
+  clarity: number;
+  stuckActivityId: string | null;
+  comment: string | null;
 }
 
 /** Um item da cola "Comandos de hoje": sintaxe generica (`chmod 640 arq`) e o que ela faz. */
@@ -371,6 +413,8 @@ export interface DailyStatusSummaryDto {
   reinforcementDailyId: string | null;
   /** Fase 65: concluida hoje (hora local) - fala "por hoje acabou" da Focada no mapa. */
   completedToday: boolean;
+  /** Molde v1: dia de ponte (DailyTemplate.IsBridge) - a trilha marca a ponte por aqui, nao pela posicao do dia. */
+  isBridge?: boolean;
 }
 
 export interface MonthlyOverviewDto {
@@ -430,6 +474,8 @@ export interface DailyOverviewDto {
   totalActivities: number;
   completedActivities: number;
   passedActivities: number;
+  /** Molde v1: dia de ponte (DailyTemplate.IsBridge) - WeekTrail/WeeklyDetailPage marcam a ponte por aqui, nao pela posicao do dia. */
+  isBridge?: boolean;
 }
 
 export interface CuratedContentDto {
@@ -444,6 +490,8 @@ export interface CuratedContentDto {
    * perfil permitem. [] quando não há personalização pra este conteúdo/usuário.
    */
   personalizedAnalogies?: string[];
+  /** Fonte oficial da leitura (molde v1 da curadoria): "Nome: url; Nome: url". Fora do corpo do texto. */
+  source?: string | null;
 }
 
 /** Fase 59: link de referencia (biblioteca/documentacao) da linguagem escolhida - curadoria manual, cada um conferido na mão. */

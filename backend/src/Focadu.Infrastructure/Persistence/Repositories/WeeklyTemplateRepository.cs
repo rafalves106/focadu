@@ -47,4 +47,19 @@ public class WeeklyTemplateRepository : IWeeklyTemplateRepository
                join m in _context.Monthlies on w.MonthlyId equals m.Id
                join c in _context.Courses on m.CourseId equals c.Id
                select c.Name).FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<CourseStatus?> GetCourseStatusAsync(Guid weeklyTemplateId, CancellationToken cancellationToken = default) =>
+        await (from w in _context.WeeklyTemplates
+               where w.Id == weeklyTemplateId
+               join m in _context.Monthlies on w.MonthlyId equals m.Id
+               join c in _context.Courses on m.CourseId equals c.Id
+               select (CourseStatus?)c.Status).FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<CourseStatus?> GetCourseStatusForContentAsync(Guid contentId, CancellationToken cancellationToken = default) =>
+        await (from cc in _context.CuratedContents
+               where cc.Id == contentId
+               join w in _context.WeeklyTemplates on cc.WeeklyTemplateId equals w.Id
+               join m in _context.Monthlies on w.MonthlyId equals m.Id
+               join c in _context.Courses on m.CourseId equals c.Id
+               select (CourseStatus?)c.Status).FirstOrDefaultAsync(cancellationToken);
 }

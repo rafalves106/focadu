@@ -1,3 +1,4 @@
+using Focadu.Application.Enrollments;
 using System.Text.RegularExpressions;
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
@@ -42,6 +43,7 @@ public class GetCuratedContentUseCase
     private readonly IAnalogyGenerationService _analogyGenerationService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly PersonalizationOptions _personalization;
+    private readonly CoursePreviewOptions _preview;
 
     public GetCuratedContentUseCase(
         IWeeklyTemplateRepository weeklyTemplateRepository,
@@ -49,9 +51,11 @@ public class GetCuratedContentUseCase
         IPersonalizedAnalogyRepository analogyRepository,
         IAnalogyGenerationService analogyGenerationService,
         IUnitOfWork unitOfWork,
-        PersonalizationOptions personalization)
+        PersonalizationOptions personalization,
+        CoursePreviewOptions preview)
     {
         _personalization = personalization;
+        _preview = preview;
         _weeklyTemplateRepository = weeklyTemplateRepository;
         _userRepository = userRepository;
         _analogyRepository = analogyRepository;
@@ -63,10 +67,13 @@ public class GetCuratedContentUseCase
     {
         var content = await _weeklyTemplateRepository.GetCuratedContentByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException("conteudo_nao_encontrado", "Conteudo curado nao encontrado.");
+        var status = await _weeklyTemplateRepository.GetCourseStatusForContentAsync(id, cancellationToken);
+        if (!await DraftCourseAccess.CanSeeAsync(status, userId, _userRepository, _preview, cancellationToken))
+            throw new NotFoundException("conteudo_nao_encontrado", "Conteudo curado nao encontrado.");
 
         var analogies = await GetOrGeneratePersonalizedAnalogiesAsync(userId, content, cancellationToken);
 
-        return new CuratedContentDetailDto(content.Id, content.Type, content.Title, content.ExternalUrl, content.BodyText, analogies);
+        return new CuratedContentDetailDto(content.Id, content.Type, content.Title, content.ExternalUrl, content.BodyText, analogies, content.Source);
     }
 
     /// <summary>Divide o Texto Cru em secoes por titulo "####" - a preamble antes da 1a secao (titulo geral + paragrafo de abertura) fica de fora, so as subsecoes ganham analogia. Sem nenhum "####" encontrado, o texto inteiro vira 1 secao so (fallback, ver doc da classe).</summary>
@@ -142,4 +149,5 @@ public class GetCuratedContentUseCase
 
 /// <summary>CuratedContentDto + as analogias personalizadas por secao (Fase 21/22) - shape especifico deste caso de uso, nao o Shared.CuratedContentDto (autoria/listagem nao tem "usuario atual" pra personalizar).</summary>
 public record CuratedContentDetailDto(
-    Guid Id, CuratedContentType Type, string Title, string? ExternalUrl, string? BodyText, IReadOnlyList<string> PersonalizedAnalogies);
+    Guid Id, CuratedContentType Type, string Title, string? ExternalUrl, string? BodyText, IReadOnlyList<string> PersonalizedAnalogies,
+    string? Source = null);

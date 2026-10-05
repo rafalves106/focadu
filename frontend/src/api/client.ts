@@ -13,6 +13,9 @@ import {
   type CourseSummaryDto,
   type CuratedContentDto,
   type DailyStateDto,
+  type DayFeedbackDto,
+  type SubmitDayFeedbackBody,
+  type WarmupQuestionDto,
   type EnrollmentDto,
   type ForgotPasswordRequest,
   type GamificationSummaryDto,
@@ -173,6 +176,12 @@ export const api = {
   startDaily: (dailyId: string) => request<DailyStateDto>(`/api/dailies/${dailyId}/start`, { method: 'POST' }),
   completeDaily: (dailyId: string) =>
     request<CompleteDailyResult>(`/api/dailies/${dailyId}/complete`, { method: 'POST' }),
+  // Aquecimento (molde v1): 2 perguntas de dias anteriores, sob demanda; lista vazia no primeiro dia.
+  getWarmup: (dailyId: string) => request<WarmupQuestionDto[]>(`/api/dailies/${dailyId}/warmup`),
+  // Feedback do dia: so depois de concluir o dia. GET = 404 feedback_nao_encontrado enquanto nao avaliou.
+  getDayFeedback: (dailyId: string) => request<DayFeedbackDto>(`/api/dailies/${dailyId}/feedback`),
+  submitDayFeedback: (dailyId: string, body: SubmitDayFeedbackBody) =>
+    request<DayFeedbackDto>(`/api/dailies/${dailyId}/feedback`, { method: 'PUT', body: JSON.stringify(body) }),
   submitActivityResponse: (dailyId: string, activityId: string, body: SubmitActivityResponseBody) =>
     request<SubmitActivityResponseResult>(`/api/dailies/${dailyId}/activities/${activityId}/responses`, {
       method: 'POST',

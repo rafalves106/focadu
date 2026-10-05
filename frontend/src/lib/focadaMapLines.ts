@@ -5,8 +5,8 @@ import type { FocadaLine } from './focadaLines';
  * Falas da Focada no mapa da trilha (Fase 65) - aprovadas pelo dono em 23/09/2026, ver
  * secret/rascunhos/mapa-da-trilha-pixel-art.md ("Falas padrao da Focada no mapa"). Voz:
  * secret/curadoria/GUIA-DE-VOZ-FOCADA.md. Ao abrir a trilha ela diz UMA fala: vale a primeira
- * situacao verdadeira na ordem de MAP_LINE_ORDER. Fase 76: um curso troca qualquer fala pelo
- * `falas.json` opcional ao lado do mapa dele (lib/courseMaps.ts#findCourseMapLines); o resto e a padrao.
+ * situacao verdadeira na ordem de MAP_LINE_ORDER. Molde v1: todo curso usa estas falas padrao
+ * (as falas.json por curso da Fase 76 sairam com a arte de mapa por curso).
  */
 export type FocadaMapLineKey =
   | 'cursoConcluido'

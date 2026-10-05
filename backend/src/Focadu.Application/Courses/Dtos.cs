@@ -80,4 +80,6 @@ public record DailyStatusSummaryDto(
     /// <summary>Fase 65: Daily de reforco gerada a partir desta (Daily.ReinforcementDailyId) - o mapa mostra o selo de reforco no ponto do dia de origem, ja que o reforco tem DayNumber proprio (max+1 da semana) e nao tem ponto no mapa.</summary>
     Guid? ReinforcementDailyId,
     /// <summary>Fase 65: concluida hoje (hora local, mesma conversao de Weekly.EvaluateDailyAccess) - o mapa usa pra fala "por hoje acabou" quando a cota diaria ja foi gasta.</summary>
-    bool CompletedToday);
+    bool CompletedToday,
+    /// <summary>Molde v1: dia de ponte (DailyTemplate.IsBridge - variante por linguagem ou dia "code comigo"). A trilha (CourseTrail) marca a ponte por este campo, nao mais adivinhando pela posicao (6o dia).</summary>
+    bool IsBridge = false);
