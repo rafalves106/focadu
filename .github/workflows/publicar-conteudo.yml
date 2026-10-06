@@ -1,0 +1,152 @@
+name: Publicar conteudo curado
+
+# Etapa D9 do plano de curadoria (secret/produto/PLANO-CURADORIA.md): leva dias ja prontos
+# (linter + revisao + dia aberto no app local) para o banco de producao, pelo runner da VM.
+# Manual de proposito: quem dispara e o dono, e isso e a aprovacao. Nao roda em push.
+#
+# Padrao seguro: sem `aplicar`, so confere (atualiza o secret/, roda o linter e faz o dry-run).
+# Com `aplicar`, faz backup do banco, importa dia a dia e confere que um novo dry-run nao muda nada.
+# `confirmar` repassa --confirmar ao importador (dia que mudou e ja tem respostas de alunos).
+on:
+  workflow_dispatch:
+    inputs:
+      curso:
+        description: "Slug do curso (ex.: linux, web-security)"
+        required: true
+        type: string
+      dias:
+        description: "Dias separados por virgula (ex.: 2,3,4). Vazio = todos os dias que tem arquivo"
+        required: false
+        default: ""
+        type: string
+      aplicar:
+        description: "Gravar em producao (false = so dry-run)"
+        required: true
+        default: false
+        type: boolean
+      confirmar:
+        description: "Passar --confirmar (so se o dry-run pediu)"
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: publicar-conteudo
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: [self-hosted, Linux, focadu-oracle]
+    env:
+      APP_DIR: /home/ubuntu/focadu
+      CURSO: ${{ inputs.curso }}
+      DIAS: ${{ inputs.dias }}
+      APLICAR: ${{ inputs.aplicar }}
+      CONFIRMAR: ${{ inputs.confirmar }}
+    steps:
+      - name: Validar entradas
+        run: |
+          [[ "$CURSO" =~ ^[a-z0-9-]+$ ]] || { echo "curso invalido: $CURSO" >&2; exit 1; }
+          [[ "$DIAS" =~ ^[0-9,\ ]*$ ]] || { echo "dias invalidos: $DIAS" >&2; exit 1; }
+
+      - name: Atualizar conteudo curado (rafalves106/focadu-secret)
+        working-directory: ${{ env.APP_DIR }}/secret
+        run: |
+          git fetch origin
+          git reset --hard origin/main
+          git log -1 --oneline
+
+      - name: Listar os dias
+        id: dias
+        working-directory: ${{ env.APP_DIR }}/secret
+        run: |
+          lista=""
+          if [ -n "${DIAS// /}" ]; then
+            for d in $(echo "$DIAS" | tr ',' ' '); do
+              f=$(ls conteudo/"$CURSO"/semana-*/dia-"$d".json 2>/dev/null | head -1)
+              [ -n "$f" ] || { echo "dia $d nao tem arquivo em conteudo/$CURSO" >&2; exit 1; }
+              lista="$lista $d"
+            done
+          else
+            for f in $(ls conteudo/"$CURSO"/semana-*/dia-*.json 2>/dev/null | sort -V); do
+              n=$(basename "$f" .json); lista="$lista ${n#dia-}"
+            done
+          fi
+          [ -n "${lista// /}" ] || { echo "nenhum dia encontrado para $CURSO" >&2; exit 1; }
+          echo "lista=$lista" >> "$GITHUB_OUTPUT"
+          echo "Dias: $lista"
+
+      - name: Node (para o linter, que o container nao tem)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Linter de cada dia
+        working-directory: ${{ env.APP_DIR }}/secret
+        env:
+          LISTA: ${{ steps.dias.outputs.lista }}
+        run: |
+          (cd processo/scripts/linter-dia && npm ci --no-audit --no-fund)
+          falhou=0
+          for d in $LISTA; do
+            f=$(ls conteudo/"$CURSO"/semana-*/dia-"$d".json | head -1)
+            node processo/scripts/linter-dia/src/cli.js "$f" \
+              --glossario processo/cursos/"$CURSO"/glossario.md \
+              --log processo/cursos/"$CURSO"/logs/dia-"$d".log || falhou=1
+          done
+          [ "$falhou" = 0 ] || { echo "linter reprovou algum dia; nada foi importado" >&2; exit 1; }
+
+      - name: Dry-run no banco de producao
+        working-directory: ${{ env.APP_DIR }}
+        env:
+          LISTA: ${{ steps.dias.outputs.lista }}
+        run: |
+          {
+            echo "### Dry-run: $CURSO (dias:$LISTA)"
+            for d in $LISTA; do
+              docker compose exec -T backend dotnet Focadu.Api.dll importar "$CURSO" --dia "$d" --dry-run --sem-linter 2>&1 \
+                | grep -E "^\s+(Dia|Resumo)|recus|confirmar" || true
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Backup do banco
+        if: ${{ inputs.aplicar }}
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          mkdir -p "$HOME/backups"
+          arq="$HOME/backups/focadu-pre-importar-$(date +%Y%m%d-%H%M).dump"
+          docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > "$arq"
+          [ -s "$arq" ] || { echo "backup vazio; abortando" >&2; exit 1; }
+          ls -l "$arq"
+          echo "Backup: $arq" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Importar
+        if: ${{ inputs.aplicar }}
+        working-directory: ${{ env.APP_DIR }}
+        env:
+          LISTA: ${{ steps.dias.outputs.lista }}
+        run: |
+          extra=""
+          [ "$CONFIRMAR" = "true" ] && extra="--confirmar"
+          {
+            echo "### Importado: $CURSO (dias:$LISTA)"
+            for d in $LISTA; do
+              docker compose exec -T backend dotnet Focadu.Api.dll importar "$CURSO" --dia "$d" --sem-linter $extra 2>&1 \
+                | grep -E "^\s+(Dia|Resumo)|recus|confirmar"
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Conferir (novo dry-run nao pode mudar nada) e healthcheck
+        if: ${{ inputs.aplicar }}
+        working-directory: ${{ env.APP_DIR }}
+        env:
+          LISTA: ${{ steps.dias.outputs.lista }}
+        run: |
+          for d in $LISTA; do
+            saida=$(docker compose exec -T backend dotnet Focadu.Api.dll importar "$CURSO" --dia "$d" --dry-run --sem-linter 2>&1)
+            echo "$saida" | grep -E "^\s+Dia"
+            echo "$saida" | grep -qE "Dia $d: Unchanged" || { echo "dia $d nao ficou igual ao arquivo" >&2; exit 1; }
+          done
+          code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:5280/" || echo 000)
+          [ "$code" = "200" ] || { echo "frontend respondeu $code" >&2; exit 1; }
+          echo "Conferido: $CURSO dias:$LISTA no ar." | tee -a "$GITHUB_STEP_SUMMARY"

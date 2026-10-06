@@ -4,14 +4,22 @@ description: "Cura UM dia de um curso da Focadu (Web Security, Linux, Python pra
 model: sonnet
 effort: medium
 metadata:
-  version: 2.1.0
+  version: 2.2.0
 ---
 
 # Curar um dia
 
 Regras e decisões: `secret/produto/PLANO-CURADORIA.md` (aprovado em 02/10/2026). Se algo divergir, o plano vence. Responda em português do Brasil, direto.
 
-**Um dia por sessão. `/clear` entre dias.** Nunca um mês em lote. Cada etapa lê **só** os arquivos da sua lista; não leia outros dias, o roteiro inteiro, `MESTRE.md`, `ARQUITETURA.md` nem `processo/arquivo/`.
+**Um dia por sessão. `/clear` entre dias.** Nunca um mês em lote. Cada etapa lê **só** os arquivos da sua lista; não leia outros dias, o roteiro inteiro, `MESTRE.md`, `ARQUITETURA.md`, `PLANO-CURADORIA.md` nem `processo/arquivo/`.
+
+## Economia de tokens (meta: até ~60 mil de contexto por dia)
+
+- **Leitura do D2 e do D5 = pacote do dia**, um comando só: `node secret/processo/scripts/pacote-dia.mjs <curso> <dia> --etapa d2` (depois `--etapa d5`). Ele extrai dos arquivos-fonte a ficha, os termos do dia no glossário (dos dias anteriores, só os nomes), os assumidos, as regras do molde certo e um esqueleto do dia exemplo (1 peça por tipo). Não abra esses arquivos de novo por fora; o `dia.schema.json` quem confere é o linter.
+- **Sessão só de curadoria:** a ficha (D1) roda em outra sessão; infra, workflow e código ficam fora. Modelo Sonnet; esforço médio no D2, baixo no D5/D6/D8.
+- **O `dia-N.json` nasce com um `Write` só**, já completo. Correção é `Edit` cirúrgico no trecho apontado. Nada de gerador Python que reemite o dia inteiro a cada ajuste.
+- **Saída de comando sempre filtrada:** linter e docker com `| tail -40` ou `grep`; nunca `cat` de JSON ou log inteiro.
+- Subagente (D4, D7, D7b) só recebe caminhos, nunca o texto colado.
 
 Slugs: `web-security`, `linux`, `python-websec`, `design-patterns`, `arquitetura-de-software`. Sem curso claro, pergunte. Molde A (conceito): web-security, design-patterns, arquitetura-de-software. Molde B (prática): linux, python-websec.
 
@@ -25,16 +33,17 @@ Slugs: `web-security`, `linux`, `python-websec`, `design-patterns`, `arquitetura
 
 | Etapa | Lê | Faz | Portão |
 |---|---|---|---|
-| **D2 Texto** | ficha do dia, `processo/molde/regras-de-leitura.md`, `processo/linha-editorial.md`, no molde B também `processo/molde/regras-molde-b.md`, 1 texto exemplo curto aprovado do mesmo molde (molde B: `conteudo/linux/semana-1/dia-1.json`) | Escreve os 3 blocos (A) ou a leitura curta com missões (B), com "Em uma frase" e "O que levar daqui" | D3 |
+| **D2 Texto** | `pacote-dia.mjs --etapa d2` (ficha, glossário do dia, assumidos, linha editorial, regras de leitura, molde B quando for o caso) | Escreve os 3 blocos (A) ou a leitura curta com missões (B), com "Em uma frase" e "O que levar daqui" | D3 |
 | **D3 Linter** | nada (script) | `node secret/processo/scripts/linter-dia/src/cli.js <dia.json> --glossario secret/processo/cursos/<curso>/glossario.md --log secret/processo/cursos/<curso>/logs/dia-N.log` | `PASSOU`; senão volta ao D2 (máx. 2 voltas) |
 | **D4 Revisão de escrita** | texto + lista de erros do linter | Agente `editor-pedagogico`, passando ficha e lista de erros | rodar o linter de novo |
-| **D5 Atividades** | ficha, texto final, `processo/molde/regras-de-quiz.md` (molde B: e as regras 12 e 13 de `regras-molde-b.md`), `processo/molde/dia.schema.json`, 1 atividade exemplo | Conversa por voz, Quiz, Cloze, Ligar Palavras, Roleplay; monta o `dia-N.json` completo | D6 |
+| **D5 Atividades** | texto final + `pacote-dia.mjs --etapa d5` (regras de quiz, anti-resposta-óbvia, missão no terminal ou guia de voz, esqueleto do dia exemplo) | Conversa por voz, Quiz, Cloze, Ligar Palavras, Roleplay; monta o `dia-N.json` completo | D6 |
 | **D6 Validação** | nada (script) | Linter em modo completo, `json.load`, log de execução, verificadores do lab; Haiku só para o que script não pega | `PASSOU`; senão volta ao D5 |
 | **D7 Revisão editorial** | (o agente lê) | Agente `revisor-editorial`, em **contexto limpo**, com dia, ficha do dia, ficha do curso, linha editorial e relatório do linter | `aprovado` |
 | **D7b Leitura por persona** (só dia-âncora) | (o agente lê) | Um agente em contexto limpo lê o dia como o aluno lê (Reading, missões, atividades) no papel de uma persona do público-alvo e grava `secret/processo/cursos/<curso>/avaliacao-persona-<persona>-dia-N.md` (onde trava, sugestão, prioridade). Personas de referência: usuária de Windows que nunca abriu terminal; pessoa com dificuldade de leitura e ansiedade. Ponto de prioridade alta volta ao D2/D5 antes de o dono ler | sem ponto alto |
+| **D9 Publicar** (só depois do dono abrir o dia no app e aprovar) | nada (workflow) | Dono dispara o workflow `Publicar conteudo curado` (`workflow_dispatch`, curso e dias): atualiza o `secret/` da VM, roda o linter, faz o dry-run em produção; com `aplicar` faz backup, importa e confere que um novo dry-run dá `Unchanged`. A sessão **não** dispara nem faz push sozinha | resumo do job sem erro; marcar `no ar` no `estado.md` |
 | **D8 Importar** | nada (comando) | `dotnet run --project backend/src/Focadu.Api -- importar <curso> --dia N` (`--dry-run` antes); depois abrir o dia no app local (`rodar-projeto`) e marcar `pronto` no `estado.md`. Detalhes em `secret/processo/importador.md` | dia aberto no app |
 
-Estado visível no `estado.md`: `a fazer` → `ficha ok` → `validado` (após D6) → `revisado` (após D7) → `pronto` (após D8). Anote também os tokens gastos pelo dia.
+Estado visível no `estado.md`: `a fazer` → `ficha ok` → `validado` (após D6) → `revisado` (após D7) → `pronto` (após D8 e o dia aberto no app) → `no ar` (após D9, em produção). Anote também os tokens gastos pelo dia.
 
 ### D2 e D5: como escrever
 
