@@ -4,7 +4,7 @@ description: "Cura UM dia de um curso da Focadu (Web Security, Linux, Python pra
 model: sonnet
 effort: medium
 metadata:
-  version: 2.2.0
+  version: 2.3.0
 ---
 
 # Curar um dia
@@ -19,6 +19,7 @@ Regras e decisões: `secret/produto/PLANO-CURADORIA.md` (aprovado em 02/10/2026)
 - **Sessão só de curadoria:** a ficha (D1) roda em outra sessão; infra, workflow e código ficam fora. Modelo Sonnet; esforço médio no D2, baixo no D5/D6/D8.
 - **O `dia-N.json` nasce com um `Write` só**, já completo. Correção é `Edit` cirúrgico no trecho apontado. Nada de gerador Python que reemite o dia inteiro a cada ajuste.
 - **Saída de comando sempre filtrada:** linter e docker com `| tail -40` ou `grep`; nunca `cat` de JSON ou log inteiro.
+- **D2 a D6 rodam no agente `curador`** (Sonnet, poucas ferramentas, contexto inicial menor), e os ajustes pedidos pelo D7 também, em outra chamada dele. A sessão principal só coordena: dispara o `curador`, o `revisor-editorial`, importa (D8) e atualiza o `estado.md`.
 - Subagente (D4, D7, D7b) só recebe caminhos, nunca o texto colado.
 
 Slugs: `web-security`, `linux`, `python-websec`, `design-patterns`, `arquitetura-de-software`. Sem curso claro, pergunte. Molde A (conceito): web-security, design-patterns, arquitetura-de-software. Molde B (prática): linux, python-websec.

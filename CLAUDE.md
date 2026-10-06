@@ -33,7 +33,7 @@ focadu/
 ├── frontend/          <- Vite + React + TypeScript (Dockerfile + nginx.conf próprios)
 ├── docker-compose.yml / .env.example   <- stack de produção, ver docs/DOCKER.md
 ├── .github/workflows/ <- ci.yml (build+test+lint) e deploy.yml (runner self-hosted Linux, pós-CI)
-├── .claude/           <- skills (`skills/`), agentes `editor-pedagogico` e `revisor-editorial` e `launch.json`
+├── .claude/           <- skills (`skills/`), agentes `curador`, `editor-pedagogico`, `revisor-editorial` e `figma-designer`, e `launch.json`
 ├── whatsapp-service/  <- serviço Node isolado de notificação, fase futura (ainda placeholder)
 └── secret/            <- git próprio, ignorado pelo repo principal (ver .gitignore).
                           Documento de produto/negócio (MESTRE.md) + curadoria de conteúdo
@@ -89,6 +89,7 @@ Regra geral: **o modelo mais barato que dá conta**, e o contexto principal fica
 |---|---|---|
 | Implementar fase, decisões de arquitetura, bug difícil, revisão de segurança | Sessão principal (Sonnet; Opus só se travar) | Precisa do contexto inteiro |
 | Buscar/mapear código ("onde fica X", "quem chama Y") em vários arquivos | Subagente `Explore` (Haiku) | Devolve só a conclusão, não despeja arquivos no contexto |
+| Curar um dia (D2–D6) e aplicar ajustes do D7 | Agente `curador` (Sonnet) | Começa com contexto menor que a sessão principal; a sessão só coordena |
 | Reescrever texto de aula (leitura fácil) | Agente `editor-pedagogico` (Sonnet) | Só lê e devolve Markdown; não precisa de Opus |
 | Desenhar ou regerar tela no Figma | Agente `figma-designer` (**Opus 5.5**, decisão do dono, 02/10/2026) | Toda geração no Figma passa por ele; a sessão principal não escreve no Figma direto |
 | Curar dia (`curar-conteudo`), retrofit visual, rascunho | Skills do projeto, **um dia por vez** | Nunca em lote (estoura contexto) |
