@@ -6,13 +6,21 @@ import { isValidEmail, MIN_PASSWORD_LENGTH } from '../../lib/validation';
 import { PixelButton } from '../session/PixelButton';
 import { PixelFormError, PixelPasswordField, PixelTextField } from './PixelFields';
 
+const INVITE_ERROR = 'Esse convite não vale mais, peça outro.';
+
 export function RegisterForm({
   onSuccess,
   referralCode,
+  inviteCode,
+  onInviteRejected,
 }: {
   onSuccess: (user: UserDto) => void;
   /** Fase 17: opcional - vem de /login?ref= (ver LoginPage). Codigo invalido/de ninguem so e ignorado no backend. */
   referralCode?: string | null;
+  /** Fase 93: convite de tester (LoginPage); o backend e quem confere se ainda vale. */
+  inviteCode?: string | null;
+  /** Fase 93: o convite foi recusado no envio - a LoginPage pinta o campo do codigo de vermelho. */
+  onInviteRejected?: () => void;
 }) {
   const { register } = useAuth();
   const [displayName, setDisplayName] = useState('');
@@ -46,11 +54,16 @@ export function RegisterForm({
 
     setBusy(true);
     try {
-      onSuccess(await register({ email: email.trim(), password, displayName: displayName.trim(), referralCode: referralCode ?? undefined }));
+      onSuccess(await register({ email: email.trim(), password, displayName: displayName.trim(), referralCode: referralCode ?? undefined, inviteCode: inviteCode ?? undefined }));
     } catch (err) {
       // email_ja_cadastrado (409) e senha_muito_curta (400, redundante com a checagem acima, mas
       // o servidor nunca confia so no client-side) chegam aqui com a mensagem pronta do backend.
-      setError(err instanceof ApiError ? err.message : 'Não foi possível criar sua conta - tente de novo.');
+      // Fase 93: a mesma frase pros convites que nao valem (Figma "Cadastro por convite — v3", quadro 05).
+      if (err instanceof ApiError && err.code.startsWith('convite_')) {
+        setError(INVITE_ERROR);
+        onInviteRejected?.();
+      }
+      else setError(err instanceof ApiError ? err.message : 'Não foi possível criar sua conta - tente de novo.');
     } finally {
       setBusy(false);
     }

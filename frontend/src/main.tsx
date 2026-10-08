@@ -10,6 +10,7 @@ import { SettingsProvider } from './contexts/SettingsProvider';
 import { CourseSelectionPage } from './routes/CourseSelectionPage';
 import { ForgotPasswordPage } from './routes/ForgotPasswordPage';
 import { LoginPage } from './routes/LoginPage';
+import { ConfirmEmailPage } from './routes/ConfirmEmailPage';
 import { MarketplacePage } from './routes/MarketplacePage';
 import { OnboardingWelcomePage } from './routes/OnboardingWelcomePage';
 import { ProfileInterviewPage } from './routes/ProfileInterviewPage';
@@ -37,6 +38,8 @@ createRoot(document.getElementById('root')!).render(
             {/* Fase 41: fora do <ProtectedRoute/> como login, nao exigem sessao. */}
             <Route path="esqueci-senha" element={<ForgotPasswordPage />} />
             <Route path="redefinir-senha" element={<ResetPasswordPage />} />
+            {/* Fase 93: fora do <ProtectedRoute/> (que manda pra ca quem ainda nao confirmou o e-mail). */}
+            <Route path="confirmar-email" element={<ConfirmEmailPage />} />
             <Route element={<ProtectedRoute />}>
               {/* Onboarding (Fase 13b): fora do <App/> de proposito - sem o menu global, mesmo
                   tratamento full-bleed de LoginPage/SplashPage. /start (Fase 25): mesmo tratamento

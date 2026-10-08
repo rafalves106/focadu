@@ -88,6 +88,11 @@ var frontendOptions = new FrontendOptions(
 // Fase 81: e-mails que enxergam os cursos ainda escondidos (Draft). Env var CoursePreview__Emails.
 builder.Services.AddSingleton(Focadu.Application.Shared.PersonalizationOptions.FromSetting(builder.Configuration["Personalization:AnalogiesEnabled"]));
 builder.Services.AddSingleton(Focadu.Application.Enrollments.CoursePreviewOptions.FromSetting(builder.Configuration["CoursePreview:Emails"]));
+// Fase 93: cadastro so com convite e confirmacao de e-mail - desligados por padrao, ligados no .env de producao
+// (Signup__InviteOnly, Signup__EmailVerification, Signup__ContactEmail). Ver SignupOptions.
+var signupOptions = Focadu.Application.Shared.SignupOptions.FromSettings(
+    builder.Configuration["Signup:InviteOnly"], builder.Configuration["Signup:EmailVerification"], builder.Configuration["Signup:ContactEmail"]);
+builder.Services.AddSingleton(signupOptions);
 builder.Services.AddFocaduApplication();
 builder.Services.AddFocaduInfrastructure(connectionString, groqApiKey, gitHubOptions, forgejoOptions, jwtOptions, smtpOptions, frontendOptions);
 
@@ -142,9 +147,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsJsonAsync(new ErrorResponse("nao_autenticado", "Sessao invalida ou expirada."));
             },
+            // Fase 93: o unico 403 da Api e a sessao de quem ainda nao confirmou o e-mail (politica padrao abaixo).
+            OnForbidden = async context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new ErrorResponse("email_nao_verificado", "Confirme o seu e-mail com o codigo que mandamos."));
+            },
         };
     });
-builder.Services.AddAuthorization();
+
+// Fase 93: com Signup:EmailVerification ligada, todo RequireAuthorization() passa a exigir o e-mail confirmado
+// (claim do JWT). So /auth/me e as rotas do codigo usam a politica que aceita sessao sem e-mail confirmado - e o
+// que deixa o front saber pra onde mandar o aluno e deixa ele confirmar.
+const string PendingEmailPolicy = "SessaoSemEmailConfirmado";
+builder.Services.AddAuthorization(options =>
+{
+    var defaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder().RequireAuthenticatedUser();
+    if (signupOptions.EmailVerification)
+        defaultPolicy.RequireClaim(JwtTokenService.EmailVerifiedClaim, "true");
+    options.DefaultPolicy = defaultPolicy.Build();
+    options.AddPolicy(PendingEmailPolicy, policy => policy.RequireAuthenticatedUser());
+});
 
 var app = builder.Build();
 
@@ -185,6 +209,9 @@ void ClearAuthCookie(HttpContext context) =>
 // Fase 13: todo endpoint protegido extrai o userId assim - claim "sub" do JWT, ja validado pelo
 // middleware JwtBearer antes do endpoint rodar (nunca decodificado de novo aqui).
 Guid CurrentUserId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
+
+// Fase 93: o front decide se manda o aluno pra "Confira seu e-mail" por este campo, nas respostas de auth.
+UserDto WithSignup(UserDto user) => user with { EmailVerificationPending = signupOptions.EmailVerification && user.EmailVerifiedAt is null };
 
 // Fase 86: corpo HTTP do laboratorio -> entrada do caso de uso (nulo = o aluno nao rodou nada).
 LabRunInput? ToLabRun(LabRunRequest? run) =>
@@ -277,6 +304,52 @@ if (args.Contains("resetar-usuarios"))
             Console.WriteLine("  Para apagar: repita com --confirmar --backup-feito (so depois de fazer o backup).");
     }
     catch (Exception ex) when (ex is Focadu.Application.Exceptions.ValidationException or Focadu.Application.Exceptions.NotFoundException)
+    {
+        Console.Error.WriteLine(ex.Message);
+        Environment.ExitCode = 2;
+    }
+    return;
+}
+
+// `dotnet run --project src/Focadu.Api -- convite "Fulano" [--usos N] [--dias N]` cria um convite de tester (Fase 93);
+// `convite --listar` mostra todos; `convite --revogar CODIGO` revoga. Na VM: docker compose exec backend dotnet Focadu.Api.dll convite ...
+if (args.Contains("convite"))
+{
+    using var inviteScope = app.Services.CreateScope();
+    var invites = inviteScope.ServiceProvider.GetRequiredService<SignupInviteAdminUseCase>();
+    string? ArgAfter(string flag) => Array.IndexOf(args, flag) is var i && i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
+    string Describe(Focadu.Domain.Users.SignupInvite i) =>
+        $"{i.Code}  {i.Note}  usos {i.UsedCount}/{i.MaxUses}  vence {(i.ExpiresAt is { } e ? e.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "nunca")}{(i.RevokedAt is null ? "" : "  REVOGADO")}";
+
+    try
+    {
+        if (args.Contains("--listar"))
+        {
+            foreach (var invite in await invites.ListAsync())
+                Console.WriteLine(Describe(invite));
+        }
+        else if (ArgAfter("--revogar") is { } revokeCode)
+        {
+            Console.WriteLine("Revogado: " + Describe(await invites.RevokeAsync(revokeCode)));
+        }
+        else
+        {
+            var noteIndex = Array.IndexOf(args, "convite") + 1;
+            var note = noteIndex < args.Length && !args[noteIndex].StartsWith("--") ? args[noteIndex] : null;
+            int? ParseInt(string flag) => ArgAfter(flag) is { } v ? (int.TryParse(v, out var n) ? n : throw new ValidationException("argumento_invalido", $"{flag} precisa de um numero.")) : null;
+            if (note is null)
+            {
+                Console.Error.WriteLine("uso: convite \"pra quem\" [--usos N] [--dias N (0 = nao vence)] | convite --listar | convite --revogar CODIGO");
+                Environment.ExitCode = 2;
+                return;
+            }
+
+            var created = await invites.CreateAsync(note, ParseInt("--usos") ?? 1, ParseInt("--dias"));
+            Console.WriteLine("Criado: " + Describe(created));
+            Console.WriteLine($"Link: {frontendOptions.BaseUrl.TrimEnd('/')}/login?convite={created.Code}");
+        }
+    }
+    catch (Exception ex) when (ex is ValidationException or NotFoundException or Focadu.Domain.Exceptions.DomainException)
     {
         Console.Error.WriteLine(ex.Message);
         Environment.ExitCode = 2;
@@ -407,9 +480,9 @@ api.MapPost("/auth/register", async (HttpContext http, RegisterRequest? request,
     {
         var result = await useCase.ExecuteAsync(
             request?.Email ?? string.Empty, request?.Password ?? string.Empty, request?.DisplayName ?? string.Empty,
-            request?.ReferralCode, ct);
+            request?.ReferralCode, request?.InviteCode, ct);
         SetAuthCookie(http, result.Token);
-        return Results.Created("/api/auth/me", result.User);
+        return Results.Created("/api/auth/me", WithSignup(result.User));
     })
     .WithName("Register");
 
@@ -417,7 +490,7 @@ api.MapPost("/auth/login", async (HttpContext http, LoginRequest? request, Login
     {
         var result = await useCase.ExecuteAsync(request?.Email ?? string.Empty, request?.Password ?? string.Empty, ct);
         SetAuthCookie(http, result.Token);
-        return Results.Ok(result.User);
+        return Results.Ok(WithSignup(result.User));
     })
     .WithName("Login");
 
@@ -445,9 +518,29 @@ api.MapPost("/auth/reset-password", async (ResetPasswordRequest? request, ResetP
     .WithName("ResetPassword");
 
 api.MapGet("/auth/me", async (ClaimsPrincipal principal, GetCurrentUserUseCase useCase, CancellationToken ct) =>
-        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), ct)))
-    .RequireAuthorization()
+        Results.Ok(WithSignup(await useCase.ExecuteAsync(CurrentUserId(principal), ct))))
+    .RequireAuthorization(PendingEmailPolicy)
     .WithName("GetCurrentUser");
+
+// Fase 93: o que a tela de login precisa saber antes de ter sessao (cadastro fechado? confirma e-mail? contato).
+api.MapGet("/auth/signup-status", (Focadu.Application.Shared.SignupOptions options) =>
+        Results.Ok(new { inviteOnly = options.InviteOnly, emailVerification = options.EmailVerification, contactEmail = options.ContactEmail }))
+    .WithName("GetSignupStatus");
+
+api.MapPost("/auth/email-verification/send", async (ClaimsPrincipal principal, SendEmailVerificationRequest? request, SendEmailVerificationUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), request?.Force ?? false, ct)))
+    .RequireAuthorization(PendingEmailPolicy)
+    .WithName("SendEmailVerification");
+
+// Acertou o codigo: troca o cookie por um token com o e-mail confirmado (o antigo seguiria barrado ate vencer).
+api.MapPost("/auth/email-verification/confirm", async (HttpContext http, ClaimsPrincipal principal, ConfirmEmailRequest? request, ConfirmEmailVerificationUseCase useCase, CancellationToken ct) =>
+    {
+        var result = await useCase.ExecuteAsync(CurrentUserId(principal), request?.Code, ct);
+        SetAuthCookie(http, result.Token);
+        return Results.Ok(WithSignup(result.User));
+    })
+    .RequireAuthorization(PendingEmailPolicy)
+    .WithName("ConfirmEmailVerification");
 
 // PUT (nao POST): idempotente - concluir a Entrevista de Perfil de novo so substitui a lista de
 // interesses inteira, nunca acumula (ver User.CompleteProfile).

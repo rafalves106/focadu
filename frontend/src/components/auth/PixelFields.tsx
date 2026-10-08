@@ -5,11 +5,11 @@ import { pixelField } from '../PixelModal';
  * Campos de formulario das telas de entrada (Fase 74, Figma "Entrada e onboarding — v2"): rotulo em
  * Silkscreen, caixa reta de 2px e texto em VT323 - mesma classe dos modais (`pixelField`).
  */
-export function PixelTextField({ label, ...input }: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
+export function PixelTextField({ label, className, ...input }: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="flex flex-col gap-2">
       <span className="font-pixel-label text-[9px] text-secondary">{label}</span>
-      <input {...input} className={pixelField} />
+      <input {...input} className={className ? `${pixelField} ${className}` : pixelField} />
     </label>
   );
 }

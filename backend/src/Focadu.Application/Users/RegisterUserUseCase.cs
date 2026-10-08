@@ -1,5 +1,7 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
+using Focadu.Application.Shared;
+using Focadu.Domain.Exceptions;
 using Focadu.Domain.Referrals;
 using Focadu.Domain.Repositories;
 using Focadu.Domain.Users;
@@ -18,6 +20,11 @@ namespace Focadu.Application.Users;
 /// ignorado silenciosamente, nunca bloqueia o registro (confirmado no prompt: "se valido"). A
 /// confirmacao de verdade (ConfirmedAt) so acontece na matricula (EnrollUserInCourseUseCase) -
 /// prova de uso real, nao so cadastro vazio.
+///
+/// Fase 93: `inviteCode` (convite de tester). Com Signup:InviteOnly ligada, sem convite nao tem cadastro;
+/// desligada, convite preenchido ainda e validado e gasto. Tudo e checado ANTES de criar o User e gasto no
+/// mesmo SaveChanges do cadastro, senao sobraria conta orfa ou convite gasto sem conta. A corrida pelo ultimo
+/// uso cai na concorrencia otimista do SignupInvite (xmin, ver UnitOfWork) e vira `convite_esgotado`.
 /// </summary>
 public class RegisterUserUseCase
 {
@@ -26,14 +33,20 @@ public class RegisterUserUseCase
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
+    private readonly ISignupInviteRepository _inviteRepository;
+    private readonly SignupOptions _signupOptions;
 
     public RegisterUserUseCase(
         IUserRepository userRepository,
         IReferralRepository referralRepository,
         IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
-        IJwtTokenService jwtTokenService)
+        IJwtTokenService jwtTokenService,
+        ISignupInviteRepository inviteRepository,
+        SignupOptions signupOptions)
     {
+        _inviteRepository = inviteRepository;
+        _signupOptions = signupOptions;
         _userRepository = userRepository;
         _referralRepository = referralRepository;
         _unitOfWork = unitOfWork;
@@ -42,7 +55,8 @@ public class RegisterUserUseCase
     }
 
     public async Task<AuthResultDto> ExecuteAsync(
-        string email, string password, string displayName, string? referralCode, CancellationToken cancellationToken = default)
+        string email, string password, string displayName, string? referralCode, string? inviteCode = null,
+        CancellationToken cancellationToken = default)
     {
         ValidatePassword(password);
 
@@ -50,6 +64,8 @@ public class RegisterUserUseCase
         var existing = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
         if (existing is not null)
             throw new ConflictException("email_ja_cadastrado", "Este email ja esta cadastrado.");
+
+        await ConsumeInviteAsync(inviteCode, cancellationToken);
 
         var passwordHash = _passwordHasher.Hash(password);
         var user = User.Create(normalizedEmail, passwordHash, displayName);
@@ -69,6 +85,20 @@ public class RegisterUserUseCase
 
         var token = _jwtTokenService.GenerateToken(user);
         return new AuthResultDto(UserDto.From(user), token);
+    }
+
+    private async Task ConsumeInviteAsync(string? inviteCode, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(inviteCode))
+        {
+            if (_signupOptions.InviteOnly)
+                throw new DomainException("O cadastro esta fechado durante o teste. Use o seu convite de tester.", "convite_obrigatorio");
+            return;
+        }
+
+        var invite = await _inviteRepository.GetByCodeAsync(inviteCode.Trim().ToUpperInvariant(), cancellationToken)
+            ?? throw new DomainException(SignupInvite.InvalidMessage, "convite_invalido");
+        invite.Consume(DateTime.UtcNow);
     }
 
     /// <summary>Minimo de 8 caracteres (pedido no prompt da fase) - validacao client-side existe tambem, mas o servidor nunca confia so nisso.</summary>

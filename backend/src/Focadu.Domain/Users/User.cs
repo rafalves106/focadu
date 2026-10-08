@@ -67,6 +67,13 @@ public class User : Entity
     /// </summary>
     public IReadOnlyCollection<string> SeenGuides => _seenGuides.AsReadOnly();
 
+    /// <summary>
+    /// Quando o aluno confirmou o e-mail com o codigo (Fase 93). Nulo = ainda nao confirmou: com a chave
+    /// Signup:EmailVerification ligada, a sessao so alcanca as rotas de confirmar e reenviar o codigo.
+    /// Contas de antes da fase nascem nulas de proposito (decisao do dono, 08/10/2026: todo mundo confirma).
+    /// </summary>
+    public DateTime? EmailVerifiedAt { get; private set; }
+
     private User()
     {
         Email = string.Empty;
@@ -161,4 +168,7 @@ public class User : Entity
 
         PasswordHash = newPasswordHash;
     }
+
+    /// <summary>Marca o e-mail como confirmado (Fase 93). Confirmar de novo nao muda a data original.</summary>
+    public void MarkEmailVerified(DateTime now) => EmailVerifiedAt ??= now;
 }

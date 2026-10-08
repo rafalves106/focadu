@@ -14,6 +14,7 @@ import { ActivityType } from '../api/types';
 export type GuideScreenKey =
   | 'login'
   | 'senha'
+  | 'confirmar'
   | 'onboarding'
   | 'start'
   | 'trilha'
@@ -53,6 +54,24 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
     items: [
       { title: 'Esqueceu a senha?', text: 'O link manda um e-mail pra criar outra, válido por 1 hora.', anchor: 'login-esqueci' },
       { title: 'Criar conta', text: 'Se você veio por indicação, o código já vem preenchido.', anchor: 'login-abas' },
+      {
+        title: 'Convite de tester',
+        text: 'No teste fechado, a conta só nasce com convite. Veio pelo link? O código já está lá. Senão, digite os 8 caracteres.',
+        anchor: 'login-convite',
+      },
+    ],
+  },
+  confirmar: {
+    title: 'Confirmar e-mail',
+    outside: true,
+    focada: 'Último passo: me conta os 6 números que chegaram no seu e-mail.',
+    items: [
+      {
+        title: 'Cadê o código?',
+        text: 'Chega em até um minuto e vale por 15. Olhe também o spam. Não chegou? Peça outro no "Reenviar código".',
+        anchor: 'confirmar-codigo',
+      },
+      { title: 'Errei o e-mail', text: 'Use "Sair e usar outra conta" e crie a conta de novo com o e-mail certo.' },
     ],
   },
   senha: {
@@ -280,6 +299,7 @@ export const FAQ: { q: string; a: string }[] = [
 export function guideScreenFor(pathname: string, search: string): GuideScreenKey | null {
   if (pathname === '/login') return 'login';
   if (pathname === '/esqueci-senha' || pathname === '/redefinir-senha') return 'senha';
+  if (pathname === '/confirmar-email') return 'confirmar';
   if (pathname.startsWith('/onboarding') || pathname === '/selecionar-curso') return 'onboarding';
   if (pathname === '/hoje') return 'sessao';
   if (pathname === '/loja') return 'loja';

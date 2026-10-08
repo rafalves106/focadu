@@ -169,7 +169,7 @@ Cada uma custou um bug real ou uma conversa; o porquê está em `docs/fase-N/` e
 
 ## Estado atual
 
-Última fase concluída: **Fase 92 — Plano de curadoria, Fase 1** (05/10/2026; telas de notebook: Fase 91; missão no terminal v3: Fase 90).
+Última fase concluída: **Fase 93 — Cadastro só com convite e confirmação de e-mail** (08/10/2026, na branch `fase-93-convite-e-verificacao`; plano de curadoria: Fase 92).
 
 Histórico completo dos marcos (Fases 25–87, com o porquê de cada decisão): `docs/ESTADO-HISTORICO.md` —
 só abrir quando precisar. Estado técnico vivo: `docs/ARQUITETURA.md`; detalhe por fase: `docs/fase-N/`.
@@ -191,6 +191,8 @@ Resumo do que existe hoje:
 - **Laboratório de código e missão no terminal (Fases 86–90)**: o aluno roda código (Pyodide, JavaScript, Bash no v86)
   e missões de terminal no navegador, sem tocar a API. Mais de um curso (89), notebook com trilhos e gavetas (91).
   Detalhe em `docs/HISTORICO-FASES.md` e `docs/fase-86/` a `docs/fase-91/`.
+- **Cadastro (Fase 93)**: teste fechado com convite de tester (comando `convite` da Api) e confirmação de e-mail por código
+  de 6 dígitos, atrás das chaves `Signup:*` (desligadas por padrão, ligadas no `.env` de produção). Ver `docs/fase-93/`.
 - **Infra**: deploy automático por push (CI/CD) na Oracle Cloud, em runner self-hosted Linux ARM64
   (`[self-hosted, Linux, focadu-oracle]`), sem homologação, Forgejo interno pros repositórios de Projeto
   Semanal. Detalhes na seção "Host de produção e deploy" abaixo; `docs/DOCKER.md` ainda tem trechos de

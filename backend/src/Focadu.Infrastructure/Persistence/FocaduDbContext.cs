@@ -54,6 +54,10 @@ public class FocaduDbContext : DbContext
     // Redefinicao de senha (Fase 41).
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
+    // Cadastro so com convite e confirmacao de e-mail (Fase 93).
+    public DbSet<SignupInvite> SignupInvites => Set<SignupInvite>();
+    public DbSet<EmailVerificationCode> EmailVerificationCodes => Set<EmailVerificationCode>();
+
     // Gamificacao (Fase 14) - 1:1 com User, sempre criadas lazy (ver GamificationCreditor).
     public DbSet<UserGemBalance> UserGemBalances => Set<UserGemBalance>();
     public DbSet<UserStreak> UserStreaks => Set<UserStreak>();

@@ -66,6 +66,8 @@ public static class DependencyInjection
         services.AddScoped<IDayFeedbackRepository, DayFeedbackRepository>();
         services.AddScoped<INotesReviewRepository, NotesReviewRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+        services.AddScoped<ISignupInviteRepository, SignupInviteRepository>();
+        services.AddScoped<IEmailVerificationCodeRepository, EmailVerificationCodeRepository>();
         services.AddScoped<IUserForgejoAccountRepository, UserForgejoAccountRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserResetService, UserResetService>();
@@ -169,6 +171,7 @@ public static class DependencyInjection
         services.AddSingleton(smtpOptions);
         services.AddSingleton(frontendOptions);
         services.AddSingleton<IPasswordResetEmailSender, SmtpPasswordResetEmailSender>();
+        services.AddSingleton<IEmailVerificationSender, SmtpEmailVerificationSender>();
 
         return services;
 

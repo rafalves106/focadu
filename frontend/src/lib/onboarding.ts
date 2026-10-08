@@ -11,6 +11,7 @@ import type { UserDto } from '../api/types';
  * Splash travar pra sempre esperando uma resposta que nunca chega.
  */
 export async function resolveLandingPath(user: UserDto): Promise<string> {
+  if (user.emailVerificationPending) return '/confirmar-email';
   if (!user.profileCompletedAt) return '/onboarding';
 
   try {

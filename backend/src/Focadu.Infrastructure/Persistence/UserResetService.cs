@@ -58,6 +58,7 @@ public class UserResetService : IUserResetService
         Add("DayFeedbacks", _context.DayFeedbacks);
         Add("PersonalizedAnalogies", _context.PersonalizedAnalogies);
         Add("PasswordResetTokens", _context.PasswordResetTokens.Where(t => t.UserId != keepId));
+        Add("EmailVerificationCodes", _context.EmailVerificationCodes.Where(c => c.UserId != keepId));
         Add("Enrollments", _context.Enrollments);
         Add("UserStreaks", _context.UserStreaks);
         Add("UserGemBalances", _context.UserGemBalances);
