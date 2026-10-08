@@ -56,6 +56,11 @@ services:
       # Fase 81: e-mails (separados por virgula) que enxergam os cursos ainda escondidos (Draft) -
       # os de pre-requisito nascem assim ate a curadoria terminar. Vazio = ninguem ve.
       CoursePreview__Emails: ${COURSE_PREVIEW_EMAILS:-}
+      # Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo. Desligados por padrao;
+      # em producao ficam "true" no .env. SIGNUP_CONTACT_EMAIL aparece pra quem chega sem convite.
+      Signup__InviteOnly: ${SIGNUP_INVITE_ONLY:-false}
+      Signup__EmailVerification: ${SIGNUP_EMAIL_VERIFICATION:-false}
+      Signup__ContactEmail: ${SIGNUP_CONTACT_EMAIL:-}
       # Contorna a busca por `.git` de CuratedContentPath (nao existe dentro do container) -
       # aponta direto pro bind mount do clone de focadu-secret abaixo. Ver
       # SeedWebSecurityCourseUseCase.CuratedContentPath.

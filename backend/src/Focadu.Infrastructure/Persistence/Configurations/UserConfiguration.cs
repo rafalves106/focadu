@@ -28,6 +28,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.PreferredLanguages).HasColumnType("text[]").IsRequired();
         builder.Property(u => u.AdditionalProfileNotes).HasMaxLength(2000);
         builder.Property(u => u.ProfileCompletedAt);
+        builder.Property(u => u.EmailVerifiedAt);
 
         // Fase 17: nulo ate a 1a consulta gerar (lazy, ver GetReferralInfoUseCase).
         builder.Property(u => u.ReferralCode).HasMaxLength(16);

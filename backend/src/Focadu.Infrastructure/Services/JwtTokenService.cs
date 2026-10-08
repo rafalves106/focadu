@@ -14,6 +14,8 @@ namespace Focadu.Infrastructure.Services;
 /// </summary>
 public class JwtTokenService : IJwtTokenService
 {
+    public const string EmailVerifiedClaim = "email_verified";
+
     private static readonly TimeSpan Expiration = TimeSpan.FromDays(7);
 
     private readonly JwtOptions _options;
@@ -32,6 +34,9 @@ public class JwtTokenService : IJwtTokenService
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
+            // Fase 93: com Signup:EmailVerification ligada, a politica padrao da Api exige "true" aqui. Token de
+            // antes da fase nao tem a claim e conta como nao confirmado.
+            new Claim(EmailVerifiedClaim, user.EmailVerifiedAt is null ? "false" : "true"),
         };
 
         var token = new JwtSecurityToken(

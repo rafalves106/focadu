@@ -57,6 +57,9 @@ public static class DependencyInjection
         services.AddScoped<SeedCosmeticCatalogUseCase>();
         services.AddScoped<GetCuratedContentUseCase>();
         services.AddScoped<RegisterUserUseCase>();
+        services.AddScoped<SendEmailVerificationUseCase>();
+        services.AddScoped<ConfirmEmailVerificationUseCase>();
+        services.AddScoped<SignupInviteAdminUseCase>();
         services.AddScoped<LoginUserUseCase>();
         services.AddScoped<GetCurrentUserUseCase>();
         // Redefinicao de senha (Fase 41).

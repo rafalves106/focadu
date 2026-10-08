@@ -43,6 +43,8 @@ public class ApiExceptionHandler : IExceptionHandler
         // Redefinicao de senha (Fase 41) - link invalido/expirado e culpa da entrada do usuario, nao 401 (nao ha sessao envolvida aqui).
         ["token_invalido"] = StatusCodes.Status400BadRequest,
         ["token_expirado"] = StatusCodes.Status400BadRequest,
+        // Fase 93: convite e codigo do e-mail. O resto (convite_*, codigo_invalido/expirado) fica no 400 padrao.
+        ["codigo_bloqueado"] = StatusCodes.Status429TooManyRequests,
     };
 
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)

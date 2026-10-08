@@ -880,6 +880,24 @@ export interface UserDto {
   hideScoresInSquadFeed: boolean;
   /** Fase 75: chaves do guia das telas ja vistas ("tour:app", "tela:loja"...). */
   seenGuides: string[];
+  /** Fase 93: quando confirmou o e-mail com o codigo (nulo = ainda nao). */
+  emailVerifiedAt: string | null;
+  /** Fase 93: sessao presa em "Confira seu e-mail" - so vem preenchido nas respostas de auth. */
+  emailVerificationPending?: boolean;
+}
+
+/** Fase 93: GET /api/auth/signup-status - o que a tela de login precisa saber antes de ter sessao. */
+export interface SignupStatusDto {
+  inviteOnly: boolean;
+  emailVerification: boolean;
+  contactEmail: string | null;
+}
+
+/** Fase 93: resposta do envio do codigo; `resendInSeconds` alimenta o "Reenviar em 0:45". */
+export interface EmailVerificationStatusDto {
+  alreadyVerified: boolean;
+  sent: boolean;
+  resendInSeconds: number;
 }
 
 // referralCode (Fase 17): opcional - codigo invalido/de ninguem so e ignorado no backend, nunca bloqueia o registro.
@@ -888,6 +906,8 @@ export interface RegisterRequest {
   password: string;
   displayName: string;
   referralCode?: string;
+  /** Fase 93: convite de tester (obrigatorio com Signup:InviteOnly ligada). */
+  inviteCode?: string;
 }
 
 export interface LoginRequest {

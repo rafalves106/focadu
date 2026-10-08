@@ -19,11 +19,18 @@ public record UserDto(
     Guid Id, string Email, string DisplayName, DateTime? ProfileCompletedAt,
     IReadOnlyCollection<string> Interests, string? AdditionalProfileNotes,
     IReadOnlyCollection<ProjectLanguage> PreferredLanguages, DateTime CreatedAt, bool HideScoresInSquadFeed,
-    IReadOnlyCollection<string> SeenGuides)
+    IReadOnlyCollection<string> SeenGuides, DateTime? EmailVerifiedAt)
 {
+    /// <summary>
+    /// Fase 93: a sessao ainda esta presa na tela "Confira seu e-mail" (chave Signup:EmailVerification ligada e
+    /// e-mail nao confirmado). So as rotas de auth preenchem (WithSignup no Program.cs) - as outras nem respondem
+    /// pra quem esta pendente.
+    /// </summary>
+    public bool EmailVerificationPending { get; init; }
+
     public static UserDto From(User user) => new(
         user.Id, user.Email, user.DisplayName, user.ProfileCompletedAt, user.Interests, user.AdditionalProfileNotes,
-        user.PreferredLanguages, user.CreatedAt, user.HideScoresInSquadFeed, user.SeenGuides);
+        user.PreferredLanguages, user.CreatedAt, user.HideScoresInSquadFeed, user.SeenGuides, user.EmailVerifiedAt);
 }
 
 /// <summary>

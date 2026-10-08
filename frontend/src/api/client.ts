@@ -46,6 +46,8 @@ import {
   type SubmitActivityResponseResult,
   type UserBadgesDto,
   type UserDto,
+  type SignupStatusDto,
+  type EmailVerificationStatusDto,
   type WeeklyDetailDto,
   type WeeklyProjectDto,
   type ForgejoTokenDto,
@@ -131,6 +133,10 @@ async function request<T>(
     // excecao nem mexe em estado de tela alheio, o modal so aparece por cima, sem desmontar nada.
     if (res.status === 401 && body?.error === 'nao_autenticado' && !init?.skipAuthRedirect) {
       sessionExpiredHandler?.();
+    }
+    // Fase 93: sessao de quem ainda nao confirmou o e-mail - toda rota fora a de confirmar responde 403.
+    if (res.status === 403 && body?.error === 'email_nao_verificado' && window.location.pathname !== '/confirmar-email') {
+      window.location.assign('/confirmar-email');
     }
     throw new ApiError(res.status, body?.error ?? 'erro_desconhecido', body?.message ?? res.statusText);
   }
@@ -261,6 +267,12 @@ export const api = {
   // skipAuthRedirect: 401 aqui e o caminho ESPERADO "ninguem logado ainda" (ver AuthContext.tsx),
   // nunca sessao expirada de verdade - nao deve disparar o modal global.
   getCurrentUser: () => request<UserDto>('/api/auth/me', { skipAuthRedirect: true }),
+  // Fase 93: cadastro so com convite e confirmacao de e-mail.
+  getSignupStatus: () => request<SignupStatusDto>('/api/auth/signup-status'),
+  sendEmailVerification: (force: boolean) =>
+    request<EmailVerificationStatusDto>('/api/auth/email-verification/send', { method: 'POST', body: JSON.stringify({ force }) }),
+  confirmEmailVerification: (code: string) =>
+    request<UserDto>('/api/auth/email-verification/confirm', { method: 'POST', body: JSON.stringify({ code }) }),
   // Onboarding (Fase 13b) - Entrevista de Perfil + Selecao de Curso. preferredLanguages (Fase 59):
   // sempre mandado por inteiro (substitui a lista, mesmo principio de interests) - o unico chamador
   // (ProfileInterviewPage) sempre sabe a selecao atual, nunca precisa do "nulo = nao mexe" que o

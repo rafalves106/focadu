@@ -13,6 +13,8 @@ export function ProtectedRoute() {
 
   if (isLoading) return <Centered text="Carregando..." />;
   if (!user) return <Navigate to="/login" replace />;
+  // Fase 93: conta sem e-mail confirmado so ve a tela do codigo (o backend tambem barra, com 403).
+  if (user.emailVerificationPending) return <Navigate to="/confirmar-email" replace />;
 
   return <Outlet />;
 }

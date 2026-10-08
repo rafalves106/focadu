@@ -24,4 +24,19 @@ internal static class UniqueCodeGenerator
         // Praticamente impossivel (33^8 combinacoes) - defensivo, nunca deveria disparar de verdade.
         throw new InvalidOperationException("Nao foi possivel gerar um codigo unico.");
     }
+
+    /// <summary>
+    /// Mesmo formato, mas de RandomNumberGenerator (Fase 93): o convite de tester libera o cadastro, entao
+    /// precisa ser imprevisivel, nao so "nao repetido" como indicacao e Squad.
+    /// </summary>
+    public static async Task<string> GenerateSecureAsync(Func<string, Task<bool>> isTaken)
+    {
+        for (var attempt = 0; attempt < MaxAttempts; attempt++)
+        {
+            var candidate = global::System.Security.Cryptography.RandomNumberGenerator.GetString(Alphabet, CodeLength);
+            if (!await isTaken(candidate)) return candidate;
+        }
+
+        throw new InvalidOperationException("Nao foi possivel gerar um codigo unico.");
+    }
 }
