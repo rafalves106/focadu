@@ -9,7 +9,7 @@ namespace Focadu.Domain.Dailies;
 /// roda o codigo e o navegador do aluno (Pyodide, Worker de JavaScript ou Linux no v86) - o servidor
 /// nunca executa nada, so guarda a configuracao e o que o aluno enviou.
 /// </summary>
-/// <param name="Runtime">"python", "javascript" ou "bash".</param>
+/// <param name="Runtime">"python", "javascript", "bash" ou "sqlite" (Fase 95: SQL do aluno roda no SQLite do Pyodide).</param>
 /// <param name="Image">So pro bash: "basico" (Bash + coreutils) ou "servidor" (+ curl, nc, python3 e o host lab).</param>
 /// <param name="FileContentIds">CuratedContents do tipo File que ja vem no ambiente (os mesmos do "Material de hoje").</param>
 /// <param name="Packages">Libs a instalar sob demanda (Python via micropip, JavaScript empacotadas com shim).</param>
@@ -17,7 +17,8 @@ namespace Focadu.Domain.Dailies;
 /// <param name="Entry">Nome do arquivo que o aluno cria/edita (auditor.py, investigar.sh). Vazio num dia so de missoes no terminal (sem editor).</param>
 /// <param name="Command">Comando de exemplo que roda o Entry - conferencia da curadoria e dica; no Linux o aluno digita. Vazio junto com o Entry.</param>
 /// <param name="TimeoutSeconds">Teto por execucao; ao passar, o laboratorio derruba o programa.</param>
-/// <param name="Setup">So no bash: linhas de shell rodadas como root antes de liberar o terminal (criar usuarios, grupos, arquivos). Nulo em configuracoes antigas.</param>
+/// <param name="Setup">Bash: linhas de shell rodadas como root antes de liberar o terminal (criar usuarios, grupos, arquivos). SQLite: comandos SQL
+/// que montam o banco do dia (CREATE/INSERT) antes de cada execucao. Nulo em configuracoes antigas.</param>
 /// <param name="User">So no bash: usuario em que o terminal entra depois do Setup (<c>su - &lt;user&gt;</c>); nulo = fica como root.</param>
 public sealed record LabConfig(
     string Runtime,
@@ -34,13 +35,14 @@ public sealed record LabConfig(
     public const string Python = "python";
     public const string JavaScript = "javascript";
     public const string Bash = "bash";
+    public const string Sqlite = "sqlite";
 
     public const string ImageBasic = "basico";
     public const string ImageServer = "servidor";
 
     public const int MaxTimeoutSeconds = 60;
 
-    private static readonly string[] Runtimes = [Python, JavaScript, Bash];
+    private static readonly string[] Runtimes = [Python, JavaScript, Bash, Sqlite];
     private static readonly string[] Images = [ImageBasic, ImageServer];
 
     /// <summary>Valida as regras da CURADORIA.md 5.2 e devolve a configuracao normalizada (minusculas, sem repeticao).</summary>
@@ -71,6 +73,8 @@ public sealed record LabConfig(
         var packageList = Distinct(packages);
         if (rt == Bash && packageList.Count > 0)
             throw new DomainException("No bash os pacotes vem na imagem: nao use lab.packages.", "lab_pacote_invalido");
+        if (rt == Sqlite && packageList.Count > 0)
+            throw new DomainException("O sqlite nao instala pacotes: nao use lab.packages.", "lab_pacote_invalido");
 
         // Sem editor (dia so de missoes no terminal): entry e command ficam os dois vazios.
         var noEditor = string.IsNullOrWhiteSpace(entry) && string.IsNullOrWhiteSpace(command);
@@ -86,8 +90,10 @@ public sealed record LabConfig(
 
         var setupList = (setup ?? []).Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l.Trim()).ToList(); // a ordem importa e linha repetida vale
         var userName = string.IsNullOrWhiteSpace(user) ? null : user.Trim();
-        if ((setupList.Count > 0 || userName is not null) && rt != Bash)
-            throw new DomainException("lab.setup e lab.user so valem pro runtime bash.", "lab_setup_invalido");
+        if (setupList.Count > 0 && rt is not (Bash or Sqlite))
+            throw new DomainException("lab.setup so vale pros runtimes bash e sqlite.", "lab_setup_invalido");
+        if (userName is not null && rt != Bash)
+            throw new DomainException("lab.user so vale pro runtime bash.", "lab_setup_invalido");
         if (userName is not null && !System.Text.RegularExpressions.Regex.IsMatch(userName, "^[a-z_][a-z0-9_-]{0,31}$"))
             throw new DomainException("lab.user precisa ser um nome de usuario Linux (minusculas, numeros, _ e -).", "lab_setup_invalido");
 

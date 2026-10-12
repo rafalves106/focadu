@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 94 - Painel de gestao (admin) e Medicao de IA** (Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 95 - SQLite no laboratorio de codigo** (Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -2449,10 +2449,11 @@ executa e o navegador do aluno (Pyodide, Worker de JavaScript com shim, Linux no
 codigo nem verifica a saida** (adulteracao ignorada), so guarda a configuracao e o que o aluno enviou.
 
 - **Configuracao do dia**: `DailyTemplate.Lab` (`LabConfig`, coluna `DailyTemplates.LabConfig`, JSON em texto;
-  nulo = sem laboratorio): `Runtime` (`python`/`javascript`/`bash`), `Image` (so bash: `basico` ou `servidor`),
+  nulo = sem laboratorio): `Runtime` (`python`/`javascript`/`bash`/`sqlite`), `Image` (so bash: `basico` ou `servidor`),
   `FileContentIds` (`CuratedContent` tipo `File` ja no ambiente), `Packages`, `Services` (arquivos iniciados no
   boot, exige `servidor`), `Entry`, `Command` (precisa conter o `Entry`) e `TimeoutSeconds` (1-60).
-  `LabConfig.Create` valida. `DailyTemplate.SetLab` exige passo de codigo; `StepUsesLab(activity)` = dia com lab
+  `Setup` (bash: shell como root antes do terminal; sqlite: comandos SQL que montam o banco do dia - Fase 95) e `User`
+  (so bash). `LabConfig.Create` valida (sqlite recusa `Image`, `Packages` e `User`). `DailyTemplate.SetLab` exige passo de codigo; `StepUsesLab(activity)` = dia com lab
   e passo sem `LabDisabled`.
 - **Por passo**: `DailyActivity.CodeStarter` (codigo inicial do editor, nao e segredo) e `LabDisabled`
   (`"lab": false` no JSON: o passo volta pro fluxo da Fase 79, saida colada).
@@ -2608,6 +2609,13 @@ secao acima). O codigo do aluno roda **no navegador dele**, nunca no servidor.
   (Alpine i386 com Bash no v86; terminal pela serial, cada comando fecha com um marcador `__END<id>:<rc>` que da
   saida e exit code; o servico do perfil `servidor` sobe no boot e o runner espera um socket em LISTEN em
   `/proc/net/tcp`). Mesma interface nos tres.
+- **SQLite (Fase 95)**: `runtime: sqlite` usa o mesmo `py.worker.mjs` (o `sqlite3` da biblioteca padrao do Pyodide,
+  SQLite 3.39, sem pacote extra). O aluno escreve SQL puro; o `SQL_RUNNER` (Python embutido no worker, lido tambem pelo
+  `verificar.mjs` da curadoria) abre um banco **novo em memoria a cada execucao**: `.db` de `files` (no maximo um, via
+  `backup`), `.sql` de `files`, `setup`, e o SQL do aluno comando a comando (`complete_statement`, com a linha inicial
+  de cada um). `SELECT` vira tabela em texto (`NULL` escrito, `(nenhuma linha)`), DML escreve `-- N linhas alteradas`,
+  erro escreve `Erro na linha N: ...` e para (exit 1; `errorLine` le `linha N`). Comandos de ponto: `.tables` e
+  `.schema [tabela]`. Autocommit (o `BEGIN/ROLLBACK` do aluno vale) e `foreign_keys` desligado, como no SQLite padrao.
 - **Isolamento**: `/lab/` sai com `Content-Security-Policy: default-src 'none'; script-src 'self'
   'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src <host>/lab/; frame-ancestors 'self'` (dev: plugin
   `labHeaders` do `vite.config.ts`; producao: `location /lab/` do `nginx.conf`, que tambem define MIME, gzip do wasm,

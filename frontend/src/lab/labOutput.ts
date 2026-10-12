@@ -22,18 +22,19 @@ export function argvFor(runtime: LabRuntime, command: string): string[] {
   return runtime === 'javascript' ? tokens : tokens.slice(1);
 }
 
-/** Linha do erro na saida (traceback do Python, `line N:` do Bash, pilha do JavaScript) - ou null. */
+/** Linha do erro na saida (traceback do Python, `line N:` do Bash, `Erro na linha N` do SQLite, pilha do JavaScript) - ou null. */
 export function errorLine(output: string, exitCode: number): number | null {
   if (exitCode === 0) return null;
   // Python ("line 15, in <module>") e Bash ("investigar.sh: line 3: ..."): a ultima linha citada e a do aluno.
-  const named = [...output.matchAll(/line (\d+)/g)].at(-1);
+  // SQLite ("Erro na linha 4: no such table"): o laboratorio de SQL escreve em portugues.
+  const named = [...output.matchAll(/(?:line|linha) (\d+)/g)].at(-1);
   if (named) return Number(named[1]);
   // JavaScript: o quadro do codigo do aluno e o do Blob ("blob:http://.../uuid:LINHA:COLUNA").
   const blob = /blob:[^\s)]*?:(\d+):\d+/.exec(output);
   return blob ? Number(blob[1]) : null;
 }
 
-const RUNTIME_LABEL: Record<LabRuntime, string> = { python: 'PYTHON 3.12', javascript: 'JAVASCRIPT', bash: 'BASH 5.2' };
+const RUNTIME_LABEL: Record<LabRuntime, string> = { python: 'PYTHON 3.12', javascript: 'JAVASCRIPT', bash: 'BASH 5.2', sqlite: 'SQLITE 3.39' };
 
 /** "PYTHON 3.12 · SCAPY" / "BASH 5.2 · IMAGEM SERVIDOR" - o chip do passo, sem o estado. */
 export function runtimeLabel(lab: LabConfigDto): string {

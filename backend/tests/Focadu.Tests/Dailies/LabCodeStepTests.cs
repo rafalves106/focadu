@@ -78,6 +78,32 @@ public class LabCodeStepTests
         Assert.Equal(["lab_http.py"], ok.Services);
     }
 
+    [Fact]
+    public void LabConfig_Sqlite_TakesSetup_ButNoImagePackagesOrUser()
+    {
+        string[] setup = ["CREATE TABLE livro (id INTEGER PRIMARY KEY, titulo TEXT)", " ", "INSERT INTO livro (titulo) VALUES ('Iracema')"];
+        var ok = LabConfig.Create(" SQLite ", null, null, null, null, "consulta.sql", "sqlite3 < consulta.sql", 10, setup);
+        Assert.Equal(LabConfig.Sqlite, ok.Runtime);
+        Assert.Equal([setup[0], setup[2]], ok.Setup);
+        Assert.Null(ok.Image);
+
+        Assert.Equal("lab_imagem_invalida",
+            Assert.Throws<DomainException>(() => LabConfig.Create("sqlite", "basico", null, null, null, "c.sql", "sqlite3 < c.sql", 10)).Code);
+        Assert.Equal("lab_pacote_invalido",
+            Assert.Throws<DomainException>(() => LabConfig.Create("sqlite", null, null, ["pandas"], null, "c.sql", "sqlite3 < c.sql", 10)).Code);
+        Assert.Equal("lab_setup_invalido",
+            Assert.Throws<DomainException>(() => LabConfig.Create("sqlite", null, null, null, null, "c.sql", "sqlite3 < c.sql", 10, setup, "aluno")).Code);
+        Assert.Equal("lab_servico_invalido",
+            Assert.Throws<DomainException>(() => LabConfig.Create("sqlite", null, null, null, ["lab_http.py"], "c.sql", "sqlite3 < c.sql", 10)).Code);
+    }
+
+    [Fact]
+    public void LabConfig_Setup_IsStillOnlyForBashAndSqlite()
+    {
+        Assert.Equal("lab_setup_invalido",
+            Assert.Throws<DomainException>(() => LabConfig.Create("python", null, null, null, null, "a.py", "python a.py", 10, ["print(1)"])).Code);
+    }
+
     // ---- DailyTemplate / passo ----
 
     [Fact]
