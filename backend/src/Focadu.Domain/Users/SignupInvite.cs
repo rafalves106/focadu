@@ -25,14 +25,18 @@ public class SignupInvite : Entity
     public DateTime? RevokedAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
+    /// <summary>Turma do convite (Fase 96); nulo = sem turma, o aluno ve todos os cursos publicos.</summary>
+    public Guid? CohortId { get; private set; }
+
     private SignupInvite()
     {
         Code = string.Empty;
         Note = string.Empty;
     }
 
-    private SignupInvite(string code, string note, int maxUses, DateTime? expiresAt)
+    private SignupInvite(string code, string note, int maxUses, DateTime? expiresAt, Guid? cohortId)
     {
+        CohortId = cohortId;
         Code = code;
         Note = note;
         MaxUses = maxUses;
@@ -40,7 +44,7 @@ public class SignupInvite : Entity
         CreatedAt = DateTime.UtcNow;
     }
 
-    public static SignupInvite Create(string code, string note, int maxUses, DateTime? expiresAt)
+    public static SignupInvite Create(string code, string note, int maxUses, DateTime? expiresAt, Guid? cohortId = null)
     {
         if (string.IsNullOrWhiteSpace(code))
             throw new DomainException("Codigo do convite e obrigatorio.");
@@ -54,7 +58,7 @@ public class SignupInvite : Entity
         if (maxUses > MaxUsesLimit)
             throw new DomainException($"No maximo {MaxUsesLimit} usos.", "convite_usos_invalidos");
 
-        return new SignupInvite(code.Trim().ToUpperInvariant(), note.Trim(), maxUses, expiresAt);
+        return new SignupInvite(code.Trim().ToUpperInvariant(), note.Trim(), maxUses, expiresAt, cohortId);
     }
 
     /// <summary>

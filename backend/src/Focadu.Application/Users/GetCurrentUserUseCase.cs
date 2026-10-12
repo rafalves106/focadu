@@ -11,9 +11,11 @@ namespace Focadu.Application.Users;
 public class GetCurrentUserUseCase
 {
     private readonly IUserRepository _userRepository;
+    private readonly ICohortRepository _cohortRepository;
 
-    public GetCurrentUserUseCase(IUserRepository userRepository)
+    public GetCurrentUserUseCase(IUserRepository userRepository, ICohortRepository cohortRepository)
     {
+        _cohortRepository = cohortRepository;
         _userRepository = userRepository;
     }
 
@@ -22,6 +24,6 @@ public class GetCurrentUserUseCase
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken)
             ?? throw new NotFoundException("usuario_nao_encontrado", "Usuario nao encontrado.");
 
-        return UserDto.From(user);
+        return await UserDto.FromAsync(user, _cohortRepository, cancellationToken);
     }
 }

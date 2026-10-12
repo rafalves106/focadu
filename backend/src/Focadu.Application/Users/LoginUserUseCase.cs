@@ -17,9 +17,12 @@ public class LoginUserUseCase
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
+    private readonly ICohortRepository _cohortRepository;
 
-    public LoginUserUseCase(IUserRepository userRepository, IPasswordHasher passwordHasher, IJwtTokenService jwtTokenService)
+    public LoginUserUseCase(IUserRepository userRepository, IPasswordHasher passwordHasher, IJwtTokenService jwtTokenService,
+        ICohortRepository cohortRepository)
     {
+        _cohortRepository = cohortRepository;
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
@@ -34,6 +37,6 @@ public class LoginUserUseCase
             throw new DomainException("Email ou senha invalidos.", "credenciais_invalidas");
 
         var token = _jwtTokenService.GenerateToken(user);
-        return new AuthResultDto(UserDto.From(user), token);
+        return new AuthResultDto(await UserDto.FromAsync(user, _cohortRepository, cancellationToken), token);
     }
 }

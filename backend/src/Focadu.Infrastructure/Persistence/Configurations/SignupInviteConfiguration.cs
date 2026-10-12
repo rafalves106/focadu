@@ -18,6 +18,8 @@ public class SignupInviteConfiguration : IEntityTypeConfiguration<SignupInvite>
         builder.Property(i => i.ExpiresAt);
         builder.Property(i => i.RevokedAt);
         builder.Property(i => i.CreatedAt).IsRequired();
+        builder.Property(i => i.CohortId);
+        builder.HasOne<Cohort>().WithMany().HasForeignKey(i => i.CohortId).OnDelete(DeleteBehavior.Restrict);
 
         // Dois cadastros ao mesmo tempo com o ultimo uso: o segundo SaveChanges falha na concorrencia otimista
         // (xmin do Postgres) e vira convite_esgotado em UnitOfWork, em vez de gastar o convite duas vezes.

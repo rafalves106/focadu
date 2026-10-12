@@ -7,6 +7,7 @@ import { AdminGate } from './components/admin/AdminGate';
 import { AiUsageTab } from './components/admin/AiUsageTab';
 import { CurationTab } from './components/admin/CurationTab';
 import { InvitesTab } from './components/admin/InvitesTab';
+import { CohortsTab } from './components/admin/CohortsTab';
 import { OverviewTab } from './components/admin/OverviewTab';
 import { StudentsTab } from './components/admin/StudentsTab';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -69,6 +70,7 @@ createRoot(document.getElementById('root')!).render(
                 {/* Fase 94: Painel de gestao, so admin (AdminGate; a Api confere o papel em cada rota). */}
                 <Route path="gestao" element={<AdminGate><OverviewTab /></AdminGate>} />
                 <Route path="gestao/alunos" element={<AdminGate><StudentsTab /></AdminGate>} />
+                <Route path="gestao/turmas" element={<AdminGate><CohortsTab /></AdminGate>} />
                 <Route path="gestao/convites" element={<AdminGate><InvitesTab /></AdminGate>} />
                 <Route path="gestao/curadoria" element={<AdminGate><CurationTab /></AdminGate>} />
                 <Route path="gestao/uso-de-ia" element={<AdminGate><AiUsageTab /></AdminGate>} />

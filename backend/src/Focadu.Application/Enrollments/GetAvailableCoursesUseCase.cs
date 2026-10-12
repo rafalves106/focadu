@@ -5,7 +5,7 @@ namespace Focadu.Application.Enrollments;
 
 /// <summary>
 /// Caso de uso: lista cursos disponiveis pra matricula (Fase 13, Selecao de Curso Inicial) - so
-/// cursos Active (Fase 81: e os Draft, pra quem esta em CoursePreviewOptions), excluindo os que o usuario logado ja esta matriculado (hoje isso nunca some a
+/// cursos que o aluno enxerga (Fase 96: CourseViewer - rascunho so na previa, turma so os cursos dela), excluindo os que o usuario logado ja esta matriculado (hoje isso nunca some a
 /// lista inteira, so existe 1 curso - mas ja prepara pro dia em que existir mais de um).
 /// EstimatedDuration e calculada ao vivo a partir do numero real de WeeklyTemplates do curriculo,
 /// nunca um texto solto que pode ficar desatualizado.
@@ -14,18 +14,16 @@ public class GetAvailableCoursesUseCase
 {
     private readonly ICourseRepository _courseRepository;
     private readonly IEnrollmentRepository _enrollmentRepository;
-    private readonly IUserRepository _userRepository;
-    private readonly CoursePreviewOptions _previewOptions;
+    private readonly CourseAccess _access;
     private readonly IWeeklyRepository _weeklyRepository;
 
     public GetAvailableCoursesUseCase(
-        ICourseRepository courseRepository, IEnrollmentRepository enrollmentRepository, IUserRepository userRepository,
-        CoursePreviewOptions previewOptions, IWeeklyRepository weeklyRepository)
+        ICourseRepository courseRepository, IEnrollmentRepository enrollmentRepository, CourseAccess access,
+        IWeeklyRepository weeklyRepository)
     {
         _courseRepository = courseRepository;
         _enrollmentRepository = enrollmentRepository;
-        _userRepository = userRepository;
-        _previewOptions = previewOptions;
+        _access = access;
         _weeklyRepository = weeklyRepository;
     }
 
@@ -34,11 +32,9 @@ public class GetAvailableCoursesUseCase
         var courses = await _courseRepository.GetAllAsync(cancellationToken);
         var enrollments = await _enrollmentRepository.GetByUserIdAsync(userId, cancellationToken);
         var enrolledCourseIds = enrollments.Select(e => e.CourseId).ToHashSet();
-        // Fase 81: curso escondido (Draft) so aparece pra quem esta na lista de previa.
-        var canPreview = _previewOptions.Emails.Count > 0
-            && _previewOptions.CanPreview((await _userRepository.GetByIdAsync(userId, cancellationToken))?.Email);
-
-        var visible = courses.Where(c => c.Status == CourseStatus.Active || (canPreview && c.Status == CourseStatus.Draft)).ToList();
+        // Fase 81/96: rascunho so pra previa, "so pra turmas" so pra turma, aluno de turma so os cursos dela (CourseViewer).
+        var viewer = await _access.ForUserAsync(userId, cancellationToken);
+        var visible = courses.Where(c => viewer.CanEnroll(Domain.Courses.CourseRef.From(c))).ToList();
 
         // Fase 84: situacao do aluno em cada curso recomendado (so os que aparecem em alguma recomendacao).
         var recommendedNames = visible.SelectMany(c => c.RecommendedBefore).ToHashSet();

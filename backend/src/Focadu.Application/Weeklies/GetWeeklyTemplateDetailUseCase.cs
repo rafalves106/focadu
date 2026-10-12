@@ -15,23 +15,21 @@ namespace Focadu.Application.Weeklies;
 public class GetWeeklyTemplateDetailUseCase
 {
     private readonly IWeeklyTemplateRepository _weeklyTemplateRepository;
-    private readonly IUserRepository _userRepository;
-    private readonly CoursePreviewOptions _preview;
+    private readonly CourseAccess _access;
 
     public GetWeeklyTemplateDetailUseCase(
-        IWeeklyTemplateRepository weeklyTemplateRepository, IUserRepository userRepository, CoursePreviewOptions preview)
+        IWeeklyTemplateRepository weeklyTemplateRepository, CourseAccess access)
     {
         _weeklyTemplateRepository = weeklyTemplateRepository;
-        _userRepository = userRepository;
-        _preview = preview;
+        _access = access;
     }
 
     public async Task<WeeklyTemplateDetailDto> ExecuteAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
     {
         var template = await _weeklyTemplateRepository.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException("semana_nao_encontrada", "Semana nao encontrada.");
-        var status = await _weeklyTemplateRepository.GetCourseStatusAsync(id, cancellationToken);
-        if (!await DraftCourseAccess.CanSeeAsync(status, userId, _userRepository, _preview, cancellationToken))
+        var course = await _weeklyTemplateRepository.GetCourseRefAsync(id, cancellationToken);
+        if (!await _access.CanSeeAsync(course, userId, cancellationToken))
             throw new NotFoundException("semana_nao_encontrada", "Semana nao encontrada.");
 
         var contentDtos = template.CuratedContents

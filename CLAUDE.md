@@ -169,7 +169,7 @@ Cada uma custou um bug real ou uma conversa; o porquê está em `docs/fase-N/` e
 
 ## Estado atual
 
-Última fase concluída: **Fase 95 — SQLite no laboratório de código** (12/10/2026, na branch `fase-95-sqlite-no-laboratorio`; painel de gestão: Fase 94; cadastro por convite: Fase 93).
+Última fase concluída: **Fase 96 — Turmas** (12/10/2026, na branch `fase-96-turmas`, empilhada na `fase-95-sqlite-no-laboratorio`; SQLite no laboratório: Fase 95; painel de gestão: Fase 94).
 
 Histórico completo dos marcos (Fases 25–87, com o porquê de cada decisão): `docs/ESTADO-HISTORICO.md` —
 só abrir quando precisar. Estado técnico vivo: `docs/ARQUITETURA.md`; detalhe por fase: `docs/fase-N/`.
@@ -196,6 +196,8 @@ Resumo do que existe hoje:
 - **Painel de gestão (Fase 94)**: `/gestao`, só para admin (`User.Role`, papel dado pelo comando `admin promover <email>` da Api,
   sem tela). Abas Visão geral, Alunos (resetar curso), Convites (1–20 usos, 1–30 dias), Curadoria (importar tudo ou nada, apagar
   dias antigos) e Uso de IA (medição de cada chamada ao Groq, custo estimado com tabela de preços; nada bloqueia). Ver `docs/fase-94/`.
+- **Turmas (Fase 96)**: aba Turmas do painel. Convite de turma matricula o aluno nos cursos dela e ele só vê esses cursos; curso pode
+  ser "só pra turmas" (aba Curadoria). Regra única de quem vê cada curso: `CourseViewer`. Ver `docs/fase-96/`.
 - **Infra**: deploy automático por push (CI/CD) na Oracle Cloud, em runner self-hosted Linux ARM64
   (`[self-hosted, Linux, focadu-oracle]`), sem homologação, Forgejo interno pros repositórios de Projeto
   Semanal. Detalhes na seção "Host de produção e deploy" abaixo; `docs/DOCKER.md` ainda tem trechos de

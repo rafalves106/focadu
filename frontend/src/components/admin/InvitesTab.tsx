@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { adminApi } from '../../api/admin';
-import type { AdminInviteDto, AdminInvitesDto, InviteStatus } from '../../api/adminTypes';
+import type { AdminCohortDto, AdminInviteDto, AdminInvitesDto, InviteStatus } from '../../api/adminTypes';
 import { ApiError } from '../../api/client';
 import { useApiResource } from '../../api/useApiResource';
-import { dateBr } from '../../lib/adminFormat';
+import { dateBr, fullLink } from '../../lib/adminFormat';
 import { PixelConfirmDialog } from '../PixelConfirmDialog';
-import { AdminPanel, Chip, EmptyPanel, Field, PanelError, PixelButton, ResultBanner, SkeletonRows } from './AdminUi';
+import { AdminPanel, CheckOption, Chip, EmptyPanel, Field, PanelError, PixelButton, ResultBanner, SkeletonRows } from './AdminUi';
 import { inputClass } from '../../lib/adminStyles';
 import { AdminShell } from './AdminShell';
 
 // Fase 94, PG 10-19 — Convites: lista por status, criar (gaveta, 1-20 usos e 1-30 dias) e revogar.
+// Fase 96, TU 10-11: coluna Turma e a turma (opcional) na gaveta; a mesma gaveta abre da aba Turmas com a turma marcada.
 
 const STATUS_FILTERS: { key: InviteStatus | 'todos'; label: string }[] = [
   { key: 'todos', label: 'Todos' },
@@ -21,12 +22,9 @@ const STATUS_FILTERS: { key: InviteStatus | 'todos'; label: string }[] = [
 
 const STATUS_TONE = { ativo: 'accent', esgotado: 'muted', vencido: 'amber', revogado: 'alert' } as const;
 
-function fullLink(invite: AdminInviteDto) {
-  return `${window.location.origin}${invite.link}`;
-}
-
 export function InvitesTab() {
   const { data, error, loading, retry } = useApiResource(() => adminApi.getInvites(), []);
+  const cohorts = useApiResource(() => adminApi.getCohorts(), []);
   const [filter, setFilter] = useState<InviteStatus | 'todos'>('todos');
   const [creating, setCreating] = useState(false);
   const [revoking, setRevoking] = useState<AdminInviteDto | null>(null);
@@ -86,7 +84,7 @@ export function InvitesTab() {
       {data && invites.length > 0 && (
         <AdminPanel
           label="Convites"
-          context={`${invites.length} convites · ${invites.reduce((s, i) => s + i.usedCount, 0)} cadastros feitos com eles · mais novos primeiro`}
+          context={`${invites.length} convites · ${invites.filter((i) => i.cohortId).length} de turma · ${invites.reduce((s, i) => s + i.usedCount, 0)} cadastros feitos com eles · mais novos primeiro`}
           className="lg:flex-1 lg:overflow-hidden"
         >
           <div className="min-h-0 flex-1 overflow-auto">
@@ -95,6 +93,7 @@ export function InvitesTab() {
                 <tr className="border-b-2 border-stroke font-pixel-label text-[7px] text-secondary">
                   <th className="px-3 py-2 font-normal">CÓDIGO</th>
                   <th className="px-3 py-2 font-normal">PRA QUEM</th>
+                  <th className="px-3 py-2 font-normal">TURMA</th>
                   <th className="px-3 py-2 font-normal">USOS</th>
                   <th className="px-3 py-2 font-normal">VALIDADE</th>
                   <th className="px-3 py-2 font-normal">STATUS</th>
@@ -106,6 +105,9 @@ export function InvitesTab() {
                   <tr key={invite.code} className="border-b border-stroke text-[13px] hover:bg-surface">
                     <td className="px-3 py-3 font-pixel-label text-[10px] text-primary">{invite.code}</td>
                     <td className="px-3 py-3 text-primary">{invite.note}</td>
+                    <td className="px-3 py-3">
+                      {invite.cohortName ? <Chip tone="amber">{invite.cohortName}</Chip> : <span className="text-[12px] text-muted">sem turma</span>}
+                    </td>
                     <td className="px-3 py-3 font-pixel-label text-[9px] text-primary">
                       {invite.usedCount} / {invite.maxUses}
                     </td>
@@ -131,7 +133,7 @@ export function InvitesTab() {
             </table>
           </div>
           <p className="text-[12px] text-secondary">
-            Link de cadastro: {window.location.host}/login?convite=CÓDIGO · esgotado, vencido e revogado ficam na lista pra histórico
+            Link de cadastro: {window.location.host}/login?convite=CÓDIGO · convite de turma matricula nos cursos da turma · sem turma = vê todos os cursos públicos
           </p>
         </AdminPanel>
       )}
@@ -139,6 +141,7 @@ export function InvitesTab() {
       {creating && data && (
         <CreateInviteDrawer
           limits={data}
+          cohorts={cohorts.data?.cohorts ?? []}
           onClose={() => setCreating(false)}
           onCreated={() => retry()}
         />
@@ -162,8 +165,24 @@ function validity(invite: AdminInviteDto) {
   return invite.status === 'vencido' ? `venceu em ${dateBr(invite.expiresAt)}` : `até ${dateBr(invite.expiresAt)}`;
 }
 
-function CreateInviteDrawer({ limits, onClose, onCreated }: { limits: AdminInvitesDto; onClose: () => void; onCreated: () => void }) {
+export function CreateInviteDrawer({
+  limits,
+  cohorts,
+  initialCohortId = null,
+  onClose,
+  onCreated,
+}: {
+  limits: Pick<AdminInvitesDto, 'maxUsesLimit' | 'maxValidDays' | 'defaultValidDays'>;
+  cohorts: AdminCohortDto[];
+  /** Fase 96: aberta da aba Turmas ("+ Novo convite desta turma") ja vem com a turma marcada. */
+  initialCohortId?: string | null;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
   const [note, setNote] = useState('');
+  const [cohortId, setCohortId] = useState<string | null>(initialCohortId);
+  const activeCohorts = cohorts.filter((c) => c.status === 'ativa');
+  const chosenCohort = activeCohorts.find((c) => c.id === cohortId) ?? null;
   const [uses, setUses] = useState('1');
   const [days, setDays] = useState(String(limits.defaultValidDays));
   const [busy, setBusy] = useState(false);
@@ -186,7 +205,7 @@ function CreateInviteDrawer({ limits, onClose, onCreated }: { limits: AdminInvit
     setBusy(true);
     setFailure(null);
     try {
-      setCreated(await adminApi.createInvite(note.trim(), usesNumber, daysNumber));
+      setCreated(await adminApi.createInvite(note.trim(), usesNumber, daysNumber, chosenCohort?.id ?? null));
       onCreated();
     } catch (err) {
       setFailure(err instanceof ApiError ? err.message : 'Não deu pra criar o convite. Tente de novo.');
@@ -220,6 +239,7 @@ function CreateInviteDrawer({ limits, onClose, onCreated }: { limits: AdminInvit
           <>
             <p className="text-[14px] text-primary">
               Mande o código ou o link pra {created.note}. Vale {created.maxUses} {created.maxUses === 1 ? 'cadastro' : 'cadastros'} até {dateBr(created.expiresAt)}.
+              {created.cohortName && ` Quem entrar fica na turma ${created.cohortName}.`}
             </p>
             <div className="flex items-center justify-between gap-3 border-2 border-accent px-4 py-4">
               <span className="font-pixel-label text-[22px] text-accent">{created.code}</span>
@@ -250,6 +270,33 @@ function CreateInviteDrawer({ limits, onClose, onCreated }: { limits: AdminInvit
               <Field label="VALE POR (DIAS)" help={`de 1 a ${limits.maxValidDays} · padrão ${limits.defaultValidDays} · vence em ${expires.toLocaleDateString('pt-BR')}`} error={daysError}>
                 <input className={inputClass(Boolean(daysError))} inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} />
               </Field>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="font-pixel-label text-[8px] text-secondary">TURMA (OPCIONAL)</span>
+              <div className="flex flex-col gap-2" role="radiogroup" aria-label="Turma do convite">
+                <CheckOption
+                  kind="radio"
+                  checked={chosenCohort === null}
+                  title="Sem turma"
+                  detail="Vê todos os cursos públicos e escolhe o que estudar"
+                  onChange={() => setCohortId(null)}
+                />
+                {activeCohorts.map((c) => (
+                  <CheckOption
+                    key={c.id}
+                    kind="radio"
+                    checked={chosenCohort?.id === c.id}
+                    title={c.name}
+                    detail={c.courses.map((course) => course.name).join(' · ')}
+                    onChange={() => setCohortId(c.id)}
+                  />
+                ))}
+              </div>
+              <span className="text-[12px] text-muted">
+                {chosenCohort
+                  ? `Quem se cadastrar com este convite entra na ${chosenCohort.name}, é matriculado ${chosenCohort.courses.length === 1 ? 'no curso' : `nos ${chosenCohort.courses.length} cursos`} dela e só vê ${chosenCohort.courses.length === 1 ? 'esse curso' : 'esses cursos'}. Turma arquivada não aparece aqui.`
+                  : 'Turma arquivada não aparece aqui.'}
+              </span>
             </div>
             {failure && <p className="border-2 border-alert px-3 py-2 text-[13px] text-alert">{failure}</p>}
             <div className="flex justify-end gap-2">

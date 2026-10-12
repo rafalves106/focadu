@@ -18,6 +18,7 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
         builder.Property(c => c.Requirements).HasColumnType("text[]").IsRequired();
         builder.Property(c => c.RecommendedBefore).HasColumnType("text[]").IsRequired();
         builder.Property(c => c.PreparesText).HasMaxLength(500);
+        builder.Property(c => c.OnlyForCohorts).IsRequired().HasDefaultValue(false);
 
         builder.HasMany(c => c.Monthlies)
             .WithOne()

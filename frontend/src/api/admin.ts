@@ -1,5 +1,8 @@
 import { request } from './client';
 import type {
+  AdminCohortDetailDto,
+  AdminCohortsDto,
+  AdminCourseVisibilityDto,
   AdminInviteDto,
   AdminInvitesDto,
   AdminOverviewDto,
@@ -42,8 +45,19 @@ export const adminApi = {
     }),
 
   getInvites: () => request<AdminInvitesDto>('/api/admin/invites'),
-  createInvite: (note: string, maxUses: number, validDays: number) =>
-    request<AdminInviteDto>('/api/admin/invites', { method: 'POST', body: JSON.stringify({ note, maxUses, validDays }) }),
+  createInvite: (note: string, maxUses: number, validDays: number, cohortId: string | null = null) =>
+    request<AdminInviteDto>('/api/admin/invites', { method: 'POST', body: JSON.stringify({ note, maxUses, validDays, cohortId }) }),
+
+  // Fase 96: Turmas.
+  getCohorts: () => request<AdminCohortsDto>('/api/admin/cohorts'),
+  getCohort: (id: string) => request<AdminCohortDetailDto>(`/api/admin/cohorts/${id}`),
+  createCohort: (name: string, courseIds: string[]) =>
+    request<AdminCohortDetailDto>('/api/admin/cohorts', { method: 'POST', body: JSON.stringify({ name, courseIds }), timeoutMs: 30_000 }),
+  updateCohort: (id: string, name: string, courseIds: string[]) =>
+    request<AdminCohortDetailDto>(`/api/admin/cohorts/${id}`, { method: 'PUT', body: JSON.stringify({ name, courseIds }), timeoutMs: 60_000 }),
+  archiveCohort: (id: string) => request<AdminCohortDetailDto>(`/api/admin/cohorts/${id}/archive`, { method: 'POST' }),
+  setCourseVisibility: (courseId: string, onlyForCohorts: boolean) =>
+    request<AdminCourseVisibilityDto>(`/api/admin/courses/${courseId}/visibility`, { method: 'PUT', body: JSON.stringify({ onlyForCohorts }) }),
   revokeInvite: (code: string) => request<AdminInviteDto>(`/api/admin/invites/${encodeURIComponent(code)}/revoke`, { method: 'POST' }),
 
   getCuration: () => request<CurationCourseDto[]>('/api/admin/curation', { timeoutMs: 30_000 }),

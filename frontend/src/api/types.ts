@@ -887,6 +887,8 @@ export interface UserDto {
   emailVerificationPending?: boolean;
   /** Fase 94: mostra o item "Gestao" no menu global. So aparencia - a Api confere o papel em cada rota /api/admin. */
   isAdmin?: boolean;
+  /** Fase 96: nome da turma do aluno (nulo = sem turma). O Start mostra no lugar de "+ Explorar cursos". */
+  cohortName?: string | null;
 }
 
 /** Fase 93: GET /api/auth/signup-status - o que a tela de login precisa saber antes de ter sessao. */

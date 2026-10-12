@@ -18,14 +18,17 @@ public class ConfirmEmailVerificationUseCase
     private readonly IEmailVerificationCodeRepository _codeRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IJwtTokenService _jwtTokenService;
+    private readonly ICohortRepository _cohortRepository;
 
     public ConfirmEmailVerificationUseCase(
-        IUserRepository userRepository, IEmailVerificationCodeRepository codeRepository, IUnitOfWork unitOfWork, IJwtTokenService jwtTokenService)
+        IUserRepository userRepository, IEmailVerificationCodeRepository codeRepository, IUnitOfWork unitOfWork, IJwtTokenService jwtTokenService,
+        ICohortRepository cohortRepository)
     {
         _userRepository = userRepository;
         _codeRepository = codeRepository;
         _unitOfWork = unitOfWork;
         _jwtTokenService = jwtTokenService;
+        _cohortRepository = cohortRepository;
     }
 
     public async Task<AuthResultDto> ExecuteAsync(Guid userId, string? typedCode, CancellationToken cancellationToken = default)
@@ -55,6 +58,6 @@ public class ConfirmEmailVerificationUseCase
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        return new AuthResultDto(UserDto.From(user), _jwtTokenService.GenerateToken(user));
+        return new AuthResultDto(await UserDto.FromAsync(user, _cohortRepository, cancellationToken), _jwtTokenService.GenerateToken(user));
     }
 }

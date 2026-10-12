@@ -592,6 +592,11 @@ namespace Focadu.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<bool>("OnlyForCohorts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("PreparesText")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -1162,6 +1167,31 @@ namespace Focadu.Infrastructure.Migrations
                     b.ToTable("SquadMemberships", (string)null);
                 });
 
+            modelBuilder.Entity("Focadu.Domain.Users.Cohort", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<Guid[]>("CourseIds")
+                        .IsRequired()
+                        .HasColumnType("uuid[]");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Cohorts", (string)null);
+                });
+
             modelBuilder.Entity("Focadu.Domain.Users.EmailVerificationCode", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1236,6 +1266,9 @@ namespace Focadu.Infrastructure.Migrations
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)");
 
+                    b.Property<Guid?>("CohortId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1267,6 +1300,8 @@ namespace Focadu.Infrastructure.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
+                    b.HasIndex("CohortId");
+
                     b.ToTable("SignupInvites", (string)null);
                 });
 
@@ -1278,6 +1313,9 @@ namespace Focadu.Infrastructure.Migrations
                     b.Property<string>("AdditionalProfileNotes")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid?>("CohortId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1331,6 +1369,8 @@ namespace Focadu.Infrastructure.Migrations
                         .HasColumnType("text[]");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CohortId");
 
                     b.HasIndex("Email")
                         .IsUnique();
@@ -1928,6 +1968,22 @@ namespace Focadu.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Users.SignupInvite", b =>
+                {
+                    b.HasOne("Focadu.Domain.Users.Cohort", null)
+                        .WithMany()
+                        .HasForeignKey("CohortId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Users.User", b =>
+                {
+                    b.HasOne("Focadu.Domain.Users.Cohort", null)
+                        .WithMany()
+                        .HasForeignKey("CohortId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Focadu.Domain.Weeklies.ModulePublication", b =>

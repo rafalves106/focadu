@@ -34,6 +34,9 @@ export interface AdminStudentDto {
   currentCourse: string | null;
   currentDay: number | null;
   courses: AdminCourseProgressDto[];
+  /** Fase 96: turma do aluno (nula = sem turma). */
+  cohortId: string | null;
+  cohortName: string | null;
 }
 
 export interface CourseResetPreviewDto {
@@ -64,6 +67,9 @@ export interface AdminInviteDto {
   status: InviteStatus;
   /** Relativo ("/login?convite=CODIGO") - o front completa com a propria origem. */
   link: string;
+  /** Fase 96: convite de turma (nulo = sem turma). */
+  cohortId: string | null;
+  cohortName: string | null;
 }
 
 export interface AdminInvitesDto {
@@ -93,6 +99,10 @@ export interface CurationCourseDto {
   importedDays: number;
   staleDays: number;
   days: CurationDayDto[];
+  /** Fase 96: "so pra turmas" (nulo = curso ainda nao esta no banco). */
+  onlyForCohorts: boolean | null;
+  /** Fase 96: turmas ativas que tem o curso. */
+  cohorts: string[] | null;
 }
 
 export interface ImportDayPreviewDto {
@@ -239,4 +249,52 @@ export interface AiUsageStudentDetailDto {
     totalCostUsd: number;
     days: { day: number; costUsd: number; courseAverageUsd: number | null }[];
   }[];
+}
+
+// Fase 96, Turmas.
+
+export interface AdminCohortCourseDto {
+  id: string;
+  name: string;
+}
+
+export type CohortStatus = 'ativa' | 'arquivada';
+
+export interface AdminCohortDto {
+  id: string;
+  name: string;
+  courses: AdminCohortCourseDto[];
+  students: number;
+  activeInvites: number;
+  createdAt: string;
+  archivedAt: string | null;
+  status: CohortStatus;
+}
+
+export interface AdminCohortDetailDto {
+  cohort: AdminCohortDto;
+  invites: AdminInviteDto[];
+  students: AdminStudentDto[];
+}
+
+/** Curso pra marcar na gaveta de turma: quem ve hoje e em quais turmas ativas ja esta. */
+export interface AdminCohortCourseOptionDto {
+  id: string;
+  name: string;
+  onlyForCohorts: boolean;
+  cohorts: string[];
+}
+
+export interface AdminCohortsDto {
+  cohorts: AdminCohortDto[];
+  courses: AdminCohortCourseOptionDto[];
+  studentsInCohorts: number;
+}
+
+export interface AdminCourseVisibilityDto {
+  courseId: string;
+  name: string;
+  onlyForCohorts: boolean;
+  cohorts: string[];
+  cohortStudents: number;
 }

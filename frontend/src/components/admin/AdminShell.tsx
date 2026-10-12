@@ -8,6 +8,7 @@ import { CLAUDE_URL } from '../../lib/adminFormat';
 const TABS = [
   { to: '/gestao', label: 'Visão geral', end: true },
   { to: '/gestao/alunos', label: 'Alunos' },
+  { to: '/gestao/turmas', label: 'Turmas' },
   { to: '/gestao/convites', label: 'Convites' },
   { to: '/gestao/curadoria', label: 'Curadoria' },
   { to: '/gestao/uso-de-ia', label: 'Uso de IA' },

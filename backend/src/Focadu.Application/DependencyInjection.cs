@@ -71,6 +71,9 @@ public static class DependencyInjection
         services.AddScoped<SendEmailVerificationUseCase>();
         services.AddScoped<ConfirmEmailVerificationUseCase>();
         services.AddScoped<SignupInviteAdminUseCase>();
+        services.AddScoped<Enrollments.CourseAccess>();
+        services.AddScoped<Enrollments.CohortEnrollment>();
+        services.AddScoped<Admin.AdminCohortsUseCase>();
         services.AddScoped<LoginUserUseCase>();
         services.AddScoped<GetCurrentUserUseCase>();
         // Redefinicao de senha (Fase 41).

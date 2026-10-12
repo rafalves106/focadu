@@ -22,15 +22,16 @@ public class SignupInviteAdminUseCase
         _unitOfWork = unitOfWork;
     }
 
-    /// <summary>`validDays` nulo = padrao (7 dias). Desde a Fase 94 todo convite vence (1 a 30 dias).</summary>
-    public async Task<SignupInvite> CreateAsync(string note, int maxUses, int? validDays, CancellationToken cancellationToken = default)
+    /// <summary>`validDays` nulo = padrao (7 dias). Desde a Fase 94 todo convite vence (1 a 30 dias). Fase 96: `cohortId` = convite de turma.</summary>
+    public async Task<SignupInvite> CreateAsync(
+        string note, int maxUses, int? validDays, CancellationToken cancellationToken = default, Guid? cohortId = null)
     {
         var days = validDays ?? DefaultValidDays;
         if (days < 1 || days > SignupInvite.MaxValidDays)
             throw new ValidationException("convite_dias_invalidos", $"A validade vai de 1 a {SignupInvite.MaxValidDays} dias.");
 
         var code = await UniqueCodeGenerator.GenerateSecureAsync(c => _inviteRepository.CodeExistsAsync(c, cancellationToken));
-        var invite = SignupInvite.Create(code, note, maxUses, DateTime.UtcNow.AddDays(days));
+        var invite = SignupInvite.Create(code, note, maxUses, DateTime.UtcNow.AddDays(days), cohortId);
 
         await _inviteRepository.AddAsync(invite, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

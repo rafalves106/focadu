@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 95 - SQLite no laboratorio de codigo** (Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 96 - Turmas** (Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -1767,6 +1767,11 @@ Security antes/junto do Web Security; decisoes do dono em 29/09/2026: **sem Proj
   `WeeklyDetailDto.PracticeLanguage` alimenta o rotulo "Seu codigo · Bash" do `CodeStepActivity`.
   Fase 82: `DailyTemplate.IsBridge` (tem `Language` **ou** tem `CodeStep`) e o que marca a ponte pra
   "sem analogia" (Fase 80) - antes so `Language` contava e a ponte do Linux gerava "Pra voce".
+- **Quem ve cada curso (Fase 96):** regra unica em `CourseViewer.CanSee` (dominio, montado por `CourseAccess` na Application,
+  que substituiu o `DraftCourseAccess`): matriculado sempre ve; aluno de turma so ve os cursos da turma (mesmo em rascunho ou
+  "so pra turmas", mesmo com a turma arquivada); lista de previa ve tudo; o resto ve o que nao e Draft nem
+  `Course.OnlyForCohorts`. `CanEnroll` = ve e nao esta arquivado. Vale no catalogo, na matricula e nas leituras de curriculo,
+  semana-modelo e conteudo curado (`IWeeklyTemplateRepository.GetCourseRef*` devolve `CourseRef`). Ver "Turmas (Fase 96)".
 - **Curso escondido (Draft) e previa:** `CoursePreviewOptions` (config `CoursePreview:Emails`, env
   `COURSE_PREVIEW_EMAILS` no compose, e-mails separados por virgula). Quem esta na lista ve o curso
   Draft em `GET /api/courses/available` e consegue se matricular; os demais nao veem e recebem 404
@@ -2515,7 +2520,7 @@ Refacao dos cursos (`secret/produto/PLANO-CURADORIA.md`, 02/10/2026). Detalhe do
   do dia); `WarmupScreen` antes da sessao (pulavel).
 - **`resetar-usuarios --manter <email>`**: dry-run por padrao, `--confirmar` exige `--backup-feito`; apaga todos os outros
   usuarios e zera o progresso do dono. Contas do Forgejo ficam pra limpar a mao.
-- **Curso em Draft** visivel ao dono (`DraftCourseAccess`) em `/courses/{id}/curriculum` e `/weekly-templates/{id}`.
+- **Curso em Draft** visivel ao dono (desde a Fase 96 pelo `CourseAccess`/`CourseViewer`) em `/courses/{id}/curriculum` e `/weekly-templates/{id}`.
 - **Trilha:** `CourseTrail` (`components/courseMap/`) gera a trilha so dos dados do curso; o mapa por regioes
   (`CourseMap.tsx`, `lib/courseMaps.ts`) foi apagado. Ponte marcada por `IsBridge` nos DTOs de resumo da Daily.
 - **Seed do Web Security:** nao cria o curso sem `conteudo/web-security/semana-1/dia-1.json`. `arquitetura-de-software`
@@ -2986,6 +2991,29 @@ decisoes em `docs/fase-94/`.
   app nao tem @usuario). "Abrir no Claude" e so um link (`VITE_CLAUDE_URL`, padrao `https://claude.ai/code`).
 - **Deploy**: imagem do backend com `nodejs` (linter do dia roda no container ao importar pelo painel); `deploy.yml` instala as
   dependencias do linter no `secret/` do host com um `node:22-alpine` descartavel (o `secret/` entra no container `:ro`).
+
+### Turmas (Fase 96)
+
+Figma "Focadu — Pixel Art", pagina "Turmas — v1 (proposta)" (`289:4502`, TU 01-40), aprovada pelo dono em 12/10/2026. Detalhe em
+`docs/fase-96/`. Feito pro teste fechado com a turma de Banco de Dados da UNA.
+
+- **Dominio**: `Cohort` (tabela `Cohorts`: `Name` ate 80, `CourseIds` `uuid[]` sem FK, `CreatedAt`, `ArchivedAt`). `Update` devolve
+  os cursos que entraram; turma arquivada nao muda (`turma_arquivada`); nao existe apagar turma. `User.CohortId` (FK Restrict,
+  uma turma por aluno, `JoinCohort`), `SignupInvite.CohortId` (FK Restrict, nulo = sem turma), `Course.OnlyForCohorts`
+  (padrao false, so o painel muda - o seed nunca toca). Migration `Fase96Turmas`.
+- **Cadastro**: convite de turma poe o aluno na turma no mesmo `SaveChanges` do cadastro e logo depois `CohortEnrollment` matricula
+  nos cursos dela (um `EnrollUserInCourseUseCase` por curso; curso arquivado ou ja matriculado e pulado). `UserDto.CohortName`
+  (me, login, cadastro e confirmacao de e-mail) faz o Start trocar "+ Explorar cursos" pelo nome da turma (`CourseSlots`).
+- **Regras decididas pelo dono (12/10/2026)**: curso que entra na turma matricula todos os alunos dela na hora; curso que sai deixa
+  as matriculas; arquivar mantem alunos, progresso e a restricao de cursos e revoga os convites ativos da turma; curso "so pra
+  turmas" sem turma ativa so gera aviso.
+- **Rotas** (`/api/admin`, `AdminCohortsUseCase`): `GET /cohorts` (turmas + cursos com "quem ve" + alunos em turma), `GET
+  /cohorts/{id}` (turma, convites e alunos com progresso), `POST /cohorts` e `PUT /cohorts/{id}` (`{name, courseIds}`), `POST
+  /cohorts/{id}/archive`, `PUT /courses/{id}/visibility` (`{onlyForCohorts}`). `POST /invites` aceita `cohortId` (turma
+  arquivada = `turma_invalida`); `AdminInviteDto`, `AdminStudentDto` e `CurationCourseDto` ganharam a turma.
+- **Front**: aba Turmas (`components/admin/CohortsTab.tsx`, `/gestao/turmas`, `?turma=<id>` abre o detalhe), gaveta de convite
+  com a turma (`CreateInviteDrawer`, exportada pra abrir da turma com ela marcada), coluna e selo da turma em Alunos
+  (`?aluno=<id>` abre o aluno), barra "Quem ve" na Curadoria (esconder do publico pede confirmacao), `CheckOption` no `AdminUi`.
 
 ## Docker e Deploy (Fase 40)
 
