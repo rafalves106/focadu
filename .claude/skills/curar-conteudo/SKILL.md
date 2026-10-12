@@ -63,6 +63,7 @@ Estado visível no `estado.md`: `a fazer` → `ficha ok` → `validado` (após D
 - Diagrama só quando a estrutura é real (`processo/molde/diagramas.md`); bloco de código até 8 linhas com a saída real logo abaixo.
 - `lab` e `TerminalMission` só sobem depois de `verificar.mjs`/`verificar-missoes.mjs` (`processo/scripts/lab`, ou `linter-dia --lab`).
 - Todo dia de Linux/Python liga a um uso em segurança, sem ensinar o ataque.
+- **Curso de faculdade** (existe `secret/material/<curso>/`, hoje o `banco-de-dados`): texto e atividades seguem a didática do professor do dia (exemplos, listas, ordem e nomes dele); questões e gabaritos do professor são a referência das atividades. A ficha diz quais slides e questões usar (decisão do dono, 12/10/2026).
 - Quiz: os 4 critérios anti-resposta-óbvia (`processo/molde/criterios-anti-resposta-obvia.md`); reescreva distratores, nunca a certa.
 
 ## Armadilhas já vistas (piloto Web Security Dia 1, 05/10/2026)
