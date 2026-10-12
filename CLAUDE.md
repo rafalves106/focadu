@@ -186,8 +186,8 @@ Resumo do que existe hoje:
 - **Refação dos cursos (Fase 92)**: plano em `secret/produto/PLANO-CURADORIA.md`. A Api lê `secret/conteudo/`; dia novo entra
   pelo comando `importar <curso>` (linter, molde v1, hash, `--confirmar`), nunca SQL. Analogia "Pra você" desligada por flag;
   conversa por voz com devolutiva; aquecimento e feedback do dia; trilha gerada dos dados do curso (mapa por regiões apagado).
-  Pilotos no ar desde 05/10/2026 (Linux, Web Security e Arquitetura, Dia 1), usuários resetados; os dias antigos do Web
-  Security (2-72) seguem no banco até a limpeza. Ver `docs/fase-92/`.
+  Pilotos no ar desde 05/10/2026 (Linux, Web Security e Arquitetura, Dia 1), usuários resetados. Os dias antigos foram
+  apagados em produção em 12/10/2026 pelo Painel de gestão: cada curso tem no banco só os dias curados (hoje D1–D6). Ver `docs/fase-92/`.
 - **Laboratório de código e missão no terminal (Fases 86–90)**: o aluno roda código (Pyodide, JavaScript, Bash no v86)
   e missões de terminal no navegador, sem tocar a API. Mais de um curso (89), notebook com trilhos e gavetas (91).
   Detalhe em `docs/HISTORICO-FASES.md` e `docs/fase-86/` a `docs/fase-91/`.
