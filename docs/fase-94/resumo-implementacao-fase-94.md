@@ -51,7 +51,7 @@ Branch própria (`fase-94-painel-de-gestao`), pedida pelo dono em 10/10/2026. Te
 - **Apagar dias antigos** remove antes os `RoleplayOptions` daqueles dias: `NextNodeId` é Restrict e travava a cascata. Esse
   erro foi achado no teste local; a transação desfez tudo.
 - **Aluno num dia apagado** segue pro primeiro dia curado que ainda não concluiu, porque a sequência é por progresso
-  (`DailySequencing`). Foi a sugestão feita ao dono; ele ainda não respondeu explicitamente (ver dúvidas).
+  (`DailySequencing`). Confirmado pelo dono em 12/10/2026.
 - O link "Abrir no Claude" usa `VITE_CLAUDE_URL` (padrão `https://claude.ai/code`). É só um link: o dono recusou o Claude por SSH
   dentro do app por segurança (o painel é público e teria um caminho da internet até o Mac).
 
@@ -95,7 +95,6 @@ frontend/src/lib/adminFormat.ts, adminStyles.ts
 
 ## Dúvidas ou pontos abertos para a próxima fase
 
-- Confirmar com o dono o destino do aluno que estava num dia apagado (hoje: primeiro dia curado não concluído).
 - Em produção, a primeira importação pelo painel depende do passo novo do `deploy.yml` (dependências do linter). Conferir no
   primeiro deploy. Rodar `admin promover` com o e-mail do dono na VM
   (`docker compose exec backend dotnet Focadu.Api.dll admin promover <email>`).
