@@ -26,6 +26,7 @@ namespace Focadu.Application.Content;
 /// </summary>
 public class GetCuratedContentUseCase
 {
+    private readonly IAiUsageContext _aiUsage;
     // Toda leitura curada usa "#### Titulo" pra demarcar subsecoes dentro do Texto Cru (ver
     // CURADORIA.md e os 20 dia-N.json ja curados - convencao 100% consistente ate aqui). Mesma
     // regex precisa existir no frontend (ReadingActivity.tsx) pra alinhar secao<->analogia por
@@ -52,8 +53,10 @@ public class GetCuratedContentUseCase
         IAnalogyGenerationService analogyGenerationService,
         IUnitOfWork unitOfWork,
         PersonalizationOptions personalization,
-        CoursePreviewOptions preview)
+        CoursePreviewOptions preview,
+        IAiUsageContext aiUsage)
     {
+        _aiUsage = aiUsage;
         _personalization = personalization;
         _preview = preview;
         _weeklyTemplateRepository = weeklyTemplateRepository;
@@ -131,6 +134,8 @@ public class GetCuratedContentUseCase
         {
             var sections = SplitIntoSections(content.BodyText).Select(StripFencedBlocks).ToList();
             var courseName = await _weeklyTemplateRepository.GetCourseNameForContentAsync(content.Id, cancellationToken);
+            // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+            using var aiUsage = _aiUsage.Begin(userId);
             var sectionAnalogies = await _analogyGenerationService.GenerateAsync(
                 new AnalogyRequest(sections, user.Interests, user.AdditionalProfileNotes, courseName), cancellationToken);
 

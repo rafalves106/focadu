@@ -55,6 +55,7 @@ public class ApiExceptionHandler : IExceptionHandler
                 (DomainCodeStatusOverrides.GetValueOrDefault(de.Code, StatusCodes.Status400BadRequest), de.Code, de.Message),
             NotFoundException nfe => (StatusCodes.Status404NotFound, nfe.Code, nfe.Message),
             ConflictException ce => (StatusCodes.Status409Conflict, ce.Code, ce.Message),
+            ForbiddenException fe => (StatusCodes.Status403Forbidden, fe.Code, fe.Message),
             ValidationException ve => (StatusCodes.Status400BadRequest, ve.Code, ve.Message),
             ExternalServiceException ese => (ese.StatusCode, ese.Code, ese.Message),
             // O model binding do ASP.NET Core (JSON malformado, multipart/form-data ausente ou

@@ -21,6 +21,7 @@ namespace Focadu.Application.Assistant;
 /// </summary>
 public class AskStudyAssistantUseCase
 {
+    private readonly IAiUsageContext _aiUsage;
     // Pergunta curta de proposito (design do rascunho: "impedindo que o usuario se perca em
     // dialogos longos") - nao e um campo de redacao.
     internal const int MaxQuestionLength = 500;
@@ -44,8 +45,9 @@ public class AskStudyAssistantUseCase
 
     private readonly Shared.PersonalizationOptions _personalization;
 
-    public AskStudyAssistantUseCase(IUserRepository userRepository, IStudyAssistantService assistantService, ICourseRepository courseRepository, Shared.PersonalizationOptions personalization)
+    public AskStudyAssistantUseCase(IUserRepository userRepository, IStudyAssistantService assistantService, ICourseRepository courseRepository, Shared.PersonalizationOptions personalization, IAiUsageContext aiUsage)
     {
+        _aiUsage = aiUsage;
         _personalization = personalization;
         _userRepository = userRepository;
         _assistantService = assistantService;
@@ -72,6 +74,8 @@ public class AskStudyAssistantUseCase
             trimmedQuestion, Truncate(context, MaxContextLength), ClampHistory(history), user?.Interests, user?.AdditionalProfileNotes,
             codeBridge, courseName);
 
+        // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+        using var aiUsage = _aiUsage.Begin(userId);
         return await _assistantService.AskAsync(request, cancellationToken);
     }
 

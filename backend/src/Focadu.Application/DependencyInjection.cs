@@ -1,4 +1,5 @@
 using Focadu.Application.Achievements;
+using Focadu.Application.Admin;
 using Focadu.Application.Assistant;
 using Focadu.Application.Content;
 using Focadu.Application.Courses;
@@ -23,6 +24,16 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddFocaduApplication(this IServiceCollection services)
     {
+        // Fase 94, Painel de gestao.
+        services.AddScoped<UserRoleAdminUseCase>();
+        services.AddScoped<AdminAccessGuard>();
+        services.AddScoped<AiUsageReportUseCase>();
+        services.AddScoped<AiUsageSettingsUseCase>();
+        services.AddScoped<AdminStudentsUseCase>();
+        services.AddScoped<AdminInvitesUseCase>();
+        services.AddScoped<AdminCurationUseCase>();
+        services.AddScoped<AdminOverviewUseCase>();
+
         services.AddScoped<ListCoursesUseCase>();
         services.AddScoped<GetCourseDetailUseCase>();
         services.AddScoped<GetCourseCurriculumUseCase>();

@@ -20,6 +20,7 @@ namespace Focadu.Application.Dailies;
 /// </summary>
 public class SubmitCodeStepResponseUseCase
 {
+    private readonly IAiUsageContext _aiUsage;
     /// <summary>Teto do codigo e da saida - um passo tem umas dezenas de linhas; isto so barra abuso.</summary>
     public const int MaxLength = 20_000;
 
@@ -31,8 +32,10 @@ public class SubmitCodeStepResponseUseCase
 
     public SubmitCodeStepResponseUseCase(
         IWeeklyRepository weeklyRepository, IUnitOfWork unitOfWork, IClock clock, ICodeStepEvaluationService evaluationService,
-        IWeeklyTemplateRepository weeklyTemplateRepository)
+        IWeeklyTemplateRepository weeklyTemplateRepository,
+        IAiUsageContext aiUsage)
     {
+        _aiUsage = aiUsage;
         _weeklyTemplateRepository = weeklyTemplateRepository;
         _weeklyRepository = weeklyRepository;
         _unitOfWork = unitOfWork;
@@ -95,6 +98,8 @@ public class SubmitCodeStepResponseUseCase
 
         var attemptNumber = daily.Responses.Count(r => r.ActivityId == activityId) + 1;
         var courseName = await _weeklyTemplateRepository.GetCourseNameAsync(weekly.Template.Id, cancellationToken);
+        // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+        using var aiUsage = _aiUsage.Begin(userId, dailyId);
         var evaluation = await _evaluationService.EvaluateAsync(
             new CodeStepEvaluationRequest(
                 daily.Template.Language?.ToString() ?? weekly.Template.PracticeLanguage ?? "Python",

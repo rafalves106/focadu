@@ -39,6 +39,7 @@ namespace Focadu.Application.Weeklies;
 /// </summary>
 public class EvaluateWeeklyProjectUseCase
 {
+    private readonly IAiUsageContext _aiUsage;
     private readonly IWeeklyRepository _weeklyRepository;
     private readonly IUserForgejoAccountRepository _userForgejoAccountRepository;
     private readonly IForgejoService _forgejoService;
@@ -49,8 +50,10 @@ public class EvaluateWeeklyProjectUseCase
 
     public EvaluateWeeklyProjectUseCase(
         IWeeklyRepository weeklyRepository, IUserForgejoAccountRepository userForgejoAccountRepository, IForgejoService forgejoService,
-        IProjectEvaluationService projectEvaluationService, GamificationCreditor gamificationCreditor, IUnitOfWork unitOfWork, IClock clock)
+        IProjectEvaluationService projectEvaluationService, GamificationCreditor gamificationCreditor, IUnitOfWork unitOfWork, IClock clock,
+        IAiUsageContext aiUsage)
     {
+        _aiUsage = aiUsage;
         _weeklyRepository = weeklyRepository;
         _userForgejoAccountRepository = userForgejoAccountRepository;
         _forgejoService = forgejoService;
@@ -90,6 +93,8 @@ public class EvaluateWeeklyProjectUseCase
 
         var snapshot = await _forgejoService.GetContentSnapshotAsync(forgejoAccount.ForgejoUsername, templateSlug, cancellationToken);
         var specText = weekly.Template.WeeklyProjectSpecText ?? string.Empty;
+        // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+        using var aiUsage = _aiUsage.Begin(userId, weeklyId: weeklyId);
         var evaluation = await _projectEvaluationService.EvaluateAsync(
             new ContentEvaluationRequest(specText, snapshot, null), cancellationToken);
 

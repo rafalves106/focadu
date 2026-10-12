@@ -20,6 +20,7 @@ namespace Focadu.Application.Weeklies;
 /// </summary>
 public class GenerateLinkedInDraftUseCase
 {
+    private readonly IAiUsageContext _aiUsage;
     private readonly IWeeklyRepository _weeklyRepository;
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -28,8 +29,10 @@ public class GenerateLinkedInDraftUseCase
 
     public GenerateLinkedInDraftUseCase(
         IWeeklyRepository weeklyRepository, IUserRepository userRepository, IUnitOfWork unitOfWork,
-        IDraftGenerationService draftGenerationService, PersonalizationOptions personalization)
+        IDraftGenerationService draftGenerationService, PersonalizationOptions personalization,
+        IAiUsageContext aiUsage)
     {
+        _aiUsage = aiUsage;
         _personalization = personalization;
         _weeklyRepository = weeklyRepository;
         _userRepository = userRepository;
@@ -52,6 +55,8 @@ public class GenerateLinkedInDraftUseCase
         var personalization = PersonalizationPromptBuilder.BuildInstruction(_personalization.Interests(user?.Interests), _personalization.Notes(user?.AdditionalProfileNotes));
 
         var prompt = BuildPrompt(weekly.Theme ?? weekly.Title, keyConcepts, personalization);
+        // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+        using var aiUsage = _aiUsage.Begin(userId, weeklyId: weeklyId);
         var draft = await _draftGenerationService.GenerateAsync(prompt, cancellationToken);
 
         var publication = weekly.StartPublication();

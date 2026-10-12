@@ -884,6 +884,8 @@ export interface UserDto {
   emailVerifiedAt: string | null;
   /** Fase 93: sessao presa em "Confira seu e-mail" - so vem preenchido nas respostas de auth. */
   emailVerificationPending?: boolean;
+  /** Fase 94: mostra o item "Gestao" no menu global. So aparencia - a Api confere o papel em cada rota /api/admin. */
+  isAdmin?: boolean;
 }
 
 /** Fase 93: GET /api/auth/signup-status - o que a tela de login precisa saber antes de ter sessao. */

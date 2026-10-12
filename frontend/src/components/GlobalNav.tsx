@@ -10,6 +10,7 @@ import navRanking from '../assets/pixel/nav-ranking.png';
 import navSquad from '../assets/pixel/nav-squad.png';
 import navLoja from '../assets/pixel/nav-loja.png';
 import navConfig from '../assets/pixel/nav-config.png';
+import { useAuth } from '../contexts/useAuth';
 import { useSettings } from '../contexts/useSettings';
 import { UserMenu } from './UserMenu';
 import { AiStatusMenu } from './AiStatusMenu';
@@ -80,6 +81,9 @@ export function GlobalNav() {
     [pathname, requestsVersion],
   );
   const squadBadge = requestCount ?? 0;
+  // Fase 94: item "Gestao" so pra admin (o aluno nao recebe o item); ativo em qualquer aba do painel.
+  const isAdmin = useAuth().user?.isAdmin === true;
+  const inAdmin = pathname.startsWith('/gestao');
 
   return (
     <nav className="sticky top-0 z-30 border-b border-surface-alt bg-surface">
@@ -115,6 +119,7 @@ export function GlobalNav() {
         {/* Desktop (md+): grupo direito. */}
         <div data-guia="nav-grupo" className="hidden flex-1 items-center justify-around pl-4 md:flex xl:pl-10">
           <NavItem to="/squad" icon={navSquad} label={squadBadge ? `Squad (${squadBadge} pedidos)` : 'Squad'} badge={squadBadge} />
+          {isAdmin && <AdminNavItem active={inAdmin} />}
           <AiStatusMenu />
           <NavButton onClick={settings.open} icon={navConfig} label="Configurações" />
           <UserMenu />
@@ -146,6 +151,16 @@ export function GlobalNav() {
             Squad
             {squadBadge > 0 && <span className="ml-auto bg-alert px-1.5 py-0.5 text-[8px] text-primary">{squadBadge}</span>}
           </MobileNavItem>
+          {isAdmin && (
+            <Link
+              to="/gestao"
+              onClick={closeMobileMenu}
+              className={`flex items-center gap-3 border-2 px-2.5 py-2 font-pixel-label text-[10px] ${inAdmin ? 'border-accent text-accent' : 'border-transparent text-secondary hover:border-stroke hover:text-primary'}`}
+            >
+              <span className={`mx-3 size-2 ${inAdmin ? 'bg-accent' : 'bg-secondary'}`} aria-hidden="true" />
+              Gestão
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -231,6 +246,20 @@ function MapButton() {
       className="flex shrink-0 items-center justify-center transition-transform hover:scale-105"
     >
       <img src={logoWordmark} alt="Focadu" className="h-7 w-auto pixelated xl:h-[42px]" />
+    </Link>
+  );
+}
+
+/** Fase 94 (Figma "Item Gestao (nav, so admin)", 278:16583): botao com contorno; acento dentro do painel. */
+function AdminNavItem({ active }: { active: boolean }) {
+  return (
+    <Link
+      to="/gestao"
+      aria-current={active ? 'page' : undefined}
+      className={`group flex h-10 items-center gap-2 border-2 px-3 ${active ? 'border-accent bg-accent/10' : 'border-stroke hover:border-secondary hover:bg-surface'}`}
+    >
+      <span className={`size-2 ${active ? 'bg-accent' : 'bg-secondary group-hover:bg-primary'}`} aria-hidden="true" />
+      <span className={`font-pixel-label text-[10px] tracking-[0.06em] ${active ? 'text-accent' : 'text-secondary group-hover:text-primary'}`}>GESTÃO</span>
     </Link>
   );
 }

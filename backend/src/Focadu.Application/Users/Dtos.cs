@@ -28,9 +28,15 @@ public record UserDto(
     /// </summary>
     public bool EmailVerificationPending { get; init; }
 
+    /// <summary>Fase 94: mostra o item "Gestao" no menu global. So aparencia - cada rota /api/admin confere o papel no banco.</summary>
+    public bool IsAdmin { get; init; }
+
     public static UserDto From(User user) => new(
         user.Id, user.Email, user.DisplayName, user.ProfileCompletedAt, user.Interests, user.AdditionalProfileNotes,
-        user.PreferredLanguages, user.CreatedAt, user.HideScoresInSquadFeed, user.SeenGuides, user.EmailVerifiedAt);
+        user.PreferredLanguages, user.CreatedAt, user.HideScoresInSquadFeed, user.SeenGuides, user.EmailVerifiedAt)
+    {
+        IsAdmin = user.IsAdmin,
+    };
 }
 
 /// <summary>

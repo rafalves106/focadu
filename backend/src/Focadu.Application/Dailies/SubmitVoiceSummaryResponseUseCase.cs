@@ -32,6 +32,7 @@ namespace Focadu.Application.Dailies;
 /// </summary>
 public class SubmitVoiceSummaryResponseUseCase
 {
+    private readonly IAiUsageContext _aiUsage;
     /// <summary>
     /// ponytail: teto arbitrario mas calibrado - ~10min de audio gravado pelo navegador (webm/
     /// opus) fica bem abaixo disso na pratica, e e tambem o limite de upload da Groq pro endpoint
@@ -57,8 +58,10 @@ public class SubmitVoiceSummaryResponseUseCase
         IAudioTranscriptionService transcriptionService,
         IContentEvaluationService evaluationService,
         IWeeklyTemplateRepository weeklyTemplateRepository,
-        PersonalizationOptions personalization)
+        PersonalizationOptions personalization,
+        IAiUsageContext aiUsage)
     {
+        _aiUsage = aiUsage;
         _personalization = personalization;
         _weeklyTemplateRepository = weeklyTemplateRepository;
         _weeklyRepository = weeklyRepository;
@@ -116,6 +119,8 @@ public class SubmitVoiceSummaryResponseUseCase
 
         // TranscribeAsync nunca devolve vazio - a implementacao Groq ja lanca "transcricao_vazia"
         // (com retry, ver GroqAudioTranscriptionService/HttpRetry) antes de retornar.
+        // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+        using var aiUsage = _aiUsage.Begin(userId, dailyId);
         var transcript = await _transcriptionService.TranscribeAsync(audioStream, cancellationToken);
 
         // ContextText (a pergunta) so agrega informacao quando a referencia principal e outra

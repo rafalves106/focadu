@@ -40,6 +40,13 @@ jobs:
           git fetch origin
           git reset --hard origin/main
 
+      # Fase 94: a importacao de dia pelo Painel de gestao roda o linter (Node) dentro do container do backend, que
+      # monta secret/ como somente leitura - as dependencias do linter (so ajv, JS puro) sao instaladas aqui, no host,
+      # por um container Node descartavel. Idempotente.
+      - name: Dependencias do linter de dia
+        working-directory: ${{ steps.env.outputs.path }}/secret/processo/scripts/linter-dia
+        run: docker run --rm -v "$PWD:/linter" -w /linter node:22-alpine npm ci --omit=dev --no-audit --no-fund
+
       - name: Subir stack Docker (build + up)
         working-directory: ${{ steps.env.outputs.path }}
         run: docker compose -f ${{ steps.env.outputs.compose_file }} up -d --build
