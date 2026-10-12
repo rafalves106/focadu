@@ -19,7 +19,7 @@ public class SignupInvite : Entity
     public int MaxUses { get; private set; }
     public int UsedCount { get; private set; }
 
-    /// <summary>Nulo = nao vence.</summary>
+    /// <summary>Nulo = nao vence (so convites de antes da Fase 94; desde ela todo convite vence).</summary>
     public DateTime? ExpiresAt { get; private set; }
 
     public DateTime? RevokedAt { get; private set; }
@@ -51,6 +51,9 @@ public class SignupInvite : Entity
         if (maxUses < 1)
             throw new DomainException("O convite precisa valer pra pelo menos 1 cadastro.", "convite_usos_invalidos");
 
+        if (maxUses > MaxUsesLimit)
+            throw new DomainException($"No maximo {MaxUsesLimit} usos.", "convite_usos_invalidos");
+
         return new SignupInvite(code.Trim().ToUpperInvariant(), note.Trim(), maxUses, expiresAt);
     }
 
@@ -74,6 +77,17 @@ public class SignupInvite : Entity
     }
 
     public void Revoke(DateTime now) => RevokedAt ??= now;
+
+    /// <summary>Limites decididos pelo dono na Fase 94 (painel e comando): 1 a 20 usos, 1 a 30 dias, sempre vence.</summary>
+    public const int MaxUsesLimit = 20;
+    public const int MaxValidDays = 30;
+
+    /// <summary>Ativo, esgotado, vencido ou revogado (Fase 94, lista do painel) - calculado, nunca gravado.</summary>
+    public string StatusAt(DateTime now) =>
+        RevokedAt is not null ? "revogado"
+        : ExpiresAt is not null && now >= ExpiresAt ? "vencido"
+        : UsedCount >= MaxUses ? "esgotado"
+        : "ativo";
 
     public const string InvalidMessage = "Esse convite nao vale mais, peca outro.";
 }

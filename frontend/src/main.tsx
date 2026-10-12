@@ -3,6 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import './index.css';
 import { App } from './App';
+import { AdminGate } from './components/admin/AdminGate';
+import { AiUsageTab } from './components/admin/AiUsageTab';
+import { CurationTab } from './components/admin/CurationTab';
+import { InvitesTab } from './components/admin/InvitesTab';
+import { OverviewTab } from './components/admin/OverviewTab';
+import { StudentsTab } from './components/admin/StudentsTab';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
 import { GuideProvider } from './contexts/GuideProvider';
@@ -60,6 +66,12 @@ createRoot(document.getElementById('root')!).render(
                 {/* Fase 18: /conquistas virou a aba "Conquistas" do Perfil - redirect em vez de
                     quebrar links/favoritos antigos (decisao documentada em docs/fase-18). */}
                 <Route path="conquistas" element={<Navigate to="/perfil?abrir=conquistas" replace />} />
+                {/* Fase 94: Painel de gestao, so admin (AdminGate; a Api confere o papel em cada rota). */}
+                <Route path="gestao" element={<AdminGate><OverviewTab /></AdminGate>} />
+                <Route path="gestao/alunos" element={<AdminGate><StudentsTab /></AdminGate>} />
+                <Route path="gestao/convites" element={<AdminGate><InvitesTab /></AdminGate>} />
+                <Route path="gestao/curadoria" element={<AdminGate><CurationTab /></AdminGate>} />
+                <Route path="gestao/uso-de-ia" element={<AdminGate><AiUsageTab /></AdminGate>} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

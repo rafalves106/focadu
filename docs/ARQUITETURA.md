@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 93 - Cadastro so com convite de tester e confirmacao de e-mail por codigo** (Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 94 - Painel de gestao (admin) e Medicao de IA** (Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -2881,8 +2881,9 @@ pro front.
   confere e gasta o convite antes de criar o `User`, no mesmo `SaveChanges`. Concorrencia otimista por `xmin`;
   `UnitOfWork` traduz o conflito do `SignupInvite` em `convite_esgotado`. Com a chave ligada, cadastro sem convite =
   `convite_obrigatorio`; desligada, convite preenchido ainda e conferido.
-- **Comando `convite`** (Program.cs): `convite "pra quem" [--usos N] [--dias N]` (padrao 1 uso, 7 dias; `--dias 0` nao
-  vence), `convite --listar`, `convite --revogar CODIGO`. Na VM: `docker compose exec backend dotnet Focadu.Api.dll convite ...`.
+- **Comando `convite`** (Program.cs): `convite "pra quem" [--usos N] [--dias N]` (padrao 1 uso, 7 dias; desde a Fase 94
+  1 a 20 usos e 1 a 30 dias, sempre vence - `SignupInvite.MaxUsesLimit`/`MaxValidDays`), `convite --listar`,
+  `convite --revogar CODIGO`. Desde a Fase 94 tambem pela aba Convites do Painel de gestao. Na VM: `docker compose exec backend dotnet Focadu.Api.dll convite ...`.
 - **`EmailVerificationCode`** (tabela `EmailVerificationCodes`) + `User.EmailVerifiedAt`: 6 digitos, so o hash
   (SHA-256 de `userId:codigo`), 15 min, 5 tentativas (`codigo_invalido` 400, depois `codigo_bloqueado` 429), so o
   mais recente vale. `POST /auth/email-verification/send {force}`: sem `force` so manda se nao ha codigo valendo; com
@@ -2934,6 +2935,49 @@ acima continua funcionando e e inofensivo rodar (idempotente), mas deixou de ser
 necessario. Motivacao: a imagem Docker de runtime (`aspnet:10.0`) nao tem o SDK/`dotnet-ef`
 instalado, entao nao havia como rodar a migration manualmente dentro do container - ver "Docker e
 Deploy" abaixo.
+
+### Painel de gestao e Medicao de IA (Fase 94)
+
+Telas no Figma "Focadu — Pixel Art": "Medicao de IA — v2" (`244:4502`) e "Painel de gestao — v1" (`263:4502`). Detalhe e
+decisoes em `docs/fase-94/`.
+
+- **Papel**: `User.Role` (`UserRole` Student/Admin, string, padrao Student). So o comando `admin promover|rebaixar <email>` /
+  `admin listar` (Program.cs) muda o papel - nao ha rota HTTP. `UserDto.IsAdmin` so mostra o item "Gestao" no GlobalNav.
+- **Rotas** (grupo `/api/admin`, `RequireAuthorization` + filtro do `AdminAccessGuard`, que confere o papel NO BANCO a cada
+  chamada; nao admin = 403 `acesso_negado` via `ForbiddenException`):
+
+| Metodo | Rota | Caso de uso | Notas |
+|---|---|---|---|
+| GET | `/api/admin/overview` | `AdminOverviewUseCase` | cartoes, 14 dias de conclusoes, ultimos cadastros, curadoria por curso |
+| GET | `/api/admin/students` | `AdminStudentsUseCase.ListAsync` | progresso por curso com grade de dias (`AdminDayCell`) |
+| GET/POST | `/api/admin/students/{u}/courses/{c}/reset` | `PreviewResetAsync` / `ResetAsync` | POST `{confirmation}` = e-mail do aluno; apaga a matricula e matricula de novo numa transacao |
+| GET/POST | `/api/admin/invites`, `/api/admin/invites/{code}/revoke` | `AdminInvitesUseCase` | `link` relativo (`/login?convite=`) |
+| GET | `/api/admin/curation` | `AdminCurationUseCase.GridAsync` | estado por dia: `em_dia`/`difere`/`so_no_arquivo`/`so_no_banco`/`sem_curadoria` (hash do arquivo x `DailyTemplate.ContentHash`) |
+| POST | `/api/admin/curation/{slug}/import/preview` e `/import` | `PreviewImportAsync` / `ImportAsync` | `{days}`; roda o `ImportCuratedDaysUseCase` por dia (dry-run na previa); tudo ou nada numa transacao (`IAdminMaintenance.InTransactionAsync`) |
+| GET/POST | `/api/admin/courses/{c}/stale-days`, `/stale-days/delete` | `PreviewStaleDaysAsync` / `DeleteStaleDaysAsync` | `{confirmation}` = nome do curso; apaga dias do banco sem arquivo em `conteudo/` (+ semanas/modulos vazios) |
+| GET | `/api/admin/ai-usage?period=mes\|7d\|30d&courseId=` | `AiUsageReportUseCase.OverviewAsync` | `byType[].callType` vai como TEXTO (resto da Api manda enum como numero) |
+| GET | `/api/admin/ai-usage/students`, `/students/{u}` | `StudentsAsync` / `StudentAsync` | custo por dia do curso + media do curso |
+| PUT | `/api/admin/ai-usage/prices`, `/ai-usage/cap` | `AiUsageSettingsUseCase` | preco por modelo (autor = e-mail do admin); teto > 0 ou nulo |
+
+- **Leituras e escritas destrutivas** saem de dois ports novos: `IAdminQueries` (so leitura, AsNoTracking) e
+  `IAdminMaintenance` (`ExecuteDelete` em transacao, mesma tecnica do `UserResetService`). Ordem do apagar dias antigos: notas,
+  revisoes, feedback do dia, respostas, Weeklies de semanas que ficam vazias, Dailies, `RoleplayOptions` (FK `NextNodeId`
+  Restrict travava a cascata), `DailyTemplates`, `WeeklyTemplates` e `Monthlies` vazios. Medicao de IA nunca e apagada.
+- **Medicao de IA** ("medir antes de limitar" - nada bloqueia nem troca modelo):
+  - `AiUsageMeasuringHandler` (DelegatingHandler) em todos os `AddHttpClient` do Groq menos o health check: modelo do corpo
+    (JSON `model` ou parte multipart `model`), uso da resposta (`usage.prompt_tokens/completion_tokens`; transcricao pede
+    `response_format=verbose_json` e le `duration`). Grava num escopo de DbContext proprio; falha de medicao so loga.
+  - Contexto via `IAiUsageContext.Begin(userId, dailyId?, weeklyId?)` (AsyncLocal em `AiUsageContext`), aberto pelos 8 casos de
+    uso que chamam IA; o handler resolve curso e `DayNumber` e copia no registro (sem FK).
+  - Tabelas: `AiUsageRecords` (uso, nunca custo), `AiModelPrices` (US$/1 M tokens entrada e saida, ou US$/hora de audio;
+    modelo sem preco = "sem preco", fora da soma), `AiUsageSettings` (linha unica `9a4b2c1d-...0094`: `MeasuringSince`,
+    `MonthlyCapUsd`). A migration `Fase94PainelDeGestao` cria a linha com `now()` e os precos iniciais da Groq.
+  - Contas puras em `AiUsageMath` (internal, testada): periodo em hora local (`IClock`), totais, fatia por tipo, custo por dia.
+- **Front**: `/gestao`, `/gestao/alunos|convites|curadoria|uso-de-ia` dentro do `App` (com `AdminGate`, que manda quem nao e
+  admin pro `/start`); `components/admin/*`, `api/admin.ts`/`adminTypes.ts`, `lib/adminFormat.ts` (o "@" vem do e-mail - o
+  app nao tem @usuario). "Abrir no Claude" e so um link (`VITE_CLAUDE_URL`, padrao `https://claude.ai/code`).
+- **Deploy**: imagem do backend com `nodejs` (linter do dia roda no container ao importar pelo painel); `deploy.yml` instala as
+  dependencias do linter no `secret/` do host com um `node:22-alpine` descartavel (o `secret/` entra no container `:ro`).
 
 ## Docker e Deploy (Fase 40)
 

@@ -18,6 +18,7 @@ namespace Focadu.Application.Dailies;
 /// </summary>
 public class RequestCodeStepHintUseCase
 {
+    private readonly IAiUsageContext _aiUsage;
     private readonly IWeeklyRepository _weeklyRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICodeStepHintService _hintService;
@@ -25,8 +26,10 @@ public class RequestCodeStepHintUseCase
 
     public RequestCodeStepHintUseCase(
         IWeeklyRepository weeklyRepository, IUnitOfWork unitOfWork, ICodeStepHintService hintService,
-        IWeeklyTemplateRepository weeklyTemplateRepository)
+        IWeeklyTemplateRepository weeklyTemplateRepository,
+        IAiUsageContext aiUsage)
     {
+        _aiUsage = aiUsage;
         _weeklyRepository = weeklyRepository;
         _unitOfWork = unitOfWork;
         _hintService = hintService;
@@ -62,6 +65,8 @@ public class RequestCodeStepHintUseCase
 
         var normalized = labRun?.Normalize(SubmitCodeStepResponseUseCase.MaxLength);
         var courseName = await _weeklyTemplateRepository.GetCourseNameAsync(weekly.Template.Id, cancellationToken);
+        // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+        using var aiUsage = _aiUsage.Begin(userId, dailyId);
         var result = await _hintService.HintAsync(
             new CodeStepHintRequest(
                 daily.Template.Language?.ToString() ?? weekly.Template.PracticeLanguage ?? "Python",

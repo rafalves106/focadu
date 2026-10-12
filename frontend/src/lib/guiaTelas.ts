@@ -26,7 +26,8 @@ export type GuideScreenKey =
   | 'loja'
   | 'ranking'
   | 'certificacoes'
-  | 'caderninho';
+  | 'caderninho'
+  | 'gestao';
 
 export interface GuideItem {
   title: string;
@@ -231,6 +232,22 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
       },
     ],
   },
+  // Fase 94: Painel de gestao (so admin - o aluno nunca chega aqui).
+  gestao: {
+    title: 'Painel de gestão',
+    focada: 'Bastidor da Focadu: só quem é admin vê. Nada daqui aparece pro aluno.',
+    items: [
+      { title: 'Visão geral', text: 'Alunos ativos, cadastros por convite, dias concluídos, custo de IA do mês e quantos dias cada curso tem curados.' },
+      { title: 'Alunos', text: 'Clique num aluno pra ver o progresso por curso. "Resetar progresso" zera um curso só e pede o e-mail do aluno pra confirmar.' },
+      { title: 'Convites', text: 'Criar convite (1 a 20 usos, 1 a 30 dias, sempre vence), copiar o link e revogar.' },
+      {
+        title: 'Curadoria',
+        text: 'Arquivo em secret/conteudo x banco, dia a dia. Marque dias novos ou diferentes, veja a prévia do linter e importe: é tudo ou nada. Dia só no banco sai pelo "Apagar dias antigos".',
+      },
+      { title: 'Uso de IA', text: 'Quanto a IA custa, por tipo de chamada e por aluno. É só medição: nada bloqueia nem troca modelo. Preços e teto são editáveis.' },
+      { title: 'Abrir no Claude', text: 'Leva pra sessão do Claude Code. Não é um chat dentro do app.' },
+    ],
+  },
 };
 
 /** Na sessao diaria, o 1o item da aba "Esta tela" troca conforme a etapa em tela. */
@@ -305,6 +322,7 @@ export function guideScreenFor(pathname: string, search: string): GuideScreenKey
   if (pathname === '/loja') return 'loja';
   if (pathname === '/perfil') return 'perfil';
   if (pathname === '/squad') return 'squad';
+  if (pathname.startsWith('/gestao')) return 'gestao';
   if (pathname !== '/start') return null;
   const q = new URLSearchParams(search);
   if (!q.get('course')) return 'start';

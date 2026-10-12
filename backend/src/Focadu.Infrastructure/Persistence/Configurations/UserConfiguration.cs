@@ -1,3 +1,4 @@
+using Focadu.Domain.Enums;
 using Focadu.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -38,6 +39,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         // Fase 75: chaves do guia das telas ja vistas - mesmo array nativo de Interests.
         builder.Property(u => u.SeenGuides).HasColumnType("text[]").IsRequired();
+
+        // Fase 94: papel (Student/Admin) como string, todo usuario existente nasce Student.
+        builder.Property(u => u.Role).HasConversion<string>().HasMaxLength(20).IsRequired().HasDefaultValue(UserRole.Student);
+        builder.Ignore(u => u.IsAdmin);
 
         builder.HasIndex(u => u.Email).IsUnique();
         builder.HasIndex(u => u.ReferralCode).IsUnique();

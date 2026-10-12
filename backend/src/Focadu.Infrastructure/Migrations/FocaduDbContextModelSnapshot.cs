@@ -290,6 +290,113 @@ namespace Focadu.Infrastructure.Migrations
                     b.ToTable("WordMatchPairs", (string)null);
                 });
 
+            modelBuilder.Entity("Focadu.Domain.AiUsage.AiModelPrice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("AudioPerHourUsd")
+                        .HasPrecision(12, 6)
+                        .HasColumnType("numeric(12,6)");
+
+                    b.Property<decimal?>("InputPerMillionUsd")
+                        .HasPrecision(12, 6)
+                        .HasColumnType("numeric(12,6)");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal?>("OutputPerMillionUsd")
+                        .HasPrecision(12, 6)
+                        .HasColumnType("numeric(12,6)");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Model")
+                        .IsUnique();
+
+                    b.ToTable("AiModelPrices", (string)null);
+                });
+
+            modelBuilder.Entity("Focadu.Domain.AiUsage.AiUsageRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("AudioSeconds")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("CallType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int?>("CourseDay")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("CourseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("InputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OutputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Succeeded")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("UserId", "OccurredAt");
+
+                    b.ToTable("AiUsageRecords", (string)null);
+                });
+
+            modelBuilder.Entity("Focadu.Domain.AiUsage.AiUsageSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("MeasuringSince")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("MonthlyCapUsd")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AiUsageSettings", (string)null);
+                });
+
             modelBuilder.Entity("Focadu.Domain.Content.CuratedContent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1211,6 +1318,13 @@ namespace Focadu.Infrastructure.Migrations
                     b.Property<string>("ReferralCode")
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Student");
 
                     b.PrimitiveCollection<string[]>("SeenGuides")
                         .IsRequired()

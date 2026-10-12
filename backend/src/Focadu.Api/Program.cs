@@ -339,7 +339,7 @@ if (args.Contains("convite"))
             int? ParseInt(string flag) => ArgAfter(flag) is { } v ? (int.TryParse(v, out var n) ? n : throw new ValidationException("argumento_invalido", $"{flag} precisa de um numero.")) : null;
             if (note is null)
             {
-                Console.Error.WriteLine("uso: convite \"pra quem\" [--usos N] [--dias N (0 = nao vence)] | convite --listar | convite --revogar CODIGO");
+                Console.Error.WriteLine("uso: convite \"pra quem\" [--usos 1-20] [--dias 1-30, padrao 7] | convite --listar | convite --revogar CODIGO");
                 Environment.ExitCode = 2;
                 return;
             }
@@ -347,6 +347,43 @@ if (args.Contains("convite"))
             var created = await invites.CreateAsync(note, ParseInt("--usos") ?? 1, ParseInt("--dias"));
             Console.WriteLine("Criado: " + Describe(created));
             Console.WriteLine($"Link: {frontendOptions.BaseUrl.TrimEnd('/')}/login?convite={created.Code}");
+        }
+    }
+    catch (Exception ex) when (ex is ValidationException or NotFoundException or Focadu.Domain.Exceptions.DomainException)
+    {
+        Console.Error.WriteLine(ex.Message);
+        Environment.ExitCode = 2;
+    }
+    return;
+}
+
+// `dotnet run --project src/Focadu.Api -- admin promover <email>` da o papel de admin (Fase 94, Painel de gestao);
+// `admin rebaixar <email>` volta pra aluno; `admin listar` mostra quem e admin. Unico jeito de virar admin: nao ha tela.
+if (args.Contains("admin"))
+{
+    using var adminScope = app.Services.CreateScope();
+    var roles = adminScope.ServiceProvider.GetRequiredService<Focadu.Application.Admin.UserRoleAdminUseCase>();
+    var adminIndex = Array.IndexOf(args, "admin");
+    var action = adminIndex + 1 < args.Length ? args[adminIndex + 1] : null;
+    var email = adminIndex + 2 < args.Length ? args[adminIndex + 2] : null;
+    try
+    {
+        switch (action)
+        {
+            case "listar":
+                foreach (var adminUser in await roles.ListAdminsAsync())
+                    Console.WriteLine($"{adminUser.Email}  {adminUser.DisplayName}");
+                break;
+            case "promover" when email is not null:
+                Console.WriteLine("Agora e admin: " + (await roles.SetRoleAsync(email, Focadu.Domain.Enums.UserRole.Admin)).Email);
+                break;
+            case "rebaixar" when email is not null:
+                Console.WriteLine("Voltou a ser aluno: " + (await roles.SetRoleAsync(email, Focadu.Domain.Enums.UserRole.Student)).Email);
+                break;
+            default:
+                Console.Error.WriteLine("uso: admin promover <email> | admin rebaixar <email> | admin listar");
+                Environment.ExitCode = 2;
+                break;
         }
     }
     catch (Exception ex) when (ex is ValidationException or NotFoundException or Focadu.Domain.Exceptions.DomainException)
@@ -1210,6 +1247,97 @@ api.MapPost("/study-assistant/ask", async (ClaimsPrincipal principal, AskStudyAs
     })
     .RequireAuthorization()
     .WithName("AskStudyAssistant");
+
+// --- Painel de gestao (Fase 94) --------------------------------------------------------------
+// Tudo em /api/admin passa pelo AdminAccessGuard, que confere o papel no banco a cada chamada (nao no JWT): quem nao e
+// admin recebe 403 acesso_negado. Nao existe rota pra virar admin - so o comando `admin promover` na VM.
+var admin = api.MapGroup("/admin")
+    .RequireAuthorization()
+    .AddEndpointFilter(async (context, next) =>
+    {
+        var guard = context.HttpContext.RequestServices.GetRequiredService<Focadu.Application.Admin.AdminAccessGuard>();
+        await guard.EnsureAdminAsync(CurrentUserId(context.HttpContext.User), context.HttpContext.RequestAborted);
+        return await next(context);
+    });
+
+admin.MapGet("/overview", async (Focadu.Application.Admin.AdminOverviewUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(ct)))
+    .WithName("AdminOverview");
+
+admin.MapGet("/students", async (Focadu.Application.Admin.AdminStudentsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ListAsync(ct)))
+    .WithName("AdminListStudents");
+
+admin.MapGet("/students/{userId}", async (string userId, Focadu.Application.Admin.AdminStudentsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.GetAsync(RouteParsing.RequireGuid(userId, "userId"), ct)))
+    .WithName("AdminGetStudent");
+
+admin.MapGet("/students/{userId}/courses/{courseId}/reset", async (string userId, string courseId, Focadu.Application.Admin.AdminStudentsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.PreviewResetAsync(RouteParsing.RequireGuid(userId, "userId"), RouteParsing.RequireGuid(courseId, "courseId"), ct)))
+    .WithName("AdminPreviewCourseReset");
+
+admin.MapPost("/students/{userId}/courses/{courseId}/reset", async (string userId, string courseId, AdminConfirmRequest? request, Focadu.Application.Admin.AdminStudentsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ResetAsync(RouteParsing.RequireGuid(userId, "userId"), RouteParsing.RequireGuid(courseId, "courseId"), request?.Confirmation, ct)))
+    .WithName("AdminResetCourse");
+
+admin.MapGet("/invites", async (Focadu.Application.Admin.AdminInvitesUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ListAsync(ct)))
+    .WithName("AdminListInvites");
+
+admin.MapPost("/invites", async (AdminCreateInviteRequest? request, Focadu.Application.Admin.AdminInvitesUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.CreateAsync(request?.Note, request?.MaxUses, request?.ValidDays, ct)))
+    .WithName("AdminCreateInvite");
+
+admin.MapPost("/invites/{code}/revoke", async (string code, Focadu.Application.Admin.AdminInvitesUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.RevokeAsync(code, ct)))
+    .WithName("AdminRevokeInvite");
+
+admin.MapGet("/curation", async (Focadu.Application.Admin.AdminCurationUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.GridAsync(ct)))
+    .WithName("AdminCurationGrid");
+
+admin.MapPost("/curation/{slug}/import/preview", async (string slug, AdminImportDaysRequest? request, Focadu.Application.Admin.AdminCurationUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.PreviewImportAsync(slug, request?.Days, ct)))
+    .WithName("AdminPreviewImport");
+
+admin.MapPost("/curation/{slug}/import", async (string slug, AdminImportDaysRequest? request, Focadu.Application.Admin.AdminCurationUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ImportAsync(slug, request?.Days, ct)))
+    .WithName("AdminImportDays");
+
+admin.MapGet("/courses/{courseId}/stale-days", async (string courseId, Focadu.Application.Admin.AdminCurationUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.PreviewStaleDaysAsync(RouteParsing.RequireGuid(courseId, "courseId"), ct)))
+    .WithName("AdminPreviewStaleDays");
+
+admin.MapPost("/courses/{courseId}/stale-days/delete", async (string courseId, AdminConfirmRequest? request, Focadu.Application.Admin.AdminCurationUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.DeleteStaleDaysAsync(RouteParsing.RequireGuid(courseId, "courseId"), request?.Confirmation, ct)))
+    .WithName("AdminDeleteStaleDays");
+
+admin.MapGet("/ai-usage", async (string? period, string? courseId, Focadu.Application.Admin.AiUsageReportUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.OverviewAsync(period, OptionalGuid(courseId, "courseId"), ct)))
+    .WithName("AdminAiUsage");
+
+admin.MapGet("/ai-usage/students", async (string? period, string? courseId, Focadu.Application.Admin.AiUsageReportUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.StudentsAsync(period, OptionalGuid(courseId, "courseId"), ct)))
+    .WithName("AdminAiUsageStudents");
+
+admin.MapGet("/ai-usage/students/{userId}", async (string userId, Focadu.Application.Admin.AiUsageReportUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.StudentAsync(RouteParsing.RequireGuid(userId, "userId"), ct)))
+    .WithName("AdminAiUsageStudent");
+
+admin.MapPut("/ai-usage/prices", async (ClaimsPrincipal principal, AdminSetAiPriceRequest? request,
+        Focadu.Application.Admin.AdminAccessGuard guard, Focadu.Application.Admin.AiUsageSettingsUseCase useCase, CancellationToken ct) =>
+    {
+        var who = await guard.EnsureAdminAsync(CurrentUserId(principal), ct);
+        return Results.Ok(await useCase.SetPriceAsync(
+            request?.Model, request?.InputPerMillionUsd, request?.OutputPerMillionUsd, request?.AudioPerHourUsd, request?.Source, who.Email, ct));
+    })
+    .WithName("AdminSetAiPrice");
+
+admin.MapPut("/ai-usage/cap", async (AdminSetAiCapRequest? request, Focadu.Application.Admin.AiUsageSettingsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(new { monthlyCapUsd = await useCase.SetMonthlyCapAsync(request?.MonthlyCapUsd, ct) }))
+    .WithName("AdminSetAiCap");
+
+Guid? OptionalGuid(string? value, string name) => string.IsNullOrWhiteSpace(value) ? null : RouteParsing.RequireGuid(value, name);
 
 app.Run();
 

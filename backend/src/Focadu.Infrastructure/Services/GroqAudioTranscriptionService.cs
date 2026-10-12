@@ -78,6 +78,9 @@ public class GroqAudioTranscriptionService : IAudioTranscriptionService
         // o parametro "model" pra decidir como decodificar, a extensao aqui e so metadado.
         content.Add(audioContent, "file", "audio.webm");
         content.Add(new StringContent(Model), "model");
+        // Fase 94: verbose_json traz "duration" (segundos de audio), que a Medicao de IA usa pra estimar o custo.
+        // O campo "text" continua igual.
+        content.Add(new StringContent("verbose_json"), "response_format");
 
         var response = await _httpClient.PostAsync("audio/transcriptions", content, cancellationToken);
         await HttpRetry.EnsureSuccessAsync(response, cancellationToken);

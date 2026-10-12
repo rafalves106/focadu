@@ -6,8 +6,8 @@ using Focadu.Domain.Users;
 namespace Focadu.Application.Users;
 
 /// <summary>
-/// Gestao dos convites de tester pelo comando `convite` da Api (Fase 93) - sem endpoint: a Api ainda nao tem
-/// papel de admin, e o dono roda o comando na VM (docker compose exec). Ganha tela quando existir o painel de gestao.
+/// Gestao dos convites de tester (Fase 93 pelo comando `convite` da Api; Fase 94 tambem pela aba Convites do
+/// Painel de gestao, so admin). Os dois caminhos usam os mesmos limites: 1 a 20 usos, 1 a 30 dias.
 /// </summary>
 public class SignupInviteAdminUseCase
 {
@@ -22,15 +22,15 @@ public class SignupInviteAdminUseCase
         _unitOfWork = unitOfWork;
     }
 
-    /// <summary>`validDays` nulo = padrao (7 dias); 0 = nao vence.</summary>
+    /// <summary>`validDays` nulo = padrao (7 dias). Desde a Fase 94 todo convite vence (1 a 30 dias).</summary>
     public async Task<SignupInvite> CreateAsync(string note, int maxUses, int? validDays, CancellationToken cancellationToken = default)
     {
         var days = validDays ?? DefaultValidDays;
-        if (days < 0)
-            throw new ValidationException("convite_dias_invalidos", "--dias precisa ser 0 (nao vence) ou mais.");
+        if (days < 1 || days > SignupInvite.MaxValidDays)
+            throw new ValidationException("convite_dias_invalidos", $"A validade vai de 1 a {SignupInvite.MaxValidDays} dias.");
 
         var code = await UniqueCodeGenerator.GenerateSecureAsync(c => _inviteRepository.CodeExistsAsync(c, cancellationToken));
-        var invite = SignupInvite.Create(code, note, maxUses, days == 0 ? null : DateTime.UtcNow.AddDays(days));
+        var invite = SignupInvite.Create(code, note, maxUses, DateTime.UtcNow.AddDays(days));
 
         await _inviteRepository.AddAsync(invite, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -39,7 +39,7 @@ public class SignupInviteAdminUseCase
 
     public async Task<SignupInvite> RevokeAsync(string code, CancellationToken cancellationToken = default)
     {
-        var invite = await _inviteRepository.GetByCodeAsync(code.Trim().ToUpperInvariant(), cancellationToken)
+        var invite = await _inviteRepository.GetByCodeAsync((code ?? string.Empty).Trim().ToUpperInvariant(), cancellationToken)
             ?? throw new NotFoundException("convite_nao_encontrado", $"Nao existe convite '{code}'.");
 
         invite.Revoke(DateTime.UtcNow);

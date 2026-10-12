@@ -15,5 +15,8 @@ public interface IUserRepository
     /// <summary>Fase 17, badge Founder: true se `userId` esta entre os `count` primeiros User registrados (ordem total deterministica por CreatedAt, empate por Id).</summary>
     Task<bool> IsAmongFirstRegisteredAsync(Guid userId, int count, CancellationToken cancellationToken = default);
 
+    /// <summary>Fase 94: quem tem o papel (comando `admin listar`).</summary>
+    Task<IReadOnlyList<User>> ListByRoleAsync(Enums.UserRole role, CancellationToken cancellationToken = default);
+
     Task AddAsync(User user, CancellationToken cancellationToken = default);
 }

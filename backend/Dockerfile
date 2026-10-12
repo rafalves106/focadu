@@ -25,8 +25,9 @@ RUN dotnet publish src/Focadu.Api/Focadu.Api.csproj -c Release -o /out --no-rest
 # --- Runtime Stage ---
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
+# nodejs (Fase 94): o linter de dia (secret/processo/scripts/linter-dia) roda aqui quando o admin importa pelo painel.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends curl nodejs \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /out .
 EXPOSE 8080

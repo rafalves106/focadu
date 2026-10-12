@@ -1,4 +1,5 @@
 using Focadu.Domain.Activities;
+using Focadu.Domain.AiUsage;
 using Focadu.Domain.Content;
 using Focadu.Domain.Cosmetics;
 using Focadu.Domain.Courses;
@@ -86,6 +87,11 @@ public class FocaduDbContext : DbContext
 
     // Forgejo interno (Projeto Semanal) - 1:1 com User, lazy-created (ver EnrollUserInCourseUseCase).
     public DbSet<UserForgejoAccount> UserForgejoAccounts => Set<UserForgejoAccount>();
+
+    // Fase 94, Medicao de IA (Painel de gestao).
+    public DbSet<AiUsageRecord> AiUsageRecords => Set<AiUsageRecord>();
+    public DbSet<AiModelPrice> AiModelPrices => Set<AiModelPrice>();
+    public DbSet<AiUsageSettings> AiUsageSettings => Set<AiUsageSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

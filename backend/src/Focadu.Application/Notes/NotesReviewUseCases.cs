@@ -12,6 +12,7 @@ namespace Focadu.Application.Notes;
 /// </summary>
 public class ReviewDailyNotesUseCase
 {
+    private readonly IAiUsageContext _aiUsage;
     private readonly IWeeklyRepository _weeklyRepository;
     private readonly INoteRepository _noteRepository;
     private readonly INotesReviewRepository _reviewRepository;
@@ -22,8 +23,10 @@ public class ReviewDailyNotesUseCase
 
     public ReviewDailyNotesUseCase(
         IWeeklyRepository weeklyRepository, INoteRepository noteRepository, INotesReviewRepository reviewRepository,
-        INotesReviewService reviewService, IUnitOfWork unitOfWork, IClock clock, IWeeklyTemplateRepository weeklyTemplateRepository)
+        INotesReviewService reviewService, IUnitOfWork unitOfWork, IClock clock, IWeeklyTemplateRepository weeklyTemplateRepository,
+        IAiUsageContext aiUsage)
     {
+        _aiUsage = aiUsage;
         _weeklyTemplateRepository = weeklyTemplateRepository;
         _weeklyRepository = weeklyRepository;
         _noteRepository = noteRepository;
@@ -51,6 +54,8 @@ public class ReviewDailyNotesUseCase
 
         var (title, material) = NotesReviewRules.Material(weekly, dailyId);
         var courseName = await _weeklyTemplateRepository.GetCourseNameAsync(weekly.Template.Id, cancellationToken);
+        // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+        using var aiUsage = _aiUsage.Begin(userId, dailyId);
         var result = await _reviewService.ReviewAsync(new NotesReviewRequest(title, material, notes.Select(n => n.Content).ToList(), courseName), cancellationToken);
 
         var review = new NotesReview(userId, dailyId, NotesReviewRules.Hash(notes), notes.Count, result.Strengths, result.Missing, result.MaterialCheck, DateTime.UtcNow);

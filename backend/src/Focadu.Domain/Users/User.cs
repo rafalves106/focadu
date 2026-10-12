@@ -74,6 +74,11 @@ public class User : Entity
     /// </summary>
     public DateTime? EmailVerifiedAt { get; private set; }
 
+    /// <summary>Papel na plataforma (Fase 94). Admin ve o Painel de gestao; nunca muda nada do que o aluno ve.</summary>
+    public UserRole Role { get; private set; } = UserRole.Student;
+
+    public bool IsAdmin => Role == UserRole.Admin;
+
     private User()
     {
         Email = string.Empty;
@@ -171,4 +176,13 @@ public class User : Entity
 
     /// <summary>Marca o e-mail como confirmado (Fase 93). Confirmar de novo nao muda a data original.</summary>
     public void MarkEmailVerified(DateTime now) => EmailVerifiedAt ??= now;
+
+    /// <summary>Troca o papel (Fase 94) - so o comando `admin` da Api chama isso. Idempotente.</summary>
+    public void SetRole(UserRole role)
+    {
+        if (!Enum.IsDefined(role))
+            throw new DomainException("Papel invalido.", "papel_invalido");
+
+        Role = role;
+    }
 }

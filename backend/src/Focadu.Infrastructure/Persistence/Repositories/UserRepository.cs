@@ -38,4 +38,7 @@ public class UserRepository : IUserRepository
 
     public async Task AddAsync(User user, CancellationToken cancellationToken = default) =>
         await _context.Users.AddAsync(user, cancellationToken);
+
+    public async Task<IReadOnlyList<User>> ListByRoleAsync(Domain.Enums.UserRole role, CancellationToken cancellationToken = default) =>
+        await _context.Users.Where(u => u.Role == role).OrderBy(u => u.Email).ToListAsync(cancellationToken);
 }

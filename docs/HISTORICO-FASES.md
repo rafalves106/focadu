@@ -61,6 +61,7 @@ Detalhe de cada uma em `docs/fase-N/resumo-implementacao-fase-N.md`; o porquê d
 **Refação dos cursos (92–)**
 - **92** Plano de curadoria, Fase 1: `importar`, molde v1, voz com devolutiva, feedback do dia, aquecimento, `resetar-usuarios`, trilha gerada; virada dos 3 pilotos.
 - **93** Cadastro só com convite de tester (`SignupInvite`, comando `convite`) e confirmação de e-mail por código de 6 dígitos (`/confirmar-email`, claim `email_verified`), atrás das chaves `Signup:*`. Branch própria.
+- **94** Painel de gestão só para admin (`User.Role`, comando `admin promover`, `/api/admin`, `/gestao`): visão geral, alunos (reset de curso), convites (1–20 usos, 1–30 dias), curadoria (importar tudo ou nada, apagar dias antigos) e Medição de IA (handler no Groq, custo estimado com tabela de preços). Branch própria.
 
 ## Resumo detalhado das Fases 86–91 (como estava no Estado atual)
 

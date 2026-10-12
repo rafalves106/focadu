@@ -1,3 +1,6 @@
+using Focadu.Domain.AiUsage;
+using Focadu.Infrastructure.AiUsage;
+using Microsoft.Extensions.Logging;
 using System.Net.Http.Headers;
 using Focadu.Application.Ports;
 using Focadu.Domain.Repositories;
@@ -54,6 +57,9 @@ public static class DependencyInjection
         services.AddScoped<IWeeklyTemplateRepository, WeeklyTemplateRepository>();
         services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IAiUsageRepository, AiUsageRepository>(); // Fase 94
+        services.AddScoped<IAdminQueries, AdminQueries>(); // Fase 94
+        services.AddScoped<IAdminMaintenance, AdminMaintenance>(); // Fase 94
         services.AddScoped<IUserGemBalanceRepository, UserGemBalanceRepository>();
         services.AddScoped<IUserStreakRepository, UserStreakRepository>();
         services.AddScoped<ICosmeticItemRepository, CosmeticItemRepository>();
@@ -83,6 +89,10 @@ public static class DependencyInjection
         // ApiKey vazia nao impede o app de subir - so os dois adapters abaixo falham (com erro
         // claro, ver GroqOptions) quando efetivamente chamados sem a chave configurada.
         services.AddSingleton(new GroqOptions(groqApiKey));
+
+        // Fase 94, Medicao de IA: todo cliente Groq (menos o ping de status) passa pelo AiUsageMeasuringHandler, que
+        // grava modelo e uso de cada chamada. O contexto (aluno, dia) vem do caso de uso via IAiUsageContext.
+        services.AddSingleton<IAiUsageContext, AiUsageContext>();
         // Timeout por tentativa menor que o padrao (60s): estes dois adapters agora fazem ate 3
         // tentativas (HttpRetry) em sequencia dentro de 1 unico fluxo (SubmitVoiceSummary-
         // ResponseUseCase: transcreve -> avalia) - com o timeout padrao, 3 tentativas x 2 chamadas
@@ -96,36 +106,45 @@ public static class DependencyInjection
         // frontend usa como referencia (VOICE_SUMMARY_TIMEOUT_MS em api/client.ts, tambem ajustado
         // na Fase 42).
         services.AddHttpClient<IAudioTranscriptionService, GroqAudioTranscriptionService>(
-            client => ConfigureGroqClient(client, GroqAudioTranscriptionAttemptTimeout));
+            client => ConfigureGroqClient(client, GroqAudioTranscriptionAttemptTimeout))
+            .AddHttpMessageHandler(sp => MeasuredBy(sp, AiCallType.Transcription));
         services.AddSingleton<IDayLinter, NodeDayLinter>();
         services.AddHttpClient<IContentEvaluationService, GroqContentEvaluationService>(
-            client => ConfigureGroqClient(client, GroqContentEvaluationAttemptTimeout));
+            client => ConfigureGroqClient(client, GroqContentEvaluationAttemptTimeout))
+            .AddHttpMessageHandler(sp => MeasuredBy(sp, AiCallType.ContentEvaluation));
         // Rascunho de post do LinkedIn (Fase 11) - mesmo cliente/chave do Groq, so um adapter
         // diferente (gera texto livre, sem JSON mode/Score).
         services.AddHttpClient<IDraftGenerationService, GroqDraftGenerationService>(
-            client => ConfigureGroqClient(client, GroqDefaultTimeout));
+            client => ConfigureGroqClient(client, GroqDefaultTimeout))
+            .AddHttpMessageHandler(sp => MeasuredBy(sp, AiCallType.LinkedInDraft));
         // Avaliacao automatica do projeto da semana (repositorio vs especificacao) - mesmo
         // cliente/chave do Groq, adapter proprio (prompt de codigo/repo, nao de resumo falado).
         services.AddHttpClient<IProjectEvaluationService, GroqProjectEvaluationService>(
-            client => ConfigureGroqClient(client, GroqDefaultTimeout));
+            client => ConfigureGroqClient(client, GroqDefaultTimeout))
+            .AddHttpMessageHandler(sp => MeasuredBy(sp, AiCallType.ProjectEvaluation));
         // Analogia personalizada de leitura (Fase 21) - mesmo cliente/chave do Groq, adapter
         // proprio (prompt de analogia por interesse, nao de resumo falado nem de codigo).
         services.AddHttpClient<IAnalogyGenerationService, GroqAnalogyGenerationService>(
-            client => ConfigureGroqClient(client, GroqDefaultTimeout));
+            client => ConfigureGroqClient(client, GroqDefaultTimeout))
+            .AddHttpMessageHandler(sp => MeasuredBy(sp, AiCallType.Analogy));
         // Suporte Rapido de IA (Fase 32) - botao flutuante durante a sessao, pergunta avulsa sem
         // historico (ver AskStudyAssistantUseCase) - mesmo cliente/chave do Groq, timeout padrao
         // (chamada unica, sem retry, mesma categoria de Draft/ProjectEvaluation/Analogy acima).
         services.AddHttpClient<IStudyAssistantService, GroqStudyAssistantService>(
-            client => ConfigureGroqClient(client, GroqDefaultTimeout));
+            client => ConfigureGroqClient(client, GroqDefaultTimeout))
+            .AddHttpMessageHandler(sp => MeasuredBy(sp, AiCallType.StudyAssistant));
         // Revisao por IA das notas de um dia (Fase 78, Caderninho) - mesmo cliente/chave do Groq.
         services.AddHttpClient<INotesReviewService, GroqNotesReviewService>(
-            client => ConfigureGroqClient(client, GroqDefaultTimeout));
+            client => ConfigureGroqClient(client, GroqDefaultTimeout))
+            .AddHttpMessageHandler(sp => MeasuredBy(sp, AiCallType.NotesReview));
         // Passo de codigo da ponte "code comigo" (Fase 79) - mesmo cliente/chave do Groq.
         services.AddHttpClient<ICodeStepEvaluationService, GroqCodeStepEvaluationService>(
-            client => ConfigureGroqClient(client, GroqDefaultTimeout));
+            client => ConfigureGroqClient(client, GroqDefaultTimeout))
+            .AddHttpMessageHandler(sp => MeasuredBy(sp, AiCallType.CodeStepEvaluation));
         // Dica da Focada no laboratorio de codigo (Fase 86) - mesmo cliente/chave do Groq.
         services.AddHttpClient<ICodeStepHintService, GroqCodeStepHintService>(
-            client => ConfigureGroqClient(client, GroqDefaultTimeout));
+            client => ConfigureGroqClient(client, GroqDefaultTimeout))
+            .AddHttpMessageHandler(sp => MeasuredBy(sp, AiCallType.CodeStepHint));
         // Status da IA (Fase 28): badge do GlobalNav no frontend - GroqHealthCheckService e
         // Singleton (guarda cache em memoria, ver comentario na classe), entao usa
         // IHttpClientFactory.CreateClient(nome) em vez de AddHttpClient<TService> (que registraria
@@ -183,4 +202,7 @@ public static class DependencyInjection
             client.Timeout = timeout;
         }
     }
+
+    private static AiUsageMeasuringHandler MeasuredBy(IServiceProvider services, AiCallType callType) =>
+        new(callType, services.GetRequiredService<IServiceScopeFactory>(), services.GetRequiredService<ILogger<AiUsageMeasuringHandler>>());
 }

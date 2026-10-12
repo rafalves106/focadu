@@ -102,7 +102,7 @@ export function setSessionExpiredHandler(handler: (() => void) | null) {
   sessionExpiredHandler = handler;
 }
 
-async function request<T>(
+export async function request<T>(
   path: string,
   init?: RequestInit & {
     timeoutMs?: number;
