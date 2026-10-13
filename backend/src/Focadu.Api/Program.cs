@@ -554,8 +554,17 @@ api.MapPost("/auth/reset-password", async (ResetPasswordRequest? request, ResetP
     })
     .WithName("ResetPassword");
 
-api.MapGet("/auth/me", async (ClaimsPrincipal principal, GetCurrentUserUseCase useCase, CancellationToken ct) =>
-        Results.Ok(WithSignup(await useCase.ExecuteAsync(CurrentUserId(principal), ct))))
+api.MapGet("/auth/me", async (HttpContext http, ClaimsPrincipal principal, GetCurrentUserUseCase useCase,
+        Focadu.Domain.Repositories.IUserRepository users, IJwtTokenService tokens, CancellationToken ct) =>
+    {
+        var user = await useCase.ExecuteAsync(CurrentUserId(principal), ct);
+        // Cookie emitido antes de o e-mail ser confirmado (ou antes da Fase 93, sem a claim): o banco diz confirmado,
+        // a politica padrao barra com 403 e o front fica em loop entre /start e /confirmar-email. Troca o cookie aqui.
+        if (user.EmailVerifiedAt is not null && principal.FindFirst(JwtTokenService.EmailVerifiedClaim)?.Value != "true"
+            && await users.GetByIdAsync(user.Id, ct) is { } entity)
+            SetAuthCookie(http, tokens.GenerateToken(entity));
+        return Results.Ok(WithSignup(user));
+    })
     .RequireAuthorization(PendingEmailPolicy)
     .WithName("GetCurrentUser");
 
