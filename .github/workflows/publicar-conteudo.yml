@@ -86,11 +86,16 @@ jobs:
         env:
           LISTA: ${{ steps.dias.outputs.lista }}
         run: |
-          (cd processo/scripts/linter-dia && npm ci --no-audit --no-fund)
+          # instala numa copia temporaria: o node_modules do secret/ na VM pode ser de outro usuario (EACCES, 13/10/2026)
+          # (copia a pasta processo inteira: o linter acha o schema e o lab por caminho relativo)
+          rm -rf "$RUNNER_TEMP/processo"
+          tar -C . --exclude=node_modules -cf - processo | tar -C "$RUNNER_TEMP" -xf -
+          LINTER="$RUNNER_TEMP/processo/scripts/linter-dia"
+          (cd "$LINTER" && npm ci --no-audit --no-fund)
           falhou=0
           for d in $LISTA; do
             f=$(ls conteudo/"$CURSO"/semana-*/dia-"$d".json | head -1)
-            node processo/scripts/linter-dia/src/cli.js "$f" \
+            node "$LINTER"/src/cli.js "$f" \
               --glossario processo/cursos/"$CURSO"/glossario.md \
               --log processo/cursos/"$CURSO"/logs/dia-"$d".log || falhou=1
           done
