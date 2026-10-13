@@ -3,8 +3,8 @@
 // quando o codigo passa do tempo ou o aluno manda parar.
 //
 // Mensagens do app -> runner (todas com `id`; a resposta volta como { id, ok, ... }):
-//   init    { runtime: 'python'|'javascript'|'bash', image?, files: [{ name, data: ArrayBuffer }], packages, services, timeoutSeconds }
-//   run     { script, argv, entry }        python/javascript: roda o script inteiro
+//   init    { runtime: 'python'|'javascript'|'bash'|'sqlite', image?, files: [{ name, data: ArrayBuffer }], packages, services, setup?, timeoutSeconds }
+//   run     { script, argv, entry }        python/javascript/sqlite: roda o script inteiro (sqlite: o SQL num banco novo)
 //   exec    { command }                    bash: roda um comando no terminal
 //   write   { path, text }                 bash: grava um arquivo na VM (ex.: o que o aluno editou)
 //   abort   {}                             derruba o que estiver rodando e sobe o runtime de novo
@@ -14,7 +14,7 @@
 // Seguranca: a CSP desta pagina e dos Workers libera `connect-src` so em /lab/ - o codigo do aluno nao alcanca
 // a API da Focada nem outra origem (verificado no spike de 30/09/2026).
 
-const WORKERS = { python: './py.worker.mjs', javascript: './js.worker.mjs', bash: './linux.worker.mjs' };
+const WORKERS = { python: './py.worker.mjs', javascript: './js.worker.mjs', bash: './linux.worker.mjs', sqlite: './py.worker.mjs' };
 
 /** @type {{ worker: Worker, output: string[] } | null} */
 let engine = null;

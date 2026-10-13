@@ -260,7 +260,8 @@ export interface CodeStepHintDto {
   createdAt: string;
 }
 
-export type LabRuntime = 'python' | 'javascript' | 'bash';
+/** Fase 95: 'sqlite' = o aluno escreve SQL puro, que roda no SQLite do Pyodide (banco novo a cada execucao). */
+export type LabRuntime = 'python' | 'javascript' | 'bash' | 'sqlite';
 
 /**
  * Fase 86: laboratorio de codigo do dia (nulo = dia sem laboratorio). Quem roda o codigo e o navegador do
@@ -278,7 +279,7 @@ export interface LabConfigDto {
   /** Comando de exemplo que roda o `entry` (no Linux, o aluno digita). */
   command: string;
   timeoutSeconds: number;
-  /** Bash: linhas de shell rodadas como root antes do terminal abrir (usuarios, grupos, arquivos). */
+  /** Bash: linhas de shell rodadas como root antes do terminal abrir (usuarios, grupos, arquivos). SQLite: comandos SQL que montam o banco do dia. */
   setup: string[];
   /** Bash: usuario em que o terminal entra depois do `setup` (nulo = root). */
   user: string | null;
@@ -886,6 +887,8 @@ export interface UserDto {
   emailVerificationPending?: boolean;
   /** Fase 94: mostra o item "Gestao" no menu global. So aparencia - a Api confere o papel em cada rota /api/admin. */
   isAdmin?: boolean;
+  /** Fase 96: nome da turma do aluno (nulo = sem turma). O Start mostra no lugar de "+ Explorar cursos". */
+  cohortName?: string | null;
 }
 
 /** Fase 93: GET /api/auth/signup-status - o que a tela de login precisa saber antes de ter sessao. */

@@ -53,3 +53,8 @@ export function dayMonth(isoOrDate: string): string {
 
 /** Link da Focadu que o Claude abre ("Abrir no Claude"): sessao do Remote Control no Mac do dono. */
 export const CLAUDE_URL: string = import.meta.env.VITE_CLAUDE_URL ?? 'https://claude.ai/code';
+
+/** Link completo do convite: a Api devolve relativo ("/login?convite=CODIGO") e o painel roda no mesmo dominio do cadastro. */
+export function fullLink(invite: { link: string }): string {
+  return `${window.location.origin}${invite.link}`;
+}

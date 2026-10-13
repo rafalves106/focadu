@@ -42,6 +42,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         // Fase 94: papel (Student/Admin) como string, todo usuario existente nasce Student.
         builder.Property(u => u.Role).HasConversion<string>().HasMaxLength(20).IsRequired().HasDefaultValue(UserRole.Student);
+        // Fase 96: turma do aluno (nula = sem turma). Turma nunca e apagada (so arquivada), entao Restrict.
+        builder.HasOne<Cohort>().WithMany().HasForeignKey(u => u.CohortId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(u => u.CohortId);
         builder.Ignore(u => u.IsAdmin);
 
         builder.HasIndex(u => u.Email).IsUnique();

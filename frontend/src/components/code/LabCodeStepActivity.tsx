@@ -15,7 +15,9 @@ import { CodeEditor, OutputBox } from './codeParts';
 import { draftKey, lineCount, readDraft, splitPrompt, writeDraft } from './codeHelpers';
 import { HintPanel, LabChip, LabProgressBar, TerminalPanel, type TerminalEntry } from './labParts';
 
-const LANGUAGE_NAME = { python: 'Python', javascript: 'JavaScript', bash: 'Bash' } as const;
+const LANGUAGE_NAME = { python: 'Python', javascript: 'JavaScript', bash: 'Bash', sqlite: 'SQL' } as const;
+/** Marcador de comentario de cada linguagem (o placeholder do editor). */
+const COMMENT = { python: '#', javascript: '//', bash: '#', sqlite: '--' } as const;
 
 /**
  * Passo de codigo COM laboratorio (Fase 87, Figma "Laboratório de código — v2", quadros 01 a 07;
@@ -306,7 +308,7 @@ export function LabCodeStepActivity({
               startLine={startLine}
               tone={view === 'passou' ? 'accent' : view === 'ajuste' ? 'project' : 'stroke'}
               indent={indent}
-              placeholder={`${lab.runtime === 'python' || isBash ? '#' : '//'} passo ${stepNumber}: escreva aqui`}
+              placeholder={`${COMMENT[lab.runtime]} passo ${stepNumber}: escreva aqui`}
               onSubmitShortcut={isBash ? undefined : handleRun}
               label={`Seu código do passo ${stepNumber}`}
               errorLine={view === 'escrevendo' ? failedLine : null}

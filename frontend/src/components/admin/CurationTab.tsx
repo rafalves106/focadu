@@ -5,12 +5,13 @@ import { ApiError } from '../../api/client';
 import { useApiResource } from '../../api/useApiResource';
 import { handleOf } from '../../lib/adminFormat';
 import { PixelModal } from '../PixelModal';
-import { AdminPanel, EmptyPanel, Field, PanelError, PixelButton, ResultBanner, SkeletonRows } from './AdminUi';
+import { AdminPanel, Chip, EmptyPanel, Field, PanelError, PixelButton, ResultBanner, SkeletonRows } from './AdminUi';
 import { inputClass } from '../../lib/adminStyles';
 import { AdminShell } from './AdminShell';
 
 // Fase 94, PG 20-28 — Curadoria: dia a dia, arquivo em secret/conteudo x banco. Importar e em dois passos (previa,
 // depois confirmar) e e tudo ou nada; dia "so no banco" sai pelo "Apagar dias antigos", nunca por celula.
+// Fase 96, TU 20-21: barra "quem ve" do curso (visivel pra todos / so pra turmas); esconder do publico pede confirmacao.
 
 const STATE: Record<CurationDayState, { label: string; cell: string; text: string; importable: boolean }> = {
   em_dia: { label: 'em dia', cell: 'border-accent bg-accent/10', text: 'text-accent', importable: false },
@@ -115,6 +116,10 @@ export function CurationTab() {
             <ResultBanner tone="success" onClose={() => setBanner(null)}>
               {banner}
             </ResultBanner>
+          )}
+
+          {course.courseId && course.onlyForCohorts !== null && (
+            <VisibilityBar key={course.courseId} course={course} onChanged={(text) => { setBanner(text); retry(); }} />
           )}
 
           <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[1fr_436px]">
@@ -411,4 +416,83 @@ function rangeText(days: number[]) {
   const first = days[0];
   const last = days[days.length - 1];
   return days.length === last - first + 1 ? `D${first} a D${last}` : days.map((d) => `D${d}`).join(', ');
+}
+
+/** TU 20-21: quem ve o curso. "So pra turmas" esconde do publico (aluno de turma e lista de previa continuam vendo). */
+function VisibilityBar({ course, onChanged }: { course: CurationCourseDto; onChanged: (banner: string) => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const onlyForCohorts = course.onlyForCohorts === true;
+  const cohorts = course.cohorts ?? [];
+
+  async function apply(value: boolean) {
+    if (!course.courseId) return;
+    setBusy(true);
+    setFailure(null);
+    try {
+      await adminApi.setCourseVisibility(course.courseId, value);
+      setConfirming(false);
+      onChanged(value ? `${course.name} agora é só pra turmas.` : `${course.name} voltou a aparecer pra todos.`);
+    } catch (err) {
+      setFailure(err instanceof ApiError ? err.message : 'Não deu pra mudar quem vê o curso.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className={`flex flex-wrap items-center gap-3 border-2 px-4 py-3 lg:shrink-0 ${onlyForCohorts ? 'border-project' : 'border-stroke'}`}>
+      <span className="font-pixel-label text-[7px] text-secondary">QUEM VÊ {course.name.toUpperCase()}</span>
+      <div className="flex gap-2" role="radiogroup" aria-label={`Quem vê ${course.name}`}>
+        <PixelButton tone={onlyForCohorts ? 'outline' : 'selected'} disabled={busy} aria-pressed={!onlyForCohorts} onClick={() => onlyForCohorts && apply(false)}>
+          Visível pra todos
+        </PixelButton>
+        <PixelButton tone={onlyForCohorts ? 'selected' : 'outline'} disabled={busy} aria-pressed={onlyForCohorts} onClick={() => !onlyForCohorts && setConfirming(true)}>
+          Só pra turmas
+        </PixelButton>
+      </div>
+      <p className="flex flex-wrap items-center gap-2 text-[13px] text-secondary">
+        {onlyForCohorts ? (
+          cohorts.length > 0 ? (
+            <>
+              Veem:
+              {cohorts.map((name) => (
+                <Chip key={name} tone="amber">
+                  {name}
+                </Chip>
+              ))}
+              Fora {cohorts.length === 1 ? 'dessa turma' : 'dessas turmas'}, o curso não aparece na escolha de curso.
+            </>
+          ) : (
+            'Nenhuma turma ativa tem este curso: ninguém novo vê. Ponha o curso numa turma na aba Turmas.'
+          )
+        ) : (
+          'Aparece na escolha de curso pra todo aluno sem turma.'
+        )}
+      </p>
+      {failure && <p className="w-full text-[12px] text-alert">{failure}</p>}
+
+      {confirming && (
+        <PixelModal label="Esconder curso" title="SÓ PRA TURMAS" onClose={busy ? undefined : () => setConfirming(false)} widthClass="max-w-lg">
+          <div className="flex flex-col gap-4 p-5">
+            <h3 className="text-[18px] text-primary">Esconder {course.name} do público?</h3>
+            <p className="text-[14px] text-secondary">
+              Quem já está matriculado continua com o curso. Aluno sem turma deixa de ver {course.name} na escolha de curso;{' '}
+              {cohorts.length > 0 ? `só ${cohorts.length === 1 ? 'a turma' : 'as turmas'} ${cohorts.join(', ')} ${cohorts.length === 1 ? 'vê' : 'veem'}.` : 'hoje nenhuma turma ativa tem este curso, então ninguém novo vê.'}
+            </p>
+            {failure && <p className="text-[13px] text-alert">{failure}</p>}
+            <div className="flex justify-end gap-2">
+              <PixelButton onClick={() => setConfirming(false)} disabled={busy}>
+                Cancelar
+              </PixelButton>
+              <PixelButton tone="primary" onClick={() => apply(true)} disabled={busy}>
+                {busy ? 'Salvando…' : 'Só pra turmas'}
+              </PixelButton>
+            </div>
+          </div>
+        </PixelModal>
+      )}
+    </div>
+  );
 }

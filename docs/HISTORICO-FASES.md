@@ -62,6 +62,8 @@ Detalhe de cada uma em `docs/fase-N/resumo-implementacao-fase-N.md`; o porquê d
 - **92** Plano de curadoria, Fase 1: `importar`, molde v1, voz com devolutiva, feedback do dia, aquecimento, `resetar-usuarios`, trilha gerada; virada dos 3 pilotos.
 - **93** Cadastro só com convite de tester (`SignupInvite`, comando `convite`) e confirmação de e-mail por código de 6 dígitos (`/confirmar-email`, claim `email_verified`), atrás das chaves `Signup:*`. Branch própria.
 - **94** Painel de gestão só para admin (`User.Role`, comando `admin promover`, `/api/admin`, `/gestao`): visão geral, alunos (reset de curso), convites (1–20 usos, 1–30 dias), curadoria (importar tudo ou nada, apagar dias antigos) e Medição de IA (handler no Groq, custo estimado com tabela de preços). Branch própria.
+- **95** SQLite no laboratório de código (`lab.runtime: sqlite`): SQL puro no SQLite do Pyodide, banco novo a cada execução montado por `files`/`setup`, saída em tabela, `Erro na linha N`, `.tables`/`.schema`; verificador da curadoria ganhou o runtime. Para o curso Banco de Dados (A1 da UNA).
+- **96** Turmas: `Cohort` com cursos, convite de turma matricula nos cursos dela e o aluno só vê esses cursos (`CourseViewer`, regra única de quem vê cada curso), curso "só pra turmas", aba Turmas no painel, turma em Convites/Alunos e "quem vê" na Curadoria. Para o teste fechado com a turma da UNA.
 
 ## Resumo detalhado das Fases 86–91 (como estava no Estado atual)
 

@@ -57,6 +57,7 @@ public class FocaduDbContext : DbContext
 
     // Cadastro so com convite e confirmacao de e-mail (Fase 93).
     public DbSet<SignupInvite> SignupInvites => Set<SignupInvite>();
+    public DbSet<Cohort> Cohorts => Set<Cohort>();
     public DbSet<EmailVerificationCode> EmailVerificationCodes => Set<EmailVerificationCode>();
 
     // Gamificacao (Fase 14) - 1:1 com User, sempre criadas lazy (ver GamificationCreditor).

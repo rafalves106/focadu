@@ -31,6 +31,16 @@ public record UserDto(
     /// <summary>Fase 94: mostra o item "Gestao" no menu global. So aparencia - cada rota /api/admin confere o papel no banco.</summary>
     public bool IsAdmin { get; init; }
 
+    /// <summary>Fase 96: nome da turma do aluno (nulo = sem turma). O Start mostra no lugar de "+ Explorar cursos".</summary>
+    public string? CohortName { get; init; }
+
+    /// <summary>Fase 96: preenche CohortName a partir da turma do usuario.</summary>
+    public static async Task<UserDto> FromAsync(User user, Domain.Repositories.ICohortRepository cohorts, CancellationToken cancellationToken = default) =>
+        From(user) with
+        {
+            CohortName = user.CohortId is { } id ? (await cohorts.GetByIdAsync(id, cancellationToken))?.Name : null,
+        };
+
     public static UserDto From(User user) => new(
         user.Id, user.Email, user.DisplayName, user.ProfileCompletedAt, user.Interests, user.AdditionalProfileNotes,
         user.PreferredLanguages, user.CreatedAt, user.HideScoresInSquadFeed, user.SeenGuides, user.EmailVerifiedAt)

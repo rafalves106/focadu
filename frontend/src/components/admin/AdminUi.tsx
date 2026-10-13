@@ -200,3 +200,44 @@ export function BlockBar({ filled, blocks = 24, color = 'bg-accent' }: { filled:
     </div>
   );
 }
+
+/**
+ * Fase 96 ("Opção marcável", Figma Turmas v1): linha clicavel com caixa (varias) ou radio (uma), titulo e uma linha de
+ * detalhe. O radio e quadrado de proposito, pra manter os cantos retos do pixel art.
+ */
+export function CheckOption({
+  kind,
+  checked,
+  title,
+  detail,
+  disabled = false,
+  onChange,
+}: {
+  kind: 'checkbox' | 'radio';
+  checked: boolean;
+  title: ReactNode;
+  detail?: ReactNode;
+  disabled?: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role={kind}
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={onChange}
+      className={`flex w-full items-center gap-4 border-2 px-4 py-2 text-left disabled:cursor-not-allowed disabled:opacity-40 ${
+        checked ? 'border-accent' : 'border-stroke hover:border-secondary hover:bg-surface'
+      }`}
+    >
+      <span className={`flex size-5 shrink-0 items-center justify-center border-2 ${checked ? 'border-accent' : 'border-secondary'}`} aria-hidden="true">
+        {checked && <span className={kind === 'radio' ? 'size-2 bg-accent' : 'size-3 bg-accent'} />}
+      </span>
+      <span className="flex min-w-0 flex-col">
+        <span className="truncate text-[14px] text-primary">{title}</span>
+        {detail && <span className="truncate text-[12px] text-secondary">{detail}</span>}
+      </span>
+    </button>
+  );
+}

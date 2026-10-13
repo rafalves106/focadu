@@ -1285,8 +1285,34 @@ admin.MapGet("/invites", async (Focadu.Application.Admin.AdminInvitesUseCase use
     .WithName("AdminListInvites");
 
 admin.MapPost("/invites", async (AdminCreateInviteRequest? request, Focadu.Application.Admin.AdminInvitesUseCase useCase, CancellationToken ct) =>
-        Results.Ok(await useCase.CreateAsync(request?.Note, request?.MaxUses, request?.ValidDays, ct)))
+        Results.Ok(await useCase.CreateAsync(request?.Note, request?.MaxUses, request?.ValidDays,
+            OptionalGuid(request?.CohortId, "cohortId"), ct)))
     .WithName("AdminCreateInvite");
+
+// Fase 96: Turmas (aba Turmas e o "quem ve o curso" da aba Curadoria).
+admin.MapGet("/cohorts", async (Focadu.Application.Admin.AdminCohortsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ListAsync(ct)))
+    .WithName("AdminListCohorts");
+
+admin.MapGet("/cohorts/{cohortId}", async (string cohortId, Focadu.Application.Admin.AdminCohortsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.GetAsync(RouteParsing.RequireGuid(cohortId, "cohortId"), ct)))
+    .WithName("AdminGetCohort");
+
+admin.MapPost("/cohorts", async (AdminSaveCohortRequest? request, Focadu.Application.Admin.AdminCohortsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.CreateAsync(request?.Name, request?.CourseIds, ct)))
+    .WithName("AdminCreateCohort");
+
+admin.MapPut("/cohorts/{cohortId}", async (string cohortId, AdminSaveCohortRequest? request, Focadu.Application.Admin.AdminCohortsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.UpdateAsync(RouteParsing.RequireGuid(cohortId, "cohortId"), request?.Name, request?.CourseIds, ct)))
+    .WithName("AdminUpdateCohort");
+
+admin.MapPost("/cohorts/{cohortId}/archive", async (string cohortId, Focadu.Application.Admin.AdminCohortsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ArchiveAsync(RouteParsing.RequireGuid(cohortId, "cohortId"), ct)))
+    .WithName("AdminArchiveCohort");
+
+admin.MapPut("/courses/{courseId}/visibility", async (string courseId, AdminCourseVisibilityRequest? request, Focadu.Application.Admin.AdminCohortsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.SetCourseVisibilityAsync(RouteParsing.RequireGuid(courseId, "courseId"), request?.OnlyForCohorts ?? false, ct)))
+    .WithName("AdminSetCourseVisibility");
 
 admin.MapPost("/invites/{code}/revoke", async (string code, Focadu.Application.Admin.AdminInvitesUseCase useCase, CancellationToken ct) =>
         Results.Ok(await useCase.RevokeAsync(code, ct)))

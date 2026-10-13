@@ -73,6 +73,7 @@ public static class DependencyInjection
         services.AddScoped<INotesReviewRepository, NotesReviewRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<ISignupInviteRepository, SignupInviteRepository>();
+        services.AddScoped<ICohortRepository, CohortRepository>();
         services.AddScoped<IEmailVerificationCodeRepository, EmailVerificationCodeRepository>();
         services.AddScoped<IUserForgejoAccountRepository, UserForgejoAccountRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();

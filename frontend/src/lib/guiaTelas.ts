@@ -98,7 +98,7 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
     items: [
       { title: 'Menu: o que é seu', text: 'Hoje, Trilhas, Loja e Ranking. O logo no meio sempre volta pra cá.', anchor: 'nav-solo' },
       { title: 'Menu: o que é em grupo', text: 'Squad, o status da IA, as Configurações e o seu perfil.', anchor: 'nav-grupo' },
-      { title: 'Seus cursos', text: 'Cada curso é um save. O escolhido muda o resto da tela.', anchor: 'start-cursos' },
+      { title: 'Seus cursos', text: 'Cada curso é um save. O escolhido muda o resto da tela. Quem é de uma turma vê o nome dela aqui embaixo.', anchor: 'start-cursos' },
       { title: 'Seu agente', text: 'Ofensiva, Gems e os dias da semana em que você estudou.', anchor: 'start-agente' },
       { title: 'Missão do dia', text: 'Uma Daily por dia, em etapas. É daqui que você começa.', anchor: 'start-missao' },
       { title: 'Rumo ao castelo', text: 'Os dias que faltam até o Projeto Semanal desta semana. No curso sem projeto, a linha termina na ponte.', anchor: 'start-castelo' },
@@ -238,11 +238,15 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
     focada: 'Bastidor da Focadu: só quem é admin vê. Nada daqui aparece pro aluno.',
     items: [
       { title: 'Visão geral', text: 'Alunos ativos, cadastros por convite, dias concluídos, custo de IA do mês e quantos dias cada curso tem curados.' },
-      { title: 'Alunos', text: 'Clique num aluno pra ver o progresso por curso. "Resetar progresso" zera um curso só e pede o e-mail do aluno pra confirmar.' },
-      { title: 'Convites', text: 'Criar convite (1 a 20 usos, 1 a 30 dias, sempre vence), copiar o link e revogar.' },
+      { title: 'Alunos', text: 'Clique num aluno pra ver o progresso por curso e a turma dele. "Resetar progresso" zera um curso só e pede o e-mail do aluno pra confirmar.' },
+      {
+        title: 'Turmas',
+        text: 'Uma turma junta alunos e os cursos deles. Quem entra por convite da turma é matriculado nos cursos dela e só vê esses cursos. Curso que entra matricula a turma na hora; arquivar mantém os alunos e para os convites.',
+      },
+      { title: 'Convites', text: 'Criar convite (1 a 20 usos, 1 a 30 dias, sempre vence), com ou sem turma, copiar o link e revogar.' },
       {
         title: 'Curadoria',
-        text: 'Arquivo em secret/conteudo x banco, dia a dia. Marque dias novos ou diferentes, veja a prévia do linter e importe: é tudo ou nada. Dia só no banco sai pelo "Apagar dias antigos".',
+        text: 'Arquivo em secret/conteudo x banco, dia a dia. Marque dias novos ou diferentes, veja a prévia do linter e importe: é tudo ou nada. Dia só no banco sai pelo "Apagar dias antigos". Em cima, quem vê o curso: todos ou só as turmas.',
       },
       { title: 'Uso de IA', text: 'Quanto a IA custa, por tipo de chamada e por aluno. É só medição: nada bloqueia nem troca modelo. Preços e teto são editáveis.' },
       { title: 'Abrir no Claude', text: 'Leva pra sessão do Claude Code. Não é um chat dentro do app.' },

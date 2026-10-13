@@ -23,7 +23,7 @@ public interface IAdminQueries
     Task<int> CountActiveUsersSinceAsync(DateTime fromUtc, CancellationToken cancellationToken = default);
 }
 
-public record AdminUserRow(Guid Id, string DisplayName, string Email, DateTime CreatedAt, DateTime? EmailVerifiedAt, bool IsAdmin);
+public record AdminUserRow(Guid Id, string DisplayName, string Email, DateTime CreatedAt, DateTime? EmailVerifiedAt, bool IsAdmin, Guid? CohortId = null);
 
 public record AdminEnrollmentRow(
     Guid EnrollmentId, Guid UserId, Guid CourseId, string CourseName, DateTime EnrolledAt,
@@ -32,6 +32,6 @@ public record AdminEnrollmentRow(
 /// <summary>Um dia da matricula (grade do painel lateral do aluno): semana, numero do dia no curso e se ja concluiu.</summary>
 public record AdminDayCell(int Week, int Day, bool Completed);
 
-public record AdminCourseRow(Guid Id, string Name, string Status);
+public record AdminCourseRow(Guid Id, string Name, string Status, bool OnlyForCohorts = false);
 
 public record AdminCourseDayRow(int DayNumber, string? ContentHash, int Responses, int StudentsWithProgress);

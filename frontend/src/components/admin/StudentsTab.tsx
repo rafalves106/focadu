@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { adminApi } from '../../api/admin';
 import type { AdminCourseProgressDto, AdminStudentDto, CourseResetPreviewDto } from '../../api/adminTypes';
 import { ApiError } from '../../api/client';
@@ -10,8 +11,9 @@ import { inputClass } from '../../lib/adminStyles';
 import { AdminShell } from './AdminShell';
 
 // Fase 94, PG 02-08 — Alunos: tabela ordenavel, painel lateral do aluno e "Resetar progresso" de um curso.
+// Fase 96, TU 30: coluna e selo da turma; `?aluno=<id>` abre o aluno ja selecionado ("Ver em Alunos" da turma).
 
-type SortKey = 'aluno' | 'cursos' | 'dia' | 'acesso' | 'sequencia' | 'email';
+type SortKey = 'aluno' | 'turma' | 'cursos' | 'dia' | 'acesso' | 'sequencia' | 'email';
 
 const TABLE_NAMES: Record<string, string> = {
   ActivityResponses: 'respostas das atividades',
@@ -24,7 +26,8 @@ export function StudentsTab() {
   const { data, error, loading, retry } = useApiResource(() => adminApi.getStudents(), []);
   const [hidden, setHidden] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'acesso', dir: 'desc' });
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('aluno'));
   const [resetting, setResetting] = useState<{ student: AdminStudentDto; course: AdminCourseProgressDto } | null>(null);
   const [result, setResult] = useState<string | null>(null);
 
@@ -60,6 +63,7 @@ export function StudentsTab() {
                 <thead className="sticky top-0 bg-base">
                   <tr className="border-b-2 border-stroke">
                     <SortHeader label="Aluno" active={sort.key === 'aluno'} direction={sort.dir} onClick={() => toggleSort('aluno')} />
+                    <SortHeader label="Turma" active={sort.key === 'turma'} direction={sort.dir} onClick={() => toggleSort('turma')} />
                     <SortHeader label="Cursos" active={sort.key === 'cursos'} direction={sort.dir} onClick={() => toggleSort('cursos')} />
                     <SortHeader label="Dia atual" active={sort.key === 'dia'} direction={sort.dir} onClick={() => toggleSort('dia')} />
                     <SortHeader label="Último acesso" active={sort.key === 'acesso'} direction={sort.dir} onClick={() => toggleSort('acesso')} />
@@ -80,6 +84,9 @@ export function StudentsTab() {
                           {active && '▶ '}
                           {nameOf(s)}
                           {s.isAdmin && <span className="ml-2 font-pixel-label text-[7px] text-project">admin</span>}
+                        </td>
+                        <td className="px-3 py-3">
+                          {s.cohortName ? <Chip tone="amber">{s.cohortName}</Chip> : <span className="text-[12px] text-muted">sem turma</span>}
                         </td>
                         <td className="px-3 py-3 text-secondary">{s.courses.map((c) => c.courseName).join(' · ') || '—'}</td>
                         <td className="px-3 py-3 text-primary">{s.currentCourse ? `${s.currentCourse} D${s.currentDay}` : '—'}</td>
@@ -156,6 +163,15 @@ function StudentDetail({
           <p className="text-[12px] text-secondary">
             Entrou em {dateBr(student.createdAt)} · e-mail {student.emailVerified ? 'confirmado' : 'não confirmado'} · último acesso {when(student.lastActivityAt)}
           </p>
+          {student.cohortName && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="font-pixel-label text-[7px] text-secondary">TURMA</span>
+              <Chip tone="amber">{student.cohortName}</Chip>
+              <Link to={`/gestao/turmas?turma=${student.cohortId}`} className="font-pixel-label text-[7px] text-accent hover:underline">
+                Ver turma ›
+              </Link>
+            </div>
+          )}
         </div>
         <div className="grid grid-cols-3 gap-2">
           <MiniStat value={completed} label="dias concluídos" />
@@ -296,6 +312,8 @@ function sortStudents(list: AdminStudentDto[], key: SortKey, dir: 'asc' | 'desc'
     switch (key) {
       case 'aluno':
         return s.email;
+      case 'turma':
+        return s.cohortName ?? '';
       case 'cursos':
         return s.courses.map((c) => c.courseName).join(' ');
       case 'dia':

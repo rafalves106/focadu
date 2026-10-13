@@ -16,7 +16,7 @@ public class AdminQueries : IAdminQueries
     public async Task<IReadOnlyList<AdminUserRow>> ListUsersAsync(CancellationToken cancellationToken = default) =>
         await _context.Users.AsNoTracking()
             .OrderBy(u => u.CreatedAt)
-            .Select(u => new AdminUserRow(u.Id, u.DisplayName, u.Email, u.CreatedAt, u.EmailVerifiedAt, u.Role == Domain.Enums.UserRole.Admin))
+            .Select(u => new AdminUserRow(u.Id, u.DisplayName, u.Email, u.CreatedAt, u.EmailVerifiedAt, u.Role == Domain.Enums.UserRole.Admin, u.CohortId))
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<AdminEnrollmentRow>> ListEnrollmentsAsync(Guid? userId, CancellationToken cancellationToken = default)
@@ -95,8 +95,8 @@ public class AdminQueries : IAdminQueries
     }
 
     public async Task<IReadOnlyList<AdminCourseRow>> ListCoursesAsync(CancellationToken cancellationToken = default) =>
-        (await _context.Courses.AsNoTracking().OrderBy(c => c.Name).Select(c => new { c.Id, c.Name, c.Status }).ToListAsync(cancellationToken))
-            .Select(c => new AdminCourseRow(c.Id, c.Name, c.Status.ToString())).ToList();
+        (await _context.Courses.AsNoTracking().OrderBy(c => c.Name).Select(c => new { c.Id, c.Name, c.Status, c.OnlyForCohorts }).ToListAsync(cancellationToken))
+            .Select(c => new AdminCourseRow(c.Id, c.Name, c.Status.ToString(), c.OnlyForCohorts)).ToList();
 
     public async Task<IReadOnlyList<AdminCourseDayRow>> ListCourseDaysAsync(Guid courseId, CancellationToken cancellationToken = default)
     {

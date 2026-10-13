@@ -21,6 +21,7 @@ Pedido sem curso claro: pergunte. Slugs: `web-security`, `linux`, `python-websec
 2. `secret/processo/cursos/<curso>/glossario.md`. Se não existir, a etapa C2 não foi feita: avise e pare.
 3. `secret/processo/molde/molde-v1.md` (tipos A e B) e, se existir, `ficha-curso.md` e `assumidos.md` do curso (nível, o que não explicar).
 4. Se o dia for o 2 em diante: a ficha do dia anterior, para não repetir o que já foi ensinado.
+5. **Curso de faculdade (existe `secret/material/<curso>/`, hoje o `banco-de-dados`):** o material do professor daquele dia (o `plano-a1.md` do curso diz qual arquivo cobre cada dia; texto extraído em `/tmp/claude-501/bd/`, ou recriar com `pdftotext -layout` e unzip do XML do docx/pptx). A ficha segue a didática do professor: mesmos exemplos, mesmas listas, mesma ordem e mesmos nomes, porque é o que cai na prova. Termo que o professor usa e falta no glossário: pare e peça para acrescentar. Nas notas da ficha, cite os slides/tópicos usados e as questões do professor que viram atividade (decisão do dono, 12/10/2026).
 
 **Escreva** `secret/processo/cursos/<curso>/fichas/dia-N.ficha.md`, **no máximo 1 página**, com estes campos:
 

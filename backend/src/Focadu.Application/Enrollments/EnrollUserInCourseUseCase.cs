@@ -25,8 +25,7 @@ public class EnrollUserInCourseUseCase
     private readonly IForgejoService _forgejoService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
-    private readonly IUserRepository _userRepository;
-    private readonly CoursePreviewOptions _previewOptions;
+    private readonly CourseAccess _access;
 
     public EnrollUserInCourseUseCase(
         ICourseRepository courseRepository,
@@ -37,11 +36,9 @@ public class EnrollUserInCourseUseCase
         IForgejoService forgejoService,
         IUnitOfWork unitOfWork,
         IClock clock,
-        IUserRepository userRepository,
-        CoursePreviewOptions previewOptions)
+        CourseAccess access)
     {
-        _userRepository = userRepository;
-        _previewOptions = previewOptions;
+        _access = access;
         _courseRepository = courseRepository;
         _enrollmentRepository = enrollmentRepository;
         _weeklyRepository = weeklyRepository;
@@ -61,11 +58,9 @@ public class EnrollUserInCourseUseCase
         var course = await _courseRepository.GetFullTemplateGraphAsync(courseId, cancellationToken)
             ?? throw new NotFoundException("curso_nao_encontrado", "Curso nao encontrado.");
 
-        // Fase 81: curso escondido (Draft) so aceita matricula de quem esta na lista de previa - pro
-        // resto, responde como se nao existisse. Arquivado nunca.
-        if (course.Status == Domain.Enums.CourseStatus.Archived
-            || (course.Status == Domain.Enums.CourseStatus.Draft
-                && !_previewOptions.CanPreview((await _userRepository.GetByIdAsync(userId, cancellationToken))?.Email)))
+        // Fase 81/96: curso que o aluno nao enxerga (rascunho fora da previa, "so pra turmas" sem turma, fora da turma
+        // do aluno) responde como se nao existisse. Arquivado nunca.
+        if (!(await _access.ForUserAsync(userId, cancellationToken)).CanEnroll(Domain.Courses.CourseRef.From(course)))
             throw new NotFoundException("curso_nao_encontrado", "Curso nao encontrado.");
 
         var enrollment = new Enrollment(userId, courseId);

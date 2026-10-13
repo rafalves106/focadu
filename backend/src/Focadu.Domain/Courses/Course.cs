@@ -25,6 +25,14 @@ public class Course : Entity
     /// <summary>Fase 84: frase da ficha sobre como este curso prepara pros que o recomendam (ex.: o Linux pro Web Security). Nula quando nao ha.</summary>
     public string? PreparesText { get; private set; }
 
+    /// <summary>
+    /// Fase 96: so aparece pra quem esta numa turma que tem o curso (e pra lista de previa). Decidido pelo admin no Painel
+    /// (aba Curadoria), nunca pelo seed - o curso.json continua so dizendo Draft/Active.
+    /// </summary>
+    public bool OnlyForCohorts { get; private set; }
+
+    public void SetOnlyForCohorts(bool value) => OnlyForCohorts = value;
+
     private readonly List<Monthly> _monthlies = new();
     public IReadOnlyCollection<Monthly> Monthlies => _monthlies.AsReadOnly();
 

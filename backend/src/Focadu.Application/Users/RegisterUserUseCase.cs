@@ -25,6 +25,9 @@ namespace Focadu.Application.Users;
 /// desligada, convite preenchido ainda e validado e gasto. Tudo e checado ANTES de criar o User e gasto no
 /// mesmo SaveChanges do cadastro, senao sobraria conta orfa ou convite gasto sem conta. A corrida pelo ultimo
 /// uso cai na concorrencia otimista do SignupInvite (xmin, ver UnitOfWork) e vira `convite_esgotado`.
+///
+/// Fase 96: convite de turma poe o aluno na turma (no mesmo SaveChanges) e, logo depois, matricula nos cursos dela
+/// (CohortEnrollment, uma matricula por vez - falha numa nao desfaz o cadastro).
 /// </summary>
 public class RegisterUserUseCase
 {
@@ -35,6 +38,8 @@ public class RegisterUserUseCase
     private readonly IJwtTokenService _jwtTokenService;
     private readonly ISignupInviteRepository _inviteRepository;
     private readonly SignupOptions _signupOptions;
+    private readonly ICohortRepository _cohortRepository;
+    private readonly Enrollments.CohortEnrollment _cohortEnrollment;
 
     public RegisterUserUseCase(
         IUserRepository userRepository,
@@ -43,8 +48,12 @@ public class RegisterUserUseCase
         IPasswordHasher passwordHasher,
         IJwtTokenService jwtTokenService,
         ISignupInviteRepository inviteRepository,
-        SignupOptions signupOptions)
+        SignupOptions signupOptions,
+        ICohortRepository cohortRepository,
+        Enrollments.CohortEnrollment cohortEnrollment)
     {
+        _cohortRepository = cohortRepository;
+        _cohortEnrollment = cohortEnrollment;
         _inviteRepository = inviteRepository;
         _signupOptions = signupOptions;
         _userRepository = userRepository;
@@ -65,10 +74,12 @@ public class RegisterUserUseCase
         if (existing is not null)
             throw new ConflictException("email_ja_cadastrado", "Este email ja esta cadastrado.");
 
-        await ConsumeInviteAsync(inviteCode, cancellationToken);
+        var invite = await ConsumeInviteAsync(inviteCode, cancellationToken);
+        var cohort = invite?.CohortId is { } cohortId ? await _cohortRepository.GetByIdAsync(cohortId, cancellationToken) : null;
 
         var passwordHash = _passwordHasher.Hash(password);
         var user = User.Create(normalizedEmail, passwordHash, displayName);
+        if (cohort is not null) user.JoinCohort(cohort.Id);
 
         await _userRepository.AddAsync(user, cancellationToken);
 
@@ -83,22 +94,26 @@ public class RegisterUserUseCase
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        if (cohort is not null)
+            await _cohortEnrollment.EnrollAsync(user.Id, cohort.CourseIds, cancellationToken);
+
         var token = _jwtTokenService.GenerateToken(user);
-        return new AuthResultDto(UserDto.From(user), token);
+        return new AuthResultDto(UserDto.From(user) with { CohortName = cohort?.Name }, token);
     }
 
-    private async Task ConsumeInviteAsync(string? inviteCode, CancellationToken cancellationToken)
+    private async Task<SignupInvite?> ConsumeInviteAsync(string? inviteCode, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(inviteCode))
         {
             if (_signupOptions.InviteOnly)
                 throw new DomainException("O cadastro esta fechado durante o teste. Use o seu convite de tester.", "convite_obrigatorio");
-            return;
+            return null;
         }
 
         var invite = await _inviteRepository.GetByCodeAsync(inviteCode.Trim().ToUpperInvariant(), cancellationToken)
             ?? throw new DomainException(SignupInvite.InvalidMessage, "convite_invalido");
         invite.Consume(DateTime.UtcNow);
+        return invite;
     }
 
     /// <summary>Minimo de 8 caracteres (pedido no prompt da fase) - validacao client-side existe tambem, mas o servidor nunca confia so nisso.</summary>

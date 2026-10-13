@@ -79,6 +79,19 @@ public class User : Entity
 
     public bool IsAdmin => Role == UserRole.Admin;
 
+    /// <summary>
+    /// Turma do aluno (Fase 96), nula pra quem nao entrou por convite de turma. Com turma, o aluno so ve e so se
+    /// matricula nos cursos dela (mesmo depois de a turma ser arquivada). Uma turma por aluno.
+    /// </summary>
+    public Guid? CohortId { get; private set; }
+
+    public void JoinCohort(Guid cohortId)
+    {
+        if (CohortId is not null && CohortId != cohortId)
+            throw new DomainException("O aluno ja esta em outra turma.", "aluno_em_outra_turma");
+        CohortId = cohortId;
+    }
+
     private User()
     {
         Email = string.Empty;

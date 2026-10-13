@@ -44,7 +44,7 @@ public class GetCuratedContentUseCase
     private readonly IAnalogyGenerationService _analogyGenerationService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly PersonalizationOptions _personalization;
-    private readonly CoursePreviewOptions _preview;
+    private readonly CourseAccess _access;
 
     public GetCuratedContentUseCase(
         IWeeklyTemplateRepository weeklyTemplateRepository,
@@ -53,12 +53,12 @@ public class GetCuratedContentUseCase
         IAnalogyGenerationService analogyGenerationService,
         IUnitOfWork unitOfWork,
         PersonalizationOptions personalization,
-        CoursePreviewOptions preview,
+        CourseAccess access,
         IAiUsageContext aiUsage)
     {
         _aiUsage = aiUsage;
         _personalization = personalization;
-        _preview = preview;
+        _access = access;
         _weeklyTemplateRepository = weeklyTemplateRepository;
         _userRepository = userRepository;
         _analogyRepository = analogyRepository;
@@ -70,8 +70,8 @@ public class GetCuratedContentUseCase
     {
         var content = await _weeklyTemplateRepository.GetCuratedContentByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException("conteudo_nao_encontrado", "Conteudo curado nao encontrado.");
-        var status = await _weeklyTemplateRepository.GetCourseStatusForContentAsync(id, cancellationToken);
-        if (!await DraftCourseAccess.CanSeeAsync(status, userId, _userRepository, _preview, cancellationToken))
+        var course = await _weeklyTemplateRepository.GetCourseRefForContentAsync(id, cancellationToken);
+        if (!await _access.CanSeeAsync(course, userId, cancellationToken))
             throw new NotFoundException("conteudo_nao_encontrado", "Conteudo curado nao encontrado.");
 
         var analogies = await GetOrGeneratePersonalizedAnalogiesAsync(userId, content, cancellationToken);

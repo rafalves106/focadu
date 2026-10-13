@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/useAuth';
 import type { CourseDetailDto } from '../../api/types';
 import { courseWhereabouts, isCourseFinished } from '../../lib/startScreen';
 import { SegmentedBar } from '../SegmentedBar';
@@ -8,6 +9,9 @@ import crownIcon from '../../assets/pixel/coroa.png';
  * "Save slots" dos cursos matriculados (tela de start, 23/09/2026) - substitui o carrossel: todos os
  * cursos visiveis de uma vez, com % e onde o agente parou. Escolher um slot troca o centro e a coluna
  * direita da tela (o pai guarda a escolha em `?curso=`).
+ *
+ * Fase 96 (Figma TU 40): aluno de turma nao tem outro curso pra explorar - no lugar de "+ Explorar cursos" fica
+ * o nome da turma, so como informacao.
  */
 export function CourseSlots({
   courses,
@@ -18,6 +22,7 @@ export function CourseSlots({
   selectedId: string | null;
   onSelect: (courseId: string) => void;
 }) {
+  const cohortName = useAuth().user?.cohortName ?? null;
   return (
     <div data-guia="start-cursos" className="pixel-box flex shrink-0 flex-col gap-3 bg-base p-4">
       <p className="font-pixel-label text-[10px] text-accent">// Seus cursos</p>
@@ -26,12 +31,16 @@ export function CourseSlots({
           <Slot key={course.id} course={course} selected={course.id === selectedId} onSelect={() => onSelect(course.id)} />
         ))}
       </div>
-      <Link
-        to="/selecionar-curso"
-        className="border-2 border-dashed border-stroke py-1.5 text-center font-pixel-label text-[10px] text-muted hover:border-secondary hover:text-secondary"
-      >
-        + Explorar cursos
-      </Link>
+      {cohortName ? (
+        <p className="py-1.5 text-center font-pixel-label text-[9px] text-muted">Turma {cohortName}</p>
+      ) : (
+        <Link
+          to="/selecionar-curso"
+          className="border-2 border-dashed border-stroke py-1.5 text-center font-pixel-label text-[10px] text-muted hover:border-secondary hover:text-secondary"
+        >
+          + Explorar cursos
+        </Link>
+      )}
     </div>
   );
 }
