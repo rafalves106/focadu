@@ -2218,11 +2218,13 @@ completo por tras da decisao.
 **Visibilidade (Fase 100): repositorio de aluno e privado.** O Forgejo forca o fork a ter a visibilidade da origem (um fork nao
 pode ser mais privado que o template, nem tornado privado depois), e ate a Fase 99 os templates eram publicos, entao todo fork
 nascia publico e um aluno lia o repositorio do outro (o token dele, escopo `write:repository`, enxerga todo repo publico).
-Agora os templates sao **privados** (`publicar_modelo_forgejo.py` ja os cria assim) e `ForkTemplateAsync` faz, em ordem:
+Desde a Fase 100 o codigo sabe fazer isso, **atras de `Forgejo__RequirePrivateForks` (desligado por padrao)**: os templates passam a ser **privados** (`publicar_modelo_forgejo.py` ja os cria assim) e `ForkTemplateAsync` faz, em ordem:
 `PUT /repos/focadu-admin/{template}/collaborators/{aluno}` (permissao `read`, so o necessario para o fork), o fork em nome do aluno
 e `RequirePrivateFork` - se o fork voltar publico, falha fechado com `forgejo_fork_publico` em vez de seguir publico em silencio
-(vale tambem no caminho de reaproveitar o fork que ja existe, 409). `docker-compose.yml`: `FORGEJO__repository__DEFAULT_PRIVATE=private`
-e `FORGEJO__service__REQUIRE_SIGNIN_VIEW=true`. O aluno nunca loga na web do Forgejo (senha aleatoria, so token), entao o
+(vale tambem no caminho de reaproveitar o fork que ja existe, 409). `docker-compose.yml`: `FORGEJO_DEFAULT_PRIVATE` e
+`FORGEJO_REQUIRE_SIGNIN_VIEW` (padroes `public`/`false`; ligar com a chave do backend, as tres juntas). **Ainda desligado em producao**:
+o enunciado mora no README do fork e o link "Abrir README.md" aponta pro Forgejo, que com login obrigatorio o aluno nao abre (ver
+`docs/fase-100/`). O aluno nunca loga na web do Forgejo (senha aleatoria, so token), entao o
 repositorio dele deixa de abrir no navegador sem login; o acesso por git continua pelo token. Verificado ao vivo (14/10/2026,
 usuario e repositorio descartaveis, apagados): fork sem leitura = 404; com leitura = 202 e `private: true`; anonimo e outro aluno = 404;
 `git ls-remote` anonimo pede senha. Tornar um template privado torna privados os forks dele que ja existem.

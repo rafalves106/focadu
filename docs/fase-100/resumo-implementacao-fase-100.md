@@ -10,9 +10,9 @@ templates privados **fica para o momento do deploy**, ver "Pontos abertos".
 - **Backup antes do deploy (`deploy.yml`)**: `pg_dump -Fc` para `~/backups/focadu-pre-deploy-<data>.dump` antes do `up --build` (a migration roda no boot da Api,
   depois). Falha fechado (dump vazio com o banco no ar derruba o deploy); primeiro deploy, sem container, segue. `umask 077` e guarda os 14 últimos.
 - **Fork de aluno privado (`ForgejoService.ForkTemplateAsync`)**: o Forgejo força o fork a herdar a visibilidade do template, então os templates têm que ser privados.
-  O método agora concede `read` ao aluno no template (`PUT .../collaborators/{aluno}`), faz o fork e exige `private: true` (`RequirePrivateFork`, erro
-  `forgejo_fork_publico` se vier público, também no caminho do 409 que reaproveita fork). `publicar_modelo_forgejo.py` (no `focadu-secret`) passou a criar template privado.
-- **Compose**: Postgres (`5432`) e Api (`5282`) só em `127.0.0.1`; Forgejo com `DEFAULT_PRIVATE=private` e `REQUIRE_SIGNIN_VIEW=true`.
+  **Atrás de `Forgejo__RequirePrivateForks` (`FORGEJO_REQUIRE_PRIVATE_FORKS`, desligado por padrão).** Ligado, o método concede `read` ao aluno no template (`PUT .../collaborators/{aluno}`), faz o fork e exige `private: true` (`RequirePrivateFork`, erro
+  `forgejo_fork_publico` se vier público, também no caminho do 409 que reaproveita fork). Desligado, o comportamento é o de sempre. `publicar_modelo_forgejo.py` (no `focadu-secret`) passou a criar template privado.
+- **Compose**: Postgres (`5432`) e Api (`5282`) só em `127.0.0.1`. Forgejo com `FORGEJO_DEFAULT_PRIVATE` (padrão `public`) e `FORGEJO_REQUIRE_SIGNIN_VIEW` (padrão `false`), documentadas no `.env.example` junto da chave do backend.
 
 ## Decisões técnicas tomadas que não estavam no prompt original
 
@@ -40,8 +40,8 @@ templates privados **fica para o momento do deploy**, ver "Pontos abertos".
   Se (2) vier antes de (1), o fork falha com `forgejo_fork_publico`. Depois: conferir `repos/search` sem login (esperado: 0).
 - **Push bloqueado**: as branches 98, 99 e 100 não foram publicadas porque o token do `gh` não tem o escopo `workflow` (a 98 altera `ci.yml`, esta altera `deploy.yml`). `gh auth refresh -h github.com -s workflow`.
 - **Falta**: cópia do backup fora da VM + criptografia (destino e chave); contas do Forgejo `aluno-7087…` e `aluno-8660…` (de usuários apagados) ainda existem, sem repositórios.
-- **BLOQUEIO para o passo operacional acima: o enunciado do Projeto Semanal mora no README do fork.** Depois de escolher a linguagem, `WeeklyProjectPage` mostra "Abrir README.md"
-  (`DialogueBox`, `readmeUrl={project.submissionUrl}`, só quando `languageStep === Chosen`), que abre a página do repositório no Forgejo. Com o fork privado e `REQUIRE_SIGNIN_VIEW`, o aluno cai
-  numa tela de login e não consegue entrar (a senha é aleatória, ele só tem token). **Antes de privar os templates é preciso servir o README pelo próprio app**: um endpoint do backend que lê
-  `repos/{dono}/{repo}/raw/README.md` com o token de admin (só do dono do projeto) e o front mostra o texto (modal ou painel), no lugar do link. Mexe numa tela existente: Figma antes do código (regra do projeto).
-  Até lá, `REQUIRE_SIGNIN_VIEW` e a privação dos templates **não devem ir para produção**: o compose já tem as duas variáveis do Forgejo, então elas precisam ser removidas do compose se o deploy sair antes do README no app.
+- **BLOQUEIO para ligar o fork privado: o enunciado do Projeto Semanal mora no README do fork.** Depois de escolher a linguagem, `WeeklyProjectPage` mostra "Abrir README.md"
+  (`DialogueBox`, `readmeUrl={project.submissionUrl}`, só com `languageStep === Chosen`), que abre a página do repositório no Forgejo. Com o fork privado e login obrigatório o aluno cai
+  numa tela de login e não consegue entrar (a senha é aleatória, ele só tem token). **Antes de ligar as três chaves e privar os templates é preciso servir o README pelo próprio app**: um endpoint do
+  backend que lê `repos/{dono}/{repo}/raw/README.md` com o token de admin (só para o dono do projeto) e o front mostra o texto (modal ou painel) no lugar do link. Mexe numa tela existente: Figma antes do código.
+  Por isso o código desta fase vai para produção **desligado**, sem efeito; o que vale agora do lado da VM é o backup, as portas em loopback, os dumps trancados e o fork órfão apagado.

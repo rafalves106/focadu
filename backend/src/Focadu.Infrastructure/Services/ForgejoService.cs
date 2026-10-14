@@ -151,12 +151,15 @@ public class ForgejoService : IForgejoService
         // ponytail confirmado ao vivo (18/09/2026): sem Content-Type/corpo nenhum, o Forgejo
         // recusa com 422 "Empty Content-Type", mesmo o corpo sendo opcional na pratica.
         //
-        // Fase 100: o fork herda a visibilidade do template (o Forgejo forca isso: um fork nao pode ser mais
+        // Fase 100 (ligado por Forgejo__RequirePrivateForks): o fork herda a visibilidade do template (o Forgejo forca isso: um fork nao pode ser mais
         // privado que a origem), entao os templates sao PRIVADOS e o aluno ganha leitura nele so o suficiente
         // para o fork. Sem isso o fork nascia publico e um aluno lia o repositorio do outro.
-        await SendAsync(
-            HttpMethod.Put, $"repos/{ForgejoAdminUsername}/{templateSlug}/collaborators/{asUsername}", cancellationToken,
-            body: new { permission = "read" });
+        if (_options.RequirePrivateForks)
+        {
+            await SendAsync(
+                HttpMethod.Put, $"repos/{ForgejoAdminUsername}/{templateSlug}/collaborators/{asUsername}", cancellationToken,
+                body: new { permission = "read" });
+        }
 
         HttpResponseMessage response;
         try
@@ -173,13 +176,13 @@ public class ForgejoService : IForgejoService
             // o aluno nao cria repositorio (max_repo_creation = 0), so recebe fork.
             var existing = await GetOptionalAsync($"repos/{asUsername}/{templateSlug}", cancellationToken) ?? throw ex;
             var existingRepo = await existing.Content.ReadFromJsonAsync<ForgejoRepoPayload>(JsonOptions, cancellationToken);
-            RequirePrivateFork(existingRepo, asUsername, templateSlug);
+            if (_options.RequirePrivateForks) RequirePrivateFork(existingRepo, asUsername, templateSlug);
             return existingRepo?.CloneUrl ?? existingRepo?.HtmlUrl ?? throw ex;
         }
 
         var repo = await response.Content.ReadFromJsonAsync<ForgejoRepoPayload>(JsonOptions, cancellationToken)
             ?? throw new ExternalServiceException("forgejo_resposta_invalida", "O Forgejo nao retornou os dados do fork criado.");
-        RequirePrivateFork(repo, asUsername, templateSlug);
+        if (_options.RequirePrivateForks) RequirePrivateFork(repo, asUsername, templateSlug);
         return repo.CloneUrl ?? repo.HtmlUrl ?? throw new ExternalServiceException(
             "forgejo_resposta_invalida", "O Forgejo nao retornou a URL do fork criado.");
     }
