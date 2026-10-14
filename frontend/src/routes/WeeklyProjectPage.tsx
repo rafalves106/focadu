@@ -17,6 +17,7 @@ import lockIcon from '../assets/pixel/cadeado-bloqueado.png';
 import castleIcon from '../assets/pixel/mapa/castelo-pendente.png';
 import { PIXEL_PROSE } from '../lib/pixelProse';
 import { DialogueBox } from '../components/DialogueBox';
+import { ProjectReadmeModal } from '../components/ProjectReadmeModal';
 import { PixelConfirmDialog } from '../components/PixelConfirmDialog';
 import { buildFocadaLines } from '../lib/focadaLines';
 import { PixelButton } from '../components/session/PixelButton';
@@ -59,6 +60,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   const [submitError, setSubmitError] = useState<string | null>(null);
   // Fase 64: entrega passa por confirmacao (a avaliacao roda na hora e nao aceita reenvio depois).
   const [confirmingSubmit, setConfirmingSubmit] = useState(false);
+  const [readmeOpen, setReadmeOpen] = useState(false);
   // Fase 59 (piloto Semana 1): escolha da linguagem, em 2 passos (decisao do dono - a escolha e
   // definitiva, sem troca pelo proprio aluno depois). pendingLanguage nulo = passo 1 (escolher
   // uma das choosableLanguages); preenchido = passo 2 (confirmar ou cancelar).
@@ -302,7 +304,7 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
                         key={`${project.id}:${focadaLines.length}`}
                         projectId={project.id}
                         lines={focadaLines}
-                        readmeUrl={specInReadme ? project.submissionUrl : null}
+                        onOpenReadme={specInReadme ? () => setReadmeOpen(true) : null}
                         // Fase 64: entregar vira resposta do agente no dialogo, no lugar do botao do rodape.
                         choices={
                           canSubmit && project.submissionUrl
@@ -395,6 +397,8 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
           <StudyAssistantPanel className="h-[480px] lg:h-auto lg:min-h-[240px] lg:flex-1" onReply={onReply} />
         </SideSlot>
       </div>
+
+      {readmeOpen && <ProjectReadmeModal weeklyId={weeklyId} onClose={() => setReadmeOpen(false)} />}
 
       <PixelConfirmDialog
         open={confirmingSubmit}
