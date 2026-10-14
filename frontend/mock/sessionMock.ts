@@ -2,7 +2,7 @@
  * API falsa pra desenhar a sessao diaria sem tocar em producao (Fase 68). So roda com
  * `npm run dev:mock` (vite.mock.config.ts) - nunca entra no build.
  *
- * Monta uma Daily EM ANDAMENTO com o conteudo curado real do Dia 1 (secret/curadoria), com estado em
+ * Monta uma Daily EM ANDAMENTO com o conteudo curado real do Dia 1 (secret/conteudo), com estado em
  * memoria: responder, errar, voltar e concluir funcionam como no backend (versao simplificada - sem IA,
  * o Resumo Falado sempre volta com a mesma nota). Reiniciar/pular pra uma etapa ou estado:
  *   /__mock/reset?at=Quiz   (Reading, VoiceSummary, Video, Quiz, Cloze, WordMatch, Roleplay, done)
@@ -372,8 +372,14 @@ function studyCalendarDto() {
 }
 
 function loadCurated(root: string, file = 'dia-1.json', folder = 'web-security/semana-1'): Curated {
-  const path = resolve(root, `../secret/curadoria/${folder}/${file}`);
-  if (!existsSync(path)) throw new Error(`[mock] conteudo curado nao encontrado em ${path} (precisa do repo focadu-secret em secret/)`);
+  // Dia refeito na Fase 92 fica em secret/conteudo; o que ainda nao foi refeito (pontes de Web Security, Linux semana 2)
+  // so existe no arquivo morto - o mock cai nele pra manter os cenarios de laboratorio e de terminal.
+  const candidates = [
+    resolve(root, `../secret/conteudo/${folder}/${file}`),
+    resolve(root, `../secret/processo/arquivo/conteudo-antigo/${folder}/${file}`),
+  ];
+  const path = candidates.find((c) => existsSync(c));
+  if (!path) throw new Error(`[mock] conteudo curado nao encontrado em ${candidates.join(' nem em ')} (precisa do repo focadu-secret em secret/)`);
   return JSON.parse(readFileSync(path, 'utf8'));
 }
 

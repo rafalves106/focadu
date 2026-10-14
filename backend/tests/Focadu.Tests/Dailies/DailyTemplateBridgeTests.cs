@@ -36,4 +36,18 @@ public class DailyTemplateBridgeTests
         Assert.True(day.IsBridge);
         Assert.Null(day.Language);
     }
+
+    [Fact]
+    public void IsBridge_MarkedDayWithoutCodeStep_IsTrue()
+    {
+        // Ponte de missoes de terminal (Linux, molde B): sem CodeStep nem Language, vale o "ponte": true do JSON.
+        var day = Week().AddDailyTemplate(6);
+        day.AddActivity(ActivityType.Reading, 0, AnswerMode.MultipleChoice, contentId: Guid.NewGuid());
+        Assert.False(day.IsBridge);
+
+        day.SetBridgeMark(true);
+
+        Assert.True(day.IsBridge);
+        Assert.Null(day.Language);
+    }
 }

@@ -169,7 +169,7 @@ Cada uma custou um bug real ou uma conversa; o porquê está em `docs/fase-N/` e
 
 ## Estado atual
 
-Última fase concluída: **Fase 97 — Painel de gestão, lacunas de operação** (14/10/2026, na branch `fase-97-lacunas-do-painel`; Turmas: Fase 96; SQLite no laboratório: Fase 95; painel de gestão: Fase 94).
+Última fase concluída: **Fase 98 — Higiene da base** (14/10/2026, na branch `fase-98-higiene-da-base`; 1ª do plano da v0.1.0 em `secret/produto/rascunhos/plano-v0-1-0-cenario-a.md`; painel, lacunas de operação: Fase 97; Turmas: Fase 96; SQLite no laboratório: Fase 95; painel de gestão: Fase 94).
 
 Histórico completo dos marcos (Fases 25–87, com o porquê de cada decisão): `docs/ESTADO-HISTORICO.md` —
 só abrir quando precisar. Estado técnico vivo: `docs/ARQUITETURA.md`; detalhe por fase: `docs/fase-N/`.

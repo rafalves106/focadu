@@ -65,6 +65,7 @@ Detalhe de cada uma em `docs/fase-N/resumo-implementacao-fase-N.md`; o porquê d
 - **95** SQLite no laboratório de código (`lab.runtime: sqlite`): SQL puro no SQLite do Pyodide, banco novo a cada execução montado por `files`/`setup`, saída em tabela, `Erro na linha N`, `.tables`/`.schema`; verificador da curadoria ganhou o runtime. Para o curso Banco de Dados (A1 da UNA).
 - **96** Turmas: `Cohort` com cursos, convite de turma matricula nos cursos dela e o aluno só vê esses cursos (`CourseViewer`, regra única de quem vê cada curso), curso "só pra turmas", aba Turmas no painel, turma em Convites/Alunos e "quem vê" na Curadoria. Para o teste fechado com a turma da UNA.
 - **97** Painel de gestão, lacunas de operação: editar nome e e-mail, redefinir senha por e-mail (o admin nunca vê a senha), desativar e reativar conta (soft delete `Users.DisabledAt`, vale na hora e some do ranking/squad), tornar e tirar admin, e aba Cursos (criar curso vazio, editar o catálogo, publicar, arquivar, voltar ao curso.json; seed e importador respeitam a edição). Ver `docs/fase-97/`.
+- **98** Higiene da base (1ª fase do plano da v0.1.0): 3 testes do Linux alinhados ao conteúdo da Fase 92, ponte marcada no JSON (`"ponte": true` → `DailyTemplate.BridgeMark`, migration `Fase98PonteMarcada`) para a ponte de missões de terminal do Linux, `sessionMock.ts` lendo `secret/conteudo`, CI reprovando pacote vulnerável (.NET e npm), pacotes do backend nos patches 10.0.13. Ver `docs/fase-98/`.
 
 ## Resumo detalhado das Fases 86–91 (como estava no Estado atual)
 
