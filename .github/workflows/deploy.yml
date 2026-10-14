@@ -47,6 +47,25 @@ jobs:
         working-directory: ${{ steps.env.outputs.path }}/secret/processo/scripts/linter-dia
         run: docker run --rm -v "$PWD:/linter" -w /linter node:22-alpine npm ci --omit=dev --no-audit --no-fund
 
+      # Fase 100: backup do Postgres ANTES de subir a versao nova (e de a migration rodar no boot da Api). Falha fechado: se o
+      # banco esta no ar e o dump sai vazio, o deploy para. Primeiro deploy (sem container) nao tem o que salvar. Arquivo so do
+      # dono (umask 077: o dump tem hash de senha e dado pessoal); guarda os 14 ultimos. Copia fora da VM e criptografia
+      # ainda nao existem (pendente: precisa de bucket e chave).
+      - name: Backup do banco antes do deploy
+        working-directory: ${{ steps.env.outputs.path }}
+        run: |
+          if ! docker compose -f ${{ steps.env.outputs.compose_file }} ps --status running --services | grep -qx postgres; then
+            echo "Postgres nao esta rodando (primeiro deploy?): sem backup." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          umask 077
+          mkdir -p "$HOME/backups"
+          arq="$HOME/backups/focadu-pre-deploy-$(date +%Y%m%d-%H%M%S).dump"
+          docker compose -f ${{ steps.env.outputs.compose_file }} exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > "$arq"
+          [ -s "$arq" ] || { echo "backup vazio; abortando o deploy" >&2; rm -f "$arq"; exit 1; }
+          echo "Backup: $arq ($(du -h "$arq" | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
+          ls -1t "$HOME"/backups/focadu-pre-deploy-*.dump | tail -n +15 | xargs -r rm -f
+
       - name: Subir stack Docker (build + up)
         working-directory: ${{ steps.env.outputs.path }}
         run: docker compose -f ${{ steps.env.outputs.compose_file }} up -d --build

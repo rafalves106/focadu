@@ -150,6 +150,14 @@ public class ForgejoService : IForgejoService
         // configurada nesta instancia (ver EnsureConfigured/AdminToken). body: new {} (nao null) -
         // ponytail confirmado ao vivo (18/09/2026): sem Content-Type/corpo nenhum, o Forgejo
         // recusa com 422 "Empty Content-Type", mesmo o corpo sendo opcional na pratica.
+        //
+        // Fase 100: o fork herda a visibilidade do template (o Forgejo forca isso: um fork nao pode ser mais
+        // privado que a origem), entao os templates sao PRIVADOS e o aluno ganha leitura nele so o suficiente
+        // para o fork. Sem isso o fork nascia publico e um aluno lia o repositorio do outro.
+        await SendAsync(
+            HttpMethod.Put, $"repos/{ForgejoAdminUsername}/{templateSlug}/collaborators/{asUsername}", cancellationToken,
+            body: new { permission = "read" });
+
         HttpResponseMessage response;
         try
         {
@@ -165,13 +173,27 @@ public class ForgejoService : IForgejoService
             // o aluno nao cria repositorio (max_repo_creation = 0), so recebe fork.
             var existing = await GetOptionalAsync($"repos/{asUsername}/{templateSlug}", cancellationToken) ?? throw ex;
             var existingRepo = await existing.Content.ReadFromJsonAsync<ForgejoRepoPayload>(JsonOptions, cancellationToken);
+            RequirePrivateFork(existingRepo, asUsername, templateSlug);
             return existingRepo?.CloneUrl ?? existingRepo?.HtmlUrl ?? throw ex;
         }
 
         var repo = await response.Content.ReadFromJsonAsync<ForgejoRepoPayload>(JsonOptions, cancellationToken)
             ?? throw new ExternalServiceException("forgejo_resposta_invalida", "O Forgejo nao retornou os dados do fork criado.");
+        RequirePrivateFork(repo, asUsername, templateSlug);
         return repo.CloneUrl ?? repo.HtmlUrl ?? throw new ExternalServiceException(
             "forgejo_resposta_invalida", "O Forgejo nao retornou a URL do fork criado.");
+    }
+
+    /// <summary>
+    /// Fase 100: fork de aluno publico e vazamento (outro aluno clona sem pedir nada). Falha fechado: se o template
+    /// ficou publico por engano, o fork para aqui em vez de seguir publico em silencio.
+    /// </summary>
+    private static void RequirePrivateFork(ForgejoRepoPayload? repo, string asUsername, string templateSlug)
+    {
+        if (repo is { Private: false })
+            throw new ExternalServiceException(
+                "forgejo_fork_publico",
+                $"O repositorio {asUsername}/{templateSlug} no Forgejo esta publico. O template precisa ser privado e o fork publico antigo apagado.");
     }
 
     public async Task<string> GetContentSnapshotAsync(string owner, string repo, CancellationToken cancellationToken = default)
@@ -337,7 +359,8 @@ public class ForgejoService : IForgejoService
         string? Name,
         [property: JsonPropertyName("clone_url")] string? CloneUrl,
         [property: JsonPropertyName("html_url")] string? HtmlUrl,
-        [property: JsonPropertyName("default_branch")] string? DefaultBranch);
+        [property: JsonPropertyName("default_branch")] string? DefaultBranch,
+        [property: JsonPropertyName("private")] bool? Private = null);
 
     private record ForgejoTreePayload(List<ForgejoTreeEntryPayload>? Tree);
 
