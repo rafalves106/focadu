@@ -7,5 +7,12 @@ namespace Focadu.Application.Ports;
 /// </summary>
 public interface IAiUsageContext
 {
+    /// <summary>
+    /// Fase 101: chame ANTES de <see cref="Begin"/> em todo caso de uso que chama IA. Lanca <c>orcamento_ia_esgotado</c> se o aluno
+    /// ja gastou o orcamento de hoje. E um metodo a parte (e nao dentro de Begin) porque o contexto vive em AsyncLocal, que um
+    /// metodo assincrono nao devolve ao chamador.
+    /// </summary>
+    Task EnsureBudgetAsync(Guid userId, CancellationToken cancellationToken = default);
+
     IDisposable Begin(Guid userId, Guid? dailyId = null, Guid? weeklyId = null);
 }

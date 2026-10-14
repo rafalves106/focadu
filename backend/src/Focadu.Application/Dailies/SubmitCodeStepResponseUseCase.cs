@@ -1,5 +1,6 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
+using Focadu.Application.Shared;
 using Focadu.Domain.Activities;
 using Focadu.Domain.Enums;
 using Focadu.Domain.Exceptions;
@@ -96,9 +97,11 @@ public class SubmitCodeStepResponseUseCase
             evidence = output;
         }
 
+        AiLimits.EnsureAttemptsLeft(daily.Responses, activityId, _clock.Today()); // Fase 101
         var attemptNumber = daily.Responses.Count(r => r.ActivityId == activityId) + 1;
         var courseName = await _weeklyTemplateRepository.GetCourseNameAsync(weekly.Template.Id, cancellationToken);
         // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+        await _aiUsage.EnsureBudgetAsync(userId, cancellationToken);
         using var aiUsage = _aiUsage.Begin(userId, dailyId);
         var evaluation = await _evaluationService.EvaluateAsync(
             new CodeStepEvaluationRequest(

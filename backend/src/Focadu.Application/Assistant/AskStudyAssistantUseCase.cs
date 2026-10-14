@@ -75,6 +75,7 @@ public class AskStudyAssistantUseCase
             codeBridge, courseName);
 
         // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+        await _aiUsage.EnsureBudgetAsync(userId, cancellationToken);
         using var aiUsage = _aiUsage.Begin(userId);
         return await _assistantService.AskAsync(request, cancellationToken);
     }

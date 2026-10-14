@@ -8,4 +8,8 @@ namespace Focadu.Infrastructure.Services;
 /// Forgejo__BaseUrl/Forgejo__AdminToken - mesmo padrao de GitHubOptions/GroqOptions, ver
 /// docs/ARQUITETURA.md).
 /// </summary>
-public record ForgejoOptions(string BaseUrl, string AdminToken);
+/// <param name="RequirePrivateForks">
+/// Fase 100: ligado, o fork do aluno exige template privado (concede leitura ao aluno e recusa fork publico). Desligado por padrao
+/// ate o README do Projeto Semanal ser servido pelo proprio app - o link pro Forgejo nao abre repositorio privado sem login.
+/// </param>
+public record ForgejoOptions(string BaseUrl, string AdminToken, bool RequirePrivateForks = false);

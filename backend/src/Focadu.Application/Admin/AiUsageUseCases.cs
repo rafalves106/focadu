@@ -1,6 +1,7 @@
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
 using Focadu.Domain.AiUsage;
+using Focadu.Domain.Exceptions;
 using Focadu.Domain.Repositories;
 
 namespace Focadu.Application.Admin;
@@ -35,9 +36,13 @@ public class AiUsageReportUseCase
         return new AiUsageOverviewDto(
             name, from, to, settings?.MeasuringSince ?? from, courseId,
             AiUsageMath.Totals(records, prices), AiUsageMath.ByType(records, prices),
-            new AiMonthlyCapDto(settings?.MonthlyCapUsd, AiUsageMath.Totals(monthRecords, prices).EstimatedCostUsd),
+            MonthlyCap(settings, AiUsageMath.Totals(monthRecords, prices).EstimatedCostUsd),
             prices.Select(AiModelPriceDto.From).ToList(), AiUsageMath.UnpricedModels(records, prices));
     }
+
+    private static AiMonthlyCapDto MonthlyCap(AiUsageSettings? settings, decimal monthCostUsd) =>
+        new(settings?.MonthlyCapUsd, monthCostUsd, settings?.MonthlyCapUsd is { } cap && monthCostUsd >= cap,
+            settings?.DailyBudgetUsd, settings?.FallbackModel);
 
     public async Task<AiUsageStudentsDto> StudentsAsync(string? period, Guid? courseId, CancellationToken cancellationToken = default)
     {
@@ -124,14 +129,24 @@ public class AiUsageSettingsUseCase
         return AiModelPriceDto.From(price);
     }
 
-    public async Task<decimal?> SetMonthlyCapAsync(decimal? capUsd, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Fase 101: salva os limites de gasto (orcamento diario por aluno, teto mensal global, modelo reserva). Valor vazio tira o limite.
+    /// O modelo reserva precisa ter linha na tabela de precos: sem preco o gasto dele sumiria da medicao.
+    /// </summary>
+    public async Task<AiLimitsDto> SetLimitsAsync(decimal? dailyBudgetUsd, decimal? monthlyCapUsd, string? fallbackModel, CancellationToken cancellationToken = default)
     {
         var settings = await _usage.GetSettingsAsync(cancellationToken)
             ?? throw new ConflictException("medicao_desligada", "A medicao de IA ainda nao foi ligada neste banco.");
 
-        settings.SetMonthlyCap(capUsd);
+        var model = string.IsNullOrWhiteSpace(fallbackModel) ? null : fallbackModel.Trim();
+        if (model is not null && await _usage.GetPriceAsync(model, cancellationToken) is null)
+            throw new DomainException("O modelo reserva precisa estar na tabela de precos.", "modelo_sem_preco");
+
+        settings.SetDailyBudget(dailyBudgetUsd);
+        settings.SetMonthlyCap(monthlyCapUsd);
+        settings.SetFallbackModel(model);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return settings.MonthlyCapUsd;
+        return new AiLimitsDto(settings.DailyBudgetUsd, settings.MonthlyCapUsd, settings.FallbackModel);
     }
 }
 
@@ -153,6 +168,11 @@ internal static class AiUsageMath
         var toUtc = today.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Local).ToUniversalTime();
         return (name, fromUtc, toUtc);
     }
+
+    /// <summary>Fase 101: o dia de hoje (meia-noite local ate a meia-noite seguinte), em UTC, fim exclusivo.</summary>
+    internal static (DateTime FromUtc, DateTime ToUtc) DayRange(DateOnly today) =>
+        (today.ToDateTime(TimeOnly.MinValue, DateTimeKind.Local).ToUniversalTime(),
+         today.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Local).ToUniversalTime());
 
     internal static decimal CostOf(AiUsageRecord record, IReadOnlyDictionary<string, AiModelPrice> prices) =>
         prices.TryGetValue(record.Model, out var price) ? price.CostOf(record.InputTokens, record.OutputTokens, record.AudioSeconds) : 0m;

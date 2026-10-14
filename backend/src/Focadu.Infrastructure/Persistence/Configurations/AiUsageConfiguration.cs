@@ -49,5 +49,7 @@ public class AiUsageSettingsConfiguration : IEntityTypeConfiguration<AiUsageSett
         builder.HasKey(s => s.Id);
         builder.Property(s => s.MeasuringSince).IsRequired();
         builder.Property(s => s.MonthlyCapUsd).HasPrecision(12, 2);
+        builder.Property(s => s.DailyBudgetUsd).HasPrecision(12, 4);
+        builder.Property(s => s.FallbackModel).HasMaxLength(100);
     }
 }

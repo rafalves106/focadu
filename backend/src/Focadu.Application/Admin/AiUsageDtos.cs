@@ -19,7 +19,12 @@ public record AiModelPriceDto(
         new(p.Model, p.InputPerMillionUsd, p.OutputPerMillionUsd, p.AudioPerHourUsd, p.UpdatedAt, p.UpdatedBy, p.Source);
 }
 
-public record AiMonthlyCapDto(decimal? CapUsd, decimal MonthCostUsd);
+/// <param name="OverCap">Fase 101: o gasto do mes passou do teto - o texto esta usando o modelo reserva.</param>
+/// <param name="DailyBudgetUsd">Fase 101: orcamento diario por aluno (nulo = sem limite).</param>
+public record AiMonthlyCapDto(decimal? CapUsd, decimal MonthCostUsd, bool OverCap = false, decimal? DailyBudgetUsd = null, string? FallbackModel = null);
+
+/// <summary>Resposta de salvar os limites (Fase 101): os tres valores como ficaram.</summary>
+public record AiLimitsDto(decimal? DailyBudgetUsd, decimal? MonthlyCapUsd, string? FallbackModel);
 
 public record AiUsageOverviewDto(
     string Period, DateTime FromUtc, DateTime ToUtc, DateTime MeasuringSince, Guid? CourseId,

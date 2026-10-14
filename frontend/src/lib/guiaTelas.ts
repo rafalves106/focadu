@@ -255,7 +255,7 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
         title: 'Curadoria',
         text: 'Arquivo em secret/conteudo x banco, dia a dia. Marque dias novos ou diferentes, veja a prévia do linter e importe: é tudo ou nada. Dia só no banco sai pelo "Apagar dias antigos". Em cima, quem vê o curso: todos ou só as turmas.',
       },
-      { title: 'Uso de IA', text: 'Quanto a IA custa, por tipo de chamada e por aluno. É só medição: nada bloqueia nem troca modelo. Preços e teto são editáveis.' },
+      { title: 'Uso de IA', text: 'Quanto a IA custa, por tipo de chamada e por aluno, e os limites: gasto por aluno por dia (passou, a IA espera o dia seguinte) e teto do mês (passou, o texto troca para o modelo reserva). Preços e limites são editáveis.' },
       { title: 'Abrir no Claude', text: 'Leva pra sessão do Claude Code. Não é um chat dentro do app.' },
     ],
   },

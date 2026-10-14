@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 98 - Higiene da base** (Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 101 - Travas de IA** (Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -1688,12 +1688,32 @@ de testes em vez de silenciosamente virar um 400 generico em producao.
 continua existindo (leitura, usada por `ReadingActivity`/`VideoActivity` na sessao diaria). Ver
 `docs/fase-13b/resumo-implementacao-fase-13b.md` pro historico da UI que existiu.
 
-### CORS (Fase 3)
+### CORS (Fase 3, configuravel desde a Fase 99)
 
 A Api libera `http://localhost:5173` (e `127.0.0.1:5173`) via `AddCors`/`UseCors`, para o
 frontend Vite conseguir chamar a Api em dev - sem isso o navegador bloqueia toda chamada (portas
-diferentes contam como origens diferentes, mesmo os dois em `localhost`). Hardcoded e so-dev de
-proposito (unico usuario-teste, sem ambiente de deploy ainda) - ver pontos abertos.
+diferentes contam como origens diferentes, mesmo os dois em `localhost`). Desde a Fase 99 as origens vem de
+`Cors__AllowedOrigins` (separadas por virgula) e o padrao continua sendo o de dev. Em producao nao entra em jogo: o
+nginx do frontend faz proxy same-origin de `/api`.
+
+### Seguranca de borda (Fase 99)
+
+- **IP e esquema reais** (`Program.cs`, `UseForwardedHeaders` antes de tudo): a cadeia e Cloudflare Tunnel -> nginx do
+  frontend -> Api. `X-Forwarded-For` chega como `cliente, cloudflared`; a Api le 2 saltos da direita
+  (`Forwarded__Limit`, padrao 2), entao um `X-Forwarded-For` falso mandado pelo cliente fica pra tras. As redes/proxies
+  conhecidos sao esvaziados porque so o nginx alcanca a Api na rede do Docker; **a porta `5282` do host nao pode ficar
+  aberta pra internet** (quem a alcancasse poderia forjar o IP).
+- **Limite de requisicoes** (`RateLimiting.cs`, `UseRateLimiter` depois da autenticacao): um limitador global escolhido
+  pelo caminho (so `POST`), em janela deslizante de 4 segmentos. `login`: 10/min por IP. `account` (`/auth/register`,
+  `forgot-password`, `reset-password`, `email-verification/send|confirm`): 10 por 15 min por IP. `ai` (resposta de voz,
+  passo de codigo, dica, envio e avaliacao do projeto, rascunho do LinkedIn, revisao do Caderninho, Suporte Rapido): 20/min por
+  aluno (IP se nao houver sessao). Excedeu: 429 `{ error: "muitas_requisicoes", message }` com `Retry-After`. Rota nova que
+  case com um padrao ja entra; endpoint de IA novo precisa entrar no regex `AiPath`. Desligar: `RateLimit__Enabled=false`.
+  Nao e orcamento de IA (isso e a Fase 101).
+- **Headers do nginx** (`frontend/nginx.conf`): HSTS, `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN`,
+  `Referrer-Policy`, `Permissions-Policy` (microfone so da propria origem) e uma CSP so com `frame-ancestors`, `base-uri`,
+  `object-src` e `form-action`. **Sem `script-src` de proposito**: uma CSP completa precisa ser conferida no navegador. O
+  bloco `/lab/` repete os headers porque `add_header` de um `location` substitui os do nivel de cima.
 
 ## Seed de conteudo (Fase 3, estendido na Fase 4, so template desde a Fase 13)
 
@@ -2194,6 +2214,20 @@ hospeda e provisiona esses repositorios sozinha, num **Forgejo self-hosted** (co
 novo, `codeberg.org/forgejo/forgejo:9`, SQLite - sem Postgres proprio, app isolada sem join com o
 dominio C#) - ver `secret/rascunhos/repositorios-gerenciados-projeto-semanal.md` pro raciocinio
 completo por tras da decisao.
+
+**Visibilidade (Fase 100): repositorio de aluno e privado.** O Forgejo forca o fork a ter a visibilidade da origem (um fork nao
+pode ser mais privado que o template, nem tornado privado depois), e ate a Fase 99 os templates eram publicos, entao todo fork
+nascia publico e um aluno lia o repositorio do outro (o token dele, escopo `write:repository`, enxerga todo repo publico).
+Desde a Fase 100 o codigo sabe fazer isso, **atras de `Forgejo__RequirePrivateForks` (desligado por padrao)**: os templates passam a ser **privados** (`publicar_modelo_forgejo.py` ja os cria assim) e `ForkTemplateAsync` faz, em ordem:
+`PUT /repos/focadu-admin/{template}/collaborators/{aluno}` (permissao `read`, so o necessario para o fork), o fork em nome do aluno
+e `RequirePrivateFork` - se o fork voltar publico, falha fechado com `forgejo_fork_publico` em vez de seguir publico em silencio
+(vale tambem no caminho de reaproveitar o fork que ja existe, 409). `docker-compose.yml`: `FORGEJO_DEFAULT_PRIVATE` e
+`FORGEJO_REQUIRE_SIGNIN_VIEW` (padroes `public`/`false`; ligar com a chave do backend, as tres juntas). **Ainda desligado em producao**:
+o enunciado mora no README do fork e o link "Abrir README.md" aponta pro Forgejo, que com login obrigatorio o aluno nao abre (ver
+`docs/fase-100/`). O aluno nunca loga na web do Forgejo (senha aleatoria, so token), entao o
+repositorio dele deixa de abrir no navegador sem login; o acesso por git continua pelo token. Verificado ao vivo (14/10/2026,
+usuario e repositorio descartaveis, apagados): fork sem leitura = 404; com leitura = 202 e `private: true`; anonimo e outro aluno = 404;
+`git ls-remote` anonimo pede senha. Tornar um template privado torna privados os forks dele que ja existem.
 
 **`IForgejoService`** (`Focadu.Application.Ports`) + **`ForgejoService`** (adapter concreto,
 `Focadu.Infrastructure.Services`) - mesmo padrao sem SDK do `IGitHubService`/`GitHubService`
@@ -2979,7 +3013,7 @@ decisoes em `docs/fase-94/`.
   `IAdminMaintenance` (`ExecuteDelete` em transacao, mesma tecnica do `UserResetService`). Ordem do apagar dias antigos: notas,
   revisoes, feedback do dia, respostas, Weeklies de semanas que ficam vazias, Dailies, `RoleplayOptions` (FK `NextNodeId`
   Restrict travava a cascata), `DailyTemplates`, `WeeklyTemplates` e `Monthlies` vazios. Medicao de IA nunca e apagada.
-- **Medicao de IA** ("medir antes de limitar" - nada bloqueia nem troca modelo):
+- **Medicao de IA** (Fase 94: "medir antes de limitar"; os limites da Fase 101 estao em "Travas de IA" logo abaixo):
   - `AiUsageMeasuringHandler` (DelegatingHandler) em todos os `AddHttpClient` do Groq menos o health check: modelo do corpo
     (JSON `model` ou parte multipart `model`), uso da resposta (`usage.prompt_tokens/completion_tokens`; transcricao pede
     `response_format=verbose_json` e le `duration`). Grava num escopo de DbContext proprio; falha de medicao so loga.
@@ -2994,6 +3028,30 @@ decisoes em `docs/fase-94/`.
   app nao tem @usuario). "Abrir no Claude" e so um link (`VITE_CLAUDE_URL`, padrao `https://claude.ai/code`).
 - **Deploy**: imagem do backend com `nodejs` (linter do dia roda no container ao importar pelo painel); `deploy.yml` instala as
   dependencias do linter no `secret/` do host com um `node:22-alpine` descartavel (o `secret/` entra no container `:ro`).
+
+### Travas de IA (Fase 101)
+
+Sobre a Medicao acima; o gasto continua **estimado** (uso medido x tabela de precos), nunca o custo real da fatura. Quatro travas:
+
+- **Orcamento diario por aluno** (`AiUsageSettings.DailyBudgetUsd`): `IAiUsageContext.EnsureBudgetAsync(userId)` roda ANTES de `Begin` nos 7
+  casos de uso que chamam IA (resposta de voz, passo de codigo, dica, avaliacao do projeto, rascunho do LinkedIn, revisao do Caderninho,
+  Suporte Rapido). Soma o que o aluno gastou hoje (dia vivido, `IClock`); `>=` o orcamento lanca `orcamento_ia_esgotado` (429) antes de qualquer
+  chamada, entao nao gasta nem registra nada. E um metodo separado de `Begin` porque o contexto vive em `AsyncLocal`, que um metodo
+  assincrono nao devolve ao chamador. Excecao: a analogia (`GetCuratedContentUseCase`, leitura) trata o orcamento esgotado como "sem analogia",
+  nunca quebra a leitura da aula. A analogia ja tem cache persistido (`PersonalizedAnalogy`) e esta desligada por flag.
+- **Teto mensal global** (`MonthlyCapUsd`) **com modelo reserva** (`FallbackModel`): `AiModelDowngradeHandler` (por FORA do handler de medicao, em
+  todo cliente Groq de texto) troca o campo `model` do corpo JSON pelo reserva quando o gasto do mes passa do teto, e a Medicao grava o modelo usado
+  de verdade. A situacao do teto vem de `AiCapMonitor` (singleton, cache de 1 minuto; erro de leitura = nao troca, limite nunca derruba a IA). Nao
+  troca se o reserva nao tem linha na tabela de precos (o gasto dele sumiria da conta). **O Whisper nao troca** (multipart, sem reserva).
+- **Duracao do audio** (`AiLimits.MaxAudioSeconds` = 16 min; o front deixa gravar ate 15): `IAudioTranscriptionService` agora devolve
+  `AudioTranscript(Text, DurationSeconds)` (a duracao vem do `verbose_json`); passou, `audio_muito_longo` (400) antes da avaliacao, que e a chamada cara.
+  O limite de 25 MB de upload segue.
+- **Tentativas por dia** (`AiLimits.MaxAttemptsPerActivityPerDay` = 10) para resumo falado e passo de codigo: `limite_tentativas_dia` (429).
+
+Padroes (migration `Fase101TravasDeIa`, editaveis na aba Uso de IA, `PUT /api/admin/ai-usage/limits`; o antigo `/cap` saiu): US$ 0,50 por aluno por dia,
+teto de US$ 30 por mes (so se estava vazio) e reserva `openai/gpt-oss-20b` (preco `0,075 / 0,30` por 1 M, referencia publica da Groq, **conferir**).
+Base dos numeros (14/10/2026): 15 chamadas medidas custaram ~US$ 0,006 no total, entao US$ 0,50 e ~25x o uso normal de um aluno. A aba mostra o painel
+"Limites de IA" (limite diario, teto, reserva, aviso de teto atingido). 429 e o codigo; o aluno ve a mensagem do erro no lugar da resposta.
 
 ### Turmas (Fase 96)
 
@@ -3057,6 +3115,15 @@ Detalhe em `docs/fase-97/`.
 Guia pratico completo (comandos, variaveis, runbook de deploy) em `docs/DOCKER.md` - esta secao
 so resume as decisoes de arquitetura.
 
+**Backup e portas (Fase 100):** o `deploy.yml` faz `pg_dump -Fc` do Postgres em `~/backups/focadu-pre-deploy-<data>.dump` **antes**
+do `up --build` (e portanto antes de a migration rodar no boot da Api). Falha fechado: banco no ar e dump vazio = o deploy para; sem
+container (primeiro deploy) segue. Arquivo `umask 077` (so o dono; tem hash de senha e dado pessoal) e guarda os 14 ultimos. O
+`publicar-conteudo.yml` ja fazia o seu proprio dump antes de importar. **Ainda nao existe** copia fora da VM nem criptografia (precisa
+de um destino, ex.: Object Storage da Oracle, e de uma chave). Restauracao testada em 14/10/2026: `pg_restore --exit-on-error` do dump de
+13/10 num Postgres 16 temporario (sem rede) saiu com 0 e trouxe as 47 tabelas. O compose publica o Postgres (`5432`) e a Api (`5282`) so em
+`127.0.0.1`; o frontend (`5280`) e o Forgejo (`3020`, `2222`) continuam em todas as interfaces, porque o `cloudflared` da VM aponta para
+`localhost:5280` e `localhost:3020`. De fora da VM so a porta 22 responde (a lista de entrada da Oracle bloqueia o resto).
+
 **Dois Dockerfiles, multi-stage:**
 - `backend/Dockerfile`: SDK 10.0 restaura/publica so `Focadu.Api.csproj` -> runtime `aspnet:10.0`
   (porta interna 8080, `HEALTHCHECK` em `/health`, `curl` instalado so pra isso).
@@ -3070,7 +3137,7 @@ same-origin de `/api/` pro container do backend (mesmo truque do projeto "financ
 e `BASE_URL` cai pra string vazia quando `VITE_API_BASE_URL` nao e definida, o SPA em producao
 chama caminhos relativos e o navegador nunca faz uma requisicao cross-origin de verdade. Isso
 evita precisar de subdominio de API dedicado no Cloudflare Tunnel e evita mexer na allowlist de
-CORS (`Program.cs`, ainda fixa em `localhost:5173`/`127.0.0.1:5173` - so precisaria mudar se um dia
+CORS (`Program.cs`; configuravel por `Cors__AllowedOrigins` desde a Fase 99 - so precisaria mudar se um dia
 o backend for exposto num dominio proprio).
 
 **`docker-compose.yml`** (producao) vive na raiz do repo, ao lado de `.env.example`. Servicos:
@@ -4189,7 +4256,7 @@ componentes `sprite/*`, pagina "Logo", "Focada — esboço" e o kit `textbox/foc
   `SeedWebSecurityCourseUseCase`/`CuratedDayImporter`.
 - Exclusao (`DELETE`) de `CuratedContent` - so criacao/edicao existem; nunca foi pedido um
   endpoint de remocao.
-- CORS liberado so para `http://localhost:5173` (hardcoded, dev apenas).
+- **Resolvido na Fase 99, nao e mais pendencia:** CORS configuravel por `Cors__AllowedOrigins` (padrao so de dev).
 - **Resolvido na Fase 7, nao e mais pendencia:** menu de configuracoes no frontend - so que
   Aparencia/Som/Notificacoes/Limite de gravacao/Perfil/Atalhos continuam so visuais, sem
   persistencia (ver "Menu de configuracoes" na secao de Frontend).

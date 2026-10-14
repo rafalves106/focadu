@@ -115,6 +115,9 @@ export const adminApi = {
     audioPerHourUsd: number | null;
     source: string | null;
   }) => request<AiModelPriceDto>('/api/admin/ai-usage/prices', { method: 'PUT', body: JSON.stringify(body) }),
-  setAiCap: (monthlyCapUsd: number | null) =>
-    request<{ monthlyCapUsd: number | null }>('/api/admin/ai-usage/cap', { method: 'PUT', body: JSON.stringify({ monthlyCapUsd }) }),
+  setAiLimits: (limits: { dailyBudgetUsd: number | null; monthlyCapUsd: number | null; fallbackModel: string | null }) =>
+    request<{ dailyBudgetUsd: number | null; monthlyCapUsd: number | null; fallbackModel: string | null }>('/api/admin/ai-usage/limits', {
+      method: 'PUT',
+      body: JSON.stringify(limits),
+    }),
 };

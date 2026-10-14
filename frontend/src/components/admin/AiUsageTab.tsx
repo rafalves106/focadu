@@ -224,30 +224,39 @@ function ByTypeTable({ rows }: { rows: AiUsageByTypeDto[] }) {
 }
 
 function CapPanel({ overview, onChanged }: { overview: AiUsageOverviewDto; onChanged: () => void }) {
-  const cap = overview.monthlyCap.capUsd;
-  const [value, setValue] = useState(cap == null ? '' : String(cap).replace('.', ','));
+  const { capUsd: cap, dailyBudgetUsd, fallbackModel, overCap } = overview.monthlyCap;
+  const show = (v: number | null) => (v == null ? '' : String(v).replace('.', ','));
+  const [daily, setDaily] = useState(show(dailyBudgetUsd));
+  const [value, setValue] = useState(show(cap));
+  const [fallback, setFallback] = useState(fallbackModel ?? '');
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const month = new Date().toLocaleDateString('pt-BR', { month: 'long' });
-  const parsed = value.trim() === '' ? null : Number(value.replace(',', '.'));
-  const invalid = parsed !== null && (!Number.isFinite(parsed) || parsed <= 0);
+  const parse = (v: string) => (v.trim() === '' ? null : Number(v.replace(',', '.')));
+  const parsed = parse(value);
+  const parsedDaily = parse(daily);
+  const bad = (n: number | null) => n !== null && (!Number.isFinite(n) || n <= 0);
+  const invalid = bad(parsed);
+  const invalidDaily = bad(parsedDaily);
   const pct = cap ? Math.min(100, (overview.monthlyCap.monthCostUsd / cap) * 100) : 0;
+  // Modelo reserva: so os de texto com preco na tabela (o de audio cobra por hora).
+  const textModels = overview.prices.filter((p) => p.inputPerMillionUsd != null).map((p) => p.model);
 
   async function save() {
     setBusy(true);
     setFailure(null);
     try {
-      await adminApi.setAiCap(parsed);
+      await adminApi.setAiLimits({ dailyBudgetUsd: parsedDaily, monthlyCapUsd: parsed, fallbackModel: fallback || null });
       onChanged();
     } catch (err) {
-      setFailure(err instanceof ApiError ? err.message : 'Não deu pra salvar o teto.');
+      setFailure(err instanceof ApiError ? err.message : 'Não deu pra salvar os limites.');
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <AdminPanel label="Teto mensal global">
+    <AdminPanel label="Limites de IA">
       <p className="text-[13px] text-secondary">
         <span className="mr-2 font-pixel-label text-[14px] text-primary">{usd(overview.monthlyCap.monthCostUsd)}</span>
         gastos em {month}
@@ -258,19 +267,40 @@ function CapPanel({ overview, onChanged }: { overview: AiUsageOverviewDto; onCha
           <p className="text-[12px] text-secondary">
             {num(pct)}% de {usd(cap)}
           </p>
+          {overCap && (
+            <p className="text-[12px] text-alert">
+              Teto atingido: o texto está usando {fallbackModel ?? 'o mesmo modelo (nenhum modelo reserva com preço)'}.
+            </p>
+          )}
         </div>
       ) : (
         <div className="border-2 border-dashed border-muted py-1 text-center font-pixel-label text-[7px] text-secondary">TETO NÃO DEFINIDO</div>
       )}
-      <Field label="TETO DO MÊS (US$)" error={invalid ? 'Use um valor maior que zero, ou deixe vazio.' : failure}>
+      <Field label="LIMITE POR ALUNO, POR DIA (US$)" error={invalidDaily ? 'Use um valor maior que zero, ou deixe vazio.' : null}>
+        <input className={inputClass(invalidDaily)} inputMode="decimal" placeholder="sem limite" value={daily} onChange={(e) => setDaily(e.target.value)} />
+      </Field>
+      <Field label="TETO DO MÊS (US$)" error={invalid ? 'Use um valor maior que zero, ou deixe vazio.' : null}>
+        <input className={inputClass(invalid)} inputMode="decimal" placeholder="não definido" value={value} onChange={(e) => setValue(e.target.value)} />
+      </Field>
+      <Field label="MODELO RESERVA (AO PASSAR DO TETO)" error={failure}>
         <div className="flex gap-2">
-          <input className={inputClass(invalid)} inputMode="decimal" placeholder="não definido" value={value} onChange={(e) => setValue(e.target.value)} />
-          <PixelButton onClick={save} disabled={busy || invalid}>
+          <select className={inputClass(false)} value={fallback} onChange={(e) => setFallback(e.target.value)}>
+            <option value="">nenhum (não troca)</option>
+            {textModels.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+          <PixelButton onClick={save} disabled={busy || invalid || invalidDaily}>
             {busy ? 'Salvando…' : 'Salvar'}
           </PixelButton>
         </div>
       </Field>
-      <p className="text-[12px] text-secondary">Quando definido: ao passar dele, a plataforma trocaria para um modelo mais barato. Hoje é só referência; passar não muda nada.</p>
+      <p className="text-[12px] text-secondary">
+        O limite por aluno vale no dia (horário do Brasil): ao estourar, o aluno vê um aviso e a IA volta no dia seguinte, com o progresso salvo. Ao passar do teto do
+        mês, o texto troca para o modelo reserva (a transcrição de áudio não troca). Valores estimados, pela tabela de preços.
+      </p>
     </AdminPanel>
   );
 }
