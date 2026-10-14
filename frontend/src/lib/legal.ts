@@ -240,7 +240,7 @@ const PRIVACIDADE: LegalSection[] = [
     "title": "Voz e IA",
     "items": [
       {
-        "p": "Seu áudio é enviado ao provedor **Groq** para transcrição (Whisper) e o texto, para avaliação por modelo de linguagem. Esses provedores ficam **fora do Brasil (EUA)**; a transferência é necessária para executar o serviço (art. 33, II e IX). Segundo a documentação do Groq, ele não retém por padrão o conteúdo das requisições e não o usa para treinar modelos (pode haver registro temporário para segurança e investigação de abuso). O áudio **não é gravado** por nós: ele fica em memória só o tempo da transcrição e depois é descartado; guardamos apenas o texto transcrito e a nota. (Conferido em `GroqAudioTranscriptionService`, 14/10/2026.)"
+        "p": "Seu áudio é enviado ao provedor **Groq** para transcrição (Whisper) e o texto, para avaliação por modelo de linguagem. Esses provedores ficam **fora do Brasil (EUA)**; a transferência é necessária para executar o serviço (art. 33, II e IX). Usamos o Groq com Zero Data Retention ativado: ele não guarda o conteúdo das requisições nem o usa para treinar modelos. O áudio **não é gravado** por nós: ele fica em memória só o tempo da transcrição e depois é descartado; guardamos apenas o texto transcrito e a nota. (Conferido em `GroqAudioTranscriptionService`, 14/10/2026.)"
       }
     ]
   },
