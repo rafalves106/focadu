@@ -43,6 +43,6 @@ cadastro com a caixa, o rodape das Configuracoes no celular e a migration contra
 ## Dúvidas ou pontos abertos para a próxima fase
 
 - O dono precisa revisar o texto juridico final (idealmente com contador/advogado) - o rascunho nao e aconselhamento juridico.
-- Ligar o Zero Data Retention no console do Groq e reler `console.groq.com/docs/your-data`.
+- Zero Data Retention ligado no Groq (global) pelo dono em 14/10/2026; o texto da Privacidade afirma isso, entao nao desligar sem rever o texto.
 - Item de cookies/armazenamento do navegador: reconferir apos a Fase 103 (medicao de produto).
 - Conferir no celular o rodape discreto das Configuracoes (o designer avisou que quebra em duas linhas).
