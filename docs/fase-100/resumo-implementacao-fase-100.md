@@ -40,4 +40,8 @@ templates privados **fica para o momento do deploy**, ver "Pontos abertos".
   Se (2) vier antes de (1), o fork falha com `forgejo_fork_publico`. Depois: conferir `repos/search` sem login (esperado: 0).
 - **Push bloqueado**: as branches 98, 99 e 100 não foram publicadas porque o token do `gh` não tem o escopo `workflow` (a 98 altera `ci.yml`, esta altera `deploy.yml`). `gh auth refresh -h github.com -s workflow`.
 - **Falta**: cópia do backup fora da VM + criptografia (destino e chave); contas do Forgejo `aluno-7087…` e `aluno-8660…` (de usuários apagados) ainda existem, sem repositórios.
-- O repositório do aluno deixa de abrir no navegador sem login no Forgejo (o aluno nunca teve senha de web): se a tela do Projeto Semanal mostra um link "abrir no Forgejo", ele passa a pedir login. Conferir e, se for o caso, tirar o link.
+- **BLOQUEIO para o passo operacional acima: o enunciado do Projeto Semanal mora no README do fork.** Depois de escolher a linguagem, `WeeklyProjectPage` mostra "Abrir README.md"
+  (`DialogueBox`, `readmeUrl={project.submissionUrl}`, só quando `languageStep === Chosen`), que abre a página do repositório no Forgejo. Com o fork privado e `REQUIRE_SIGNIN_VIEW`, o aluno cai
+  numa tela de login e não consegue entrar (a senha é aleatória, ele só tem token). **Antes de privar os templates é preciso servir o README pelo próprio app**: um endpoint do backend que lê
+  `repos/{dono}/{repo}/raw/README.md` com o token de admin (só do dono do projeto) e o front mostra o texto (modal ou painel), no lugar do link. Mexe numa tela existente: Figma antes do código (regra do projeto).
+  Até lá, `REQUIRE_SIGNIN_VIEW` e a privação dos templates **não devem ir para produção**: o compose já tem as duas variáveis do Forgejo, então elas precisam ser removidas do compose se o deploy sair antes do README no app.
