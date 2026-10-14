@@ -135,6 +135,9 @@ public class GetCuratedContentUseCase
             var sections = SplitIntoSections(content.BodyText).Select(StripFencedBlocks).ToList();
             var courseName = await _weeklyTemplateRepository.GetCourseNameForContentAsync(content.Id, cancellationToken);
             // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+            // Fase 101: a analogia e bonus - sem orcamento de IA hoje, le sem ela (nunca quebra a leitura da aula).
+            try { await _aiUsage.EnsureBudgetAsync(userId, cancellationToken); }
+            catch (Focadu.Domain.Exceptions.DomainException) { return []; }
             using var aiUsage = _aiUsage.Begin(userId);
             var sectionAnalogies = await _analogyGenerationService.GenerateAsync(
                 new AnalogyRequest(sections, user.Interests, user.AdditionalProfileNotes, courseName), cancellationToken);

@@ -55,6 +55,7 @@ public class ReviewDailyNotesUseCase
         var (title, material) = NotesReviewRules.Material(weekly, dailyId);
         var courseName = await _weeklyTemplateRepository.GetCourseNameAsync(weekly.Template.Id, cancellationToken);
         // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+        await _aiUsage.EnsureBudgetAsync(userId, cancellationToken);
         using var aiUsage = _aiUsage.Begin(userId, dailyId);
         var result = await _reviewService.ReviewAsync(new NotesReviewRequest(title, material, notes.Select(n => n.Content).ToList(), courseName), cancellationToken);
 

@@ -21,6 +21,11 @@ public class AiUsageRepository : IAiUsageRepository
     public async Task<IReadOnlyList<AiUsageRecord>> ListRecordsByUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
         await _context.AiUsageRecords.AsNoTracking().Where(r => r.UserId == userId).ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<AiUsageRecord>> ListRecordsByUserAsync(Guid userId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken = default) =>
+        await _context.AiUsageRecords.AsNoTracking()
+            .Where(r => r.UserId == userId && r.OccurredAt >= fromUtc && r.OccurredAt < toUtc)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<AiUsageRecord>> ListRecordsByCourseAsync(Guid courseId, CancellationToken cancellationToken = default) =>
         await _context.AiUsageRecords.AsNoTracking().Where(r => r.CourseId == courseId).ToListAsync(cancellationToken);
 

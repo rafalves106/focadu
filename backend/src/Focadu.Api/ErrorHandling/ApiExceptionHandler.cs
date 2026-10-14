@@ -46,6 +46,9 @@ public class ApiExceptionHandler : IExceptionHandler
         ["token_expirado"] = StatusCodes.Status400BadRequest,
         // Fase 93: convite e codigo do e-mail. O resto (convite_*, codigo_invalido/expirado) fica no 400 padrao.
         ["codigo_bloqueado"] = StatusCodes.Status429TooManyRequests,
+        // Fase 101: travas de IA. Orcamento diario esgotado e excesso de tentativas na mesma atividade.
+        ["orcamento_ia_esgotado"] = StatusCodes.Status429TooManyRequests,
+        ["limite_tentativas_dia"] = StatusCodes.Status429TooManyRequests,
     };
 
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)

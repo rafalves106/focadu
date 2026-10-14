@@ -154,7 +154,7 @@ public class AdminPanelTests
     [Fact]
     public async Task Medicao_ContextoValeSoDentroDoUsing()
     {
-        var context = new AiUsageContext();
+        var context = new AiUsageContext(null!); // Begin nao usa a fabrica de escopos (so EnsureBudgetAsync)
         var user = Guid.NewGuid();
         Assert.Null(AiUsageContext.Current);
 

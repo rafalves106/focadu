@@ -8,6 +8,7 @@ using Focadu.Application.Enrollments;
 using Focadu.Application.Gamification;
 using Focadu.Application.Marketplace;
 using Focadu.Application.Notes;
+using Focadu.Application.Ports;
 using Focadu.Application.Ranking;
 using Focadu.Application.Referrals;
 using Focadu.Application.Seed;
@@ -27,6 +28,7 @@ public static class DependencyInjection
         // Fase 94, Painel de gestao.
         services.AddScoped<UserRoleAdminUseCase>();
         services.AddScoped<AdminAccessGuard>();
+        services.AddScoped<IAiBudget, Shared.AiBudget>(); // Fase 101
         services.AddScoped<AiUsageReportUseCase>();
         services.AddScoped<AiUsageSettingsUseCase>();
         services.AddScoped<AdminStudentsUseCase>();

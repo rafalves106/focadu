@@ -220,7 +220,7 @@ export interface AiUsageOverviewDto {
   courseId: string | null;
   totals: AiUsageTotalsDto;
   byType: AiUsageByTypeDto[];
-  monthlyCap: { capUsd: number | null; monthCostUsd: number };
+  monthlyCap: { capUsd: number | null; monthCostUsd: number; overCap: boolean; dailyBudgetUsd: number | null; fallbackModel: string | null };
   prices: AiModelPriceDto[];
   unpricedModels: string[];
 }

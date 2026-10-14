@@ -66,6 +66,7 @@ public class RequestCodeStepHintUseCase
         var normalized = labRun?.Normalize(SubmitCodeStepResponseUseCase.MaxLength);
         var courseName = await _weeklyTemplateRepository.GetCourseNameAsync(weekly.Template.Id, cancellationToken);
         // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+        await _aiUsage.EnsureBudgetAsync(userId, cancellationToken);
         using var aiUsage = _aiUsage.Begin(userId, dailyId);
         var result = await _hintService.HintAsync(
             new CodeStepHintRequest(
