@@ -18,5 +18,8 @@ public interface IUserRepository
     /// <summary>Fase 94: quem tem o papel (comando `admin listar`).</summary>
     Task<IReadOnlyList<User>> ListByRoleAsync(Enums.UserRole role, CancellationToken cancellationToken = default);
 
+    /// <summary>Fase 97: conta desativada pelo admin? Consulta leve (sem tracking) feita a cada chamada autenticada; usuario inexistente conta como desativado.</summary>
+    Task<bool> IsDisabledAsync(Guid id, CancellationToken cancellationToken = default);
+
     Task AddAsync(User user, CancellationToken cancellationToken = default);
 }

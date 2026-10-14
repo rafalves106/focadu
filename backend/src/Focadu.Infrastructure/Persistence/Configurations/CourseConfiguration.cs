@@ -19,6 +19,11 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
         builder.Property(c => c.RecommendedBefore).HasColumnType("text[]").IsRequired();
         builder.Property(c => c.PreparesText).HasMaxLength(500);
         builder.Property(c => c.OnlyForCohorts).IsRequired().HasDefaultValue(false);
+        // Fase 97: marca de edicao do catalogo pelo Painel (nula = vale o curso.json).
+        builder.Property(c => c.CatalogEditedAt);
+        builder.Property(c => c.StatusSetByAdminAt);
+        builder.Ignore(c => c.CanAutoPublish);
+        builder.Ignore(c => c.CatalogEditedByAdmin);
 
         builder.HasMany(c => c.Monthlies)
             .WithOne()

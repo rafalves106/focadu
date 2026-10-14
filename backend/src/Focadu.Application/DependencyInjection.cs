@@ -30,6 +30,8 @@ public static class DependencyInjection
         services.AddScoped<AiUsageReportUseCase>();
         services.AddScoped<AiUsageSettingsUseCase>();
         services.AddScoped<AdminStudentsUseCase>();
+        services.AddScoped<AdminUserManagementUseCase>();
+        services.AddScoped<AdminCoursesUseCase>();
         services.AddScoped<AdminInvitesUseCase>();
         services.AddScoped<AdminCurationUseCase>();
         services.AddScoped<AdminOverviewUseCase>();

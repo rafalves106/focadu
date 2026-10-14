@@ -19,3 +19,14 @@ public record AdminImportDaysRequest(IReadOnlyList<int>? Days);
 public record AdminSetAiPriceRequest(string? Model, decimal? InputPerMillionUsd, decimal? OutputPerMillionUsd, decimal? AudioPerHourUsd, string? Source);
 
 public record AdminSetAiCapRequest(decimal? MonthlyCapUsd);
+
+// Fase 97, lacunas do Painel: usuarios e cursos.
+
+public record AdminUpdateStudentRequest(string? DisplayName, string? Email);
+
+public record AdminSetRoleRequest(bool? Admin);
+
+/// <summary>Criar ou editar o texto do catalogo de um curso. `Name` e `Publish` so valem na criacao (o nome nunca muda).</summary>
+public record AdminSaveCourseRequest(
+    string? Name, string? Description, IReadOnlyList<string>? Requirements, IReadOnlyList<string>? RecommendedBefore,
+    string? PreparesText, bool? OnlyForCohorts, bool? Publish);

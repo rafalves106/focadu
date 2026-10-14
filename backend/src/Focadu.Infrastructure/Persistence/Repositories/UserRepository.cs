@@ -36,6 +36,9 @@ public class UserRepository : IUserRepository
         return rank <= count;
     }
 
+    public async Task<bool> IsDisabledAsync(Guid id, CancellationToken cancellationToken = default) =>
+        !await _context.Users.AsNoTracking().AnyAsync(u => u.Id == id && u.DisabledAt == null, cancellationToken);
+
     public async Task AddAsync(User user, CancellationToken cancellationToken = default) =>
         await _context.Users.AddAsync(user, cancellationToken);
 

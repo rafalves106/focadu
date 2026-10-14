@@ -33,6 +33,47 @@ public class Course : Entity
 
     public void SetOnlyForCohorts(bool value) => OnlyForCohorts = value;
 
+    /// <summary>
+    /// Fase 97: quando o admin editou descricao/requisitos/recomendados/"prepara" pelo Painel. Com a marca, seed e importador
+    /// param de reescrever esses campos a partir do curso.json; "voltar ao curso.json" limpa a marca. O nome nunca e editavel
+    /// (a pasta de conteudo se liga ao curso por ele).
+    /// </summary>
+    public DateTime? CatalogEditedAt { get; private set; }
+
+    public bool CatalogEditedByAdmin => CatalogEditedAt is not null;
+
+    public void EditCatalog(string? description, IEnumerable<string> requirements, IEnumerable<string> recommendedBefore, string? preparesText, DateTime now)
+    {
+        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        SetRecommendation(requirements, recommendedBefore, preparesText);
+        CatalogEditedAt = now;
+    }
+
+    public void ClearCatalogEdit() => CatalogEditedAt = null;
+
+    /// <summary>
+    /// Fase 97: quando o admin publicou ou arquivou o curso pelo Painel. Com a marca, seed e importador nao publicam o curso
+    /// sozinhos (o status e do Painel); sem ela, o manifesto continua publicando na 1a importacao.
+    /// </summary>
+    public DateTime? StatusSetByAdminAt { get; private set; }
+
+    /// <summary>Fase 97: publica pelo Painel (Draft -> Active).</summary>
+    public void PublishByAdmin(DateTime now)
+    {
+        Activate();
+        StatusSetByAdminAt = now;
+    }
+
+    /// <summary>Fase 97: arquiva pelo Painel (Active -> Draft, sem apagar nada). Draft nao aparece pro aluno.</summary>
+    public void UnpublishByAdmin(DateTime now)
+    {
+        Status = CourseStatus.Draft;
+        StatusSetByAdminAt = now;
+    }
+
+    /// <summary>Usado por seed e importador: so publica sozinho se o admin nunca decidiu o status.</summary>
+    public bool CanAutoPublish => Status == CourseStatus.Draft && StatusSetByAdminAt is null;
+
     private readonly List<Monthly> _monthlies = new();
     public IReadOnlyCollection<Monthly> Monthlies => _monthlies.AsReadOnly();
 

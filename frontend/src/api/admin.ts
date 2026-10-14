@@ -2,6 +2,9 @@ import { request } from './client';
 import type {
   AdminCohortDetailDto,
   AdminCohortsDto,
+  AdminCourseCatalogDto,
+  AdminSaveCourseBody,
+  AdminUpdateStudentResultDto,
   AdminCourseVisibilityDto,
   AdminInviteDto,
   AdminInvitesDto,
@@ -43,6 +46,26 @@ export const adminApi = {
       body: JSON.stringify({ confirmation }),
       timeoutMs: 30_000,
     }),
+
+  // Fase 97: editar, redefinir senha, desativar/reativar e papel de admin.
+  updateStudent: (userId: string, displayName: string, email: string) =>
+    request<AdminUpdateStudentResultDto>(`/api/admin/students/${userId}`, { method: 'PUT', body: JSON.stringify({ displayName, email }) }),
+  sendPasswordReset: (userId: string) => request<void>(`/api/admin/students/${userId}/password-reset`, { method: 'POST', timeoutMs: 30_000 }),
+  disableStudent: (userId: string, confirmation: string) =>
+    request<AdminStudentDto>(`/api/admin/students/${userId}/disable`, { method: 'POST', body: JSON.stringify({ confirmation }) }),
+  enableStudent: (userId: string) => request<AdminStudentDto>(`/api/admin/students/${userId}/enable`, { method: 'POST' }),
+  setStudentRole: (userId: string, admin: boolean) =>
+    request<AdminStudentDto>(`/api/admin/students/${userId}/role`, { method: 'PUT', body: JSON.stringify({ admin }) }),
+
+  // Fase 97: aba Cursos.
+  getAdminCourses: () => request<AdminCourseCatalogDto[]>('/api/admin/courses', { timeoutMs: 30_000 }),
+  createAdminCourse: (body: AdminSaveCourseBody & { name: string }) =>
+    request<AdminCourseCatalogDto>('/api/admin/courses', { method: 'POST', body: JSON.stringify(body) }),
+  updateAdminCourse: (id: string, body: AdminSaveCourseBody) =>
+    request<AdminCourseCatalogDto>(`/api/admin/courses/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  publishAdminCourse: (id: string) => request<AdminCourseCatalogDto>(`/api/admin/courses/${id}/publish`, { method: 'POST' }),
+  unpublishAdminCourse: (id: string) => request<AdminCourseCatalogDto>(`/api/admin/courses/${id}/unpublish`, { method: 'POST' }),
+  revertAdminCourseCatalog: (id: string) => request<AdminCourseCatalogDto>(`/api/admin/courses/${id}/revert-catalog`, { method: 'POST' }),
 
   getInvites: () => request<AdminInvitesDto>('/api/admin/invites'),
   createInvite: (note: string, maxUses: number, validDays: number, cohortId: string | null = null) =>

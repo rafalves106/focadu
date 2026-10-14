@@ -45,8 +45,12 @@ public class SyncCourseRecommendationsUseCase
         JsonSerializer.Deserialize<CourseRecommendationJson>(json, JsonOptions)
             ?? throw new InvalidOperationException("recomendacao.json vazio ou invalido.");
 
-    internal static void Apply(Course course, CourseRecommendationJson json) =>
+    // Fase 97: curso editado pelo Painel (CatalogEditedAt) nao e reescrito pelo curso.json.
+    internal static void Apply(Course course, CourseRecommendationJson json)
+    {
+        if (course.CatalogEditedByAdmin) return;
         course.SetRecommendation(json.Requisitos ?? [], json.RecomendadoAntes ?? [], json.PreparaTexto);
+    }
 
     /// <summary>Mesmo slug da pasta de curadoria e do front (lib/courseMaps.ts#courseSlug): "Web Security" -> "web-security".</summary>
     internal static string Slug(string name)

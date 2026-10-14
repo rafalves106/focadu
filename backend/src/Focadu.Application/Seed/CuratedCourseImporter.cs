@@ -66,7 +66,7 @@ public static class CuratedCourseImporter
             }
         }
 
-        if (manifest.Published && course.Status == Domain.Enums.CourseStatus.Draft)
+        if (manifest.Published && course.CanAutoPublish)
             course.Activate();
 
         return created;

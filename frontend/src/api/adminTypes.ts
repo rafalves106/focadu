@@ -37,6 +37,14 @@ export interface AdminStudentDto {
   /** Fase 96: turma do aluno (nula = sem turma). */
   cohortId: string | null;
   cohortName: string | null;
+  /** Fase 97: quando o admin desativou a conta (nulo = ativa). */
+  disabledAt: string | null;
+}
+
+/** Fase 97: resposta de editar aluno; `emailChanged` avisa que o aluno precisa confirmar o novo e-mail. */
+export interface AdminUpdateStudentResultDto {
+  student: AdminStudentDto;
+  emailChanged: boolean;
 }
 
 export interface CourseResetPreviewDto {
@@ -297,4 +305,29 @@ export interface AdminCourseVisibilityDto {
   onlyForCohorts: boolean;
   cohorts: string[];
   cohortStudents: number;
+}
+
+/** Fase 97, aba Cursos: o curso como o Painel o enxerga (texto do catalogo + o que ja tem de conteudo). */
+export interface AdminCourseCatalogDto {
+  id: string;
+  name: string;
+  status: 'Draft' | 'Active' | 'Archived';
+  description: string | null;
+  requirements: string[];
+  recommendedBefore: string[];
+  preparesText: string | null;
+  onlyForCohorts: boolean;
+  /** Nulo = vale o curso.json; preenchido = "editado no painel". */
+  catalogEditedAt: string | null;
+  hasContentFolder: boolean;
+  importedDays: number;
+}
+
+export interface AdminSaveCourseBody {
+  name?: string;
+  description: string | null;
+  requirements: string[];
+  recommendedBefore: string[];
+  preparesText: string | null;
+  onlyForCohorts: boolean;
 }

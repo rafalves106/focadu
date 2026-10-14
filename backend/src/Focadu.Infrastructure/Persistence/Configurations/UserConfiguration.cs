@@ -46,6 +46,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasOne<Cohort>().WithMany().HasForeignKey(u => u.CohortId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(u => u.CohortId);
         builder.Ignore(u => u.IsAdmin);
+        // Fase 97: soft delete pelo admin (nulo = conta ativa).
+        builder.Ignore(u => u.IsDisabled);
 
         builder.HasIndex(u => u.Email).IsUnique();
         builder.HasIndex(u => u.ReferralCode).IsUnique();

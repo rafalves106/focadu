@@ -64,6 +64,7 @@ if (string.IsNullOrWhiteSpace(jwtSecretKey))
 
 var jwtOptions = new JwtOptions(jwtSecretKey);
 const string AuthCookieName = "focadu_auth";
+const string AccountDisabledItem = "conta_desativada";
 
 // Smtp (Fase 41, redefinicao de senha): mesma decisao do Groq/GitHub acima - host ausente nao
 // impede o app de subir, so o envio do email falha (com erro claro) quando de fato chamado sem
@@ -137,6 +138,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 context.Token = context.Request.Cookies[AuthCookieName];
                 return Task.CompletedTask;
             },
+            // Fase 97: conta desativada pelo admin perde a sessao na hora (uma consulta leve por chamada autenticada,
+            // mesmo raciocinio do AdminAccessGuard: o banco manda, nao o JWT ainda valido).
+            OnTokenValidated = async context =>
+            {
+                var sub = context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Sub);
+                if (!Guid.TryParse(sub, out var userId)) return;
+
+                var users = context.HttpContext.RequestServices.GetRequiredService<Focadu.Domain.Repositories.IUserRepository>();
+                if (await users.IsDisabledAsync(userId, context.HttpContext.RequestAborted))
+                {
+                    context.HttpContext.Items[AccountDisabledItem] = true;
+                    context.Fail("conta_desativada");
+                }
+            },
             // Sem isso, um 401 (sem cookie / token expirado) viria vazio - ApiExceptionHandler so
             // cobre excecoes lancadas dentro do endpoint; o challenge de autenticacao acontece
             // antes disso, no middleware, entao precisa do proprio envelope {error,message} aqui.
@@ -145,7 +160,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 context.HandleResponse();
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new ErrorResponse("nao_autenticado", "Sessao invalida ou expirada."));
+                if (context.HttpContext.Items.ContainsKey(AccountDisabledItem))
+                    await context.Response.WriteAsJsonAsync(new ErrorResponse("conta_desativada", "Esta conta foi desativada. Fale com quem administra a Focadu."));
+                else
+                    await context.Response.WriteAsJsonAsync(new ErrorResponse("nao_autenticado", "Sessao invalida ou expirada."));
             },
             // Fase 93: o unico 403 da Api e a sessao de quem ainda nao confirmou o e-mail (politica padrao abaixo).
             OnForbidden = async context =>
@@ -1280,6 +1298,57 @@ admin.MapGet("/students", async (Focadu.Application.Admin.AdminStudentsUseCase u
 admin.MapGet("/students/{userId}", async (string userId, Focadu.Application.Admin.AdminStudentsUseCase useCase, CancellationToken ct) =>
         Results.Ok(await useCase.GetAsync(RouteParsing.RequireGuid(userId, "userId"), ct)))
     .WithName("AdminGetStudent");
+
+// Fase 97: gestao de usuario (aba Alunos) e de curso (aba Cursos).
+admin.MapPut("/students/{userId}", async (string userId, AdminUpdateStudentRequest? request, Focadu.Application.Admin.AdminUserManagementUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.UpdateAsync(RouteParsing.RequireGuid(userId, "userId"), request?.DisplayName, request?.Email, ct)))
+    .WithName("AdminUpdateStudent");
+
+admin.MapPost("/students/{userId}/password-reset", async (string userId, Focadu.Application.Admin.AdminUserManagementUseCase useCase, CancellationToken ct) =>
+    {
+        await useCase.SendPasswordResetAsync(RouteParsing.RequireGuid(userId, "userId"), ct);
+        return Results.Ok();
+    })
+    .WithName("AdminSendPasswordReset");
+
+admin.MapPost("/students/{userId}/disable", async (string userId, AdminConfirmRequest? request, ClaimsPrincipal principal, Focadu.Application.Admin.AdminUserManagementUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.DisableAsync(CurrentUserId(principal), RouteParsing.RequireGuid(userId, "userId"), request?.Confirmation, DateTime.UtcNow, ct)))
+    .WithName("AdminDisableStudent");
+
+admin.MapPost("/students/{userId}/enable", async (string userId, Focadu.Application.Admin.AdminUserManagementUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.EnableAsync(RouteParsing.RequireGuid(userId, "userId"), ct)))
+    .WithName("AdminEnableStudent");
+
+admin.MapPut("/students/{userId}/role", async (string userId, AdminSetRoleRequest? request, ClaimsPrincipal principal, Focadu.Application.Admin.AdminUserManagementUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.SetRoleAsync(CurrentUserId(principal), RouteParsing.RequireGuid(userId, "userId"),
+            request?.Admin ?? throw new Focadu.Application.Exceptions.ValidationException("papel_obrigatorio", "Diga se a conta e admin ou nao."), ct)))
+    .WithName("AdminSetStudentRole");
+
+admin.MapGet("/courses", async (Focadu.Application.Admin.AdminCoursesUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ListAsync(ct)))
+    .WithName("AdminListCourses");
+
+admin.MapPost("/courses", async (AdminSaveCourseRequest? request, Focadu.Application.Admin.AdminCoursesUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.CreateAsync(request?.Name, request?.Description, request?.Requirements, request?.RecommendedBefore,
+            request?.PreparesText, request?.OnlyForCohorts ?? false, request?.Publish ?? false, DateTime.UtcNow, ct)))
+    .WithName("AdminCreateCourse");
+
+admin.MapPut("/courses/{courseId}", async (string courseId, AdminSaveCourseRequest? request, Focadu.Application.Admin.AdminCoursesUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.UpdateAsync(RouteParsing.RequireGuid(courseId, "courseId"), request?.Description, request?.Requirements,
+            request?.RecommendedBefore, request?.PreparesText, request?.OnlyForCohorts ?? false, DateTime.UtcNow, ct)))
+    .WithName("AdminUpdateCourse");
+
+admin.MapPost("/courses/{courseId}/publish", async (string courseId, Focadu.Application.Admin.AdminCoursesUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.PublishAsync(RouteParsing.RequireGuid(courseId, "courseId"), DateTime.UtcNow, ct)))
+    .WithName("AdminPublishCourse");
+
+admin.MapPost("/courses/{courseId}/unpublish", async (string courseId, Focadu.Application.Admin.AdminCoursesUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.UnpublishAsync(RouteParsing.RequireGuid(courseId, "courseId"), DateTime.UtcNow, ct)))
+    .WithName("AdminUnpublishCourse");
+
+admin.MapPost("/courses/{courseId}/revert-catalog", async (string courseId, Focadu.Application.Admin.AdminCoursesUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.RevertToManifestAsync(RouteParsing.RequireGuid(courseId, "courseId"), ct)))
+    .WithName("AdminRevertCourseCatalog");
 
 admin.MapGet("/students/{userId}/courses/{courseId}/reset", async (string userId, string courseId, Focadu.Application.Admin.AdminStudentsUseCase useCase, CancellationToken ct) =>
         Results.Ok(await useCase.PreviewResetAsync(RouteParsing.RequireGuid(userId, "userId"), RouteParsing.RequireGuid(courseId, "courseId"), ct)))

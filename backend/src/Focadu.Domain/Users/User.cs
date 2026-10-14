@@ -190,6 +190,46 @@ public class User : Entity
     /// <summary>Marca o e-mail como confirmado (Fase 93). Confirmar de novo nao muda a data original.</summary>
     public void MarkEmailVerified(DateTime now) => EmailVerifiedAt ??= now;
 
+    /// <summary>
+    /// Quando o admin desativou a conta (Fase 97, soft delete). Nulo = conta ativa. Conta desativada nao entra, perde a
+    /// sessao na hora e some do ranking e do squad; dados, matriculas e progresso ficam intactos e voltam ao reativar.
+    /// </summary>
+    public DateTime? DisabledAt { get; private set; }
+
+    public bool IsDisabled => DisabledAt is not null;
+
+    /// <summary>Desativa a conta (Fase 97). Idempotente: desativar de novo nao muda a data original.</summary>
+    public void Disable(DateTime now) => DisabledAt ??= now;
+
+    /// <summary>Reativa a conta (Fase 97). Idempotente.</summary>
+    public void Enable() => DisabledAt = null;
+
+    /// <summary>Troca o nome de exibicao (Fase 97, edicao pelo admin).</summary>
+    public void ChangeDisplayName(string displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+            throw new DomainException("Nome e obrigatorio.", "nome_obrigatorio");
+
+        DisplayName = displayName.Trim();
+    }
+
+    /// <summary>
+    /// Troca o e-mail (Fase 97, edicao pelo admin). Zera EmailVerifiedAt: o aluno confirma o novo endereco de novo
+    /// (decisao do dono, 13/10/2026). A unicidade e checada pela Application antes de chamar isto.
+    /// </summary>
+    public void ChangeEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email) || !EmailFormat.IsMatch(email.Trim()))
+            throw new DomainException("Email invalido.", "email_invalido");
+
+        var normalized = email.Trim().ToLowerInvariant();
+        if (normalized == Email)
+            return;
+
+        Email = normalized;
+        EmailVerifiedAt = null;
+    }
+
     /// <summary>Troca o papel (Fase 94) - so o comando `admin` da Api chama isso. Idempotente.</summary>
     public void SetRole(UserRole role)
     {

@@ -4,9 +4,11 @@ import { adminApi } from '../../api/admin';
 import type { AdminCourseProgressDto, AdminStudentDto, CourseResetPreviewDto } from '../../api/adminTypes';
 import { ApiError } from '../../api/client';
 import { useApiResource } from '../../api/useApiResource';
+import { useAuth } from '../../contexts/useAuth';
 import { dateBr, handleOf, when } from '../../lib/adminFormat';
 import { PixelModal } from '../PixelModal';
 import { AdminPanel, Chip, EmptyPanel, Field, PanelError, PixelButton, ResultBanner, SkeletonRows, SortHeader, Toggle } from './AdminUi';
+import { AccountBlock, DisableModal, EditStudentDrawer, PasswordResetModal, RoleModal, type AccountAction } from './StudentAccount';
 import { inputClass } from '../../lib/adminStyles';
 import { AdminShell } from './AdminShell';
 
@@ -22,6 +24,19 @@ const TABLE_NAMES: Record<string, string> = {
   Enrollments: 'matrícula (semanas, dias, projetos e publicações juntos)',
 };
 
+// Fase 97: situacao da conta (filtro) e as acoes do bloco "// CONTA".
+type StatusFilter = 'todos' | 'ativos' | 'desativados';
+
+const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+  { key: 'todos', label: 'Todos' },
+  { key: 'ativos', label: 'Ativos' },
+  { key: 'desativados', label: 'Desativados' },
+];
+
+function matchesFilter(s: AdminStudentDto, filter: StatusFilter) {
+  return filter === 'todos' || (filter === 'desativados' ? s.disabledAt !== null : s.disabledAt === null);
+}
+
 export function StudentsTab() {
   const { data, error, loading, retry } = useApiResource(() => adminApi.getStudents(), []);
   const [hidden, setHidden] = useState(false);
@@ -30,11 +45,26 @@ export function StudentsTab() {
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('aluno'));
   const [resetting, setResetting] = useState<{ student: AdminStudentDto; course: AdminCourseProgressDto } | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const { user } = useAuth();
+  const [filter, setFilter] = useState<StatusFilter>('todos');
+  const [action, setAction] = useState<{ kind: AccountAction; student: AdminStudentDto } | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
 
-  const rows = useMemo(() => sortStudents(data ?? [], sort.key, sort.dir), [data, sort]);
+  const rows = useMemo(() => sortStudents((data ?? []).filter((s) => matchesFilter(s, filter)), sort.key, sort.dir), [data, sort, filter]);
   const selected = rows.find((s) => s.id === selectedId) ?? null;
   const nameOf = (s: AdminStudentDto) => handleOf(s.email, hidden, rows.indexOf(s));
   const toggleSort = (key: SortKey) => setSort((s) => ({ key, dir: s.key === key && s.dir === 'desc' ? 'asc' : 'desc' }));
+
+  async function enable(student: AdminStudentDto) {
+    setFailure(null);
+    try {
+      await adminApi.enableStudent(student.id);
+      setResult(`${nameOf(student)} reativado. A conta volta a entrar e reaparece no ranking e no squad.`);
+      retry();
+    } catch (err) {
+      setFailure(err instanceof ApiError ? err.message : 'Não deu pra reativar. Nada mudou; tente de novo.');
+    }
+  }
 
   return (
     <AdminShell
@@ -47,6 +77,21 @@ export function StudentsTab() {
           {result}
         </ResultBanner>
       )}
+      {failure && (
+        <ResultBanner tone="error" onClose={() => setFailure(null)}>
+          {failure}
+        </ResultBanner>
+      )}
+      {data && data.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 lg:shrink-0">
+          <span className="font-pixel-label text-[7px] text-secondary">SITUAÇÃO</span>
+          {STATUS_FILTERS.map((f) => (
+            <PixelButton key={f.key} tone={filter === f.key ? 'selected' : 'outline'} onClick={() => setFilter(f.key)}>
+              {f.label} · {data.filter((s) => matchesFilter(s, f.key)).length}
+            </PixelButton>
+          ))}
+        </div>
+      )}
       {loading && !data && <SkeletonRows rows={10} />}
       {error && <PanelError message="Não deu pra carregar a lista de alunos." code="ADMIN_STUDENTS_FAILED" onRetry={retry} />}
       {data && data.length === 0 && <EmptyPanel title="Nenhum aluno ainda">Quando alguém entrar com um convite, aparece aqui.</EmptyPanel>}
@@ -58,6 +103,7 @@ export function StudentsTab() {
             action={<Toggle label="Ocultar nomes" checked={hidden} onChange={setHidden} />}
             className="lg:overflow-hidden"
           >
+            {rows.length === 0 && <EmptyPanel title={filter === 'desativados' ? 'Nenhum aluno desativado' : 'Nenhum aluno ativo'}>{filter === 'desativados' ? 'Quando você desativar uma conta, ela aparece aqui e dá pra reativar.' : 'Todas as contas estão desativadas.'}</EmptyPanel>}
             <div className="min-h-0 flex-1 overflow-auto">
               <table className="w-full border-collapse text-left">
                 <thead className="sticky top-0 bg-base">
@@ -78,12 +124,13 @@ export function StudentsTab() {
                       <tr
                         key={s.id}
                         onClick={() => setSelectedId(active ? null : s.id)}
-                        className={`cursor-pointer border-b border-stroke text-[13px] ${active ? 'outline-2 -outline-offset-2 outline-accent' : 'hover:bg-surface'}`}
+                        className={`cursor-pointer border-b border-stroke text-[13px] ${s.disabledAt ? 'opacity-60' : ''} ${active ? 'outline-2 -outline-offset-2 outline-accent' : 'hover:bg-surface'}`}
                       >
                         <td className={`px-3 py-3 ${active ? 'text-accent' : 'text-primary'}`}>
                           {active && '▶ '}
                           {nameOf(s)}
                           {s.isAdmin && <span className="ml-2 font-pixel-label text-[7px] text-project">admin</span>}
+                          {s.disabledAt && <span className="ml-2 align-middle"><Chip tone="muted">DESATIVADO</Chip></span>}
                         </td>
                         <td className="px-3 py-3">
                           {s.cohortName ? <Chip tone="amber">{s.cohortName}</Chip> : <span className="text-[12px] text-muted">sem turma</span>}
@@ -110,6 +157,9 @@ export function StudentsTab() {
               name={nameOf(selected)}
               onClose={() => setSelectedId(null)}
               onReset={(course) => setResetting({ student: selected, course })}
+              onAction={(kind) => setAction({ kind, student: selected })}
+              isSelf={selected.id === user?.id}
+              onEnable={() => enable(selected)}
             />
           ) : (
             <EmptyPanel title="Nenhum aluno selecionado">Clique numa linha da tabela pra ver o progresso por curso.</EmptyPanel>
@@ -130,6 +180,54 @@ export function StudentsTab() {
           }}
         />
       )}
+      {action?.kind === 'editar' && (
+        <EditStudentDrawer
+          student={action.student}
+          onClose={() => setAction(null)}
+          onSaved={(saved) => {
+            setResult(
+              saved.emailChanged
+                ? `Dados de ${saved.student.displayName} salvos. O aluno precisa confirmar o novo e-mail.`
+                : `Dados de ${saved.student.displayName} salvos.`,
+            );
+            setAction(null);
+            retry();
+          }}
+        />
+      )}
+      {action?.kind === 'senha' && (
+        <PasswordResetModal
+          student={action.student}
+          onClose={() => setAction(null)}
+          onDone={() => {
+            setResult(`E-mail de redefinição enviado para ${action.student.email}. A senha continua a mesma até o aluno trocar.`);
+            setAction(null);
+          }}
+        />
+      )}
+      {(action?.kind === 'promover' || action?.kind === 'rebaixar') && (
+        <RoleModal
+          student={action.student}
+          makeAdmin={action.kind === 'promover'}
+          onClose={() => setAction(null)}
+          onDone={() => {
+            setResult(action.kind === 'promover' ? `${action.student.displayName} agora é admin.` : `${action.student.displayName} deixou de ser admin.`);
+            setAction(null);
+            retry();
+          }}
+        />
+      )}
+      {action?.kind === 'desativar' && (
+        <DisableModal
+          student={action.student}
+          onClose={() => setAction(null)}
+          onDone={() => {
+            setResult(`Conta de ${action.student.displayName} desativada. Os dados ficam guardados e dá pra reativar quando quiser.`);
+            setAction(null);
+            retry();
+          }}
+        />
+      )}
     </AdminShell>
   );
 }
@@ -139,11 +237,17 @@ function StudentDetail({
   name,
   onClose,
   onReset,
+  onAction,
+  isSelf,
+  onEnable,
 }: {
   student: AdminStudentDto;
   name: string;
   onClose: () => void;
   onReset: (course: AdminCourseProgressDto) => void;
+  onAction: (kind: AccountAction) => void;
+  isSelf: boolean;
+  onEnable: () => void;
 }) {
   const completed = student.courses.reduce((sum, c) => sum + c.completedDays, 0);
   return (
@@ -178,6 +282,7 @@ function StudentDetail({
           <MiniStat value={`${student.currentStreak} dias`} label="de sequência" />
           <MiniStat value={student.courses.length} label={student.courses.length === 1 ? 'curso' : 'cursos'} />
         </div>
+        <AccountBlock student={student} isSelf={isSelf} onAction={onAction} onEnable={onEnable} />
         <p className="font-pixel-label text-[8px] text-secondary">// Progresso por curso</p>
         {student.courses.length === 0 && <p className="text-[13px] text-secondary">Ainda não se matriculou em nenhum curso.</p>}
         {student.courses.map((course) => (

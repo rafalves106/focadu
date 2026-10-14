@@ -73,7 +73,11 @@ public class GetSquadHqUseCase
         var itemsById = (await _cosmeticItemRepository.GetAllAsync(cancellationToken)).ToDictionary(i => i.Id);
         var facts = new List<MemberFacts>();
         foreach (var member in await _squadRepository.GetMembersAsync(squad.Id, cancellationToken))
+        {
+            // Fase 97: conta desativada pelo admin some do QG dos colegas.
+            if (await _userRepository.IsDisabledAsync(member.UserId, cancellationToken)) continue;
             facts.Add(await LoadFactsAsync(member, itemsById, cancellationToken));
+        }
 
         var today = _clock.Today();
         var feed = BuildFeed(facts, requestingUserId, today);
