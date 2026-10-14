@@ -120,8 +120,18 @@ public class SubmitVoiceSummaryResponseUseCase
         // TranscribeAsync nunca devolve vazio - a implementacao Groq ja lanca "transcricao_vazia"
         // (com retry, ver GroqAudioTranscriptionService/HttpRetry) antes de retornar.
         // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+        // Fase 101: tentativas do dia, orcamento diario e duracao do audio (esta, depois da transcricao e antes da avaliacao cara).
+        AiLimits.EnsureAttemptsLeft(daily.Responses, activityId, _clock.Today());
+        await _aiUsage.EnsureBudgetAsync(userId, cancellationToken);
         using var aiUsage = _aiUsage.Begin(userId, dailyId);
-        var transcript = await _transcriptionService.TranscribeAsync(audioStream, cancellationToken);
+        var spoken = await _transcriptionService.TranscribeAsync(audioStream, cancellationToken);
+        if (spoken.DurationSeconds > AiLimits.MaxAudioSeconds)
+        {
+            throw new ValidationException(
+                "audio_muito_longo",
+                $"O áudio tem mais de {(int)(AiLimits.MaxAudioSeconds / 60)} minutos. Grave de novo, mais curto.");
+        }
+        var transcript = spoken.Text;
 
         // ContextText (a pergunta) so agrega informacao quando a referencia principal e outra
         // coisa (o BodyText da leitura) - se ja caiu no fallback do Prompt como referencia,

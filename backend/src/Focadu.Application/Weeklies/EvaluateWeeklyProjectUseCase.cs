@@ -94,6 +94,7 @@ public class EvaluateWeeklyProjectUseCase
         var snapshot = await _forgejoService.GetContentSnapshotAsync(forgejoAccount.ForgejoUsername, templateSlug, cancellationToken);
         var specText = weekly.Template.WeeklyProjectSpecText ?? string.Empty;
         // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+        await _aiUsage.EnsureBudgetAsync(userId, cancellationToken);
         using var aiUsage = _aiUsage.Begin(userId, weeklyId: weeklyId);
         var evaluation = await _projectEvaluationService.EvaluateAsync(
             new ContentEvaluationRequest(specText, snapshot, null), cancellationToken);

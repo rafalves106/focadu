@@ -11,6 +11,9 @@ public interface IAiUsageRepository
     /// <summary>Todas as chamadas de um aluno (painel lateral: custo por dia do curso, desde o inicio da medicao).</summary>
     Task<IReadOnlyList<AiUsageRecord>> ListRecordsByUserAsync(Guid userId, CancellationToken cancellationToken = default);
 
+    /// <summary>Fase 101: chamadas de um aluno em [fromUtc, toUtc) - o gasto do dia pro orcamento diario.</summary>
+    Task<IReadOnlyList<AiUsageRecord>> ListRecordsByUserAsync(Guid userId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken = default);
+
     /// <summary>Todas as chamadas de um curso (media do curso por dia, no painel do aluno).</summary>
     Task<IReadOnlyList<AiUsageRecord>> ListRecordsByCourseAsync(Guid courseId, CancellationToken cancellationToken = default);
 

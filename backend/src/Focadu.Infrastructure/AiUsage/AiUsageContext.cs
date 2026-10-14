@@ -1,4 +1,5 @@
 using Focadu.Application.Ports;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Focadu.Infrastructure.AiUsage;
 
@@ -9,6 +10,20 @@ namespace Focadu.Infrastructure.AiUsage;
 public sealed class AiUsageContext : IAiUsageContext
 {
     private static readonly AsyncLocal<AiUsageScope?> CurrentScope = new();
+
+    private readonly IServiceScopeFactory _scopeFactory;
+
+    public AiUsageContext(IServiceScopeFactory scopeFactory)
+    {
+        _scopeFactory = scopeFactory;
+    }
+
+    public async Task EnsureBudgetAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        // Escopo proprio: o contexto e Singleton e o orcamento le o banco (DbContext e scoped).
+        using var scope = _scopeFactory.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<IAiBudget>().EnsureDailyBudgetAsync(userId, cancellationToken);
+    }
 
     public static AiUsageScope? Current => CurrentScope.Value;
 

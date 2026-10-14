@@ -27,7 +27,7 @@ public class GroqAudioTranscriptionService : IAudioTranscriptionService
         _options = options;
     }
 
-    public async Task<string> TranscribeAsync(Stream audioStream, CancellationToken cancellationToken = default)
+    public async Task<AudioTranscript> TranscribeAsync(Stream audioStream, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_options.ApiKey))
         {
@@ -69,7 +69,7 @@ public class GroqAudioTranscriptionService : IAudioTranscriptionService
         }
     }
 
-    private async Task<string> TranscribeOnceAsync(byte[] audioBytes, CancellationToken cancellationToken)
+    private async Task<AudioTranscript> TranscribeOnceAsync(byte[] audioBytes, CancellationToken cancellationToken)
     {
         using var content = new MultipartFormDataContent();
         using var audioContent = new ByteArrayContent(audioBytes);
@@ -97,8 +97,8 @@ public class GroqAudioTranscriptionService : IAudioTranscriptionService
                 "transcricao_vazia", "A transcricao do audio veio vazia - tente gravar novamente.");
         }
 
-        return text;
+        return new AudioTranscript(text, result?.Duration ?? 0);
     }
 
-    private record GroqTranscriptionResponse(string? Text);
+    private record GroqTranscriptionResponse(string? Text, double? Duration);
 }

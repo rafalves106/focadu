@@ -1459,9 +1459,9 @@ admin.MapPut("/ai-usage/prices", async (ClaimsPrincipal principal, AdminSetAiPri
     })
     .WithName("AdminSetAiPrice");
 
-admin.MapPut("/ai-usage/cap", async (AdminSetAiCapRequest? request, Focadu.Application.Admin.AiUsageSettingsUseCase useCase, CancellationToken ct) =>
-        Results.Ok(new { monthlyCapUsd = await useCase.SetMonthlyCapAsync(request?.MonthlyCapUsd, ct) }))
-    .WithName("AdminSetAiCap");
+admin.MapPut("/ai-usage/limits", async (AdminSetAiLimitsRequest? request, Focadu.Application.Admin.AiUsageSettingsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.SetLimitsAsync(request?.DailyBudgetUsd, request?.MonthlyCapUsd, request?.FallbackModel, ct)))
+    .WithName("AdminSetAiLimits");
 
 Guid? OptionalGuid(string? value, string name) => string.IsNullOrWhiteSpace(value) ? null : RouteParsing.RequireGuid(value, name);
 

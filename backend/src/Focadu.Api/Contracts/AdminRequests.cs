@@ -18,7 +18,7 @@ public record AdminImportDaysRequest(IReadOnlyList<int>? Days);
 
 public record AdminSetAiPriceRequest(string? Model, decimal? InputPerMillionUsd, decimal? OutputPerMillionUsd, decimal? AudioPerHourUsd, string? Source);
 
-public record AdminSetAiCapRequest(decimal? MonthlyCapUsd);
+public record AdminSetAiLimitsRequest(decimal? DailyBudgetUsd, decimal? MonthlyCapUsd, string? FallbackModel);
 
 // Fase 97, lacunas do Painel: usuarios e cursos.
 

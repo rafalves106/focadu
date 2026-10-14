@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 100 - Backup e Forgejo privado** (Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 101 - Travas de IA** (Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -3013,7 +3013,7 @@ decisoes em `docs/fase-94/`.
   `IAdminMaintenance` (`ExecuteDelete` em transacao, mesma tecnica do `UserResetService`). Ordem do apagar dias antigos: notas,
   revisoes, feedback do dia, respostas, Weeklies de semanas que ficam vazias, Dailies, `RoleplayOptions` (FK `NextNodeId`
   Restrict travava a cascata), `DailyTemplates`, `WeeklyTemplates` e `Monthlies` vazios. Medicao de IA nunca e apagada.
-- **Medicao de IA** ("medir antes de limitar" - nada bloqueia nem troca modelo):
+- **Medicao de IA** (Fase 94: "medir antes de limitar"; os limites da Fase 101 estao em "Travas de IA" logo abaixo):
   - `AiUsageMeasuringHandler` (DelegatingHandler) em todos os `AddHttpClient` do Groq menos o health check: modelo do corpo
     (JSON `model` ou parte multipart `model`), uso da resposta (`usage.prompt_tokens/completion_tokens`; transcricao pede
     `response_format=verbose_json` e le `duration`). Grava num escopo de DbContext proprio; falha de medicao so loga.
@@ -3028,6 +3028,30 @@ decisoes em `docs/fase-94/`.
   app nao tem @usuario). "Abrir no Claude" e so um link (`VITE_CLAUDE_URL`, padrao `https://claude.ai/code`).
 - **Deploy**: imagem do backend com `nodejs` (linter do dia roda no container ao importar pelo painel); `deploy.yml` instala as
   dependencias do linter no `secret/` do host com um `node:22-alpine` descartavel (o `secret/` entra no container `:ro`).
+
+### Travas de IA (Fase 101)
+
+Sobre a Medicao acima; o gasto continua **estimado** (uso medido x tabela de precos), nunca o custo real da fatura. Quatro travas:
+
+- **Orcamento diario por aluno** (`AiUsageSettings.DailyBudgetUsd`): `IAiUsageContext.EnsureBudgetAsync(userId)` roda ANTES de `Begin` nos 7
+  casos de uso que chamam IA (resposta de voz, passo de codigo, dica, avaliacao do projeto, rascunho do LinkedIn, revisao do Caderninho,
+  Suporte Rapido). Soma o que o aluno gastou hoje (dia vivido, `IClock`); `>=` o orcamento lanca `orcamento_ia_esgotado` (429) antes de qualquer
+  chamada, entao nao gasta nem registra nada. E um metodo separado de `Begin` porque o contexto vive em `AsyncLocal`, que um metodo
+  assincrono nao devolve ao chamador. Excecao: a analogia (`GetCuratedContentUseCase`, leitura) trata o orcamento esgotado como "sem analogia",
+  nunca quebra a leitura da aula. A analogia ja tem cache persistido (`PersonalizedAnalogy`) e esta desligada por flag.
+- **Teto mensal global** (`MonthlyCapUsd`) **com modelo reserva** (`FallbackModel`): `AiModelDowngradeHandler` (por FORA do handler de medicao, em
+  todo cliente Groq de texto) troca o campo `model` do corpo JSON pelo reserva quando o gasto do mes passa do teto, e a Medicao grava o modelo usado
+  de verdade. A situacao do teto vem de `AiCapMonitor` (singleton, cache de 1 minuto; erro de leitura = nao troca, limite nunca derruba a IA). Nao
+  troca se o reserva nao tem linha na tabela de precos (o gasto dele sumiria da conta). **O Whisper nao troca** (multipart, sem reserva).
+- **Duracao do audio** (`AiLimits.MaxAudioSeconds` = 16 min; o front deixa gravar ate 15): `IAudioTranscriptionService` agora devolve
+  `AudioTranscript(Text, DurationSeconds)` (a duracao vem do `verbose_json`); passou, `audio_muito_longo` (400) antes da avaliacao, que e a chamada cara.
+  O limite de 25 MB de upload segue.
+- **Tentativas por dia** (`AiLimits.MaxAttemptsPerActivityPerDay` = 10) para resumo falado e passo de codigo: `limite_tentativas_dia` (429).
+
+Padroes (migration `Fase101TravasDeIa`, editaveis na aba Uso de IA, `PUT /api/admin/ai-usage/limits`; o antigo `/cap` saiu): US$ 0,50 por aluno por dia,
+teto de US$ 30 por mes (so se estava vazio) e reserva `openai/gpt-oss-20b` (preco `0,075 / 0,30` por 1 M, referencia publica da Groq, **conferir**).
+Base dos numeros (14/10/2026): 15 chamadas medidas custaram ~US$ 0,006 no total, entao US$ 0,50 e ~25x o uso normal de um aluno. A aba mostra o painel
+"Limites de IA" (limite diario, teto, reserva, aviso de teto atingido). 429 e o codigo; o aluno ve a mensagem do erro no lugar da resposta.
 
 ### Turmas (Fase 96)
 

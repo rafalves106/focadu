@@ -56,6 +56,7 @@ public class GenerateLinkedInDraftUseCase
 
         var prompt = BuildPrompt(weekly.Theme ?? weekly.Title, keyConcepts, personalization);
         // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
+        await _aiUsage.EnsureBudgetAsync(userId, cancellationToken);
         using var aiUsage = _aiUsage.Begin(userId, weeklyId: weeklyId);
         var draft = await _draftGenerationService.GenerateAsync(prompt, cancellationToken);
 
