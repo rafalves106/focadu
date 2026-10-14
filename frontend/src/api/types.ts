@@ -547,6 +547,11 @@ export interface ForgejoTokenDto {
   generatedAt: string;
 }
 
+/** Fase 100b: resposta de GET /api/weeklies/{id}/project/readme - texto Markdown do README.md do fork do aluno. */
+export interface WeeklyProjectReadmeDto {
+  text: string;
+}
+
 export interface WeeklyDetailDto {
   id: string;
   monthlyId: string;

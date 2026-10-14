@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 101 - Travas de IA** (Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 100b - README do Projeto Semanal no app** (Fase 101: Travas de IA; Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -1326,6 +1326,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 POST | `/api/curated-content` | `CreateCuratedContentUseCase` (Fase 4) | 201, 400/404 - Fase 13: campo `weeklyTemplateId` (era `weeklyId`) |
 | 🔒 PUT | `/api/curated-content/{id}` | `UpdateCuratedContentUseCase` (Fase 4) | 200, 400/404 |
 | 🔒 POST | `/api/weeklies/{weeklyId}/project/submit` | `SubmitWeeklyProjectUseCase` (Fase 7) | 200, 400/404 - `WeeklyProject.Submit` existia desde a Fase 1, so faltava endpoint |
+| 🔒 GET | `/api/weeklies/{weeklyId}/project/readme` | `GetWeeklyProjectReadmeUseCase` (Fase 100b) | 200 `{ text }` - README.md do fork do aluno (so o dono). 404 `readme_indisponivel` sem fork/conta/README |
 | 🔒 POST | `/api/users/me/forgejo-token` | `GenerateForgejoTokenUseCase` (Fase 60) | 200 `ForgejoTokenDto` - gera token novo do Forgejo e revoga o anterior; unico lugar onde o token inteiro aparece (nao e persistido). 404 `conta_git_inexistente` sem conta no Forgejo |
 | 🔒 POST | `/api/weeklies/{weeklyId}/project/evaluate` | `EvaluateWeeklyProjectUseCase` (Fase 11) | 200, 400/404 - `WeeklyProject.Evaluate` existia desde a Fase 1, so faltava endpoint (so backend, sem tela propria). Fase 16: virou PUT com corpo `{score, feedback}` obrigatorio. Fase 21: voltou a ser POST sem corpo - nota/feedback agora vem da IA (GitHub + Groq, ver secao acima). Fase 27b: `SubmitWeeklyProjectUseCase` passou a chamar isso sozinho (composicao) logo apos o submit - nenhum chamador HTTP direto novo, o endpoint continua existindo do mesmo jeito |
 | 🔒 GET | `/api/courses/{courseId}/ranking?scope=` | `GetCourseRankingUseCase` (Fase 16) | 200 (`RankingResultDto`) - `scope` = `weekly`\|`monthly`\|`course`, default `course` se omitido. Fase 18: `RankingEntryDto` ganhou `EquippedNameColor` (Name do cosmetico equipado, nao hex - ver secao abaixo). Fase 73: `RankingEntryDto.Look` e `RankingResultDto.AheadEntry`/`TotalEntries`/`CurrentWeekNumber`/`CurrentWeekScored` |
@@ -2222,9 +2223,9 @@ Desde a Fase 100 o codigo sabe fazer isso, **atras de `Forgejo__RequirePrivateFo
 `PUT /repos/focadu-admin/{template}/collaborators/{aluno}` (permissao `read`, so o necessario para o fork), o fork em nome do aluno
 e `RequirePrivateFork` - se o fork voltar publico, falha fechado com `forgejo_fork_publico` em vez de seguir publico em silencio
 (vale tambem no caminho de reaproveitar o fork que ja existe, 409). `docker-compose.yml`: `FORGEJO_DEFAULT_PRIVATE` e
-`FORGEJO_REQUIRE_SIGNIN_VIEW` (padroes `public`/`false`; ligar com a chave do backend, as tres juntas). **Ainda desligado em producao**:
-o enunciado mora no README do fork e o link "Abrir README.md" aponta pro Forgejo, que com login obrigatorio o aluno nao abre (ver
-`docs/fase-100/`). O aluno nunca loga na web do Forgejo (senha aleatoria, so token), entao o
+`FORGEJO_REQUIRE_SIGNIN_VIEW` (padroes `public`/`false`; ligar com a chave do backend, as tres juntas). **Ainda desligado em producao**
+(o bloqueio do README saiu na Fase 100b: `GET /api/weeklies/{weeklyId}/project/readme` serve o `README.md` do fork pelo app, lido com o token de admin, so
+para o dono; o botao "Abrir README.md" abre `ProjectReadmeModal`; falta conferir ao vivo e ligar as chaves - ver `docs/fase-100/` e `docs/fase-100b/`). O aluno nunca loga na web do Forgejo (senha aleatoria, so token), entao o
 repositorio dele deixa de abrir no navegador sem login; o acesso por git continua pelo token. Verificado ao vivo (14/10/2026,
 usuario e repositorio descartaveis, apagados): fork sem leitura = 404; com leitura = 202 e `private: true`; anonimo e outro aluno = 404;
 `git ls-remote` anonimo pede senha. Tornar um template privado torna privados os forks dele que ja existem.

@@ -35,4 +35,11 @@ public interface IForgejoService
 
     /// <summary>Mesma forma que IGitHubService.GetContentSnapshotAsync - conteudo do repositorio formatado pronto pro prompt de avaliacao por IA (EvaluateWeeklyProjectUseCase).</summary>
     Task<string> GetContentSnapshotAsync(string owner, string repo, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fase 100b: texto cru do README.md do repositorio `owner/repo` (branch padrao), lido com o token
+    /// administrativo - e como o aluno le o enunciado do Projeto Semanal com o fork privado, sem login
+    /// no Forgejo. Nulo quando o repositorio nao tem README.
+    /// </summary>
+    Task<string?> GetReadmeAsync(string owner, string repo, CancellationToken cancellationToken = default);
 }

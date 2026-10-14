@@ -51,6 +51,7 @@ import {
   type WeeklyDetailDto,
   type WeeklyProjectDto,
   type ForgejoTokenDto,
+  type WeeklyProjectReadmeDto,
   type WeeklyTemplateDetailDto,
 } from './types';
 
@@ -242,6 +243,8 @@ export const api = {
     }),
   // Fase 60: gera um token novo do Forgejo e revoga o anterior - o valor so vem nesta resposta.
   generateForgejoToken: () => request<ForgejoTokenDto>('/api/users/me/forgejo-token', { method: 'POST' }),
+  // Fase 100b: README do fork do aluno (o enunciado do projeto), lido pelo backend - o fork e privado.
+  getWeeklyProjectReadme: (weeklyId: string) => request<WeeklyProjectReadmeDto>(`/api/weeklies/${weeklyId}/project/readme`),
   // Publicacao publica do modulo (Fase 11) - prova de aprendizado exigida ao completar uma Weekly.
   getPublicationStatus: (weeklyId: string) => request<ModulePublicationDto>(`/api/weeklies/${weeklyId}/publication/status`),
   generateLinkedInDraft: (weeklyId: string) =>
