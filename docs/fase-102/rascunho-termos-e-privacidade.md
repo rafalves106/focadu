@@ -8,8 +8,8 @@
 
 ## Termos de Uso
 
-**1. Quem somos.** O Focadu é uma plataforma pessoal de estudo, operada por Rafael Alves (pessoa física)
-**[REVISAR: CNPJ/razão social, se houver]**. Contato: **[REVISAR: e-mail de contato, o mesmo de `SIGNUP_CONTACT_EMAIL`]**.
+**1. Quem somos.** O Focadu é uma plataforma pessoal de estudo, operada por Rafael Martins Alves (pessoa física).
+Contato: rafalves106@icloud.com.
 
 **2. O que é o serviço.** Sessões diárias de estudo com leitura, quiz, exercícios, laboratório de código e
 avaliação por voz, mais projetos semanais. O serviço está em **teste fechado**: pode mudar, sair do ar ou
@@ -35,7 +35,6 @@ de ataque para você entender defesa. Por isso:
   Isso pode ser crime (Lei 12.737/2012 e o Código Penal) e a responsabilidade é só sua.
 - Se achar uma falha no próprio Focadu, avise pelo e-mail de contato em vez de explorá-la ou divulgá-la;
   não buscaremos medidas contra quem agir de boa-fé, sem acessar dados de terceiros e sem degradar o serviço.
-  **[REVISAR: confirmar que o dono quer assumir esse compromisso]**
 
 **6. Seu conteúdo.** Suas respostas, anotações, áudios e códigos continuam sendo seus. Você nos dá permissão
 para armazená-los e processá-los apenas para operar o serviço para você (inclusive enviá-los aos provedores
@@ -62,15 +61,15 @@ avisando por e-mail quando possível.
 **11. Mudanças.** Podemos atualizar estes Termos. Quando a mudança for relevante, a versão sobe e você
 precisa aceitar de novo no próximo login para continuar usando.
 
-**12. Lei e foro.** Lei brasileira. Foro da comarca de **[REVISAR: cidade do dono]**, ressalvado o foro do
+**12. Lei e foro.** Lei brasileira. Foro da comarca de Belo Horizonte (MG), ressalvado o foro do
 consumidor quando a lei o assegurar.
 
 ---
 
 ## Política de Privacidade (LGPD — Lei 13.709/2018)
 
-**1. Controlador.** Rafael Alves **[REVISAR: dados do controlador]**. Encarregado/contato para pedidos sobre
-dados: **[REVISAR: e-mail]**.
+**1. Controlador.** Rafael Martins Alves (pessoa física). Contato e encarregado para pedidos sobre dados:
+rafalves106@icloud.com.
 
 **2. Quais dados tratamos e para quê.**
 
@@ -79,18 +78,17 @@ dados: **[REVISAR: e-mail]**.
 | Nome, e-mail, senha (guardada só como hash) | Criar e proteger a conta, recuperar senha, avisos do serviço | Execução do contrato |
 | Código de confirmação de e-mail, convite usado, turma | Controle de acesso do teste fechado | Execução do contrato / legítimo interesse |
 | Progresso, respostas, pontuação, anotações do Caderninho, interesses informados | Entregar o estudo, ranking, squad, reforço adaptativo | Execução do contrato |
-| **Áudio da sua voz** e a transcrição | Avaliar o Resumo Falado e a conversa por voz | Execução do contrato; consentimento específico no aceite **[REVISAR]** |
+| **Áudio da sua voz** e a transcrição | Avaliar o Resumo Falado e a conversa por voz | Execução do contrato; consentimento no aceite (frase da voz) |
 | Código que você roda no laboratório | Executa **no seu navegador**; só vai ao servidor se você pedir a dica da Focada ou enviar para avaliação | Execução do contrato |
 | Repositório do Projeto Semanal (código, commits, README) | Entregar e avaliar o projeto; prova pública de evolução | Execução do contrato |
 | Registros técnicos (IP, aparelho/navegador resumido, data/hora, uso de IA e custo estimado) | Segurança, limite de abuso, medir o produto e o custo | Legítimo interesse |
 
-Não pedimos CPF, endereço, dado de pagamento nem dado sensível (art. 5º, II). **[REVISAR: confirmar que nada
-disso é coletado]** Não usamos seus dados para publicidade nem os vendemos.
+Não pedimos CPF, endereço, dado de pagamento nem dado sensível (art. 5º, II). Não usamos seus dados para publicidade nem os vendemos.
 
 **3. Voz e IA.** Seu áudio é enviado ao provedor **Groq** para transcrição (Whisper) e o texto, para
 avaliação por modelo de linguagem. Esses provedores ficam **fora do Brasil (EUA)**; a transferência é
-necessária para executar o serviço (art. 33, II e IX). Pedimos que o provedor não use o conteúdo para treinar
-modelos **[REVISAR: conferir os termos atuais do Groq]**. O áudio **não é gravado** por nós: ele fica em memória só o tempo da transcrição
+necessária para executar o serviço (art. 33, II e IX). Segundo a documentação do Groq, ele não retém por padrão o conteúdo das requisições e
+não o usa para treinar modelos (pode haver registro temporário para segurança e investigação de abuso). O áudio **não é gravado** por nós: ele fica em memória só o tempo da transcrição
 e depois é descartado; guardamos apenas o texto transcrito e a nota. (Conferido em
 `GroqAudioTranscriptionService`, 14/10/2026.)
 
@@ -100,14 +98,13 @@ neles. Se você publicar no LinkedIn ou GitHub por conta própria, aquilo passa 
 plataformas.
 
 **5. Com quem compartilhamos.** Somente operadores necessários: hospedagem (Oracle Cloud), borda e DNS
-(Cloudflare), e-mail transacional (provedor SMTP **[REVISAR: qual]**), IA (Groq), e a GitHub quando você
+(Cloudflare), e-mail transacional (Gmail/Google), IA (Groq), e a GitHub quando você
 conecta/publica lá. Outros alunos veem apenas o que o produto mostra por desenho: apelido/nome no ranking e no
 squad. Podemos divulgar dados se a lei ou ordem judicial exigir.
 
 **6. Por quanto tempo.** Enquanto a conta existir. Conta desativada deixa de aparecer no ranking e no squad
-na hora; os dados são apagados ou anonimizados em até **[REVISAR: 30 dias]** após o pedido de exclusão,
-salvo o que a lei obrigar a guardar. Backups rotativos podem reter cópias por até **[REVISAR: prazo dos
-backups]**.
+na hora; os dados são apagados ou anonimizados em até 30 dias após o pedido de exclusão,
+salvo o que a lei obrigar a guardar. Backups rotativos podem reter cópias por até 90 dias (**[REVISAR: hoje não há rotação automática dos backups; implementar a limpeza em 90 dias antes de publicar]**).
 
 **7. Seus direitos (art. 18).** Confirmação de tratamento, acesso, correção, anonimização/bloqueio/eliminação,
 portabilidade, informação sobre compartilhamento e revogação do consentimento. Peça pelo e-mail de contato;
@@ -116,7 +113,7 @@ respondemos em até 15 dias. Você também pode reclamar na ANPD (gov.br/anpd).
 **8. Segurança.** Senhas com hash, HTTPS, limite de tentativas de login, acesso restrito ao servidor e backups.
 Nenhum sistema é 100% seguro; em caso de incidente relevante avisaremos você e a ANPD conforme a lei.
 
-**9. Menores.** O serviço é para maiores de 18 anos **[REVISAR: ou 16+ com responsável?]**.
+**9. Menores.** O serviço é para maiores de 18 anos.
 
 **10. Cookies e armazenamento local.** Usamos armazenamento do navegador para manter você logado e lembrar
 preferências. Não usamos cookies de publicidade nem rastreadores de terceiros **[REVISAR: conferir se a
@@ -133,7 +130,7 @@ medição da Fase 103 mudará isso]**.
 
 Rodapé (todas as telas públicas e logadas): `Termos de Uso · Política de Privacidade`.
 
-## Para o Falves decidir (resumo)
-1. Dados do controlador, e-mail de contato, foro. 2. Compromisso de boa-fé para quem reportar falha (item 5).
-3. Áudio guardado ou descartado? 4. Idade mínima. 5. Prazos de exclusão e de backup. 6. Qual SMTP.
-7. Consentimento específico para voz (caixa separada) ou único? Sugestão: único, com a frase de voz explícita.
+## Pendências restantes
+1. Ligar o Zero Data Retention no console do Groq (Data Controls) e reler a página `console.groq.com/docs/your-data` antes de publicar.
+2. Implementar rotação de backups em 90 dias (ou ajustar o texto).
+3. Item de cookies: reconferir após a Fase 103.
