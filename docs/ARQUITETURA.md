@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 101 - Travas de IA** (Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 102 - Termos, privacidade e aceite** (Fase 101: Travas de IA; Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -1358,6 +1358,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 GET | `/api/users/me/study-calendar` | `GetStudyCalendarUseCase` (Fase 72) | 200 (`StudyCalendarDto`: 14 dias com status studied/rest/paused/missed/today/before + ultima sessao) |
 | 🔒 PUT | `/api/users/me/squad-feed-privacy` | `UpdateSquadFeedPrivacyUseCase` (Fase 72) | 200 (`UserDto`) - corpo `{hideScores}` |
 | 🔒 POST | `/api/users/me/guides/{key}/seen` | `MarkGuideSeenUseCase` (Fase 75) | 200 (`UserDto` com `seenGuides`) - idempotente; 400 `guia_invalido`/`guia_limite` |
+| 🔒 POST | `/api/users/me/accept-terms` | `AcceptTermsUseCase` (Fase 102) | 200 (`UserDto`) - grava `TermsAcceptedVersion`/`TermsAcceptedAt`; 409 `termos_desatualizados` se a versao enviada nao e `LegalDocuments.CurrentVersion` |
 | 🔒 GET | `/api/system/ai-status` | `GetAiProviderStatusUseCase` (Fase 28) | 200 (array de `AiProviderStatusDto` - hoje so Groq), nunca 404/erro (a checagem em si nunca lanca, ver secao Groq abaixo) |
 | 🔒 POST | `/api/weeklies/{weeklyId}/project/notes` | `CreateWeeklyProjectNoteUseCase` (Fase 63) | 201 (`NoteDto` com `weeklyProjectId`), 404 `semana_nao_encontrada`/`projeto_nao_encontrado`, mesmos 400 de validacao da nota |
 | 🔒 POST | `/api/dailies/{dailyId}/notes` | `CreateNoteUseCase` (Fase 29) | 201 (`NoteDto`), 404 `daily_nao_encontrada`, 400 `nota_vazia`/`nota_muito_longa`/`tag_muito_longa`/`notas_tags_demais` |
@@ -4593,3 +4594,9 @@ componentes `sprite/*`, pagina "Logo", "Focada — esboço" e o kit `textbox/foc
   do ranking - qual Weekly conta pro escopo `weekly`/`monthly` - nunca bloqueia acesso a
   conteudo), mas o mesmo `DailySequencing` desta fase resolveria isso tambem se/quando for
   revisitado.
+
+### Termos, privacidade e aceite (Fase 102)
+
+- `User.TermsAcceptedVersion`/`TermsAcceptedAt`; `LegalDocuments.CurrentVersion` (backend) e `LEGAL_VERSION` (`frontend/src/lib/legal.ts`) precisam subir juntas quando o texto muda.
+- `POST /api/auth/register` exige `acceptTerms: true` (400 `termos_obrigatorios`). `UserDto.TermsAcceptancePending` = versao aceita diferente da vigente; `ProtectedRoute` e `resolveLandingPath` levam para `/aceite`.
+- Paginas publicas `/termos` e `/privacidade` (`LegalPage`, texto em `lib/legal.ts`); rodape `LegalFooter` no login e nas Configuracoes. Detalhe em `docs/fase-102/`.

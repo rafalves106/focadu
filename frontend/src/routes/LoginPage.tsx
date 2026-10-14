@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import type { SignupStatusDto, UserDto } from '../api/types';
 import { LoginForm } from '../components/auth/LoginForm';
+import { LegalFooter } from '../components/legal/LegalBits';
 import { RegisterForm } from '../components/auth/RegisterForm';
 import { useAuth } from '../contexts/useAuth';
 import { resolveLandingPath } from '../lib/onboarding';
@@ -66,7 +67,8 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center bg-base px-4 py-8 sm:px-10 lg:px-24">
+    <div className="flex min-h-dvh flex-col bg-base">
+    <div className="flex flex-1 items-center px-4 py-8 sm:px-10 lg:px-24">
       <div className="mx-auto flex w-full max-w-[1250px] flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
         <div className="hidden lg:block">
           <EntryPitch
@@ -200,6 +202,8 @@ export function LoginPage() {
           )}
         </EntryCard>
       </div>
+    </div>
+    <LegalFooter />
     </div>
   );
 }

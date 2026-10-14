@@ -15,6 +15,8 @@ export function ProtectedRoute() {
   if (!user) return <Navigate to="/login" replace />;
   // Fase 93: conta sem e-mail confirmado so ve a tela do codigo (o backend tambem barra, com 403).
   if (user.emailVerificationPending) return <Navigate to="/confirmar-email" replace />;
+  // Fase 102: quem ainda nao aceitou a versao vigente dos termos so ve a tela de aceite (contas antigas e versao nova).
+  if (user.termsAcceptancePending) return <Navigate to="/aceite" replace />;
 
   return <Outlet />;
 }

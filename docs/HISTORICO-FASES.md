@@ -69,6 +69,7 @@ Detalhe de cada uma em `docs/fase-N/resumo-implementacao-fase-N.md`; o porquê d
 - **99** Segurança de borda (2ª fase do plano da v0.1.0): limite de requisições (`RateLimiting.cs`: login 10/min por IP, cadastro e e-mail 10 por 15 min por IP, endpoints de IA 20/min por aluno, 429 com `Retry-After`), `UseForwardedHeaders` para o IP real atrás de Cloudflare e nginx, headers de segurança no `nginx.conf`, CORS por `Cors__AllowedOrigins`. Ver `docs/fase-99/`.
 - **100** Backup e Forgejo privado (3ª fase do plano da v0.1.0): `pg_dump` antes de cada deploy (falha fechado, 14 últimos, só do dono), restauração testada, fork de aluno privado (templates privados + leitura concedida no fork + recusa de fork público), Postgres e Api só em loopback. Ver `docs/fase-100/`.
 - **101** Travas de IA (4ª fase do plano da v0.1.0): orçamento diário por aluno (429 antes de chamar o Groq), teto mensal com troca para modelo reserva (`AiModelDowngradeHandler`), duração máxima do áudio (16 min), 10 tentativas por atividade por dia; painel "Limites de IA" na aba Uso de IA. Ver `docs/fase-101/`.
+- **102** Termos, privacidade e aceite (5ª fase do plano da v0.1.0): páginas `/termos` e `/privacidade`, caixa de aceite obrigatória no cadastro, tela `/aceite` para contas antigas e versão nova, `TermsAcceptedVersion`/`TermsAcceptedAt` no `User`. Ver `docs/fase-102/`.
 
 ## Resumo detalhado das Fases 86–91 (como estava no Estado atual)
 

@@ -169,7 +169,7 @@ Cada uma custou um bug real ou uma conversa; o porquê está em `docs/fase-N/` e
 
 ## Estado atual
 
-Última fase concluída: **Fase 101 — Travas de IA** (14/10/2026, na branch `fase-101-travas-de-ia`; Backup e Forgejo privado: Fase 100; Segurança de borda: Fase 99; Higiene da base: Fase 98; 1ª do plano da v0.1.0 em `secret/produto/rascunhos/plano-v0-1-0-cenario-a.md`; painel, lacunas de operação: Fase 97; Turmas: Fase 96; SQLite no laboratório: Fase 95; painel de gestão: Fase 94).
+Última fase concluída: **Fase 102 — Termos, privacidade e aceite** (14/10/2026, na branch `fase-102-termos-e-privacidade`; Travas de IA: Fase 101; Backup e Forgejo privado: Fase 100; Segurança de borda: Fase 99; Higiene da base: Fase 98; 1ª do plano da v0.1.0 em `secret/produto/rascunhos/plano-v0-1-0-cenario-a.md`; painel, lacunas de operação: Fase 97; Turmas: Fase 96; SQLite no laboratório: Fase 95; painel de gestão: Fase 94).
 
 Histórico completo dos marcos (Fases 25–87, com o porquê de cada decisão): `docs/ESTADO-HISTORICO.md` —
 só abrir quando precisar. Estado técnico vivo: `docs/ARQUITETURA.md`; detalhe por fase: `docs/fase-N/`.

@@ -19,6 +19,8 @@ import { CourseSelectionPage } from './routes/CourseSelectionPage';
 import { ForgotPasswordPage } from './routes/ForgotPasswordPage';
 import { LoginPage } from './routes/LoginPage';
 import { ConfirmEmailPage } from './routes/ConfirmEmailPage';
+import { AcceptTermsPage } from './routes/AcceptTermsPage';
+import { LegalPage } from './routes/LegalPage';
 import { MarketplacePage } from './routes/MarketplacePage';
 import { OnboardingWelcomePage } from './routes/OnboardingWelcomePage';
 import { ProfileInterviewPage } from './routes/ProfileInterviewPage';
@@ -48,6 +50,10 @@ createRoot(document.getElementById('root')!).render(
             <Route path="redefinir-senha" element={<ResetPasswordPage />} />
             {/* Fase 93: fora do <ProtectedRoute/> (que manda pra ca quem ainda nao confirmou o e-mail). */}
             <Route path="confirmar-email" element={<ConfirmEmailPage />} />
+            {/* Fase 102: documentos publicos e a tela de aceite (fora do <ProtectedRoute/>, que manda pra ca). */}
+            <Route path="termos" element={<LegalPage doc="termos" />} />
+            <Route path="privacidade" element={<LegalPage doc="privacidade" />} />
+            <Route path="aceite" element={<AcceptTermsPage />} />
             <Route element={<ProtectedRoute />}>
               {/* Onboarding (Fase 13b): fora do <App/> de proposito - sem o menu global, mesmo
                   tratamento full-bleed de LoginPage/SplashPage. /start (Fase 25): mesmo tratamento

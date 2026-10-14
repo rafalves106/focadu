@@ -104,7 +104,7 @@ squad. Podemos divulgar dados se a lei ou ordem judicial exigir.
 
 **6. Por quanto tempo.** Enquanto a conta existir. Conta desativada deixa de aparecer no ranking e no squad
 na hora; os dados são apagados ou anonimizados em até 30 dias após o pedido de exclusão,
-salvo o que a lei obrigar a guardar. Backups rotativos podem reter cópias por até 90 dias (**[REVISAR: hoje não há rotação automática dos backups; implementar a limpeza em 90 dias antes de publicar]**).
+salvo o que a lei obrigar a guardar. Os backups são rotativos: guardamos só as cópias mais recentes e as antigas são apagadas automaticamente, em geral em poucas semanas.
 
 **7. Seus direitos (art. 18).** Confirmação de tratamento, acesso, correção, anonimização/bloqueio/eliminação,
 portabilidade, informação sobre compartilhamento e revogação do consentimento. Peça pelo e-mail de contato;
@@ -132,5 +132,4 @@ Rodapé (todas as telas públicas e logadas): `Termos de Uso · Política de Pri
 
 ## Pendências restantes
 1. Ligar o Zero Data Retention no console do Groq (Data Controls) e reler a página `console.groq.com/docs/your-data` antes de publicar.
-2. Implementar rotação de backups em 90 dias (ou ajustar o texto).
 3. Item de cookies: reconferir após a Fase 103.

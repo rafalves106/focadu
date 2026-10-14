@@ -34,6 +34,9 @@ public record UserDto(
     /// <summary>Fase 102: o aluno ainda nao aceitou a versao vigente dos termos - o front leva para /aceite.</summary>
     public bool TermsAcceptancePending { get; init; }
 
+    /// <summary>Fase 102: quando o aluno aceitou os termos (nulo = nunca) - o rodape das Configuracoes mostra a data.</summary>
+    public DateTime? TermsAcceptedAt { get; init; }
+
     /// <summary>Fase 96: nome da turma do aluno (nulo = sem turma). O Start mostra no lugar de "+ Explorar cursos".</summary>
     public string? CohortName { get; init; }
 
@@ -50,6 +53,7 @@ public record UserDto(
     {
         IsAdmin = user.IsAdmin,
         TermsAcceptancePending = user.TermsAcceptedVersion != Shared.LegalDocuments.CurrentVersion,
+        TermsAcceptedAt = user.TermsAcceptedAt,
     };
 }
 

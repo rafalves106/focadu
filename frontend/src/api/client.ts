@@ -294,6 +294,7 @@ export const api = {
   acknowledgeStreakBreak: () => request<void>('/api/users/me/gamification/streak/acknowledge-broken', { method: 'PUT' }),
   // Troféus/Badges + Indicação (Fase 17) - calculados sob demanda no backend.
   getUserBadges: () => request<UserBadgesDto>('/api/users/me/badges'),
+  acceptTerms: (version: string) => request<UserDto>('/api/users/me/accept-terms', { method: 'POST', body: JSON.stringify({ version }) }),
   getReferralInfo: () => request<ReferralInfoDto>('/api/users/me/referral'),
   // Squad (Fase 24) - so owner/member, sem aprovacao (quem tem o joinCode entra direto).
   createSquad: (name: string) => request<SquadDto>('/api/squads', { method: 'POST', body: JSON.stringify({ name }) }),

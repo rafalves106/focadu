@@ -15,6 +15,7 @@ export type GuideScreenKey =
   | 'login'
   | 'senha'
   | 'confirmar'
+  | 'aceite'
   | 'onboarding'
   | 'start'
   | 'trilha'
@@ -56,10 +57,28 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
       { title: 'Esqueceu a senha?', text: 'O link manda um e-mail pra criar outra, válido por 1 hora.', anchor: 'login-esqueci' },
       { title: 'Criar conta', text: 'Se você veio por indicação, o código já vem preenchido.', anchor: 'login-abas' },
       {
+        title: 'Termos e privacidade',
+        text: 'Pra criar a conta é preciso aceitar os Termos de Uso e a Política de Privacidade, inclusive o envio da sua voz à IA que avalia. Os dois abrem em outra aba, sem perder o que você digitou.',
+        anchor: 'aceite-termos',
+      },
+      {
         title: 'Convite de tester',
         text: 'No teste fechado, a conta só nasce com convite. Veio pelo link? O código já está lá. Senão, digite os 8 caracteres.',
         anchor: 'login-convite',
       },
+    ],
+  },
+  aceite: {
+    title: 'Atualizamos nossos termos',
+    outside: true,
+    focada: 'Mudamos os termos, agente. Leia e me diga se está tudo certo.',
+    items: [
+      {
+        title: 'Por que aparece?',
+        text: 'Contas criadas antes dos termos, e qualquer mudança no texto, pedem um aceite novo. Seu progresso fica guardado.',
+        anchor: 'aceite-termos',
+      },
+      { title: 'Não quero aceitar', text: 'Use "Sair". Sem o aceite, o app não abre.' },
     ],
   },
   confirmar: {
@@ -328,6 +347,7 @@ export function guideScreenFor(pathname: string, search: string): GuideScreenKey
   if (pathname === '/login') return 'login';
   if (pathname === '/esqueci-senha' || pathname === '/redefinir-senha') return 'senha';
   if (pathname === '/confirmar-email') return 'confirmar';
+  if (pathname === '/aceite') return 'aceite';
   if (pathname.startsWith('/onboarding') || pathname === '/selecionar-curso') return 'onboarding';
   if (pathname === '/hoje') return 'sessao';
   if (pathname === '/loja') return 'loja';

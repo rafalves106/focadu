@@ -3,6 +3,7 @@ import { ApiError } from '../../api/client';
 import type { UserDto } from '../../api/types';
 import { useAuth } from '../../contexts/useAuth';
 import { isValidEmail, MIN_PASSWORD_LENGTH } from '../../lib/validation';
+import { TermsCheckbox } from '../legal/LegalBits';
 import { PixelButton } from '../session/PixelButton';
 import { PixelFormError, PixelPasswordField, PixelTextField } from './PixelFields';
 
@@ -29,6 +30,8 @@ export function RegisterForm({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [termsMissing, setTermsMissing] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
@@ -52,14 +55,24 @@ export function RegisterForm({
       return;
     }
 
+    // Fase 102 (Figma, quadro 13): o botao fica sempre clicavel e o erro aparece ao clicar sem marcar - melhor pra leitor de tela.
+    if (!acceptTerms) {
+      setTermsMissing(true);
+      setError('Aceite os Termos de Uso e a Política de Privacidade para criar a conta.');
+      return;
+    }
+
     setBusy(true);
     try {
-      onSuccess(await register({ email: email.trim(), password, displayName: displayName.trim(), referralCode: referralCode ?? undefined, inviteCode: inviteCode ?? undefined }));
+      onSuccess(await register({ email: email.trim(), password, displayName: displayName.trim(), referralCode: referralCode ?? undefined, inviteCode: inviteCode ?? undefined, acceptTerms }));
     } catch (err) {
       // email_ja_cadastrado (409) e senha_muito_curta (400, redundante com a checagem acima, mas
       // o servidor nunca confia so no client-side) chegam aqui com a mensagem pronta do backend.
       // Fase 93: a mesma frase pros convites que nao valem (Figma "Cadastro por convite — v3", quadro 05).
-      if (err instanceof ApiError && err.code.startsWith('convite_')) {
+      if (err instanceof ApiError && err.code === 'termos_obrigatorios') {
+        setTermsMissing(true);
+        setError(err.message);
+      } else if (err instanceof ApiError && err.code.startsWith('convite_')) {
         setError(INVITE_ERROR);
         onInviteRejected?.();
       }
@@ -88,6 +101,18 @@ export function RegisterForm({
         autoComplete="new-password"
         shown={showPassword}
         onToggle={() => setShowPassword((v) => !v)}
+      />
+      <TermsCheckbox
+        checked={acceptTerms}
+        onChange={(v) => {
+          setAcceptTerms(v);
+          if (v) {
+            setTermsMissing(false);
+            setError(null);
+          }
+        }}
+        invalid={termsMissing}
+        disabled={busy}
       />
       <PixelFormError>{error}</PixelFormError>
       <PixelButton type="submit" disabled={busy} className="mt-1 w-full">
