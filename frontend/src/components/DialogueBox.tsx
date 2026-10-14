@@ -72,7 +72,7 @@ function prefersReducedMotion() {
 export function DialogueBox({
   projectId,
   lines,
-  readmeUrl,
+  onOpenReadme,
   choices = [],
   choicesNote = null,
   stacked = false,
@@ -82,7 +82,8 @@ export function DialogueBox({
   stacked?: boolean;
   compact?: boolean;
   lines: FocadaLine[];
-  readmeUrl: string | null;
+  /** Abre o README do projeto (modal da pagina). Nulo: sem botao. */
+  onOpenReadme: (() => void) | null;
   choices?: DialogueChoice[];
   choicesNote?: string | null;
 }) {
@@ -211,17 +212,19 @@ export function DialogueBox({
           </p>
 
           {/* compact: o rodape so aparece quando tem o que mostrar (link/Pular) - sem ele a caixa cabe no centro do start. */}
-          <div className={`flex min-h-6 items-center gap-4 font-pixel-label text-[11px] ${compact && !readmeUrl && isLast ? 'hidden' : ''}`}>
-            {readmeUrl && (
-              <a
-                href={readmeUrl}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="text-project hover:underline"
+          <div className={`flex min-h-6 items-center gap-4 font-pixel-label text-[11px] ${compact && !onOpenReadme && isLast ? 'hidden' : ''}`}>
+            {onOpenReadme && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenReadme();
+                }}
+                // Area de toque de 40px sem crescer o rodape (margem negativa compensa).
+                className="-my-2.5 py-2.5 text-project hover:underline focus-visible:outline-2 focus-visible:outline-accent"
               >
                 Abrir README.md
-              </a>
+              </button>
             )}
             <span className="ml-auto flex items-center gap-4">
               {!isLast && (

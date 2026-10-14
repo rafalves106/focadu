@@ -151,7 +151,7 @@ export function StartDashboard() {
           </>
         )}
         {focadaLine && (
-          <DialogueBox key={selectedCourse.id} projectId={`start-${selectedCourse.id}`} lines={[focadaLine]} readmeUrl={null} compact />
+          <DialogueBox key={selectedCourse.id} projectId={`start-${selectedCourse.id}`} lines={[focadaLine]} onOpenReadme={null} compact />
         )}
       </ScrollArea>
     </div>

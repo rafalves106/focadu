@@ -170,7 +170,7 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
     title: 'Projeto Semanal',
     focada: 'O chefe de fase. Você escreve o código no seu repositório e eu corrijo quando você entregar. Tirar print não conta.',
     items: [
-      { title: 'A missão', text: 'O briefing é a apresentação; o enunciado completo está no README do repositório.', anchor: 'projeto-missao' },
+      { title: 'A missão', text: 'O briefing é a apresentação; o enunciado completo está no README do repositório: clique em "Abrir README.md" na caixa da Focada e ele abre aqui mesmo, sem sair do app.', anchor: 'projeto-missao' },
       {
         title: 'Repositório e referências',
         text: 'Copie o git clone. O token é a senha e aparece uma vez só: gerar outro revoga o anterior. Embaixo, a documentação da sua linguagem.',

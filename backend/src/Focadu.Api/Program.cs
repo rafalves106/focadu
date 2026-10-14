@@ -993,6 +993,15 @@ api.MapPost("/weeklies/{weeklyId}/project/language", async (ClaimsPrincipal prin
     .RequireAuthorization()
     .WithName("ChooseWeeklyProjectLanguage");
 
+// Fase 100b: README do fork do aluno servido pelo app (o fork e privado, o aluno nao entra no Forgejo).
+api.MapGet("/weeklies/{weeklyId}/project/readme", async (ClaimsPrincipal principal, string weeklyId, GetWeeklyProjectReadmeUseCase useCase, CancellationToken ct) =>
+    {
+        var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
+        return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, ct));
+    })
+    .RequireAuthorization()
+    .WithName("GetWeeklyProjectReadme");
+
 // Token do Forgejo (Fase 60) - gera um novo e revoga o anterior; o valor so aparece nesta resposta,
 // a Focadu nao guarda. POST (nao GET): cada chamada muda estado no Forgejo.
 api.MapPost("/users/me/forgejo-token", async (ClaimsPrincipal principal, GenerateForgejoTokenUseCase useCase, CancellationToken ct) =>

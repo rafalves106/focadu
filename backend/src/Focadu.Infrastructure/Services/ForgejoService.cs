@@ -241,6 +241,12 @@ public class ForgejoService : IForgejoService
         return sb.ToString();
     }
 
+    public async Task<string?> GetReadmeAsync(string owner, string repo, CancellationToken cancellationToken = default)
+    {
+        var response = await GetOptionalAsync($"repos/{owner}/{repo}/raw/README.md", cancellationToken);
+        return response is null ? null : await response.Content.ReadAsStringAsync(cancellationToken);
+    }
+
     private async Task<string?> GetBlobContentAsync(string owner, string repo, string sha, CancellationToken cancellationToken)
     {
         var response = await GetOptionalAsync($"repos/{owner}/{repo}/git/blobs/{sha}", cancellationToken);

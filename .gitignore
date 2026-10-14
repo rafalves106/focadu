@@ -29,3 +29,4 @@ secret/
 backups/
 # Permissoes pessoais do Claude Code (ex.: ssh na VM)
 .claude/settings.local.json
+.serena/
