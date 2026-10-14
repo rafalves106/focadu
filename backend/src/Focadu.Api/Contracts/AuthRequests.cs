@@ -1,7 +1,7 @@
 namespace Focadu.Api.Contracts;
 
-/// <summary>ReferralCode (Fase 17) e opcional - codigo invalido/de ninguem so e ignorado, nunca bloqueia o registro.</summary>
-public record RegisterRequest(string? Email, string? Password, string? DisplayName, string? ReferralCode, string? InviteCode = null);
+/// <summary>AcceptTerms (Fase 102) e obrigatorio. ReferralCode (Fase 17) e opcional - codigo invalido/de ninguem so e ignorado, nunca bloqueia o registro.</summary>
+public record RegisterRequest(string? Email, string? Password, string? DisplayName, string? ReferralCode, string? InviteCode = null, bool AcceptTerms = false);
 
 public record LoginRequest(string? Email, string? Password);
 
@@ -15,3 +15,6 @@ public record ConfirmEmailRequest(string? Code);
 
 /// <summary>Fase 93: `Force` = botao "Reenviar codigo"; sem ele, so manda se o aluno nao tem codigo valendo.</summary>
 public record SendEmailVerificationRequest(bool Force);
+
+/// <summary>Fase 102: versao dos termos que a tela mostrou (LegalDocuments.CurrentVersion).</summary>
+public record AcceptTermsRequest(string? Version);

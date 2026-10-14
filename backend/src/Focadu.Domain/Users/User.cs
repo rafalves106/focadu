@@ -187,6 +187,24 @@ public class User : Entity
         PasswordHash = newPasswordHash;
     }
 
+    /// <summary>Versao dos Termos de Uso e da Politica de Privacidade que o aluno aceitou (Fase 102). Nula = nunca aceitou (contas de antes da fase).</summary>
+    public string? TermsAcceptedVersion { get; private set; }
+
+    /// <summary>Quando o aluno aceitou a versao acima (UTC).</summary>
+    public DateTime? TermsAcceptedAt { get; private set; }
+
+    /// <summary>Registra o aceite da versao `version` (Fase 102). Aceitar a mesma versao de novo nao muda a data original.</summary>
+    public void AcceptTerms(string version, DateTime now)
+    {
+        if (string.IsNullOrWhiteSpace(version))
+            throw new DomainException("Versao dos termos e obrigatoria.", "termos_versao_obrigatoria");
+        if (TermsAcceptedVersion == version.Trim())
+            return;
+
+        TermsAcceptedVersion = version.Trim();
+        TermsAcceptedAt = now;
+    }
+
     /// <summary>Marca o e-mail como confirmado (Fase 93). Confirmar de novo nao muda a data original.</summary>
     public void MarkEmailVerified(DateTime now) => EmailVerifiedAt ??= now;
 

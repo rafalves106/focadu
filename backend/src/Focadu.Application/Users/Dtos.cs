@@ -31,6 +31,9 @@ public record UserDto(
     /// <summary>Fase 94: mostra o item "Gestao" no menu global. So aparencia - cada rota /api/admin confere o papel no banco.</summary>
     public bool IsAdmin { get; init; }
 
+    /// <summary>Fase 102: o aluno ainda nao aceitou a versao vigente dos termos - o front leva para /aceite.</summary>
+    public bool TermsAcceptancePending { get; init; }
+
     /// <summary>Fase 96: nome da turma do aluno (nulo = sem turma). O Start mostra no lugar de "+ Explorar cursos".</summary>
     public string? CohortName { get; init; }
 
@@ -46,6 +49,7 @@ public record UserDto(
         user.PreferredLanguages, user.CreatedAt, user.HideScoresInSquadFeed, user.SeenGuides, user.EmailVerifiedAt)
     {
         IsAdmin = user.IsAdmin,
+        TermsAcceptancePending = user.TermsAcceptedVersion != Shared.LegalDocuments.CurrentVersion,
     };
 }
 

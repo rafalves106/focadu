@@ -30,6 +30,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.AdditionalProfileNotes).HasMaxLength(2000);
         builder.Property(u => u.ProfileCompletedAt);
         builder.Property(u => u.EmailVerifiedAt);
+        builder.Property(u => u.TermsAcceptedVersion).HasMaxLength(32);
+        builder.Property(u => u.TermsAcceptedAt);
 
         // Fase 17: nulo ate a 1a consulta gerar (lazy, ver GetReferralInfoUseCase).
         builder.Property(u => u.ReferralCode).HasMaxLength(16);
