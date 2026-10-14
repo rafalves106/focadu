@@ -57,11 +57,19 @@ public class DailyTemplate : Entity
 
     /// <summary>
     /// Fase 82: dia de ponte - uma variante por linguagem (ponte antiga do Web Security) ou um dia com
-    /// passos de codigo ("code comigo", Fase 79). A 2a forma cobre a ponte dos cursos sem Projeto Semanal
+    /// passos de codigo ("code comigo", Fase 79) ou marcado no JSON (<see cref="BridgeMark"/>, Fase 98). A 2a forma cobre a ponte dos cursos sem Projeto Semanal
     /// (Linux), cuja linguagem mora na semana (<c>WeeklyTemplate.PracticeLanguage</c>) e nao no dia. Ponte
     /// nao usa analogia de interesse (Fase 80).
     /// </summary>
-    public bool IsBridge => Language is not null || _activities.Any(a => a.Type == ActivityType.CodeStep);
+    public bool IsBridge => BridgeMark || Language is not null || _activities.Any(a => a.Type == ActivityType.CodeStep);
+
+    /// <summary>
+    /// Fase 98: o dia-N.json declara <c>"ponte": true</c>. Existe pra ponte que roda em missoes de terminal e nao
+    /// tem CodeStep nem Language (Linux, molde B): sem a marca, a trilha a trataria como dia comum.
+    /// </summary>
+    public bool BridgeMark { get; private set; }
+
+    public void SetBridgeMark(bool value) => BridgeMark = value;
 
     private DailyTemplate()
     {

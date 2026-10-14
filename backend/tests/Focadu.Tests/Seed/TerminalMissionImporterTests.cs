@@ -144,7 +144,7 @@ public class TerminalMissionImporterTests
     }
 
     [Fact]
-    public void RealLinuxDay2_ImportsWithFourMissionsAndAnEditorlessLab()
+    public void RealLinuxDay2_ImportsWithThreeMissionsAndAnEditorlessLab()
     {
         var path = TestContent.Resolve("linux", "semana-1", "dia-2.json");
         if (path is null) return; // curadoria fora do checkout (CI)
@@ -157,7 +157,7 @@ public class TerminalMissionImporterTests
         Assert.True(day.Lab!.NoEditor);
         Assert.Equal("agente", day.Lab.User);
         var missions = day.Activities.Single(a => a.Type == ActivityType.TerminalMission).TerminalMissionList;
-        Assert.Equal(4, missions.Count);
+        Assert.Equal(3, missions.Count);
         Assert.All(missions, m => Assert.InRange(m.Hints.Count, 1, 3));
     }
 
@@ -187,9 +187,9 @@ public class TerminalMissionImporterTests
     }
 
     [Theory]
-    [InlineData("semana-1", 6)]
-    [InlineData("semana-2", 12)]
-    public void RealLinuxBridges_RunTheTerminalAsAgente(string week, int dayNumber)
+    [InlineData("semana-1", 6, true)]  // ponte refeita (molde B): missoes de terminal, sem editor
+    [InlineData("semana-2", 12, false)] // ainda no formato antigo (arquivo morto): passos de codigo com editor
+    public void RealLinuxBridges_RunTheTerminalAsAgente(string week, int dayNumber, bool noEditor)
     {
         var path = TestContent.Resolve("linux", week, $"dia-{dayNumber}.json");
         if (path is null) return;
@@ -200,7 +200,7 @@ public class TerminalMissionImporterTests
         var day = Assert.Single(template.DailyTemplates);
         Assert.True(day.IsBridge);
         Assert.Equal("agente", day.Lab!.User);
-        Assert.False(day.Lab.NoEditor);
+        Assert.Equal(noEditor, day.Lab.NoEditor);
     }
 
     [Fact]

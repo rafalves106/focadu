@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 97 - Painel de gestao, lacunas de operacao** (Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 98 - Higiene da base** (Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -1767,6 +1767,9 @@ Security antes/junto do Web Security; decisoes do dono em 29/09/2026: **sem Proj
   `WeeklyDetailDto.PracticeLanguage` alimenta o rotulo "Seu codigo · Bash" do `CodeStepActivity`.
   Fase 82: `DailyTemplate.IsBridge` (tem `Language` **ou** tem `CodeStep`) e o que marca a ponte pra
   "sem analogia" (Fase 80) - antes so `Language` contava e a ponte do Linux gerava "Pra voce".
+  Fase 98: `IsBridge` tambem vale `true` com `DailyTemplate.BridgeMark` (coluna `BridgeMark`, lida de `"ponte": true` no
+  `dia-N.json`): a ponte do Linux (molde B) roda em missoes de terminal, sem `CodeStep` nem `Language`, e sem a marca a trilha a
+  tratava como dia comum. Banco de Dados semana 2 (dias com `CodeStep` de SQL) cai na inferencia por `CodeStep` - ponto aberto.
 - **Quem ve cada curso (Fase 96):** regra unica em `CourseViewer.CanSee` (dominio, montado por `CourseAccess` na Application,
   que substituiu o `DraftCourseAccess`): matriculado sempre ve; aluno de turma so ve os cursos da turma (mesmo em rascunho ou
   "so pra turmas", mesmo com a turma arquivada); lista de previa ve tudo; o resto ve o que nao e Draft nem

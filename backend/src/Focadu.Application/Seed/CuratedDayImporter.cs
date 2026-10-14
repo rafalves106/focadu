@@ -110,6 +110,7 @@ public static class CuratedDayImporter
         }
 
         dailyTemplate.SetCurationInfo(day.MoldeVersion, ComputeHash(json), day.Targets?.Select(x => new LearningTarget(x.Id, x.Text)));
+        dailyTemplate.SetBridgeMark(day.Ponte);
 
         for (var i = 0; i < day.Activities.Count; i++)
             AddActivity(dailyTemplate, day.Activities[i], i, contentByRef);
@@ -312,7 +313,7 @@ public static class CuratedDayImporter
 
     private record CuratedDayJson(
         int DayNumber, List<CuratedContentJson> CuratedContents, List<ActivityJson> Activities, LabJson? Lab = null,
-        string? MoldeVersion = null, List<TargetJson>? Targets = null);
+        string? MoldeVersion = null, List<TargetJson>? Targets = null, bool Ponte = false);
 
     private record TargetJson(string Id, string Text);
 

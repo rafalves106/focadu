@@ -75,17 +75,21 @@ public class CuratedCourseImporterTests
     }
 
     [Fact]
-    public void BridgeDays_HaveCodeSteps_WithExpectedOutput()
+    public void LinuxBridge_IsMarkedInTheJson_AndRunsOnTerminalMissions()
     {
         if (!TestContent.Available) return; // conteudo fora do checkout (CI)
         var manifest = LoadManifest();
         var course = CuratedCourseImporter.CreateCourse(manifest);
         var created = CuratedCourseImporter.Apply(course, manifest, Resolve);
 
+        // A ponte do Linux (molde B) nao tem CodeStep: e ponte porque o dia-6.json declara "ponte": true (Fase 98).
         var bridge = created.Single(c => c.Day.DayNumber == 6).Day;
-        var steps = bridge.Activities.Where(a => a.Type == ActivityType.CodeStep).ToList();
-        Assert.Equal(6, steps.Count);
-        Assert.All(steps, s => Assert.False(string.IsNullOrWhiteSpace(s.CodeExpectedOutput)));
+        Assert.True(bridge.BridgeMark);
+        Assert.True(bridge.IsBridge);
+        Assert.DoesNotContain(bridge.Activities, a => a.Type == ActivityType.CodeStep);
+        var missions = bridge.Activities.Single(a => a.Type == ActivityType.TerminalMission).TerminalMissionList;
+        Assert.Equal(5, missions.Count);
         Assert.Null(bridge.Language);
+        Assert.All(created.Where(c => c.Day.DayNumber < 6), c => Assert.False(c.Day.IsBridge));
     }
 }

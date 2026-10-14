@@ -17,7 +17,7 @@ namespace Focadu.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.11")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -682,6 +682,9 @@ namespace Focadu.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("BridgeMark")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("ContentHash")
                         .HasMaxLength(64)
