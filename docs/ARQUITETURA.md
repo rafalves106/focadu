@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 98 - Higiene da base** (Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 99 - Seguranca de borda** (Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -1688,12 +1688,32 @@ de testes em vez de silenciosamente virar um 400 generico em producao.
 continua existindo (leitura, usada por `ReadingActivity`/`VideoActivity` na sessao diaria). Ver
 `docs/fase-13b/resumo-implementacao-fase-13b.md` pro historico da UI que existiu.
 
-### CORS (Fase 3)
+### CORS (Fase 3, configuravel desde a Fase 99)
 
 A Api libera `http://localhost:5173` (e `127.0.0.1:5173`) via `AddCors`/`UseCors`, para o
 frontend Vite conseguir chamar a Api em dev - sem isso o navegador bloqueia toda chamada (portas
-diferentes contam como origens diferentes, mesmo os dois em `localhost`). Hardcoded e so-dev de
-proposito (unico usuario-teste, sem ambiente de deploy ainda) - ver pontos abertos.
+diferentes contam como origens diferentes, mesmo os dois em `localhost`). Desde a Fase 99 as origens vem de
+`Cors__AllowedOrigins` (separadas por virgula) e o padrao continua sendo o de dev. Em producao nao entra em jogo: o
+nginx do frontend faz proxy same-origin de `/api`.
+
+### Seguranca de borda (Fase 99)
+
+- **IP e esquema reais** (`Program.cs`, `UseForwardedHeaders` antes de tudo): a cadeia e Cloudflare Tunnel -> nginx do
+  frontend -> Api. `X-Forwarded-For` chega como `cliente, cloudflared`; a Api le 2 saltos da direita
+  (`Forwarded__Limit`, padrao 2), entao um `X-Forwarded-For` falso mandado pelo cliente fica pra tras. As redes/proxies
+  conhecidos sao esvaziados porque so o nginx alcanca a Api na rede do Docker; **a porta `5282` do host nao pode ficar
+  aberta pra internet** (quem a alcancasse poderia forjar o IP).
+- **Limite de requisicoes** (`RateLimiting.cs`, `UseRateLimiter` depois da autenticacao): um limitador global escolhido
+  pelo caminho (so `POST`), em janela deslizante de 4 segmentos. `login`: 10/min por IP. `account` (`/auth/register`,
+  `forgot-password`, `reset-password`, `email-verification/send|confirm`): 10 por 15 min por IP. `ai` (resposta de voz,
+  passo de codigo, dica, envio e avaliacao do projeto, rascunho do LinkedIn, revisao do Caderninho, Suporte Rapido): 20/min por
+  aluno (IP se nao houver sessao). Excedeu: 429 `{ error: "muitas_requisicoes", message }` com `Retry-After`. Rota nova que
+  case com um padrao ja entra; endpoint de IA novo precisa entrar no regex `AiPath`. Desligar: `RateLimit__Enabled=false`.
+  Nao e orcamento de IA (isso e a Fase 101).
+- **Headers do nginx** (`frontend/nginx.conf`): HSTS, `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN`,
+  `Referrer-Policy`, `Permissions-Policy` (microfone so da propria origem) e uma CSP so com `frame-ancestors`, `base-uri`,
+  `object-src` e `form-action`. **Sem `script-src` de proposito**: uma CSP completa precisa ser conferida no navegador. O
+  bloco `/lab/` repete os headers porque `add_header` de um `location` substitui os do nivel de cima.
 
 ## Seed de conteudo (Fase 3, estendido na Fase 4, so template desde a Fase 13)
 
@@ -3070,7 +3090,7 @@ same-origin de `/api/` pro container do backend (mesmo truque do projeto "financ
 e `BASE_URL` cai pra string vazia quando `VITE_API_BASE_URL` nao e definida, o SPA em producao
 chama caminhos relativos e o navegador nunca faz uma requisicao cross-origin de verdade. Isso
 evita precisar de subdominio de API dedicado no Cloudflare Tunnel e evita mexer na allowlist de
-CORS (`Program.cs`, ainda fixa em `localhost:5173`/`127.0.0.1:5173` - so precisaria mudar se um dia
+CORS (`Program.cs`; configuravel por `Cors__AllowedOrigins` desde a Fase 99 - so precisaria mudar se um dia
 o backend for exposto num dominio proprio).
 
 **`docker-compose.yml`** (producao) vive na raiz do repo, ao lado de `.env.example`. Servicos:
@@ -4189,7 +4209,7 @@ componentes `sprite/*`, pagina "Logo", "Focada — esboço" e o kit `textbox/foc
   `SeedWebSecurityCourseUseCase`/`CuratedDayImporter`.
 - Exclusao (`DELETE`) de `CuratedContent` - so criacao/edicao existem; nunca foi pedido um
   endpoint de remocao.
-- CORS liberado so para `http://localhost:5173` (hardcoded, dev apenas).
+- **Resolvido na Fase 99, nao e mais pendencia:** CORS configuravel por `Cors__AllowedOrigins` (padrao so de dev).
 - **Resolvido na Fase 7, nao e mais pendencia:** menu de configuracoes no frontend - so que
   Aparencia/Som/Notificacoes/Limite de gravacao/Perfil/Atalhos continuam so visuais, sem
   persistencia (ver "Menu de configuracoes" na secao de Frontend).
