@@ -67,8 +67,11 @@ public class GetCourseRankingUseCase
         var scored = new List<ScoredEnrollment>();
         foreach (var enrollment in enrollments)
         {
-            var weeklies = await _weeklyRepository.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken);
             var user = await _userRepository.GetByIdAsync(enrollment.UserId, cancellationToken);
+            // Fase 97: conta desativada pelo admin some do ranking (os dados ficam; reativar traz de volta).
+            if (user?.IsDisabled == true) continue;
+
+            var weeklies = await _weeklyRepository.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken);
             var equipped = await _equippedCosmeticsRepository.GetByUserIdAsync(enrollment.UserId, cancellationToken);
             var nameColor = equipped?.EquippedNameColorId is { } colorId && itemsById.TryGetValue(colorId, out var colorItem)
                 ? colorItem.Name

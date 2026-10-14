@@ -100,7 +100,7 @@ public class AdminStudentsUseCase
         return new AdminStudentDto(
             user.Id, user.DisplayName, user.Email, user.CreatedAt, user.EmailVerifiedAt is not null, user.IsAdmin,
             currentStreak, courses.Max(c => c.LastActivityAt), current?.CourseName, current?.CurrentDay, courses,
-            user.CohortId, user.CohortId is { } cohortId ? cohorts.GetValueOrDefault(cohortId) : null);
+            user.CohortId, user.CohortId is { } cohortId ? cohorts.GetValueOrDefault(cohortId) : null, user.DisabledAt);
     }
 
     internal static IReadOnlyList<AdminCountDto> ToCounts(IEnumerable<KeyValuePair<string, int>> counts) =>

@@ -156,7 +156,7 @@ public class ImportCuratedDaysUseCase
         var skipped = new List<string>();
         if (!options.DryRun && (created.Count > 0 || replaced.Count > 0 || courseCreated))
         {
-            if (manifest.Published && course.Status == CourseStatus.Draft && outcomes.Any(o => o.Status is ImportStatus.Created or ImportStatus.Updated))
+            if (manifest.Published && course.CanAutoPublish && outcomes.Any(o => o.Status is ImportStatus.Created or ImportStatus.Updated))
                 course.Activate();
             if (courseCreated)
                 await _courseRepository.AddAsync(course, cancellationToken);

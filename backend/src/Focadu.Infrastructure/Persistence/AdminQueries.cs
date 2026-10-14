@@ -16,7 +16,7 @@ public class AdminQueries : IAdminQueries
     public async Task<IReadOnlyList<AdminUserRow>> ListUsersAsync(CancellationToken cancellationToken = default) =>
         await _context.Users.AsNoTracking()
             .OrderBy(u => u.CreatedAt)
-            .Select(u => new AdminUserRow(u.Id, u.DisplayName, u.Email, u.CreatedAt, u.EmailVerifiedAt, u.Role == Domain.Enums.UserRole.Admin, u.CohortId))
+            .Select(u => new AdminUserRow(u.Id, u.DisplayName, u.Email, u.CreatedAt, u.EmailVerifiedAt, u.Role == Domain.Enums.UserRole.Admin, u.CohortId, u.DisabledAt))
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<AdminEnrollmentRow>> ListEnrollmentsAsync(Guid? userId, CancellationToken cancellationToken = default)

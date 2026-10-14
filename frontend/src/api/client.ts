@@ -131,7 +131,8 @@ export async function request<T>(
     // e lancado normalmente logo abaixo: quem chamou continua tratando a falha como sempre tratou
     // (useApiResource.error, catch local no meio de uma resposta, etc) - nada aqui engole a
     // excecao nem mexe em estado de tela alheio, o modal so aparece por cima, sem desmontar nada.
-    if (res.status === 401 && body?.error === 'nao_autenticado' && !init?.skipAuthRedirect) {
+    // Fase 97: conta desativada pelo admin tem a sessao derrubada na hora (401 `conta_desativada`) - mesmo modal de sessao encerrada.
+    if (res.status === 401 && (body?.error === 'nao_autenticado' || body?.error === 'conta_desativada') && !init?.skipAuthRedirect) {
       sessionExpiredHandler?.();
     }
     // Fase 93: sessao de quem ainda nao confirmou o e-mail - toda rota fora a de confirmar responde 403.

@@ -169,7 +169,7 @@ Cada uma custou um bug real ou uma conversa; o porquê está em `docs/fase-N/` e
 
 ## Estado atual
 
-Última fase concluída: **Fase 96 — Turmas** (12/10/2026, na branch `fase-96-turmas`, empilhada na `fase-95-sqlite-no-laboratorio`; SQLite no laboratório: Fase 95; painel de gestão: Fase 94).
+Última fase concluída: **Fase 97 — Painel de gestão, lacunas de operação** (14/10/2026, na branch `fase-97-lacunas-do-painel`; Turmas: Fase 96; SQLite no laboratório: Fase 95; painel de gestão: Fase 94).
 
 Histórico completo dos marcos (Fases 25–87, com o porquê de cada decisão): `docs/ESTADO-HISTORICO.md` —
 só abrir quando precisar. Estado técnico vivo: `docs/ARQUITETURA.md`; detalhe por fase: `docs/fase-N/`.
@@ -193,11 +193,11 @@ Resumo do que existe hoje:
   Detalhe em `docs/HISTORICO-FASES.md` e `docs/fase-86/` a `docs/fase-91/`.
 - **Cadastro (Fase 93)**: teste fechado com convite de tester (comando `convite` da Api) e confirmação de e-mail por código
   de 6 dígitos, atrás das chaves `Signup:*` (desligadas por padrão, ligadas no `.env` de produção). Ver `docs/fase-93/`.
-- **Painel de gestão (Fase 94)**: `/gestao`, só para admin (`User.Role`, papel dado pelo comando `admin promover <email>` da Api,
-  sem tela). Abas Visão geral, Alunos (resetar curso), Convites (1–20 usos, 1–30 dias), Curadoria (importar tudo ou nada, apagar
+- **Painel de gestão (Fase 94)**: `/gestao`, só para admin (`User.Role`, papel dado pelo comando `admin promover <email>` da Api ou, desde a Fase 97, pela aba Alunos). Abas Visão geral, Alunos (resetar curso), Convites (1–20 usos, 1–30 dias), Curadoria (importar tudo ou nada, apagar
   dias antigos) e Uso de IA (medição de cada chamada ao Groq, custo estimado com tabela de preços; nada bloqueia). Ver `docs/fase-94/`.
 - **Turmas (Fase 96)**: aba Turmas do painel. Convite de turma matricula o aluno nos cursos dela e ele só vê esses cursos; curso pode
   ser "só pra turmas" (aba Curadoria). Regra única de quem vê cada curso: `CourseViewer`. Ver `docs/fase-96/`.
+- **Operação do painel (Fase 97)**: o admin edita nome e e-mail do aluno, manda o e-mail de redefinição de senha (nunca vê a senha), desativa e reativa contas (soft delete que vale na hora e tira o aluno do ranking e do squad) e promove ou rebaixa admin; aba Cursos para criar curso vazio, editar o catálogo, publicar e arquivar (seed e importador respeitam o que o painel decidiu). Ver `docs/fase-97/`.
 - **Infra**: deploy automático por push (CI/CD) na Oracle Cloud, em runner self-hosted Linux ARM64
   (`[self-hosted, Linux, focadu-oracle]`), sem homologação, Forgejo interno pros repositórios de Projeto
   Semanal. Detalhes na seção "Host de produção e deploy" abaixo; `docs/DOCKER.md` ainda tem trechos de

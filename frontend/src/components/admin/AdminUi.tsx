@@ -241,3 +241,38 @@ export function CheckOption({
     </button>
   );
 }
+
+/** Gaveta lateral comum (mesmo jeito da "Criar convite"). */
+export function Drawer({ label, wide = false, busy = false, onClose, children }: { label: string; wide?: boolean; busy?: boolean; onClose: () => void; children: ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-base/70 backdrop-blur-sm" role="presentation" onClick={busy ? undefined : onClose}>
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label={label}
+        onClick={(e) => e.stopPropagation()}
+        className={`flex h-full w-full flex-col gap-5 overflow-y-auto border-l-2 border-accent bg-base p-6 ${wide ? 'max-w-[720px]' : 'max-w-[520px]'}`}
+      >
+        {children}
+      </aside>
+    </div>
+  );
+}
+
+export function DrawerHeader({ label, busy = false, onClose }: { label: string; busy?: boolean; onClose: () => void }) {
+  return (
+    <div className="flex items-center justify-between">
+      <h2 className="font-pixel-label text-[10px] text-accent">// {label}</h2>
+      <button
+        type="button"
+        onClick={onClose}
+        disabled={busy}
+        aria-label="Fechar"
+        className="flex size-9 items-center justify-center border-2 border-stroke text-secondary hover:text-primary"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+

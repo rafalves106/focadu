@@ -91,12 +91,15 @@ public class GetSquadRankingUseCase
         var totalGems = 0;
         foreach (var membership in members)
         {
+            var user = await _userRepository.GetByIdAsync(membership.UserId, cancellationToken);
+            // Fase 97: conta desativada pelo admin some do squad dos colegas (a vaga e os dados ficam).
+            if (user?.IsDisabled == true) continue;
+
             var enrollments = await _enrollmentRepository.GetByUserIdAsync(membership.UserId, cancellationToken);
             var weeklies = new List<Weekly>();
             foreach (var enrollment in enrollments.Where(e => courseId is null || e.CourseId == courseId))
                 weeklies.AddRange(await _weeklyRepository.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken));
 
-            var user = await _userRepository.GetByIdAsync(membership.UserId, cancellationToken);
             var gemBalance = await _gemBalanceRepository.GetByUserIdAsync(membership.UserId, cancellationToken);
             var equipped = await _equippedCosmeticsRepository.GetByUserIdAsync(membership.UserId, cancellationToken);
             var nameColor = equipped?.EquippedNameColorId is { } colorId && itemsById.TryGetValue(colorId, out var colorItem)

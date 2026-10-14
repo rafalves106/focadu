@@ -9,7 +9,7 @@ public record AdminCourseProgressDto(
 public record AdminStudentDto(
     Guid Id, string DisplayName, string Email, DateTime CreatedAt, bool EmailVerified, bool IsAdmin,
     int CurrentStreak, DateTime? LastActivityAt, string? CurrentCourse, int? CurrentDay,
-    IReadOnlyList<AdminCourseProgressDto> Courses, Guid? CohortId = null, string? CohortName = null);
+    IReadOnlyList<AdminCourseProgressDto> Courses, Guid? CohortId = null, string? CohortName = null, DateTime? DisabledAt = null);
 
 public record AdminCountDto(string Table, int Count);
 
@@ -75,3 +75,6 @@ public record AdminCohortCourseOptionDto(Guid Id, string Name, bool OnlyForCohor
 public record AdminCohortsDto(IReadOnlyList<AdminCohortDto> Cohorts, IReadOnlyList<AdminCohortCourseOptionDto> Courses, int StudentsInCohorts);
 
 public record AdminCourseVisibilityDto(Guid CourseId, string Name, bool OnlyForCohorts, IReadOnlyList<string> Cohorts, int CohortStudents);
+
+/// <summary>Fase 97: edicao de aluno pelo Painel. Trocar o e-mail zera a confirmacao (o aluno confirma de novo).</summary>
+public record AdminUpdateStudentResultDto(AdminStudentDto Student, bool EmailChanged);

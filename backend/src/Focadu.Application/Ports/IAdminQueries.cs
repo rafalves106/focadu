@@ -23,7 +23,7 @@ public interface IAdminQueries
     Task<int> CountActiveUsersSinceAsync(DateTime fromUtc, CancellationToken cancellationToken = default);
 }
 
-public record AdminUserRow(Guid Id, string DisplayName, string Email, DateTime CreatedAt, DateTime? EmailVerifiedAt, bool IsAdmin, Guid? CohortId = null);
+public record AdminUserRow(Guid Id, string DisplayName, string Email, DateTime CreatedAt, DateTime? EmailVerifiedAt, bool IsAdmin, Guid? CohortId = null, DateTime? DisabledAt = null);
 
 public record AdminEnrollmentRow(
     Guid EnrollmentId, Guid UserId, Guid CourseId, string CourseName, DateTime EnrolledAt,

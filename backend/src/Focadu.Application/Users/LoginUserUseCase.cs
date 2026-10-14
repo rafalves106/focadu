@@ -36,6 +36,10 @@ public class LoginUserUseCase
         if (user is null || !_passwordHasher.Verify(password, user.PasswordHash))
             throw new DomainException("Email ou senha invalidos.", "credenciais_invalidas");
 
+        // Fase 97: so depois de conferir a senha, pra nao revelar quais e-mails existem a quem nao tem a senha.
+        if (user.IsDisabled)
+            throw new DomainException("Esta conta foi desativada. Fale com quem administra a Focadu.", "conta_desativada");
+
         var token = _jwtTokenService.GenerateToken(user);
         return new AuthResultDto(await UserDto.FromAsync(user, _cohortRepository, cancellationToken), token);
     }

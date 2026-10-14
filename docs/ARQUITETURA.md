@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 96 - Turmas** (Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 97 - Painel de gestao, lacunas de operacao** (Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -2954,8 +2954,8 @@ Deploy" abaixo.
 Telas no Figma "Focadu — Pixel Art": "Medicao de IA — v2" (`244:4502`) e "Painel de gestao — v1" (`263:4502`). Detalhe e
 decisoes em `docs/fase-94/`.
 
-- **Papel**: `User.Role` (`UserRole` Student/Admin, string, padrao Student). So o comando `admin promover|rebaixar <email>` /
-  `admin listar` (Program.cs) muda o papel - nao ha rota HTTP. `UserDto.IsAdmin` so mostra o item "Gestao" no GlobalNav.
+- **Papel**: `User.Role` (`UserRole` Student/Admin, string, padrao Student). O comando `admin promover|rebaixar <email>` /
+  `admin listar` (Program.cs) muda o papel; desde a Fase 97 tambem a aba Alunos (`PUT /api/admin/students/{id}/role`). `UserDto.IsAdmin` so mostra o item "Gestao" no GlobalNav.
 - **Rotas** (grupo `/api/admin`, `RequireAuthorization` + filtro do `AdminAccessGuard`, que confere o papel NO BANCO a cada
   chamada; nao admin = 403 `acesso_negado` via `ForbiddenException`):
 
@@ -3014,6 +3014,40 @@ Figma "Focadu — Pixel Art", pagina "Turmas — v1 (proposta)" (`289:4502`, TU 
 - **Front**: aba Turmas (`components/admin/CohortsTab.tsx`, `/gestao/turmas`, `?turma=<id>` abre o detalhe), gaveta de convite
   com a turma (`CreateInviteDrawer`, exportada pra abrir da turma com ela marcada), coluna e selo da turma em Alunos
   (`?aluno=<id>` abre o aluno), barra "Quem ve" na Curadoria (esconder do publico pede confirmacao), `CheckOption` no `AdminUi`.
+
+### Lacunas de operacao do painel (Fase 97)
+
+Figma "Focadu — Painel de gestao, Fase 97" (`Uvy09SJEA9phpWZWRzj2ol`, A01-A10, C01-C05, N01-N02), aprovado pelo dono em 14/10/2026.
+Detalhe em `docs/fase-97/`.
+
+- **Schema** (migration `Fase97LacunasDoPainel`, 3 colunas nullable `timestamp with time zone`): `Users.DisabledAt` (soft delete),
+  `Courses.CatalogEditedAt` (texto do catalogo editado no painel) e `Courses.StatusSetByAdminAt` (status decidido no painel).
+- **Dominio**: `User.Disable/Enable/ChangeDisplayName/ChangeEmail` (trocar o e-mail zera `EmailVerifiedAt`); `Course.EditCatalog/
+  ClearCatalogEdit/PublishByAdmin/UnpublishByAdmin` e `CanAutoPublish` (Draft e o admin nunca decidiu).
+- **Conta desativada vale na hora**: `LoginUserUseCase` recusa com `conta_desativada` (403) e o `OnTokenValidated` do JWT
+  (`Program.cs`) confere `IUserRepository.IsDisabledAsync` em toda chamada autenticada (401 `conta_desativada` pelo `OnChallenge`;
+  uma consulta leve por chamada, usuario inexistente conta como desativado). Ranking do curso, ranking do squad e QG pulam
+  desativados; matriculas e progresso ficam.
+- **Rotas** (`/api/admin`, atras do `AdminAccessGuard`):
+
+| Metodo | Rota | Caso de uso | Notas |
+|---|---|---|---|
+| PUT | `/students/{u}` | `AdminUserManagementUseCase.UpdateAsync` | `{displayName, email}`; e-mail duplicado = 409 `email_ja_cadastrado`; devolve `{student, emailChanged}` |
+| POST | `/students/{u}/password-reset` | `SendPasswordResetAsync` | reaproveita `RequestPasswordResetUseCase`; conta desativada = 400 `conta_desativada` |
+| POST | `/students/{u}/disable` | `DisableAsync` | `{confirmation}` = e-mail do aluno; nao desativa a si mesmo nem admin |
+| POST | `/students/{u}/enable` | `EnableAsync` | |
+| PUT | `/students/{u}/role` | `SetRoleAsync` | `{admin}`; nao rebaixa a si mesmo nem o ultimo admin; nao promove conta desativada |
+| GET/POST | `/courses` | `AdminCoursesUseCase.ListAsync` / `CreateAsync` | cria curso vazio, sempre Draft; `publish=true` = 400 `curso_sem_dias`; nome duplicado = 409 `curso_ja_existe` |
+| PUT | `/courses/{c}` | `UpdateAsync` | texto do catalogo (limites: 100/1000/500, 12 itens de 200); o nome nunca muda |
+| POST | `/courses/{c}/publish`, `/unpublish` | `PublishAsync` / `UnpublishAsync` | publicar exige ao menos 1 dia importado; arquivar = Active -> Draft, sem apagar |
+| POST | `/courses/{c}/revert-catalog` | `RevertToManifestAsync` | reaplica `curso.json` e `recomendacao.json`; sem pasta = 400 `curso_sem_pasta` |
+
+- **Seed e importador respeitam o painel**: `SyncCourseRecommendationsUseCase.Apply` pula curso com `CatalogEditedAt`; seed e
+  importador so publicam sozinhos se `Course.CanAutoPublish` (sem `StatusSetByAdminAt`).
+- **Arquivar** nao tira quem ja esta matriculado (`CourseViewer.CanSee`); so some do catalogo e bloqueia matricula nova.
+- **Front**: `StudentAccount.tsx` (bloco "// CONTA", gaveta de editar, modais de senha, papel e desativar), filtro Todos/Ativos/
+  Desativados e selo em `StudentsTab`; aba Cursos (`CoursesTab.tsx`, `/gestao/cursos`); `Drawer`/`DrawerHeader` compartilhados em
+  `AdminUi.tsx`; `client.ts` trata o 401 `conta_desativada` como sessao encerrada.
 
 ## Docker e Deploy (Fase 40)
 

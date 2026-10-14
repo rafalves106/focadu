@@ -238,12 +238,19 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
     focada: 'Bastidor da Focadu: só quem é admin vê. Nada daqui aparece pro aluno.',
     items: [
       { title: 'Visão geral', text: 'Alunos ativos, cadastros por convite, dias concluídos, custo de IA do mês e quantos dias cada curso tem curados.' },
-      { title: 'Alunos', text: 'Clique num aluno pra ver o progresso por curso e a turma dele. "Resetar progresso" zera um curso só e pede o e-mail do aluno pra confirmar.' },
+      {
+        title: 'Alunos',
+        text: 'Clique num aluno pra ver o progresso por curso e a turma dele. No bloco Conta: editar nome e e-mail (trocar o e-mail pede nova confirmação), enviar a redefinição de senha (você nunca vê a senha), tornar ou tirar admin e desativar. Desativar bloqueia o acesso na hora e tira o aluno do ranking e do squad, sem apagar nada; o filtro Desativados mostra quem foi e deixa reativar. "Resetar progresso" zera um curso só e pede o e-mail do aluno pra confirmar.',
+      },
       {
         title: 'Turmas',
         text: 'Uma turma junta alunos e os cursos deles. Quem entra por convite da turma é matriculado nos cursos dela e só vê esses cursos. Curso que entra matricula a turma na hora; arquivar mantém os alunos e para os convites.',
       },
       { title: 'Convites', text: 'Criar convite (1 a 20 usos, 1 a 30 dias, sempre vence), com ou sem turma, copiar o link e revogar.' },
+      {
+        title: 'Cursos',
+        text: 'O texto de cada curso no catálogo. Crie um curso vazio, edite descrição, "antes de começar" e recomendados, publique ou arquive. Publicar exige ao menos um dia importado. Arquivar não apaga nada e quem já está matriculado continua com acesso. Editado no Painel, o texto deixa de ser reescrito pelo curso.json; "Voltar ao curso.json" desfaz.',
+      },
       {
         title: 'Curadoria',
         text: 'Arquivo em secret/conteudo x banco, dia a dia. Marque dias novos ou diferentes, veja a prévia do linter e importe: é tudo ou nada. Dia só no banco sai pelo "Apagar dias antigos". Em cima, quem vê o curso: todos ou só as turmas.',

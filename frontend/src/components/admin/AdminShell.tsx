@@ -10,6 +10,7 @@ const TABS = [
   { to: '/gestao/alunos', label: 'Alunos' },
   { to: '/gestao/turmas', label: 'Turmas' },
   { to: '/gestao/convites', label: 'Convites' },
+  { to: '/gestao/cursos', label: 'Cursos' },
   { to: '/gestao/curadoria', label: 'Curadoria' },
   { to: '/gestao/uso-de-ia', label: 'Uso de IA' },
 ];
