@@ -12,6 +12,7 @@ import type { UserDto } from '../api/types';
  */
 export async function resolveLandingPath(user: UserDto): Promise<string> {
   if (user.emailVerificationPending) return '/confirmar-email';
+  if (user.termsAcceptancePending) return '/aceite';
   if (!user.profileCompletedAt) return '/onboarding';
 
   try {

@@ -48,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<ForgejoAccountProvisioner>();
         services.AddScoped<ChooseWeeklyProjectLanguageUseCase>();
         services.AddScoped<GenerateForgejoTokenUseCase>();
+        services.AddScoped<AcceptTermsUseCase>();
         services.AddScoped<GetWeeklyProjectReadmeUseCase>();
         services.AddScoped<GenerateLinkedInDraftUseCase>();
         services.AddScoped<GetGitHubRepositoriesUseCase>();

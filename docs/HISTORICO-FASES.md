@@ -70,6 +70,7 @@ Detalhe de cada uma em `docs/fase-N/resumo-implementacao-fase-N.md`; o porquê d
 - **100** Backup e Forgejo privado (3ª fase do plano da v0.1.0): `pg_dump` antes de cada deploy (falha fechado, 14 últimos, só do dono), restauração testada, fork de aluno privado (templates privados + leitura concedida no fork + recusa de fork público), Postgres e Api só em loopback. Ver `docs/fase-100/`.
 - **101** Travas de IA (4ª fase do plano da v0.1.0): orçamento diário por aluno (429 antes de chamar o Groq), teto mensal com troca para modelo reserva (`AiModelDowngradeHandler`), duração máxima do áudio (16 min), 10 tentativas por atividade por dia; painel "Limites de IA" na aba Uso de IA. Ver `docs/fase-101/`.
 - **100b** README do Projeto Semanal no app: `GET /api/weeklies/{id}/project/readme` lê o README do fork com o token de admin (só o dono) e o botão "Abrir README.md" abre um modal pixel art no lugar do link do Forgejo; destrava ligar o fork privado. Ver `docs/fase-100b/`.
+- **102** Termos, privacidade e aceite (5ª fase do plano da v0.1.0): páginas `/termos` e `/privacidade`, caixa de aceite obrigatória no cadastro, tela `/aceite` para contas antigas e versão nova, `TermsAcceptedVersion`/`TermsAcceptedAt` no `User`. Ver `docs/fase-102/`.
 
 ## Resumo detalhado das Fases 86–91 (como estava no Estado atual)
 

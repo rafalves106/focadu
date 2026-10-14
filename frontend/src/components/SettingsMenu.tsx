@@ -12,6 +12,7 @@ import {
   setUiSoundVolume,
 } from '../lib/settings';
 import { playAdvance } from '../lib/uiSound';
+import { LegalFooter } from './legal/LegalBits';
 import { PixelConfirmDialog } from './PixelConfirmDialog';
 import { PixelModal } from './PixelModal';
 import { PixelButton, PixelChip } from './session/PixelButton';
@@ -106,6 +107,7 @@ export function SettingsMenu({
   onLogout: () => void;
 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [recordingLimit, setRecordingLimit] = useState(() => getRecordingLimitMinutes());
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [uiSoundEnabled, setUiSoundEnabledState] = useState(() => getUiSoundEnabled());
@@ -232,6 +234,7 @@ export function SettingsMenu({
           <PixelButton ghost tone="alert" onClick={() => setConfirmingLogout(true)} className="w-full">
             Sair da conta
           </PixelButton>
+          <LegalFooter variant="discreet" acceptedAt={user?.termsAcceptedAt} />
         </div>
       </PixelModal>
 

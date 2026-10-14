@@ -892,6 +892,10 @@ export interface UserDto {
   emailVerificationPending?: boolean;
   /** Fase 94: mostra o item "Gestao" no menu global. So aparencia - a Api confere o papel em cada rota /api/admin. */
   isAdmin?: boolean;
+  /** Fase 102: nao aceitou a versao vigente dos termos - ProtectedRoute leva para /aceite. */
+  termsAcceptancePending?: boolean;
+  /** Fase 102: quando aceitou os termos (nulo = nunca). */
+  termsAcceptedAt?: string | null;
   /** Fase 96: nome da turma do aluno (nulo = sem turma). O Start mostra no lugar de "+ Explorar cursos". */
   cohortName?: string | null;
 }
@@ -918,6 +922,8 @@ export interface RegisterRequest {
   referralCode?: string;
   /** Fase 93: convite de tester (obrigatorio com Signup:InviteOnly ligada). */
   inviteCode?: string;
+  /** Fase 102: obrigatorio - o servidor recusa o cadastro sem o aceite (termos_obrigatorios). */
+  acceptTerms: boolean;
 }
 
 export interface LoginRequest {

@@ -65,8 +65,12 @@ public class RegisterUserUseCase
 
     public async Task<AuthResultDto> ExecuteAsync(
         string email, string password, string displayName, string? referralCode, string? inviteCode = null,
-        CancellationToken cancellationToken = default)
+        bool acceptedTerms = false, CancellationToken cancellationToken = default)
     {
+        // Fase 102: sem aceite dos termos nao ha cadastro (o servidor nunca confia so na caixa do front).
+        if (!acceptedTerms)
+            throw new ValidationException("termos_obrigatorios", "Aceite os Termos de Uso e a Politica de Privacidade para criar a conta.");
+
         ValidatePassword(password);
 
         var normalizedEmail = email.Trim().ToLowerInvariant();
@@ -79,6 +83,7 @@ public class RegisterUserUseCase
 
         var passwordHash = _passwordHasher.Hash(password);
         var user = User.Create(normalizedEmail, passwordHash, displayName);
+        user.AcceptTerms(LegalDocuments.CurrentVersion, DateTime.UtcNow);
         if (cohort is not null) user.JoinCohort(cohort.Id);
 
         await _userRepository.AddAsync(user, cancellationToken);

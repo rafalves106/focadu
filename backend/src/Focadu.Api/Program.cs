@@ -557,7 +557,7 @@ api.MapPost("/auth/register", async (HttpContext http, RegisterRequest? request,
     {
         var result = await useCase.ExecuteAsync(
             request?.Email ?? string.Empty, request?.Password ?? string.Empty, request?.DisplayName ?? string.Empty,
-            request?.ReferralCode, request?.InviteCode, ct);
+            request?.ReferralCode, request?.InviteCode, request?.AcceptTerms ?? false, ct);
         SetAuthCookie(http, result.Token);
         return Results.Created("/api/auth/me", WithSignup(result.User));
     })
@@ -670,6 +670,12 @@ api.MapPut("/users/me/squad-feed-privacy", async (ClaimsPrincipal principal, Squ
 
 // Guia das telas (Fase 75): marca o tour do app ou a 1a visita a uma tela como vistos - idempotente,
 // devolve o UserDto novo (o AuthContext troca o usuario em memoria).
+// Fase 102: aceite dos termos por quem ja tem conta (ou viu uma versao antiga).
+api.MapPost("/users/me/accept-terms", async (ClaimsPrincipal principal, AcceptTermsRequest? request, AcceptTermsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), request?.Version, ct)))
+    .RequireAuthorization()
+    .WithName("AcceptTerms");
+
 api.MapPost("/users/me/guides/{key}/seen", async (ClaimsPrincipal principal, string key, MarkGuideSeenUseCase useCase, CancellationToken ct) =>
         Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), key, ct)))
     .RequireAuthorization()
