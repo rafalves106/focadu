@@ -1,6 +1,8 @@
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.HttpOverrides;
 using System.Security.Claims;
 using System.Text;
+using Focadu.Api;
 using Focadu.Api.Contracts;
 using Focadu.Api.ErrorHandling;
 using Focadu.Application;
@@ -101,16 +103,34 @@ builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 // CORS para o frontend Vite (Passo 3) - porta diferente da Api conta como origem diferente, o
-// navegador bloqueia sem isso mesmo os dois rodando em localhost. So dev por enquanto (unico
-// usuario-teste, sem deploy ainda) - ver docs/ARQUITETURA.md se isso precisar virar configuravel.
+// navegador bloqueia sem isso mesmo os dois rodando em localhost. Em producao nao entra em jogo: o nginx do frontend
+// faz proxy same-origin de /api (Fase 40). Fase 99: as origens vem de Cors__AllowedOrigins (separadas por virgula);
+// sem a variavel valem as de dev.
 // AllowCredentials (Fase 12, pro cookie de sessao ir junto nas requisicoes) exige origem explicita
 // - nao pode conviver com AllowAnyOrigin por especificacao do CORS; ja usavamos WithOrigins.
 const string FrontendDevCorsPolicy = "FrontendDev";
+var corsOrigins = builder.Configuration["Cors:AllowedOrigins"] is { Length: > 0 } configuredOrigins
+    ? configuredOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    : ["http://localhost:5173", "http://127.0.0.1:5173"];
 builder.Services.AddCors(options => options.AddPolicy(FrontendDevCorsPolicy, policy => policy
-    .WithOrigins("http://localhost:5173", "http://127.0.0.1:5173")
+    .WithOrigins(corsOrigins)
     .AllowCredentials()
     .AllowAnyHeader()
     .AllowAnyMethod()));
+
+// Fase 99: atras do Cloudflare Tunnel + nginx, o IP e o esquema reais so chegam em X-Forwarded-*. A cadeia confiavel tem
+// 2 saltos (cloudflared e nginx): o limite le o IP de cliente 2 entradas da direita, entao um X-Forwarded-For falso mandado
+// pelo cliente fica pra tras. Os proxies sao de rede interna do Docker (a porta da Api so e alcancavel pelo nginx),
+// por isso a lista de redes conhecidas e esvaziada. Forwarded__Limit muda o numero de saltos.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+    options.ForwardLimit = int.TryParse(builder.Configuration["Forwarded:Limit"], out var hops) && hops > 0 ? hops : 2;
+});
+
+builder.Services.AddFocaduRateLimiting(builder.Configuration);
 
 // Sessao via JWT em cookie httpOnly (Fase 12) - nunca acessivel via JS (mais seguro contra XSS que
 // localStorage). O token nunca chega via header Authorization; OnMessageReceived le direto do
@@ -506,6 +526,7 @@ if (args.Contains("seed"))
 // Middleware de erro primeiro: qualquer excecao lancada por qualquer endpoint abaixo (validacao,
 // regra de dominio, recurso nao encontrado) passa por ApiExceptionHandler e vira o mesmo formato
 // { error, message } com o status HTTP adequado.
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
@@ -517,6 +538,7 @@ app.UseHttpsRedirection();
 app.UseCors(FrontendDevCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
@@ -527,9 +549,8 @@ app.MapGet("/api/features", (Focadu.Application.Shared.PersonalizationOptions pe
 var api = app.MapGroup("/api");
 
 // --- Autenticacao (Fase 12) ------------------------------------------------------------------
-// Fundacao de sessao - registro/login/logout/me. Endpoints de curso/weekly/daily abaixo
-// continuam abertos por enquanto (sem [Authorize]/RequireAuthorization) - isso e trabalho da
-// Fase 13, quando passarem a filtrar por usuario matriculado.
+// Fundacao de sessao - registro/login/logout/me. Desde a Fase 13 quase todo endpoint abaixo exige sessao
+// (RequireAuthorization) e filtra por dono; os abertos sao so /health, /api/features e os de /auth.
 
 api.MapPost("/auth/register", async (HttpContext http, RegisterRequest? request, RegisterUserUseCase useCase, CancellationToken ct) =>
     {

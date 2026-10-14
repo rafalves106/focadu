@@ -27,3 +27,5 @@ secret/
 
 ## Backups locais de banco (não versionar)
 backups/
+# Permissoes pessoais do Claude Code (ex.: ssh na VM)
+.claude/settings.local.json
