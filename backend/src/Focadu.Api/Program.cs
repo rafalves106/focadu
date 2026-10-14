@@ -54,7 +54,8 @@ var gitHubOptions = new GitHubOptions(builder.Configuration["GitHub:Token"] ?? s
 // BaseUrl/AdminToken ausentes nao impedem o app de subir, so as chamadas de ForgejoService falham
 // (com erro claro) quando de fato invocadas sem eles configurados.
 var forgejoOptions = new ForgejoOptions(
-    builder.Configuration["Forgejo:BaseUrl"] ?? string.Empty, builder.Configuration["Forgejo:AdminToken"] ?? string.Empty);
+    builder.Configuration["Forgejo:BaseUrl"] ?? string.Empty, builder.Configuration["Forgejo:AdminToken"] ?? string.Empty,
+    bool.TryParse(builder.Configuration["Forgejo:RequirePrivateForks"], out var privateForks) && privateForks);
 
 // Jwt:SecretKey (Fase 12): ao contrario de Groq/GitHub acima, esta e exigida no boot - a partir
 // desta fase, autenticacao e fundacao (nao uma integracao opcional), e sem a chave literalmente

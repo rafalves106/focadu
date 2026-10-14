@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 99 - Seguranca de borda** (Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 100 - Backup e Forgejo privado** (Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -2215,6 +2215,20 @@ novo, `codeberg.org/forgejo/forgejo:9`, SQLite - sem Postgres proprio, app isola
 dominio C#) - ver `secret/rascunhos/repositorios-gerenciados-projeto-semanal.md` pro raciocinio
 completo por tras da decisao.
 
+**Visibilidade (Fase 100): repositorio de aluno e privado.** O Forgejo forca o fork a ter a visibilidade da origem (um fork nao
+pode ser mais privado que o template, nem tornado privado depois), e ate a Fase 99 os templates eram publicos, entao todo fork
+nascia publico e um aluno lia o repositorio do outro (o token dele, escopo `write:repository`, enxerga todo repo publico).
+Desde a Fase 100 o codigo sabe fazer isso, **atras de `Forgejo__RequirePrivateForks` (desligado por padrao)**: os templates passam a ser **privados** (`publicar_modelo_forgejo.py` ja os cria assim) e `ForkTemplateAsync` faz, em ordem:
+`PUT /repos/focadu-admin/{template}/collaborators/{aluno}` (permissao `read`, so o necessario para o fork), o fork em nome do aluno
+e `RequirePrivateFork` - se o fork voltar publico, falha fechado com `forgejo_fork_publico` em vez de seguir publico em silencio
+(vale tambem no caminho de reaproveitar o fork que ja existe, 409). `docker-compose.yml`: `FORGEJO_DEFAULT_PRIVATE` e
+`FORGEJO_REQUIRE_SIGNIN_VIEW` (padroes `public`/`false`; ligar com a chave do backend, as tres juntas). **Ainda desligado em producao**:
+o enunciado mora no README do fork e o link "Abrir README.md" aponta pro Forgejo, que com login obrigatorio o aluno nao abre (ver
+`docs/fase-100/`). O aluno nunca loga na web do Forgejo (senha aleatoria, so token), entao o
+repositorio dele deixa de abrir no navegador sem login; o acesso por git continua pelo token. Verificado ao vivo (14/10/2026,
+usuario e repositorio descartaveis, apagados): fork sem leitura = 404; com leitura = 202 e `private: true`; anonimo e outro aluno = 404;
+`git ls-remote` anonimo pede senha. Tornar um template privado torna privados os forks dele que ja existem.
+
 **`IForgejoService`** (`Focadu.Application.Ports`) + **`ForgejoService`** (adapter concreto,
 `Focadu.Infrastructure.Services`) - mesmo padrao sem SDK do `IGitHubService`/`GitHubService`
 (HttpClient cru + `HttpRetry`), 3 operacoes:
@@ -3076,6 +3090,15 @@ Detalhe em `docs/fase-97/`.
 
 Guia pratico completo (comandos, variaveis, runbook de deploy) em `docs/DOCKER.md` - esta secao
 so resume as decisoes de arquitetura.
+
+**Backup e portas (Fase 100):** o `deploy.yml` faz `pg_dump -Fc` do Postgres em `~/backups/focadu-pre-deploy-<data>.dump` **antes**
+do `up --build` (e portanto antes de a migration rodar no boot da Api). Falha fechado: banco no ar e dump vazio = o deploy para; sem
+container (primeiro deploy) segue. Arquivo `umask 077` (so o dono; tem hash de senha e dado pessoal) e guarda os 14 ultimos. O
+`publicar-conteudo.yml` ja fazia o seu proprio dump antes de importar. **Ainda nao existe** copia fora da VM nem criptografia (precisa
+de um destino, ex.: Object Storage da Oracle, e de uma chave). Restauracao testada em 14/10/2026: `pg_restore --exit-on-error` do dump de
+13/10 num Postgres 16 temporario (sem rede) saiu com 0 e trouxe as 47 tabelas. O compose publica o Postgres (`5432`) e a Api (`5282`) so em
+`127.0.0.1`; o frontend (`5280`) e o Forgejo (`3020`, `2222`) continuam em todas as interfaces, porque o `cloudflared` da VM aponta para
+`localhost:5280` e `localhost:3020`. De fora da VM so a porta 22 responde (a lista de entrada da Oracle bloqueia o resto).
 
 **Dois Dockerfiles, multi-stage:**
 - `backend/Dockerfile`: SDK 10.0 restaura/publica so `Focadu.Api.csproj` -> runtime `aspnet:10.0`
