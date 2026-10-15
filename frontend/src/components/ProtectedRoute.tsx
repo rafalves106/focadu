@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
 import { Centered } from './Layout';
+import { ScreenVisitTracker } from './ScreenVisitTracker';
 
 /**
  * Guarda de rota (Fase 12) - envolve as rotas que exigem sessao (/hoje, /start, /perfil, /loja).
@@ -18,5 +19,11 @@ export function ProtectedRoute() {
   // Fase 102: quem ainda nao aceitou a versao vigente dos termos so ve a tela de aceite (contas antigas e versao nova).
   if (user.termsAcceptancePending) return <Navigate to="/aceite" replace />;
 
-  return <Outlet />;
+  // Fase 103: medicao de produto (tela e aparelho) so de quem passou por todas as guardas acima.
+  return (
+    <>
+      <ScreenVisitTracker />
+      <Outlet />
+    </>
+  );
 }

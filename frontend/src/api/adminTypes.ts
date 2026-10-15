@@ -331,3 +331,34 @@ export interface AdminSaveCourseBody {
   preparesText: string | null;
   onlyForCohorts: boolean;
 }
+
+// Fase 103, Medicao de produto (aba Retencao). Retorno continuo: D7 = abriu (ou fez Daily) no 7o dia depois do cadastro ou depois.
+export interface RetentionCellDto {
+  returned: number;
+  /** Alunos da coorte que ja tem N dias de cadastro. */
+  eligible: number;
+}
+
+export interface RetentionCohortDto {
+  weekStart: string;
+  students: number;
+  openedD1: RetentionCellDto | null;
+  openedD7: RetentionCellDto | null;
+  openedD30: RetentionCellDto | null;
+  dailyD1: RetentionCellDto | null;
+  dailyD7: RetentionCellDto | null;
+  dailyD30: RetentionCellDto | null;
+}
+
+export interface RetentionReportDto {
+  hasData: boolean;
+  cohorts: RetentionCohortDto[];
+  cohortTotal: RetentionCohortDto | null;
+  courses: { id: string; name: string; hasProjects: boolean }[];
+  courseId: string | null;
+  courseHasProjects: boolean;
+  dailyToProject: { week: number; didDaily: number; deliveredProject: number }[];
+  dropout: { active: number; beforeFirstDaily: number; byWeek: { week: number; students: number }[] };
+  deviceWindowDays: number;
+  screensByDevice: { screen: string; desktop: number; mobile: number; tablet: number }[];
+}

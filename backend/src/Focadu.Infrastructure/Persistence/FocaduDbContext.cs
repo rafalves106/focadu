@@ -9,6 +9,7 @@ using Focadu.Domain.Gamification;
 using Focadu.Domain.GitHosting;
 using Focadu.Domain.Monthlies;
 using Focadu.Domain.Notes;
+using Focadu.Domain.ProductMetrics;
 using Focadu.Domain.Referrals;
 using Focadu.Domain.Squads;
 using Focadu.Domain.Users;
@@ -93,6 +94,9 @@ public class FocaduDbContext : DbContext
     public DbSet<AiUsageRecord> AiUsageRecords => Set<AiUsageRecord>();
     public DbSet<AiModelPrice> AiModelPrices => Set<AiModelPrice>();
     public DbSet<AiUsageSettings> AiUsageSettings => Set<AiUsageSettings>();
+
+    // Fase 103, Medicao de produto (aba Retencao do Painel de gestao).
+    public DbSet<ScreenVisit> ScreenVisits => Set<ScreenVisit>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

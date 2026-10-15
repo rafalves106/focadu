@@ -169,7 +169,7 @@ Cada uma custou um bug real ou uma conversa; o porquê está em `docs/fase-N/` e
 
 ## Estado atual
 
-Última fase concluída: **Fase 102 — Termos, privacidade e aceite** (14/10/2026, na branch `fase-102-termos-e-privacidade`; README do Projeto Semanal: Fase 100b; Travas de IA: Fase 101; Backup e Forgejo privado: Fase 100; Segurança de borda: Fase 99; Higiene da base: Fase 98; 1ª do plano da v0.1.0 em `secret/produto/rascunhos/plano-v0-1-0-cenario-a.md`; painel, lacunas de operação: Fase 97; Turmas: Fase 96; SQLite no laboratório: Fase 95; painel de gestão: Fase 94).
+Última fase concluída: **Fase 103 — Medição de produto (aba Retenção)** (15/10/2026, na branch `fase-103-medicao-de-produto`; Termos e aceite: Fase 102; README do Projeto Semanal: Fase 100b; Travas de IA: Fase 101; Backup e Forgejo privado: Fase 100; Segurança de borda: Fase 99; Higiene da base: Fase 98; 1ª do plano da v0.1.0 em `secret/produto/rascunhos/plano-v0-1-0-cenario-a.md`; painel, lacunas de operação: Fase 97; Turmas: Fase 96; SQLite no laboratório: Fase 95; painel de gestão: Fase 94).
 
 Histórico completo dos marcos (Fases 25–87, com o porquê de cada decisão): `docs/ESTADO-HISTORICO.md` —
 só abrir quando precisar. Estado técnico vivo: `docs/ARQUITETURA.md`; detalhe por fase: `docs/fase-N/`.
@@ -195,6 +195,8 @@ Resumo do que existe hoje:
   de 6 dígitos, atrás das chaves `Signup:*` (desligadas por padrão, ligadas no `.env` de produção). Ver `docs/fase-93/`.
 - **Painel de gestão (Fase 94)**: `/gestao`, só para admin (`User.Role`, papel dado pelo comando `admin promover <email>` da Api ou, desde a Fase 97, pela aba Alunos). Abas Visão geral, Alunos (resetar curso), Convites (1–20 usos, 1–30 dias), Curadoria (importar tudo ou nada, apagar
   dias antigos) e Uso de IA (medição de cada chamada ao Groq, custo estimado com tabela de preços; nada bloqueia). Ver `docs/fase-94/`.
+- **Retenção (Fase 103)**: o front registra tela e aparelho (celular/tablet/computador, 1 linha por aluno/dia/tela) e a aba Retenção do painel mostra
+  retorno D1/D7/D30 por coorte, Daily → Projeto Semanal, onde param e aparelho por tela, calculados ao abrir. Ver `docs/fase-103/`.
 - **Turmas (Fase 96)**: aba Turmas do painel. Convite de turma matricula o aluno nos cursos dela e ele só vê esses cursos; curso pode
   ser "só pra turmas" (aba Curadoria). Regra única de quem vê cada curso: `CourseViewer`. Ver `docs/fase-96/`.
 - **Operação do painel (Fase 97)**: o admin edita nome e e-mail do aluno, manda o e-mail de redefinição de senha (nunca vê a senha), desativa e reativa contas (soft delete que vale na hora e tira o aluno do ranking e do squad) e promove ou rebaixa admin; aba Cursos para criar curso vazio, editar o catálogo, publicar e arquivar (seed e importador respeitam o que o painel decidiu). Ver `docs/fase-97/`.

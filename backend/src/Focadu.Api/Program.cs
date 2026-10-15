@@ -1227,6 +1227,18 @@ api.MapGet("/dailies/{dailyId}/feedback", async (ClaimsPrincipal principal, stri
     .RequireAuthorization()
     .WithName("GetDayFeedback");
 
+// --- Medicao de produto (Fase 103) ---------------------------------------------------------
+// O front avisa a cada troca de tela (chave do guia das telas); a Api resume o User-Agent em computador/celular/tablet e
+// grava no maximo 1 linha por aluno, dia, tela e aparelho. Alimenta a aba Retencao do Painel de gestao.
+api.MapPost("/visits", async (ClaimsPrincipal principal, HttpRequest http, RecordScreenVisitRequest? request,
+        Focadu.Application.ProductMetrics.RecordScreenVisitUseCase useCase, CancellationToken ct) =>
+    {
+        await useCase.ExecuteAsync(CurrentUserId(principal), request?.Screen, http.Headers.UserAgent.ToString(), ct);
+        return Results.NoContent();
+    })
+    .RequireAuthorization()
+    .WithName("RecordScreenVisit");
+
 // --- Caderninho de Anotacoes (Fase 29) ------------------------------------------------------
 
 api.MapPost("/dailies/{dailyId}/notes", async (ClaimsPrincipal principal, string dailyId, CreateNoteRequest? request, CreateNoteUseCase useCase, CancellationToken ct) =>
@@ -1452,6 +1464,10 @@ admin.MapGet("/courses/{courseId}/stale-days", async (string courseId, Focadu.Ap
 admin.MapPost("/courses/{courseId}/stale-days/delete", async (string courseId, AdminConfirmRequest? request, Focadu.Application.Admin.AdminCurationUseCase useCase, CancellationToken ct) =>
         Results.Ok(await useCase.DeleteStaleDaysAsync(RouteParsing.RequireGuid(courseId, "courseId"), request?.Confirmation, ct)))
     .WithName("AdminDeleteStaleDays");
+
+admin.MapGet("/retention", async (string? courseId, Focadu.Application.Admin.AdminRetentionUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(string.IsNullOrWhiteSpace(courseId) ? null : RouteParsing.RequireGuid(courseId, "courseId"), ct)))
+    .WithName("AdminRetention");
 
 admin.MapGet("/ai-usage", async (string? period, string? courseId, Focadu.Application.Admin.AiUsageReportUseCase useCase, CancellationToken ct) =>
         Results.Ok(await useCase.OverviewAsync(period, OptionalGuid(courseId, "courseId"), ct)))

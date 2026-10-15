@@ -37,6 +37,8 @@ public static class DependencyInjection
         services.AddScoped<AdminInvitesUseCase>();
         services.AddScoped<AdminCurationUseCase>();
         services.AddScoped<AdminOverviewUseCase>();
+        services.AddScoped<AdminRetentionUseCase>(); // Fase 103
+        services.AddScoped<ProductMetrics.RecordScreenVisitUseCase>(); // Fase 103
 
         services.AddScoped<ListCoursesUseCase>();
         services.AddScoped<GetCourseDetailUseCase>();

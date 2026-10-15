@@ -20,6 +20,7 @@ import type {
   CurationCourseDto,
   ImportPreviewDto,
   ImportResultDto,
+  RetentionReportDto,
   StaleDaysPreviewDto,
   StaleDaysResultDto,
 } from './adminTypes';
@@ -103,6 +104,9 @@ export const adminApi = {
       body: JSON.stringify({ confirmation }),
       timeoutMs: 60_000,
     }),
+
+  getRetention: (courseId: string | null) =>
+    request<RetentionReportDto>(`/api/admin/retention${courseId ? `?courseId=${encodeURIComponent(courseId)}` : ''}`),
 
   getAiUsage: (period: AiPeriod, courseId: string | null) => request<AiUsageOverviewDto>(`/api/admin/ai-usage?${aiQuery(period, courseId)}`),
   getAiUsageStudents: (period: AiPeriod, courseId: string | null) =>

@@ -5,6 +5,7 @@ import './index.css';
 import { App } from './App';
 import { AdminGate } from './components/admin/AdminGate';
 import { AiUsageTab } from './components/admin/AiUsageTab';
+import { RetentionTab } from './components/admin/RetentionTab';
 import { CurationTab } from './components/admin/CurationTab';
 import { InvitesTab } from './components/admin/InvitesTab';
 import { CohortsTab } from './components/admin/CohortsTab';
@@ -82,6 +83,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="gestao/convites" element={<AdminGate><InvitesTab /></AdminGate>} />
                 <Route path="gestao/curadoria" element={<AdminGate><CurationTab /></AdminGate>} />
                 <Route path="gestao/uso-de-ia" element={<AdminGate><AiUsageTab /></AdminGate>} />
+                <Route path="gestao/retencao" element={<AdminGate><RetentionTab /></AdminGate>} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
