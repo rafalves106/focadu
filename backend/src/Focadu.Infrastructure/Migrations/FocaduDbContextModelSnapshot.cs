@@ -1035,6 +1035,40 @@ namespace Focadu.Infrastructure.Migrations
                     b.ToTable("NotesReviews", (string)null);
                 });
 
+            modelBuilder.Entity("Focadu.Domain.ProductMetrics.ScreenVisit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Device")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Screen")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Day");
+
+                    b.HasIndex("UserId", "Day", "Screen", "Device")
+                        .IsUnique();
+
+                    b.ToTable("ScreenVisits", (string)null);
+                });
+
             modelBuilder.Entity("Focadu.Domain.Referrals.Referral", b =>
                 {
                     b.Property<Guid>("Id")

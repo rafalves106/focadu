@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 102 - Termos, privacidade e aceite** (Fase 100b: README do Projeto Semanal no app; Fase 101: Travas de IA; Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 103 - Medicao de produto (aba Retencao)** (Fase 102: Termos, privacidade e aceite; Fase 100b: README do Projeto Semanal no app; Fase 101: Travas de IA; Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -3054,6 +3054,30 @@ Padroes (migration `Fase101TravasDeIa`, editaveis na aba Uso de IA, `PUT /api/ad
 teto de US$ 30 por mes (so se estava vazio) e reserva `openai/gpt-oss-20b` (preco `0,075 / 0,30` por 1 M, referencia publica da Groq, **conferir**).
 Base dos numeros (14/10/2026): 15 chamadas medidas custaram ~US$ 0,006 no total, entao US$ 0,50 e ~25x o uso normal de um aluno. A aba mostra o painel
 "Limites de IA" (limite diario, teto, reserva, aviso de teto atingido). 429 e o codigo; o aluno ve a mensagem do erro no lugar da resposta.
+
+### Medicao de produto, aba Retencao (Fase 103)
+
+Figma "Focadu — Painel de gestao, Fase 97" (`Uvy09SJEA9phpWZWRzj2ol`), pagina "Retencao — Fase 103" (`14:444`, R01-R07), aprovada em 15/10/2026.
+
+- **Registro**: `ScreenVisit` (tabela `ScreenVisits`, sem FK, como a Medicao de IA): `UserId`, `Day` (dia local, `IClock`), `Screen`, `Device`
+  (`Desktop`/`Mobile`/`Tablet`, string), `FirstSeenAt` (UTC). Indice unico (`UserId`, `Day`, `Screen`, `Device`): no maximo 1 linha por combinacao.
+  `POST /api/visits { screen }` (autenticado, 204) -> `RecordScreenVisitUseCase` -> `ScreenVisitRepository.AddIfMissingAsync`
+  (`INSERT ... ON CONFLICT DO NOTHING`, sem corrida entre abas). Aparelho = `DeviceClassifier.FromUserAgent` (heuristica; iPadOS 13+ conta como
+  computador); o User-Agent cru nao e gravado. Tela fora de `ScreenVisit.KnownScreens` vira `outra`.
+- **Front**: `ScreenVisitTracker` dentro do `<ProtectedRoute/>` (depois das guardas de e-mail e aceite) chama `recordScreenVisit(screenVisitKey(...))`
+  a cada troca de tela; a chave e a do guia (`guideScreenFor`), com `hoje` (`/hoje` sem `?daily=`) separado de `sessao`. Mesma lista nos dois lados.
+  1 chamada por tela/dia por aba; erro engolido.
+- **Leitura**: `GET /api/admin/retention?courseId=` -> `AdminRetentionUseCase` (tudo em memoria, sem cron; `RetentionCalculator` puro e testado).
+  Fora das contas: admins e contas desativadas. "Abriu o app" = dias com visita de tela **ou** Daily concluida (cobre quem se cadastrou antes da fase).
+  - Coortes por semana do cadastro (segunda a domingo, dia local); retorno **continuo** (DN = algum dia aberto >= cadastro + N); a celula conta so os
+    alunos que ja tem N dias (nula se nenhum) e ha a leitura "fez Daily" (dias de Daily concluida). `CohortTotal` soma as celulas nao nulas.
+  - Daily -> Projeto (curso escolhido; padrao = o de mais matriculas): semanas com `WeeklyProjectSpecText`, ate a maior semana com Daily concluida;
+    entregou = `WeeklyProject.Status` Submitted/Evaluated, contado so entre quem fez Daily na semana.
+  - Desistencia (curso escolhido): parado = ultimo dia aberto (ou o cadastro) <= hoje - 7; agrupado pela ultima semana com Daily no curso
+    (`ByWeek` da Semana 1 ate a maior alcancada, zeradas incluidas), `BeforeFirstDaily` e `Active`.
+  - Aparelho por tela: ultimos 30 dias, linhas de `ScreenVisits` (alunos-dia) por tela e aparelho.
+- Aba `RetentionTab` (`/gestao/retencao`, ultima do `AdminShell`). Privacidade: coberta pela linha "Registros tecnicos (... aparelho/navegador
+  resumido ...)" da Fase 102; nenhum cookie ou armazenamento novo.
 
 ### Turmas (Fase 96)
 

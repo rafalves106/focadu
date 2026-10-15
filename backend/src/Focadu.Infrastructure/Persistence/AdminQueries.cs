@@ -132,4 +132,29 @@ public class AdminQueries : IAdminQueries
                 students.Where(s => ids.Contains(s.DailyTemplateId)).Select(s => s.UserId).Distinct().Count());
         }).ToList();
     }
+
+    public async Task<IReadOnlyList<AdminCompletionFact>> ListCompletionFactsAsync(CancellationToken cancellationToken = default) =>
+        await (
+            from d in _context.Dailies.AsNoTracking()
+            join w in _context.Weeklies on d.WeeklyId equals w.Id
+            join e in _context.Enrollments on w.EnrollmentId equals e.Id
+            join wt in _context.WeeklyTemplates on w.WeeklyTemplateId equals wt.Id
+            where !d.IsReinforcement && d.CompletedAt != null
+            select new AdminCompletionFact(e.UserId, e.CourseId, wt.Number, d.CompletedAt!.Value)).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<AdminCourseWeek>> ListProjectWeeksAsync(CancellationToken cancellationToken = default) =>
+        await (
+            from wt in _context.WeeklyTemplates.AsNoTracking()
+            join m in _context.Monthlies on wt.MonthlyId equals m.Id
+            where wt.WeeklyProjectSpecText != null
+            select new AdminCourseWeek(m.CourseId, wt.Number)).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<AdminProjectFact>> ListDeliveredProjectsAsync(CancellationToken cancellationToken = default) =>
+        await (
+            from p in _context.WeeklyProjects.AsNoTracking()
+            join w in _context.Weeklies on p.WeeklyId equals w.Id
+            join e in _context.Enrollments on w.EnrollmentId equals e.Id
+            join wt in _context.WeeklyTemplates on w.WeeklyTemplateId equals wt.Id
+            where p.Status != Domain.Enums.WeeklyProjectStatus.Pending
+            select new AdminProjectFact(e.UserId, e.CourseId, wt.Number)).ToListAsync(cancellationToken);
 }

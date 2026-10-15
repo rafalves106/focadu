@@ -13,6 +13,7 @@ const TABS = [
   { to: '/gestao/cursos', label: 'Cursos' },
   { to: '/gestao/curadoria', label: 'Curadoria' },
   { to: '/gestao/uso-de-ia', label: 'Uso de IA' },
+  { to: '/gestao/retencao', label: 'Retenção' }, // Fase 103
 ];
 
 export function AdminShell({

@@ -59,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IAiUsageRepository, AiUsageRepository>(); // Fase 94
         services.AddScoped<IAdminQueries, AdminQueries>(); // Fase 94
+        services.AddScoped<IScreenVisitRepository, ScreenVisitRepository>(); // Fase 103
         services.AddScoped<IAdminMaintenance, AdminMaintenance>(); // Fase 94
         services.AddScoped<IUserGemBalanceRepository, UserGemBalanceRepository>();
         services.AddScoped<IUserStreakRepository, UserStreakRepository>();

@@ -21,7 +21,22 @@ public interface IAdminQueries
 
     /// <summary>Alunos com alguma resposta ou conclusao desde `fromUtc` ("ativo" do painel - o app nao guarda login).</summary>
     Task<int> CountActiveUsersSinceAsync(DateTime fromUtc, CancellationToken cancellationToken = default);
+
+    /// <summary>Fase 103: cada Daily (nao reforco) concluida, com aluno, curso e semana do curso.</summary>
+    Task<IReadOnlyList<AdminCompletionFact>> ListCompletionFactsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Fase 103: semanas que tem Projeto Semanal (enunciado definido), por curso.</summary>
+    Task<IReadOnlyList<AdminCourseWeek>> ListProjectWeeksAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Fase 103: Projetos Semanais entregues (enviados ou ja avaliados), com aluno, curso e semana.</summary>
+    Task<IReadOnlyList<AdminProjectFact>> ListDeliveredProjectsAsync(CancellationToken cancellationToken = default);
 }
+
+public record AdminCompletionFact(Guid UserId, Guid CourseId, int Week, DateTime CompletedAt);
+
+public record AdminCourseWeek(Guid CourseId, int Week);
+
+public record AdminProjectFact(Guid UserId, Guid CourseId, int Week);
 
 public record AdminUserRow(Guid Id, string DisplayName, string Email, DateTime CreatedAt, DateTime? EmailVerifiedAt, bool IsAdmin, Guid? CohortId = null, DateTime? DisabledAt = null);
 
