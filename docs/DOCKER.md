@@ -95,6 +95,25 @@ o valor em `FORGEJO_ADMIN_TOKEN` no `.env` correspondente. Sem isso configurado,
 normalmente; só o provisionamento automático de repositório na matrícula fica degradado
 (`WeeklyProject` fica sem `SubmissionUrl`, mesmo comportamento de antes desta integração).
 
+## Importar conteúdo em produção
+
+O conteúdo curado (dias e `projeto.json`) entra no banco pelo comando `importar` da Api, nunca por SQL. O deploy só traz o código e o
+`secret/` novos; **não importa nada**. O caminho padrão é o workflow manual `publicar-conteudo.yml` (runner da VM): linter, dry-run,
+backup do banco, importação e conferência. O `secret/` da VM é `reset --hard origin/main`, então o conteúdo precisa estar **commitado e
+empurrado** no `focadu-secret`.
+
+```
+# dry-run (padrão, não grava)
+gh workflow run publicar-conteudo.yml -f curso=web-security -f dias=6 -f projeto=nao -f aplicar=false -f confirmar=false
+# aplicar (backup antes); projeto = nao | junto (dias + projeto.json) | so (só o projeto semanal)
+gh workflow run publicar-conteudo.yml -f curso=web-security -f dias= -f projeto=so -f aplicar=true -f confirmar=false
+```
+
+Pelo Claude Code: skill `importar-producao` (`/importar-producao`). Plano B, só leitura, direto no container (alias SSH `focadu-oracle`
+no `~/.ssh/config`, host e chave não ficam no repositório):
+`ssh focadu-oracle 'docker exec focadu-backend dotnet Focadu.Api.dll importar <curso> --dry-run'`. A flag `--projeto` do `importar`
+importa só o `projeto.json` (Fase 104).
+
 ## Deploy automático (CI/CD)
 
 Dois repositórios, dois workflows, convergindo no mesmo host:

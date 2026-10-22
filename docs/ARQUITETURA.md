@@ -2553,6 +2553,8 @@ Refacao dos cursos (`secret/produto/PLANO-CURADORIA.md`, 02/10/2026). Detalhe do
   substituido por completo (`WeeklyTemplate.ClearProject()` e depois `Import`: texto, briefing, falas de estado,
   `forgejoTemplateSlug`, variantes e referencias). Aluno com projeto alem de `Pending` pede `--confirmar`. `projeto.json` aceita
   `forgejoTemplateSlug` (repositorio unico, Python). O painel de gestao ainda nao mostra o projeto.
+  `--projeto` importa so o projeto (sem tocar nos dias). O workflow `publicar-conteudo.yml` tem a entrada `projeto` (`nao|junto|so`) com linter
+  `projeto-cli.js`, dry-run, backup e conferencia.
 - **Molde v1 no banco:** `DailyTemplate` guarda `MoldeVersion` e `TargetsJson` (`LearningTarget`, 3 alvos); `CuratedContent.Source`;
   `DailyActivity.Target` e, no VoiceSummary, `Hint`, `ReferenceAnswer`, `IsFinalQuestion`, `TopicsJson`.
 - **Analogia "Pra voce" desligada** por `Personalization:AnalogiesEnabled` (padrao `false`); `GET /api/features`
