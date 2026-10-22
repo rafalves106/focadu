@@ -268,7 +268,7 @@ RankingScope ParseRankingScope(string? scope)
     return parsed;
 }
 
-// `dotnet run --project src/Focadu.Api -- importar <curso> [--dia N] [--dry-run] [--confirmar] [--sem-linter] [--legado]`:
+// `dotnet run --project src/Focadu.Api -- importar <curso> [--dia N] [--dry-run] [--confirmar] [--sem-linter] [--legado] [--projeto]`:
 // importa (ou atualiza) os dias de conteudo/<curso>/ no banco, com linter, hash por dia e dry-run (plano de
 // curadoria, secao 7). Corrigir um dia e editar o JSON e importar de novo - nunca SQL a mao.
 if (args.Contains("importar"))
@@ -277,7 +277,7 @@ if (args.Contains("importar"))
     var courseSlug = slugIndex < args.Length && !args[slugIndex].StartsWith("--") ? args[slugIndex] : null;
     if (courseSlug is null)
     {
-        Console.Error.WriteLine("uso: importar <curso> [--dia N] [--dry-run] [--confirmar] [--sem-linter] [--legado]");
+        Console.Error.WriteLine("uso: importar <curso> [--dia N] [--dry-run] [--confirmar] [--sem-linter] [--legado] [--projeto]");
         Environment.ExitCode = 2;
         return;
     }
@@ -295,7 +295,7 @@ if (args.Contains("importar"))
         onlyDay = parsedDay;
     }
 
-    var options = new ImportOptions(onlyDay, args.Contains("--dry-run"), args.Contains("--confirmar"), args.Contains("--sem-linter"), args.Contains("--legado"));
+    var options = new ImportOptions(onlyDay, args.Contains("--dry-run"), args.Contains("--confirmar"), args.Contains("--sem-linter"), args.Contains("--legado"), args.Contains("--projeto"));
     using var importScope = app.Services.CreateScope();
     var report = await importScope.ServiceProvider.GetRequiredService<ImportCuratedDaysUseCase>().ExecuteAsync(courseSlug, options);
 

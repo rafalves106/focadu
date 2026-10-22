@@ -68,7 +68,7 @@ public class ImportCuratedDaysUseCase
         {
             foreach (var week in module.Weeks.OrderBy(w => w.Number))
             {
-                var days = week.Days.OrderBy(d => d).Where(d => options.Day is null || options.Day == d).ToList();
+                var days = options.OnlyProject ? [] : week.Days.OrderBy(d => d).Where(d => options.Day is null || options.Day == d).ToList();
                 if (days.Count == 0) continue;
 
                 // Estrutura (modulo/semana) so e criada de verdade fora do dry-run.
@@ -287,8 +287,9 @@ public enum ImportDecision { Create, Skip, Replace, NeedsConfirmation }
 public enum ImportStatus { Created, Updated, Unchanged, NeedsConfirmation, Rejected, NoFile }
 
 /// <param name="AllowLegacy">Importa tambem dia fora do molde v1 (so para a transicao).</param>
+/// <param name="OnlyProject">Importa so o projeto.json das semanas, sem tocar nos dias (<c>--projeto</c>).</param>
 /// <param name="SkipLinter">Dispensa o linter de forma explicita (ex.: container sem Node).</param>
-public record ImportOptions(int? Day = null, bool DryRun = false, bool Confirm = false, bool SkipLinter = false, bool AllowLegacy = false);
+public record ImportOptions(int? Day = null, bool DryRun = false, bool Confirm = false, bool SkipLinter = false, bool AllowLegacy = false, bool OnlyProject = false);
 
 public record DayOutcome(int DayNumber, ImportStatus Status, string Detail, IReadOnlyList<string>? Errors = null);
 

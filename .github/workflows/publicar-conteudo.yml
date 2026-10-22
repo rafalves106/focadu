@@ -7,6 +7,8 @@ name: Publicar conteudo curado
 # Padrao seguro: sem `aplicar`, so confere (atualiza o secret/, roda o linter e faz o dry-run).
 # Com `aplicar`, faz backup do banco, importa dia a dia e confere que um novo dry-run nao muda nada.
 # `confirmar` repassa --confirmar ao importador (dia que mudou e ja tem respostas de alunos).
+# `projeto` (Fase 104): `nao` (padrao), `junto` (dias e projeto.json de cada semana) ou `so` (so o projeto semanal, sem tocar nos dias).
+# O projeto passa pelo mesmo caminho dos dias: linter (projeto-cli.js), dry-run, backup, importar e conferencia.
 on:
   workflow_dispatch:
     inputs:
@@ -19,6 +21,12 @@ on:
         required: false
         default: ""
         type: string
+      projeto:
+        description: "Projeto semanal (semana-N/projeto.json): nao | junto (dias + projeto) | so (so o projeto)"
+        required: true
+        default: "nao"
+        type: choice
+        options: ["nao", "junto", "so"]
       aplicar:
         description: "Gravar em producao (false = so dry-run)"
         required: true
@@ -43,6 +51,7 @@ jobs:
       DIAS: ${{ inputs.dias }}
       APLICAR: ${{ inputs.aplicar }}
       CONFIRMAR: ${{ inputs.confirmar }}
+      PROJETO: ${{ inputs.projeto }}
     steps:
       - name: Validar entradas
         run: |
@@ -57,6 +66,7 @@ jobs:
           git log -1 --oneline
 
       - name: Listar os dias
+        if: ${{ inputs.projeto != 'so' }}
         id: dias
         working-directory: ${{ env.APP_DIR }}/secret
         run: |
@@ -82,6 +92,7 @@ jobs:
           node-version: "22"
 
       - name: Linter de cada dia
+        if: ${{ inputs.projeto != 'so' }}
         working-directory: ${{ env.APP_DIR }}/secret
         env:
           LISTA: ${{ steps.dias.outputs.lista }}
@@ -97,6 +108,7 @@ jobs:
           [ "$falhou" = 0 ] || { echo "linter reprovou algum dia; nada foi importado" >&2; exit 1; }
 
       - name: Dry-run no banco de producao
+        if: ${{ inputs.projeto != 'so' }}
         working-directory: ${{ env.APP_DIR }}
         env:
           LISTA: ${{ steps.dias.outputs.lista }}
@@ -121,7 +133,7 @@ jobs:
           echo "Backup: $arq" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Importar
-        if: ${{ inputs.aplicar }}
+        if: ${{ inputs.aplicar && inputs.projeto != 'so' }}
         working-directory: ${{ env.APP_DIR }}
         env:
           LISTA: ${{ steps.dias.outputs.lista }}
@@ -136,8 +148,8 @@ jobs:
             done
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Conferir (novo dry-run nao pode mudar nada) e healthcheck
-        if: ${{ inputs.aplicar }}
+      - name: Conferir os dias (novo dry-run nao pode mudar nada)
+        if: ${{ inputs.aplicar && inputs.projeto != 'so' }}
         working-directory: ${{ env.APP_DIR }}
         env:
           LISTA: ${{ steps.dias.outputs.lista }}
@@ -147,6 +159,58 @@ jobs:
             echo "$saida" | grep -E "^\s+Dia"
             echo "$saida" | grep -qE "Dia $d: Unchanged" || { echo "dia $d nao ficou igual ao arquivo" >&2; exit 1; }
           done
+
+      - name: Linter de cada projeto semanal
+        if: ${{ inputs.projeto != 'nao' }}
+        working-directory: ${{ env.APP_DIR }}/secret
+        run: |
+          (cd processo/scripts/linter-dia && npm ci --no-audit --no-fund)
+          achou=0; falhou=0
+          for f in $(ls conteudo/"$CURSO"/semana-*/projeto.json 2>/dev/null | sort -V); do
+            achou=1
+            semana=$(basename "$(dirname "$f")")
+            ficha=processo/cursos/"$CURSO"/fichas/"$semana".ficha.md
+            args=("$f"); [ -f "$ficha" ] && args+=(--ficha "$ficha")
+            echo "== $f"; node processo/scripts/linter-dia/src/projeto-cli.js "${args[@]}" || falhou=1
+          done
+          [ "$achou" = 1 ] || { echo "nenhum projeto.json em conteudo/$CURSO" >&2; exit 1; }
+          [ "$falhou" = 0 ] || { echo "linter reprovou algum projeto; nada foi importado" >&2; exit 1; }
+
+      - name: Dry-run do projeto no banco de producao
+        if: ${{ inputs.projeto != 'nao' }}
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          {
+            echo "### Dry-run do projeto: $CURSO"
+            docker compose exec -T backend dotnet Focadu.Api.dll importar "$CURSO" --projeto --dry-run --sem-linter 2>&1 \
+              | grep -E "^\s+(Projeto|Resumo)|recus|confirmar" || true
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Importar o projeto
+        if: ${{ inputs.aplicar && inputs.projeto != 'nao' }}
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          extra=""
+          [ "$CONFIRMAR" = "true" ] && extra="--confirmar"
+          {
+            echo "### Projeto importado: $CURSO"
+            docker compose exec -T backend dotnet Focadu.Api.dll importar "$CURSO" --projeto --sem-linter $extra 2>&1 \
+              | grep -E "^\s+(Projeto|Resumo)|recus|confirmar"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Conferir o projeto (novo dry-run nao pode mudar nada)
+        if: ${{ inputs.aplicar && inputs.projeto != 'nao' }}
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          saida=$(docker compose exec -T backend dotnet Focadu.Api.dll importar "$CURSO" --projeto --dry-run --sem-linter 2>&1)
+          echo "$saida" | grep -E "^\s+Projeto"
+          echo "$saida" | grep -qE "Projeto semana" || { echo "nenhum projeto foi lido pelo importador (arquivo ausente na VM?)" >&2; exit 1; }
+          ! echo "$saida" | grep -E "^\s+Projeto" | grep -vq "Unchanged" || { echo "algum projeto nao ficou igual ao arquivo" >&2; exit 1; }
+
+      - name: Healthcheck
+        if: ${{ inputs.aplicar }}
+        working-directory: ${{ env.APP_DIR }}
+        run: |
           code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:5280/" || echo 000)
           [ "$code" = "200" ] || { echo "frontend respondeu $code" >&2; exit 1; }
-          echo "Conferido: $CURSO dias:$LISTA no ar." | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Conferido: $CURSO (projeto: $PROJETO) no ar." | tee -a "$GITHUB_STEP_SUMMARY"
