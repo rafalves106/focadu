@@ -1,4 +1,5 @@
 using Focadu.Application.Ports;
+using Focadu.Domain.Courses;
 using Focadu.Domain.Dailies;
 using Focadu.Domain.Enums;
 using Focadu.Domain.Repositories;
@@ -16,6 +17,10 @@ namespace Focadu.Application.Seed;
 /// 4. se o dia mudado ja tem respostas de alunos, para e pede <c>--confirmar</c> (ver <see cref="ImportPlanner"/>);
 /// 5. <c>--dry-run</c> mostra o que mudaria e nao grava nada.
 /// Corrigir um dia e editar o JSON e importar de novo, nunca escrever SQL a mao.
+///
+/// Projeto semanal: sem <c>--dia</c>, cada semana com <c>semana-N/projeto.json</c> tambem e importada
+/// (linter de projeto, comparacao de conteudo, substituicao por completo de texto, briefing, slug,
+/// variantes e referencias). Projeto ja iniciado por aluno (status alem de Pending) pede <c>--confirmar</c>.
 /// </summary>
 public class ImportCuratedDaysUseCase
 {
@@ -151,10 +156,26 @@ public class ImportCuratedDaysUseCase
             }
         }
 
+        var projectOutcomes = new List<ProjectOutcome>();
+        var projectChanged = false;
+        if (options.Day is null)
+        {
+            foreach (var week in manifest.Modules.OrderBy(m => m.Number).SelectMany(m => m.Weeks.OrderBy(w => w.Number)))
+            {
+                var projectPath = CuratedContentLocator.Resolve(courseSlug, $"semana-{week.Number}", "projeto.json", required: false);
+                if (projectPath is null) continue;
+
+                var weeklyTemplate = course.Monthlies.SelectMany(m => m.WeeklyTemplates).FirstOrDefault(w => w.Number == week.Number);
+                var (outcome, changed) = await ImportProjectAsync(course, weeklyTemplate, week.Number, courseSlug, projectPath, options, cancellationToken);
+                projectOutcomes.Add(outcome);
+                projectChanged |= changed;
+            }
+        }
+
         var dailiesAdded = 0;
         var dailiesReset = 0;
         var skipped = new List<string>();
-        if (!options.DryRun && (created.Count > 0 || replaced.Count > 0 || courseCreated))
+        if (!options.DryRun && (created.Count > 0 || replaced.Count > 0 || courseCreated || projectChanged))
         {
             if (manifest.Published && course.CanAutoPublish && outcomes.Any(o => o.Status is ImportStatus.Created or ImportStatus.Updated))
                 course.Activate();
@@ -172,7 +193,55 @@ public class ImportCuratedDaysUseCase
             }
         }
 
-        return new ImportReport(manifest.Name, courseCreated, options.DryRun, outcomes, dailiesAdded, dailiesReset, skipped);
+        return new ImportReport(manifest.Name, courseCreated, options.DryRun, outcomes, dailiesAdded, dailiesReset, skipped, projectOutcomes);
+    }
+
+    private async Task<(ProjectOutcome Outcome, bool Changed)> ImportProjectAsync(
+        Course course, WeeklyTemplate? weeklyTemplate, int weekNumber, string courseSlug, string path, ImportOptions options,
+        CancellationToken cancellationToken)
+    {
+        if (!options.SkipLinter)
+        {
+            var lint = await _linter.LintAsync(path, courseSlug, cancellationToken);
+            if (!lint.Available)
+                return (new ProjectOutcome(weekNumber, ImportStatus.Rejected, $"linter de projeto indisponivel ({lint.UnavailableReason}); use --sem-linter para dispensar de forma explicita"), false);
+            if (!lint.Passed)
+                return (new ProjectOutcome(weekNumber, ImportStatus.Rejected, $"linter reprovou ({lint.Errors.Count} erro(s))", lint.Errors), false);
+        }
+
+        var json = await File.ReadAllTextAsync(path, cancellationToken);
+        if (weeklyTemplate is null)
+            return (new ProjectOutcome(weekNumber, ImportStatus.Created, "projeto novo (semana ainda nao existe no banco)"), false);
+        if (weeklyTemplate.WeeklyProjectSpecText is null)
+        {
+            if (!options.DryRun) CuratedProjectImporter.Import(weeklyTemplate, json);
+            return (new ProjectOutcome(weekNumber, ImportStatus.Created, "projeto novo"), true);
+        }
+        if (CuratedProjectImporter.Matches(weeklyTemplate, json))
+            return (new ProjectOutcome(weekNumber, ImportStatus.Unchanged, "sem mudanca"), false);
+
+        var started = await CountStartedProjectsAsync(course.Id, weeklyTemplate.Id, cancellationToken);
+        if (started > 0 && !options.Confirm)
+            return (new ProjectOutcome(weekNumber, ImportStatus.NeedsConfirmation,
+                $"o projeto mudou e {started} aluno(s) ja iniciaram; use --confirmar (quem ja tem repositorio mantem o que tem; o enunciado novo vale para todos)"), false);
+
+        if (!options.DryRun)
+        {
+            weeklyTemplate.ClearProject();
+            CuratedProjectImporter.Import(weeklyTemplate, json);
+        }
+        return (new ProjectOutcome(weekNumber, ImportStatus.Updated, "projeto atualizado por completo (texto, briefing, repositorio, variantes e referencias)"), true);
+    }
+
+    /// <summary>Alunos com o projeto da semana alem de Pending (entregue ou avaliado).</summary>
+    private async Task<int> CountStartedProjectsAsync(Guid courseId, Guid weeklyTemplateId, CancellationToken cancellationToken)
+    {
+        var started = 0;
+        foreach (var enrollment in await _enrollmentRepository.GetByCourseIdAsync(courseId, cancellationToken))
+            foreach (var weekly in await _weeklyRepository.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken))
+                if (weekly.WeeklyTemplateId == weeklyTemplateId && weekly.Project is { Status: not WeeklyProjectStatus.Pending })
+                    started++;
+        return started;
     }
 
     /// <summary>Respostas de alunos por DailyTemplate do curso (todas as matriculas).</summary>
@@ -223,6 +292,8 @@ public record ImportOptions(int? Day = null, bool DryRun = false, bool Confirm =
 
 public record DayOutcome(int DayNumber, ImportStatus Status, string Detail, IReadOnlyList<string>? Errors = null);
 
+public record ProjectOutcome(int WeekNumber, ImportStatus Status, string Detail, IReadOnlyList<string>? Errors = null);
+
 public record ImportReport(
     string CourseName, bool CourseCreated, bool DryRun, IReadOnlyList<DayOutcome> Days, int DailiesAdded, int DailiesReset,
-    IReadOnlyList<string> Skipped);
+    IReadOnlyList<string> Skipped, IReadOnlyList<ProjectOutcome>? Projects = null);

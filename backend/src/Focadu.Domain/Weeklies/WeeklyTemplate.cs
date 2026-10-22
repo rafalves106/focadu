@@ -153,6 +153,21 @@ public class WeeklyTemplate : Entity
         WeeklyProjectSpecText = specText;
     }
 
+    /// <summary>
+    /// Zera o projeto da semana (especificacao, briefing, falas de estado, repositorio-template,
+    /// variantes de linguagem e referencias) para o importador de projeto.json gravar a versao nova
+    /// por cima. Unico caminho que desfaz o "definido uma vez so" dos setters abaixo.
+    /// </summary>
+    public void ClearProject()
+    {
+        WeeklyProjectSpecText = null;
+        WeeklyProjectBriefing = [];
+        WeeklyProjectStateLines = new Dictionary<string, string>();
+        ForgejoTemplateSlug = null;
+        _languageVariants.Clear();
+        _references.Clear();
+    }
+
     /// <summary>Fase 64: define o briefing da Focada (e as falas de estado sobrescritas, se houver) - uma vez so, igual SetProjectSpec.</summary>
     public void SetProjectBriefing(IReadOnlyList<string> lines, IReadOnlyDictionary<string, string>? stateLines = null)
     {

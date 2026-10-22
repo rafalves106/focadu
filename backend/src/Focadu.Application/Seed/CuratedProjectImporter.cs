@@ -26,6 +26,10 @@ namespace Focadu.Application.Seed;
 /// - "falasDeEstado": { "repositorio" | "entregue" | "avaliadoAlta" | "avaliadoBaixa": "texto" } -
 ///   so as falas de estado que esta semana sobrescreve; o resto usa as padrao do frontend. Exige
 ///   "briefing" junto.
+///
+/// Importador de projeto (plano de curadoria): "forgejoTemplateSlug" opcional (repositorio-modelo
+/// unico, a linguagem padrao do curso e Python, sem escolha) e <see cref="Matches"/> para o `importar`
+/// saber se o banco ja esta igual ao arquivo.
 /// </summary>
 public static class CuratedProjectImporter
 {
@@ -41,6 +45,9 @@ public static class CuratedProjectImporter
             ?? throw new InvalidOperationException("Conteudo de projeto curado vazio ou invalido.");
 
         weeklyTemplate.SetProjectSpec(project.SpecText);
+
+        if (!string.IsNullOrWhiteSpace(project.ForgejoTemplateSlug))
+            weeklyTemplate.SetProjectTemplateRepo(project.ForgejoTemplateSlug);
 
         if (project.Briefing is { Count: > 0 })
             weeklyTemplate.SetProjectBriefing(project.Briefing, project.FalasDeEstado);
@@ -61,6 +68,25 @@ public static class CuratedProjectImporter
         }
     }
 
+    /// <summary>
+    /// Verdadeiro quando a semana ja esta igual ao arquivo (texto, briefing, falas de estado, slug,
+    /// variantes e referencias). Sem coluna de hash de proposito: o proprio conteudo e a comparacao.
+    /// </summary>
+    public static bool Matches(WeeklyTemplate weeklyTemplate, string json)
+    {
+        var project = JsonSerializer.Deserialize<CuratedProjectJson>(json, JsonOptions)
+            ?? throw new InvalidOperationException("Conteudo de projeto curado vazio ou invalido.");
+
+        var states = project.FalasDeEstado ?? new Dictionary<string, string>();
+        return weeklyTemplate.WeeklyProjectSpecText == project.SpecText
+            && weeklyTemplate.WeeklyProjectBriefing.SequenceEqual(project.Briefing ?? [])
+            && weeklyTemplate.WeeklyProjectStateLines.Count == states.Count
+            && states.All(kv => weeklyTemplate.WeeklyProjectStateLines.TryGetValue(kv.Key, out var v) && v == kv.Value)
+            && weeklyTemplate.ForgejoTemplateSlug == (string.IsNullOrWhiteSpace(project.ForgejoTemplateSlug) ? null : project.ForgejoTemplateSlug)
+            && weeklyTemplate.LanguageVariants.Count == (project.Languages?.Count ?? 0)
+            && weeklyTemplate.References.Count == (project.References?.Count ?? 0);
+    }
+
     private static ProjectLanguage ParseLanguage(string? text) =>
         ProjectLanguages.TryParse(text, out var language)
             ? language
@@ -69,7 +95,7 @@ public static class CuratedProjectImporter
     private record CuratedProjectJson(
         int WeekNumber, string Title, string SpecText,
         List<CuratedLanguageJson>? Languages, List<CuratedReferenceJson>? References,
-        List<string>? Briefing, Dictionary<string, string>? FalasDeEstado);
+        List<string>? Briefing, Dictionary<string, string>? FalasDeEstado, string? ForgejoTemplateSlug = null);
 
     private record CuratedLanguageJson(string Language, string ForgejoTemplateSlug);
 
