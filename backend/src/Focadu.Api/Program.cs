@@ -306,12 +306,19 @@ if (args.Contains("importar"))
         foreach (var error in day.Errors ?? [])
             Console.WriteLine($"      {error}");
     }
+    foreach (var project in report.Projects ?? [])
+    {
+        Console.WriteLine($"  Projeto semana {project.WeekNumber}: {project.Status} - {project.Detail}");
+        foreach (var error in project.Errors ?? [])
+            Console.WriteLine($"      {error}");
+    }
     Console.WriteLine($"  Resumo: {report.Days.Count(d => d.Status == ImportStatus.Created)} novo(s), {report.Days.Count(d => d.Status == ImportStatus.Updated)} atualizado(s), " +
         $"{report.Days.Count(d => d.Status == ImportStatus.Unchanged)} sem mudanca, {report.Days.Count(d => d.Status is ImportStatus.Rejected or ImportStatus.NeedsConfirmation)} recusado(s); " +
         $"{report.DailiesAdded} Dailies adicionadas, {report.DailiesReset} recomecadas.");
     foreach (var skipped in report.Skipped)
         Console.WriteLine($"  Daily NAO adicionada - {skipped}");
-    if (report.Days.Any(d => d.Status is ImportStatus.Rejected or ImportStatus.NeedsConfirmation))
+    if (report.Days.Any(d => d.Status is ImportStatus.Rejected or ImportStatus.NeedsConfirmation)
+        || (report.Projects ?? []).Any(p => p.Status is ImportStatus.Rejected or ImportStatus.NeedsConfirmation))
         Environment.ExitCode = 1;
     return;
 }

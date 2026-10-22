@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 103 - Medicao de produto (aba Retencao)** (Fase 102: Termos, privacidade e aceite; Fase 100b: README do Projeto Semanal no app; Fase 101: Travas de IA; Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 104 - `importar` le o projeto.json** (Fase 103: Medicao de produto, aba Retencao; Fase 102: Termos, privacidade e aceite; Fase 100b: README do Projeto Semanal no app; Fase 101: Travas de IA; Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -2548,6 +2548,11 @@ Refacao dos cursos (`secret/produto/PLANO-CURADORIA.md`, 02/10/2026). Detalhe do
   dia com respostas pede `--confirmar` (respostas das atividades trocadas somem, Dailies nao concluidas recomecam),
   `--dry-run`. `CuratedEnrollmentSync` leva dias novos as matriculas (tambem usado pelo seed generico). O seed do deploy
   continua so criando/completando; corrigir dia e sempre `importar`, nunca SQL.
+- **`importar` e o Projeto Semanal (Fase 104):** sem `--dia`, tambem importa `semana-N/projeto.json` (linter `projeto-cli.js`,
+  `--sem-linter` no container). `CuratedProjectImporter.Matches` compara banco e arquivo (sem hash); projeto diferente e
+  substituido por completo (`WeeklyTemplate.ClearProject()` e depois `Import`: texto, briefing, falas de estado,
+  `forgejoTemplateSlug`, variantes e referencias). Aluno com projeto alem de `Pending` pede `--confirmar`. `projeto.json` aceita
+  `forgejoTemplateSlug` (repositorio unico, Python). O painel de gestao ainda nao mostra o projeto.
 - **Molde v1 no banco:** `DailyTemplate` guarda `MoldeVersion` e `TargetsJson` (`LearningTarget`, 3 alvos); `CuratedContent.Source`;
   `DailyActivity.Target` e, no VoiceSummary, `Hint`, `ReferenceAnswer`, `IsFinalQuestion`, `TopicsJson`.
 - **Analogia "Pra voce" desligada** por `Personalization:AnalogiesEnabled` (padrao `false`); `GET /api/features`
