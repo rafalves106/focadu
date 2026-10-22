@@ -97,7 +97,8 @@ jobs:
         env:
           LISTA: ${{ steps.dias.outputs.lista }}
         run: |
-          (cd processo/scripts/linter-dia && npm ci --no-audit --no-fund)
+          # o deploy.yml ja instala o node_modules (como root, em container); so instala aqui se faltar
+          (cd processo/scripts/linter-dia && { [ -d node_modules ] || npm ci --omit=dev --no-audit --no-fund; })
           falhou=0
           for d in $LISTA; do
             f=$(ls conteudo/"$CURSO"/semana-*/dia-"$d".json | head -1)
@@ -164,7 +165,8 @@ jobs:
         if: ${{ inputs.projeto != 'nao' }}
         working-directory: ${{ env.APP_DIR }}/secret
         run: |
-          (cd processo/scripts/linter-dia && npm ci --no-audit --no-fund)
+          # o deploy.yml ja instala o node_modules (como root, em container); so instala aqui se faltar
+          (cd processo/scripts/linter-dia && { [ -d node_modules ] || npm ci --omit=dev --no-audit --no-fund; })
           achou=0; falhou=0
           for f in $(ls conteudo/"$CURSO"/semana-*/projeto.json 2>/dev/null | sort -V); do
             achou=1
