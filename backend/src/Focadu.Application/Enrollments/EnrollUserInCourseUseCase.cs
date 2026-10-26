@@ -21,8 +21,6 @@ public class EnrollUserInCourseUseCase
     private readonly IEnrollmentRepository _enrollmentRepository;
     private readonly IWeeklyRepository _weeklyRepository;
     private readonly IReferralRepository _referralRepository;
-    private readonly ForgejoAccountProvisioner _forgejoAccountProvisioner;
-    private readonly IForgejoService _forgejoService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
     private readonly CourseAccess _access;
@@ -32,8 +30,6 @@ public class EnrollUserInCourseUseCase
         IEnrollmentRepository enrollmentRepository,
         IWeeklyRepository weeklyRepository,
         IReferralRepository referralRepository,
-        ForgejoAccountProvisioner forgejoAccountProvisioner,
-        IForgejoService forgejoService,
         IUnitOfWork unitOfWork,
         IClock clock,
         CourseAccess access)
@@ -43,8 +39,6 @@ public class EnrollUserInCourseUseCase
         _enrollmentRepository = enrollmentRepository;
         _weeklyRepository = weeklyRepository;
         _referralRepository = referralRepository;
-        _forgejoAccountProvisioner = forgejoAccountProvisioner;
-        _forgejoService = forgejoService;
         _unitOfWork = unitOfWork;
         _clock = clock;
     }
@@ -67,13 +61,6 @@ public class EnrollUserInCourseUseCase
         await _enrollmentRepository.AddAsync(enrollment, cancellationToken);
 
         var cursor = FirstBusinessDayOnOrAfter(_clock.Today());
-
-        // Repositorios de Projeto Semanal (Forgejo interno) - conta do aluno e criada uma vez so,
-        // sob demanda, na 1a matricula que de fato precisar de um fork (nunca no registro, mesmo
-        // principio lazy de UserGemBalance/UserStreak). Resolvida fora do loop de Weeklies porque
-        // e a MESMA conta pra todos os forks desta matricula (1 token por aluno, nao por semana -
-        // ver secret/rascunhos/repositorios-gerenciados-projeto-semanal.md).
-        UserForgejoAccount? forgejoAccount = null;
 
         foreach (var monthly in course.Monthlies.OrderBy(m => m.Number))
         {
@@ -101,30 +88,8 @@ public class EnrollUserInCourseUseCase
 
                 var project = weekly.InitializeProject();
 
-                // Sem repositorio-template configurado ainda pra esta semana (curadoria nao
-                // preencheu WeeklyTemplate.ForgejoTemplateSlug) - projeto fica Pending sem
-                // SubmissionUrl, exatamente como sempre foi ate esta fase. Nunca bloqueia a
-                // matricula.
-                // Fase 59: semana com variantes de linguagem NAO da fork aqui - o repositorio e o do
-                // modelo da linguagem que o aluno escolhe depois (ChooseWeeklyProjectLanguageUseCase).
-                // O slug unico de antes fica no banco so pra avaliar quem ja tinha o fork antigo.
-                if (!weeklyTemplate.HasLanguageVariants && weeklyTemplate.ForgejoTemplateSlug is { } templateSlug)
-                {
-                    // Falha de Forgejo (fora do ar, etc) NUNCA derruba a matricula - mesmo espirito
-                    // "bonus, nunca core" ja usado em SubmitWeeklyProjectUseCase pra falha da
-                    // avaliacao automatica por IA. O projeto so fica sem SubmissionUrl; nada
-                    // tenta de novo automaticamente ainda (upgrade natural se isso importar).
-                    try
-                    {
-                        forgejoAccount ??= await _forgejoAccountProvisioner.GetOrCreateAsync(userId, cancellationToken);
-                        var repoUrl = await _forgejoService.ForkTemplateAsync(templateSlug, forgejoAccount.ForgejoUsername, cancellationToken);
-                        project.AttachRepository(repoUrl);
-                    }
-                    catch (ExternalServiceException)
-                    {
-                        // Ver comentario acima - segue sem repositorio pra esta Weekly.
-                    }
-                }
+                // Fase 105: o repositorio do projeto nao nasce mais aqui - o fork sai quando o projeto abre
+                // (WeeklyProjectRepositoryProvisioner), do modelo que existir nesse momento.
 
                 await _weeklyRepository.AddAsync(weekly, cancellationToken);
             }

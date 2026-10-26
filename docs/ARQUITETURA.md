@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 104 - `importar` le o projeto.json** (Fase 103: Medicao de produto, aba Retencao; Fase 102: Termos, privacidade e aceite; Fase 100b: README do Projeto Semanal no app; Fase 101: Travas de IA; Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 105 - Repositorio do Projeto Semanal sai quando o projeto abre** (Fase 104: `importar` le o projeto.json; Fase 103: Medicao de produto, aba Retencao; Fase 102: Termos, privacidade e aceite; Fase 100b: README do Projeto Semanal no app; Fase 101: Travas de IA; Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -2280,6 +2280,8 @@ Forgejo (dono: `focadu-admin`), mantido pela curadoria (mesmo espirito de `secre
 sem isso preenchido, aquela semana simplesmente nao recebe repositorio (nao bloqueia a matricula).
 Semana sem variante de linguagem (ver abaixo) continua usando esse campo direto, exatamente como
 antes da Fase 59.
+
+> **Fase 105 (vale mais que o paragrafo abaixo):** a matricula **nao faz mais fork**. O repositorio nasce quando o projeto abre (Dailies originais concluidas), em `WeeklyProjectRepositoryProvisioner`, chamado por `GetWeeklyDetailUseCase`: conta Forgejo + fork do modelo vigente + `AttachRepository`, idempotente, falha do Forgejo tenta de novo na proxima abertura. Semana com variantes continua forkando na escolha da linguagem. Ver `docs/fase-105/`.
 
 **`EnrollUserInCourseUseCase`** - dentro do mesmo loop que ja cria `Weekly`/`WeeklyProject` pra
 cada `WeeklyTemplate` (eager, na matricula - decisao confirmada com o Falves, nao lazy no primeiro

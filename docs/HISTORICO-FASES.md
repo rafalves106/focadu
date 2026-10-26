@@ -91,3 +91,4 @@ Detalhe de cada uma em `docs/fase-N/resumo-implementacao-fase-N.md`; o porquê d
   hoje" (clique copia pro campo); prompt com o diretório atual e `clear` que deixa o último comando visível. Ver `docs/fase-90/`.
 - **Mais de um curso (Fase 89)**: com 2+ matrículas o "Hoje" pergunta o curso (o último aberto já vem marcado) e Trilha,
   Ranking, Perfil e o ranking do Squad têm seletor de curso (`CourseSwitcher`, `lib/courseChoice.ts`). Ver `docs/fase-89/`.
+- **105** Repositório do Projeto Semanal sai quando o projeto abre (Dailies concluídas), não na matrícula: `WeeklyProjectRepositoryProvisioner` forka o modelo atual, idempotente, falha do Forgejo tenta de novo na próxima abertura. Ver `docs/fase-105/`.

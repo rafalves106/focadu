@@ -14,15 +14,17 @@ public class GetWeeklyDetailUseCase
     private readonly IMonthlyRepository _monthlyRepository;
     private readonly IUserForgejoAccountRepository _userForgejoAccountRepository;
     private readonly IUserRepository _userRepository;
+    private readonly WeeklyProjectRepositoryProvisioner _repositoryProvisioner;
 
     public GetWeeklyDetailUseCase(
         IWeeklyRepository weeklyRepository, IMonthlyRepository monthlyRepository, IUserForgejoAccountRepository userForgejoAccountRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository, WeeklyProjectRepositoryProvisioner repositoryProvisioner)
     {
         _weeklyRepository = weeklyRepository;
         _monthlyRepository = monthlyRepository;
         _userForgejoAccountRepository = userForgejoAccountRepository;
         _userRepository = userRepository;
+        _repositoryProvisioner = repositoryProvisioner;
     }
 
     public async Task<WeeklyDetailDto> ExecuteAsync(Guid userId, Guid weeklyId, CancellationToken cancellationToken = default)
@@ -78,6 +80,9 @@ public class GetWeeklyDetailUseCase
             // So busca a conta Forgejo quando ha projeto - evita 1 lookup extra em Weeklies sem
             // projeto (nao deveria existir na pratica, mas o campo e nullable no dominio).
             var forgejoAccount = await _userForgejoAccountRepository.GetByUserIdAsync(userId, cancellationToken);
+
+            // Fase 105: projeto aberto e sem repositorio -> o fork sai agora (idempotente, falha nao derruba a tela).
+            forgejoAccount = await _repositoryProvisioner.EnsureAsync(userId, weekly, forgejoAccount, cancellationToken);
 
             // Fase 59: as linguagens marcadas no perfil decidem se o aluno ja pode escolher a do
             // projeto (semana com variantes) - ver WeeklyProjectDtoMapper.
