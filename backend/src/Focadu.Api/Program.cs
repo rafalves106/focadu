@@ -1030,10 +1030,10 @@ api.MapPost("/weeklies/{weeklyId}/project/evaluate", async (ClaimsPrincipal prin
     .WithName("EvaluateWeeklyProject");
 
 // --- Publicacao publica do modulo (Fase 11) -------------------------------------------------
-// Prova de aprendizado exigida ao completar uma Weekly (Documento Mestre, Secao 2.3) - LinkedIn
-// (rascunho por IA + URL colada manualmente) ou GitHub (commit automatico via GitHubService, ja
-// validado no proprio commit). /submit cobre tanto a primeira submissao quanto "tentar de novo"
-// (resubmete a mesma URL/platform).
+// Prova de aprendizado exigida ao completar uma Weekly (Documento Mestre, Secao 2.3) - post no LinkedIn
+// (rascunho pela Focada + URL colada). Fase 106: o caminho GitHub (commit pelo token do servidor, na
+// conta da plataforma) saiu - GitHub:Token fica em branco em producao e so dava 502. /submit cobre a
+// primeira submissao e o "tentar de novo".
 
 api.MapGet("/weeklies/{weeklyId}/publication/status", async (ClaimsPrincipal principal, string weeklyId, GetPublicationStatusUseCase useCase, CancellationToken ct) =>
     {
@@ -1051,36 +1051,19 @@ api.MapPost("/weeklies/{weeklyId}/publication/draft", async (ClaimsPrincipal pri
     .RequireAuthorization()
     .WithName("GenerateLinkedInDraft");
 
-api.MapPost("/weeklies/{weeklyId}/publication/github-commit",
-        async (ClaimsPrincipal principal, string weeklyId, GitHubCommitRequest? request, CommitModuleSummaryUseCase useCase, CancellationToken ct) =>
-        {
-            var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
-            if (string.IsNullOrWhiteSpace(request?.RepoName))
-                throw new ValidationException("repo_name_obrigatorio", "O campo 'repoName' e obrigatorio.");
-
-            return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, request.RepoName, request.IsNewRepo, ct));
-        })
-    .RequireAuthorization()
-    .WithName("CommitModuleSummary");
-
 api.MapPost("/weeklies/{weeklyId}/publication/submit",
         async (ClaimsPrincipal principal, string weeklyId, SubmitPublicationRequest? request, SubmitPublicationUseCase useCase, CancellationToken ct) =>
         {
             var id = RouteParsing.RequireGuid(weeklyId, "weeklyId");
             if (string.IsNullOrWhiteSpace(request?.Url))
                 throw new ValidationException("url_obrigatoria", "O campo 'url' e obrigatorio.");
-            if (!Enum.TryParse<PublicationPlatform>(request.Platform, ignoreCase: true, out var platform) || !Enum.IsDefined(platform))
-                throw new ValidationException("platform_invalida", "O campo 'platform' precisa ser LinkedIn ou GitHub.");
+            if (!Enum.TryParse<PublicationPlatform>(request.Platform, ignoreCase: true, out var platform) || platform != PublicationPlatform.LinkedIn)
+                throw new ValidationException("platform_invalida", "O campo 'platform' precisa ser LinkedIn.");
 
             return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), id, platform, request.Url, ct));
         })
     .RequireAuthorization()
     .WithName("SubmitPublication");
-
-api.MapGet("/github/repositories", async (GetGitHubRepositoriesUseCase useCase, CancellationToken ct) =>
-        Results.Ok(await useCase.ExecuteAsync(ct)))
-    .RequireAuthorization()
-    .WithName("GetGitHubRepositories");
 
 // --- Conteudo curado (leitura) ----------------------------------------------------------------
 // Autoria (Create/Update) removida - conteudo curado agora e so via seed (CuratedDayImporter, le

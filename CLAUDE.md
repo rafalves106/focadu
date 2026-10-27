@@ -169,7 +169,7 @@ Cada uma custou um bug real ou uma conversa; o porquê está em `docs/fase-N/` e
 
 ## Estado atual
 
-Última fase concluída: **Fase 105 — repositório do projeto sai quando o projeto abre** (26/10/2026, na branch `fase-105-fork-sob-demanda`; Fase 104, `importar` lê o projeto.json, 22/10/2026; Fase 103, Medição de produto (aba Retenção), 15/10/2026; Termos e aceite: Fase 102; README do Projeto Semanal: Fase 100b; Travas de IA: Fase 101; Backup e Forgejo privado: Fase 100; Segurança de borda: Fase 99; Higiene da base: Fase 98; 1ª do plano da v0.1.0 em `secret/produto/rascunhos/plano-v0-1-0-cenario-a.md`; painel, lacunas de operação: Fase 97; Turmas: Fase 96; SQLite no laboratório: Fase 95; painel de gestão: Fase 94).
+Última fase concluída: **Fase 106 — publicação só no LinkedIn com post da Focada e trilha que aponta pro castelo** (27/10/2026, na branch `fase-106-publicacao-e-trilha`; Fase 105, repositório do projeto sai quando o projeto abre, 26/10/2026; Fase 104, `importar` lê o projeto.json, 22/10/2026; Fase 103, Medição de produto (aba Retenção), 15/10/2026; Termos e aceite: Fase 102; README do Projeto Semanal: Fase 100b; Travas de IA: Fase 101; Backup e Forgejo privado: Fase 100; Segurança de borda: Fase 99; Higiene da base: Fase 98; 1ª do plano da v0.1.0 em `secret/produto/rascunhos/plano-v0-1-0-cenario-a.md`; painel, lacunas de operação: Fase 97; Turmas: Fase 96; SQLite no laboratório: Fase 95; painel de gestão: Fase 94).
 
 Histórico completo dos marcos (Fases 25–87, com o porquê de cada decisão): `docs/ESTADO-HISTORICO.md` —
 só abrir quando precisar. Estado técnico vivo: `docs/ARQUITETURA.md`; detalhe por fase: `docs/fase-N/`.

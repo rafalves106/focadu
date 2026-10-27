@@ -92,3 +92,4 @@ Detalhe de cada uma em `docs/fase-N/resumo-implementacao-fase-N.md`; o porquê d
 - **Mais de um curso (Fase 89)**: com 2+ matrículas o "Hoje" pergunta o curso (o último aberto já vem marcado) e Trilha,
   Ranking, Perfil e o ranking do Squad têm seletor de curso (`CourseSwitcher`, `lib/courseChoice.ts`). Ver `docs/fase-89/`.
 - **105** Repositório do Projeto Semanal sai quando o projeto abre (Dailies concluídas), não na matrícula: `WeeklyProjectRepositoryProvisioner` forka o modelo atual, idempotente, falha do Forgejo tenta de novo na próxima abertura. Ver `docs/fase-105/`.
+- **106** Publicação só no LinkedIn com post da Focada (curso, dias da semana com "O que levar daqui", objetivo do projeto e comentário da avaliação, sem nota; GitHub e seus endpoints saíram) e trilha que aponta pro castelo quando a semana tem os dias feitos e projeto ou publicação pendente (`currentStop`). Ver `docs/fase-106/`.

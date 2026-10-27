@@ -6,7 +6,6 @@ import {
   PublicationStatus,
   type CertificationCoverageDto,
   type CourseDetailDto,
-  type GitHubRepoDto,
   type ModulePublicationDto,
 } from '../../api/types';
 import { classifyApiError, type ApiFailure } from '../../lib/apiError';
@@ -22,7 +21,6 @@ type Step =
   | 'intro'
   | 'linkedinDraft'
   | 'linkedinEditor'
-  | 'githubSelect'
   | 'urlSubmit'
   | 'validating'
   | 'success'
@@ -49,6 +47,10 @@ type Step =
  * de fato fecha (`onClose` cobre "publicou e fechou" e "cancelou" do mesmo jeito, sem diferenca
  * pratica aqui).
  *
+ * Fase 106: so LinkedIn. O caminho GitHub (commit pelo token do servidor, na conta da plataforma) saiu - em producao o
+ * token fica em branco e o botao so dava erro. O rascunho e da Focada, gerado na hora com o curso, os dias da semana e
+ * o projeto entregue (GenerateLinkedInDraftUseCase).
+ *
  * Pixel art desde 24/09/2026 (pedido do dono, todos os modais): casca `PixelModal`, a Focada comemora
  * a abertura e o sucesso e acolhe o erro, botoes `PixelButton`, progresso em `SegmentedBar`. Os emojis
  * 💼/🐙 sairam (sem sprite ainda) - as opcoes dizem a plataforma num rotulo em Silkscreen.
@@ -69,10 +71,6 @@ export function PublicationModal({
   const [publication, setPublication] = useState<ModulePublicationDto | null>(null);
   const [draftText, setDraftText] = useState('');
   const [urlInput, setUrlInput] = useState('');
-  const [repos, setRepos] = useState<GitHubRepoDto[] | null>(null);
-  const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
-  const [newRepoName, setNewRepoName] = useState(`websec-modulo-${weeklyId.slice(0, 4)}`);
-  const [creatingNewRepo, setCreatingNewRepo] = useState(false);
   const [course, setCourse] = useState<CourseDetailDto | null>(null);
 
   // So pra "CONTINUAR ESTUDANDO" saber pra onde ir e mostrar um progresso real na tela de sucesso
@@ -103,35 +101,11 @@ export function PublicationModal({
     });
   }
 
-  async function handleStartGitHub() {
-    await runStep(async () => {
-      const list = await api.getGitHubRepositories();
-      setRepos(list);
-      setStep('githubSelect');
-    });
-  }
-
   function handleCopyAndPublish() {
     void navigator.clipboard.writeText(draftText);
     window.open('https://www.linkedin.com/feed/', '_blank', 'noopener,noreferrer');
     setUrlInput('');
     setStep('urlSubmit');
-  }
-
-  async function handleGitHubContinue() {
-    const repoName = creatingNewRepo ? newRepoName.trim() : selectedRepo;
-    if (!repoName) return;
-
-    setStep('validating');
-    await runStep(async () => {
-      const result = await api.commitToGitHub(weeklyId, repoName, creatingNewRepo);
-      setPublication(result);
-      if (result.status === PublicationStatus.Validated) {
-        setStep('success');
-      } else {
-        setStep('error');
-      }
-    });
   }
 
   async function handleSubmitUrl() {
@@ -167,7 +141,7 @@ export function PublicationModal({
         )}
 
         {step === 'intro' && (
-          <IntroStep busy={busy} onLinkedIn={handleStartLinkedIn} onGitHub={handleStartGitHub} onCancel={onClose} />
+          <IntroStep busy={busy} onLinkedIn={handleStartLinkedIn} onCancel={onClose} />
         )}
 
         {step === 'linkedinDraft' && (
@@ -184,27 +158,6 @@ export function PublicationModal({
 
         {step === 'linkedinEditor' && (
           <EditorStep draftText={draftText} onChange={setDraftText} onCopyAndPublish={handleCopyAndPublish} />
-        )}
-
-        {step === 'githubSelect' && (
-          <GitHubSelectStep
-            repos={repos ?? []}
-            selectedRepo={selectedRepo}
-            onSelectRepo={(name) => {
-              setSelectedRepo(name);
-              setCreatingNewRepo(false);
-            }}
-            newRepoName={newRepoName}
-            creatingNewRepo={creatingNewRepo}
-            onNewRepoNameChange={(name) => {
-              setNewRepoName(name);
-              setCreatingNewRepo(true);
-              setSelectedRepo(null);
-            }}
-            busy={busy}
-            onBack={() => setStep('intro')}
-            onContinue={handleGitHubContinue}
-          />
         )}
 
         {step === 'urlSubmit' && (
@@ -234,45 +187,34 @@ export function PublicationModal({
         {step === 'error' && publication && (
           <ErrorStep
             publication={publication}
-            onEditAgain={() => setStep(publication.platform === PublicationPlatform.GitHub ? 'githubSelect' : 'urlSubmit')}
-            onRetry={() => (publication.platform === PublicationPlatform.GitHub ? handleGitHubContinue() : handleSubmitUrl())}
+            onEditAgain={() => setStep('urlSubmit')}
+            onRetry={handleSubmitUrl}
           />
         )}
     </PixelModal>
   );
 }
 
-function IntroStep({
-  busy,
-  onLinkedIn,
-  onGitHub,
-  onCancel,
-}: {
-  busy: boolean;
-  onLinkedIn: () => void;
-  onGitHub: () => void;
-  onCancel: () => void;
-}) {
-  const option = 'flex flex-1 flex-col items-start gap-2 border-2 bg-surface p-4 text-left transition hover:brightness-110 disabled:opacity-50';
+function IntroStep({ busy, onLinkedIn, onCancel }: { busy: boolean; onLinkedIn: () => void; onCancel: () => void }) {
   return (
     <div className="flex flex-col gap-5">
       <StepTitle>Compartilhe seu aprendizado</StepTitle>
       <FocadaSays expression="comemorando">
-        Módulo fechado, agente! Agora mostra pro mundo: publicar o que você aprendeu é a prova pública da sua evolução.
+        Semana fechada, agente! Eu escrevo um rascunho de post com o que você estudou e o projeto que entregou. Você revisa,
+        publica no LinkedIn e cola o link aqui para liberar a próxima semana.
       </FocadaSays>
 
-      <div className="flex w-full flex-col gap-3 sm:flex-row">
-        <button type="button" disabled={busy} onClick={onLinkedIn} className={`${option} border-accent`}>
-          <span className="font-pixel-label text-[10px] text-accent">LinkedIn</span>
-          <span className="font-pixel text-xl leading-tight text-primary">Compartilhar um post</span>
-        </button>
-        <button type="button" disabled={busy} onClick={onGitHub} className={`${option} border-stroke hover:border-secondary`}>
-          <span className="font-pixel-label text-[10px] text-secondary">GitHub</span>
-          <span className="font-pixel text-xl leading-tight text-primary">Criar um repositório</span>
-        </button>
-      </div>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={onLinkedIn}
+        className="flex w-full flex-col items-start gap-2 border-2 border-accent bg-surface p-4 text-left transition hover:brightness-110 disabled:opacity-50"
+      >
+        <span className="font-pixel-label text-[10px] text-accent">LinkedIn</span>
+        <span className="font-pixel text-xl leading-tight text-primary">Gerar meu post</span>
+      </button>
 
-      {busy && <LoadingBlocks label="Carregando..." />}
+      {busy && <LoadingBlocks label="A Focada está escrevendo..." />}
 
       <div className="flex items-center justify-between gap-3">
         <p className="font-pixel-label text-[9px] text-muted">Seu conhecimento é seu melhor currículo.</p>
@@ -328,7 +270,7 @@ function DraftPreviewStep({
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-3">
         <StepTitle>Rascunho do post</StepTitle>
-        <PixelChip tone="accent">Auto-gen</PixelChip>
+        <PixelChip tone="accent">Pela Focada</PixelChip>
       </div>
 
       <div className="whitespace-pre-wrap border-2 border-stroke bg-surface p-4 font-pixel text-lg leading-snug text-primary">{draftText}</div>
@@ -371,83 +313,6 @@ function EditorStep({
       <PixelButton disabled={!draftText.trim() || overLimit} onClick={onCopyAndPublish} className="w-full">
         Copiar e publicar
       </PixelButton>
-    </div>
-  );
-}
-
-function GitHubSelectStep({
-  repos,
-  selectedRepo,
-  onSelectRepo,
-  newRepoName,
-  creatingNewRepo,
-  onNewRepoNameChange,
-  busy,
-  onBack,
-  onContinue,
-}: {
-  repos: GitHubRepoDto[];
-  selectedRepo: string | null;
-  onSelectRepo: (name: string) => void;
-  newRepoName: string;
-  creatingNewRepo: boolean;
-  onNewRepoNameChange: (name: string) => void;
-  busy: boolean;
-  onBack: () => void;
-  onContinue: () => void;
-}) {
-  const canContinue = creatingNewRepo ? newRepoName.trim().length > 0 : selectedRepo !== null;
-
-  return (
-    <div className="flex flex-col gap-5">
-      <StepTitle>Onde quer publicar?</StepTitle>
-
-      <div className="flex flex-col gap-2">
-        {repos.length === 0 && <p className="font-pixel text-lg text-secondary">Nenhum repositório público encontrado.</p>}
-        {repos.map((repo) => {
-          const selected = !creatingNewRepo && selectedRepo === repo.name;
-          return (
-            <button
-              key={repo.fullName}
-              type="button"
-              onClick={() => onSelectRepo(repo.name)}
-              aria-pressed={selected}
-              className={`flex items-center justify-between gap-3 border-2 p-3 text-left ${
-                selected ? 'border-accent bg-accent/10' : 'border-stroke bg-surface hover:border-secondary'
-              }`}
-            >
-              <span className="min-w-0 truncate font-pixel text-xl leading-none text-primary">{repo.fullName}</span>
-              <PixelChip tone="accent">Public</PixelChip>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="flex items-center gap-3 font-pixel-label text-[9px] text-muted">
-        <div className="h-0.5 flex-1 bg-stroke" />
-        ou
-        <div className="h-0.5 flex-1 bg-stroke" />
-      </div>
-
-      <label className="flex flex-col gap-2">
-        <span className="font-pixel-label text-[9px] text-secondary">Criar novo repositório</span>
-        <input
-          value={newRepoName}
-          onChange={(e) => onNewRepoNameChange(e.target.value)}
-          className={`${pixelField} ${creatingNewRepo ? 'border-accent' : ''}`}
-        />
-      </label>
-
-      <InfoBox label="O que acontece">Vou criar um commit com o resumo do que você aprendeu neste módulo.</InfoBox>
-
-      <div className="flex items-center justify-between">
-        <PixelButton ghost tone="muted" onClick={onBack}>
-          ‹ Voltar
-        </PixelButton>
-        <PixelButton disabled={!canContinue || busy} onClick={onContinue}>
-          Continuar ›
-        </PixelButton>
-      </div>
     </div>
   );
 }
@@ -523,7 +388,7 @@ function SuccessStep({
       </div>
 
       <FocadaSays expression="comemorando" tone="accent">
-        Seu aprendizado está visível, agente.{nextWeeklyId ? ' Próximo módulo desbloqueado!' : ''}
+        Seu aprendizado está visível, agente.{nextWeeklyId ? ' Próxima semana desbloqueada!' : ''}
       </FocadaSays>
 
       {publication.submittedUrl && (
@@ -570,7 +435,7 @@ function SuccessStep({
         )}
         {nextWeeklyId ? (
           <PixelButton onClick={() => onGoToNext(`/start?course=${courseId ?? ''}&weekly=${nextWeeklyId}`)} className="flex-1">
-            Próximo módulo ›
+            Próxima semana ›
           </PixelButton>
         ) : (
           <PixelButton onClick={onClose} className="flex-1">
@@ -591,10 +456,7 @@ function ErrorStep({
   onEditAgain: () => void;
   onRetry: () => void;
 }) {
-  const suggestion =
-    publication.platform === PublicationPlatform.GitHub
-      ? 'Acesse github.com/settings e confirme que o repositório está público.'
-      : 'Confirme que colou o link do post já publicado (formato linkedin.com/posts/... ou linkedin.com/feed/update/...).';
+  const suggestion = 'Confirme que colou o link do post já publicado (formato linkedin.com/posts/... ou linkedin.com/feed/update/...).';
 
   return (
     <div className="flex flex-col gap-5">
