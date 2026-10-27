@@ -850,6 +850,18 @@ export interface ModulePublicationDto {
   submittedUrl: string | null;
   generatedDraft: string | null;
   validationError: string | null;
+  /** Fase 107: campos da imagem de conclusao da semana - so na resposta do rascunho (nao persistido). */
+  image?: PublicationImageDto | null;
+}
+
+/** Fase 107: o que a Focada preenche na imagem de conclusao da semana (lib/weekCompletionImage.ts). */
+export interface PublicationImageDto {
+  courseName: string | null;
+  weekNumber: number;
+  totalWeeks: number;
+  weekTitle: string;
+  highlights: string[];
+  projectTitle: string | null;
 }
 
 export interface ApiErrorBody {

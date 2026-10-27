@@ -14,11 +14,15 @@ public class GroqDraftGenerationService : IDraftGenerationService
 {
     private const string Model = "openai/gpt-oss-120b"; // mesmo modelo de GroqContentEvaluationService - ver nota la sobre o catalogo da Groq mudar.
 
+    // Fase 107: JSON mode - o post e os textos da imagem de conclusao da semana numa chamada so.
     private const string SystemPrompt =
         "Você escreve posts de LinkedIn em português, em primeira pessoa, tom pessoal e direto " +
-        "(nunca corporativo/genérico), para um aluno de segurança web compartilhando o que " +
-        "aprendeu num módulo de estudos. Responda APENAS com o texto do post, sem aspas, sem " +
-        "explicações extras, sem markdown.";
+        "(nunca corporativo/genérico), para um aluno da Focadu compartilhando o que aprendeu numa " +
+        "semana de estudos. Responda APENAS com um objeto JSON, em português, com as chaves: " +
+        "\"post\" (o texto do post, sem markdown), " +
+        "\"destaques\" (lista com exatamente 3 frases curtas, de até 70 caracteres cada, sobre o que eu aprendi, " +
+        "sem ponto final, para uma imagem) e " +
+        "\"projeto\" (nome curto do projeto que entreguei, até 50 caracteres, ou string vazia se não houver projeto).";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -31,7 +35,7 @@ public class GroqDraftGenerationService : IDraftGenerationService
         _options = options;
     }
 
-    public async Task<string> GenerateAsync(string prompt, CancellationToken cancellationToken = default)
+    public async Task<GeneratedLinkedInDraft> GenerateAsync(string prompt, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_options.ApiKey))
         {
@@ -44,6 +48,7 @@ public class GroqDraftGenerationService : IDraftGenerationService
         {
             model = Model,
             temperature = 0.7,
+            response_format = new { type = "json_object" },
             messages = new object[]
             {
                 new { role = "system", content = SystemPrompt },
@@ -83,8 +88,31 @@ public class GroqDraftGenerationService : IDraftGenerationService
                 "groq_geracao_vazia", "O servico de geracao de texto nao retornou nenhum conteudo.");
         }
 
-        return text.Trim();
+        return Parse(text);
     }
+
+    private static GeneratedLinkedInDraft Parse(string json)
+    {
+        DraftJson? parsed;
+        try
+        {
+            parsed = JsonSerializer.Deserialize<DraftJson>(json, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            throw new ExternalServiceException("groq_resposta_invalida", "O servico de geracao de texto devolveu uma resposta fora do formato esperado.");
+        }
+
+        if (string.IsNullOrWhiteSpace(parsed?.Post))
+            throw new ExternalServiceException("groq_geracao_vazia", "O servico de geracao de texto nao retornou nenhum conteudo.");
+
+        return new GeneratedLinkedInDraft(
+            parsed.Post.Trim(),
+            parsed.Destaques?.Where(d => !string.IsNullOrWhiteSpace(d)).Select(d => d.Trim()).ToList() ?? [],
+            string.IsNullOrWhiteSpace(parsed.Projeto) ? null : parsed.Projeto.Trim());
+    }
+
+    private record DraftJson(string? Post, List<string>? Destaques, string? Projeto);
 
     private record GroqChatCompletionResponse(List<GroqChatChoice>? Choices);
 

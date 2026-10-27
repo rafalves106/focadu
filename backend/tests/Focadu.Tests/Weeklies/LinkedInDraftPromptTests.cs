@@ -69,4 +69,47 @@ public class LinkedInDraftPromptTests
         Assert.DoesNotContain("Objetivo do projeto", prompt);
         Assert.DoesNotContain("Comentário da avaliação", prompt);
     }
+
+    [Fact]
+    public void NormalizeHighlights_KeepsAiOnesAndFillsFromTakeaways()
+    {
+        var days = new List<GenerateLinkedInDraftUseCase.WeekDay>
+        {
+            new("Códigos de status", ["O primeiro dígito dá a família."]),
+            new("Cabeçalhos", []),
+        };
+
+        var highlights = GenerateLinkedInDraftUseCase.NormalizeHighlights(["Ler uma resposta HTTP."], days);
+
+        Assert.Equal(["Ler uma resposta HTTP", "O primeiro dígito dá a família", "Cabeçalhos"], highlights);
+    }
+
+    [Fact]
+    public void NormalizeHighlights_TakesThreeAndDropsDuplicates()
+    {
+        var highlights = GenerateLinkedInDraftUseCase.NormalizeHighlights(["A", "a", "B", "C", "D"], []);
+
+        Assert.Equal(["A", "B", "C"], highlights);
+    }
+
+    [Fact]
+    public void ClampAtWord_CutsAtLastSpaceWithoutEllipsis()
+    {
+        var text = "Entendi como o servidor responde a cada pedido do navegador sem erro";
+
+        var clamped = GenerateLinkedInDraftUseCase.ClampAtWord(text, GenerateLinkedInDraftUseCase.MaxHighlightLength);
+
+        Assert.NotNull(clamped);
+        Assert.True(clamped!.Length <= GenerateLinkedInDraftUseCase.MaxHighlightLength);
+        Assert.False(clamped.EndsWith(' '));
+        Assert.StartsWith("Entendi como o servidor", clamped);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    public void ClampAtWord_Blank_ReturnsNull(string? text)
+    {
+        Assert.Null(GenerateLinkedInDraftUseCase.ClampAtWord(text, 10));
+    }
 }

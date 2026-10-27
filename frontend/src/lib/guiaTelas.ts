@@ -331,7 +331,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   { q: 'O que é a ponte do 6º dia?', a: 'Um dia prático que leva a teoria da semana pro código do projeto, na linguagem que você escolher.' },
   { q: 'Como o Projeto Semanal é avaliado?', a: 'Você entrega e a IA lê o seu repositório contra o enunciado. A nota vai de 0 a 100 e vale 30% do Score da semana.' },
-  { q: 'Por que preciso publicar o módulo?', a: 'É a prova pública do que você fez. A Focada escreve um rascunho com o que você estudou e o projeto entregue, você publica no LinkedIn e cola o link. Sem ela, a semana seguinte não abre.' },
+  { q: 'Por que preciso publicar o módulo?', a: 'É a prova pública do que você fez. A Focada escreve um rascunho com o que você estudou e o projeto entregue e monta a imagem da semana; você publica no LinkedIn com a imagem e cola o link. Sem ela, a semana seguinte não abre.' },
   { q: 'Como o ranking pontua?', a: 'Pelo Score de Estudo: a média das suas respostas (a conversa por voz pesa mais) e a nota do projeto. Gems não contam.' },
   { q: 'O que a vitrine da Loja sorteia?', a: '6 itens por semana, só pra você, renovados toda segunda. Não dá pra rerolar e todo item volta um dia.' },
   { q: 'Pra que serve o Squad?', a: 'Estudar junto: meta da semana em grupo, feed de atividades com GG e ranking próprio.' },

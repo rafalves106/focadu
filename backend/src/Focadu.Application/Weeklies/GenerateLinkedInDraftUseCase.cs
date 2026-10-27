@@ -26,6 +26,11 @@ public class GenerateLinkedInDraftUseCase
     private const int MaxFeedbackLength = 1200;
     private const int MaxObjectiveLength = 600;
 
+    /// <summary>Fase 107: limites dos campos da imagem de conclusao (modelo do Figma); o front quebra a linha, nao corta.</summary>
+    internal const int ImageHighlightCount = 3;
+    internal const int MaxHighlightLength = 70;
+    internal const int MaxProjectTitleLength = 50;
+
     private readonly IAiUsageContext _aiUsage;
     private readonly IWeeklyRepository _weeklyRepository;
     private readonly IEnrollmentRepository _enrollmentRepository;
@@ -56,7 +61,9 @@ public class GenerateLinkedInDraftUseCase
             ?? throw new NotFoundException("semana_nao_encontrada", "Semana nao encontrada.");
 
         var enrollment = (await _enrollmentRepository.GetByUserIdAsync(userId, cancellationToken)).FirstOrDefault(e => e.Id == weekly.EnrollmentId);
-        var courseName = enrollment is null ? null : (await _courseRepository.GetByIdAsync(enrollment.CourseId, cancellationToken))?.Name;
+        var course = enrollment is null ? null : await _courseRepository.GetByIdAsync(enrollment.CourseId, cancellationToken);
+        var courseName = course?.Name;
+        var totalWeeks = course?.Monthlies.Sum(m => m.WeeklyTemplates.Count) ?? 0;
 
         // Um item por dia, na ordem: titulo do material (Leitura, ou Video) e os pontos de "O que levar daqui".
         var contentById = weekly.Template.CuratedContents.ToDictionary(c => c.Id);
@@ -83,11 +90,18 @@ public class GenerateLinkedInDraftUseCase
         var draft = await _draftGenerationService.GenerateAsync(prompt, cancellationToken);
 
         var publication = weekly.StartPublication();
-        publication.GenerateDraft(draft);
+        publication.GenerateDraft(draft.Post);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        // Fase 107: campos da imagem de conclusao; sem projeto na semana, o nome do projeto some.
+        var image = new PublicationImageDto(
+            courseName, weekly.Number, Math.Max(totalWeeks, weekly.Number), weekly.Theme ?? weekly.Title,
+            NormalizeHighlights(draft.Highlights, days),
+            weekly.Project is null ? null : ClampAtWord(draft.ProjectTitle, MaxProjectTitleLength));
+
         return new ModulePublicationDto(
-            weeklyId, publication.Status, publication.Platform, publication.SubmittedUrl, publication.GeneratedDraft, publication.ValidationError);
+            weeklyId, publication.Status, publication.Platform, publication.SubmittedUrl, publication.GeneratedDraft, publication.ValidationError,
+            image);
     }
 
     internal record WeekDay(string Title, IReadOnlyList<string> Takeaways);
@@ -149,6 +163,32 @@ public class GenerateLinkedInDraftUseCase
         var paragraph = rest.Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .FirstOrDefault(p => !p.StartsWith('#'));
         return Truncate(paragraph, MaxObjectiveLength);
+    }
+
+    /// <summary>
+    /// Fase 107: exatamente 3 destaques que cabem na imagem. Os da Focada vem primeiro; se ela devolver menos, completa
+    /// com o 1o ponto de "O que levar daqui" dos dias; sem nada disso, com o titulo do dia.
+    /// </summary>
+    internal static IReadOnlyList<string> NormalizeHighlights(IReadOnlyList<string> fromAi, IReadOnlyList<WeekDay> days)
+    {
+        var fallback = days.Select(d => d.Takeaways.FirstOrDefault() ?? d.Title);
+        return fromAi.Concat(fallback)
+            .Select(h => ClampAtWord(h.Trim().TrimEnd('.'), MaxHighlightLength))
+            .OfType<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(ImageHighlightCount)
+            .ToList();
+    }
+
+    /// <summary>Corta no ultimo espaco antes do limite (sem reticencias, a imagem nao comporta); nulo/vazio vira nulo.</summary>
+    internal static string? ClampAtWord(string? text, int max)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var trimmed = text.Trim();
+        if (trimmed.Length <= max) return trimmed;
+        var cut = trimmed[..max];
+        var space = cut.LastIndexOf(' ');
+        return (space > max / 2 ? cut[..space] : cut).TrimEnd(' ', ',', ';', ':', '-');
     }
 
     private static string? Truncate(string? text, int max) =>

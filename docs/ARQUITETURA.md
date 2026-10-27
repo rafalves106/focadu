@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 106 - Publicacao so no LinkedIn com post da Focada; trilha aponta pro castelo** (Fase 105: repositorio do Projeto Semanal sai quando o projeto abre; Fase 104: `importar` le o projeto.json; Fase 103: Medicao de produto, aba Retencao; Fase 102: Termos, privacidade e aceite; Fase 100b: README do Projeto Semanal no app; Fase 101: Travas de IA; Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 107 - Imagem de conclusao da semana pro post do LinkedIn** (Fase 106: publicacao so no LinkedIn com post da Focada e trilha que aponta pro castelo; Fase 105: repositorio do Projeto Semanal sai quando o projeto abre; Fase 104: `importar` le o projeto.json; Fase 103: Medicao de produto, aba Retencao; Fase 102: Termos, privacidade e aceite; Fase 100b: README do Projeto Semanal no app; Fase 101: Travas de IA; Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -1259,7 +1259,13 @@ GitHub) antes da proxima Weekly liberar.
   "### O que levar daqui"), o objetivo do Projeto Semanal (1o paragrafo de "### Objetivo" do
   `WeeklyProjectSpecText`) e o `WeeklyProject.Feedback` da avaliacao, com a ordem de usar so o que deu
   certo; a nota nunca entra. Continua **sem** `AiFeedback` de `ActivityResponse` (evita vazar uma
-  tentativa num post publico). Interesses do perfil seguem (Fase 27). Groq sem JSON mode.
+  tentativa num post publico). Interesses do perfil seguem (Fase 27). Fase 107: Groq em JSON mode, devolve
+  `{post, destaques[3], projeto}`; o use case normaliza (3 destaques de ate 70, projeto ate 50, corte na palavra) e
+  responde `ModulePublicationDto.Image` (`PublicationImageDto`, nao persistido).
+- **Imagem de conclusao da semana (Fase 107)**: `lib/weekCompletionImage.ts` desenha em canvas o modelo quadrado
+  1080x1080 do Figma ("Focadu — Pixel Art", pagina "Imagem de conclusao da semana — v1", componente `323:4912`) com
+  os campos da Focada, nome do aluno e data; selos por semana em `assets/pixel/selos/`. O modal mostra a previa, baixa
+  a imagem e baixa de novo no "Copiar e publicar". Texto longo quebra (2 linhas) e a fonte desce ate caber.
 - **Fluxo GitHub removido (Fase 106)**: `CommitModuleSummaryUseCase`/`GetGitHubRepositoriesUseCase` e
   os endpoints `github-commit` e `/github/repositories` sairam. Commitavam pelo token do servidor (repo
   na conta da plataforma, nao na do aluno) e, com `GitHub:Token` em branco em producao, so davam 502.
