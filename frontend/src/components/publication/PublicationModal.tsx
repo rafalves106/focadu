@@ -9,6 +9,8 @@ import {
   type ModulePublicationDto,
 } from '../../api/types';
 import { classifyApiError, type ApiFailure } from '../../lib/apiError';
+import { renderWeekCompletionImage } from '../../lib/weekCompletionImage';
+import { useAuth } from '../../contexts/useAuth';
 import shieldIcon from '../../assets/pixel/escudo.png';
 import { PixelModal, pixelField } from '../PixelModal';
 import { SegmentedBar } from '../SegmentedBar';
@@ -51,6 +53,9 @@ type Step =
  * token fica em branco e o botao so dava erro. O rascunho e da Focada, gerado na hora com o curso, os dias da semana e
  * o projeto entregue (GenerateLinkedInDraftUseCase).
  *
+ * Fase 107: junto com o rascunho vem a imagem de conclusao da semana (modelo do Figma, desenhada em canvas): previa no
+ * passo do rascunho, botao de baixar e download automatico no "Copiar e publicar", pra anexar ao post.
+ *
  * Pixel art desde 24/09/2026 (pedido do dono, todos os modais): casca `PixelModal`, a Focada comemora
  * a abertura e o sucesso e acolhe o erro, botoes `PixelButton`, progresso em `SegmentedBar`. Os emojis
  * 💼/🐙 sairam (sem sprite ainda) - as opcoes dizem a plataforma num rotulo em Silkscreen.
@@ -72,6 +77,13 @@ export function PublicationModal({
   const [draftText, setDraftText] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [course, setCourse] = useState<CourseDetailDto | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const { user } = useAuth();
+
+  // Libera a URL do blob da imagem ao trocar ou fechar o modal.
+  useEffect(() => () => {
+    if (imageUrl) URL.revokeObjectURL(imageUrl);
+  }, [imageUrl]);
 
   // So pra "CONTINUAR ESTUDANDO" saber pra onde ir e mostrar um progresso real na tela de sucesso
   // - nao bloqueia o resto do modal se falhar (dado secundario, nao essencial ao fluxo).
@@ -97,12 +109,30 @@ export function PublicationModal({
       const result = await api.generateLinkedInDraft(weeklyId);
       setPublication(result);
       setDraftText(result.generatedDraft ?? '');
+      // A imagem e um extra: se falhar (fonte, canvas), o post segue sem ela.
+      if (result.image) {
+        try {
+          const blob = await renderWeekCompletionImage(result.image, user?.displayName ?? '');
+          setImageUrl(URL.createObjectURL(blob));
+        } catch {
+          setImageUrl(null);
+        }
+      }
       setStep('linkedinDraft');
     });
   }
 
+  function handleDownloadImage() {
+    if (!imageUrl) return;
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = `focadu-semana-${publication?.image?.weekNumber ?? ''}.png`;
+    link.click();
+  }
+
   function handleCopyAndPublish() {
     void navigator.clipboard.writeText(draftText);
+    handleDownloadImage();
     window.open('https://www.linkedin.com/feed/', '_blank', 'noopener,noreferrer');
     setUrlInput('');
     setStep('urlSubmit');
@@ -147,6 +177,8 @@ export function PublicationModal({
         {step === 'linkedinDraft' && (
           <DraftPreviewStep
             draftText={draftText}
+            imageUrl={imageUrl}
+            onDownloadImage={handleDownloadImage}
             onEdit={() => setStep('linkedinEditor')}
             onCopyAndPublish={handleCopyAndPublish}
             onWriteOwn={() => {
@@ -257,11 +289,15 @@ function InfoBox({ label, tone = 'muted', children }: { label: string; tone?: 'm
 
 function DraftPreviewStep({
   draftText,
+  imageUrl,
+  onDownloadImage,
   onEdit,
   onCopyAndPublish,
   onWriteOwn,
 }: {
   draftText: string;
+  imageUrl: string | null;
+  onDownloadImage: () => void;
   onEdit: () => void;
   onCopyAndPublish: () => void;
   onWriteOwn: () => void;
@@ -274,6 +310,18 @@ function DraftPreviewStep({
       </div>
 
       <div className="whitespace-pre-wrap border-2 border-stroke bg-surface p-4 font-pixel text-lg leading-snug text-primary">{draftText}</div>
+
+      {imageUrl && (
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end">
+          <img src={imageUrl} alt="Imagem de conclusão da semana para anexar ao post" className="w-48 border-2 border-stroke" />
+          <div className="flex flex-col gap-2">
+            <p className="font-pixel text-lg leading-snug text-secondary">Anexe esta imagem ao post. Ela baixa junto quando você copia o texto.</p>
+            <PixelButton ghost tone="muted" onClick={onDownloadImage}>
+              Baixar imagem
+            </PixelButton>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-3">
         <div className="flex w-full gap-3">
