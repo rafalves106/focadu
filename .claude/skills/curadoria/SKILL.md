@@ -23,6 +23,7 @@ Pasta: `secret/processo/cursos/<curso>/`. Siga a primeira linha que bater:
 | `glossario.md` não existe ou não tem "Aprovado pelo dono" | C2: glossário | `glossario-do-curso` (Sonnet, médio, contexto limpo) |
 | Dia N (o pedido, ou o 1º dia do `estado.md` que não está `pronto`) em `a fazer` | D1: ficha do dia | `ficha-do-dia` (Sonnet, baixo) |
 | Dia N em `ficha ok`, `validado` ou `revisado` (sem aprovação do dono pendente) | D2 a D8 | `curar-conteudo` (Sonnet, médio) |
+| Pedido "projeto da semana N" (ou todos os dias da semana `pronto` e `fichas/semana-N.ficha.md` aprovada sem `projeto.json` em `secret/conteudo/<curso>/semana-N/`) | P2 a P6: enunciado, linter, modelo rodando, revisão, importar | `curar-conteudo`, seção "Projeto semanal" (Sonnet, médio) |
 | Dia-âncora em `revisado`, já importado e esperando leitura | aprovação do dono | nenhuma: pergunte se aprovou; se sim, marque `pronto` no `estado.md` |
 
 Os portões de cada skill continuam valendo (ex.: `curar-conteudo` recusa dia sem `ficha ok`).

@@ -9,6 +9,7 @@ import { TodayCourseChoice } from '../components/session/TodayCourseChoice';
 import { classifyApiError, type ApiFailure } from '../lib/apiError';
 import { SessionContext, type SessionContextValue } from '../lib/sessionContext';
 import { LabContext, useLabSessionOwner } from '../lab/labContext';
+import { CourseCompletedScreen } from '../components/CourseCompletedScreen';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { QuizActivity } from '../components/QuizActivity';
 import { WordMatchActivity } from '../components/WordMatchActivity';
@@ -236,6 +237,8 @@ export function TodayPage() {
   if (loading) return <SessionLoading />;
   if (courseChoice) return <TodayCourseChoice courses={courseChoice} />;
   if (error?.status === 409) return <DailyRefusedScreen error={error} />;
+  // Nada pendente no curso (todos os dias feitos, sem projeto por fechar): nao e erro, e o fim do que existe.
+  if (error?.code === 'daily_hoje_nao_encontrada') return <CourseCompletedScreen courseId={courseParam} />;
   if (error) return <ApiErrorScreen error={error} onRetry={() => setAttempt((n) => n + 1)} />;
   if (!daily) return null;
 

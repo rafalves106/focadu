@@ -164,6 +164,7 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
       { title: 'Feedback do dia', text: 'Depois de fechar o dia, você dá uma nota de clareza de 1 a 5 e diz onde travou. Só a nota é obrigatória, e dá pra pular. Isso ajuda a melhorar o curso.' },
       { title: 'Teclado', text: 'Teclas 1 a N escolhem, Enter confirma.' },
       { title: 'Mais de um curso?', text: 'O Hoje pergunta qual curso estudar antes de abrir. Cada curso tem a sua Daily do dia.' },
+      { title: 'Tudo em dia', text: 'Se você fez todos os dias que o curso tem até agora, o Hoje mostra o resumo do que conquistou. Os próximos dias aparecem no seu início quando saírem.' },
     ],
   },
   projeto: {

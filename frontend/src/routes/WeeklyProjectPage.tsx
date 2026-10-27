@@ -131,7 +131,9 @@ export function WeeklyProjectPage({ weeklyId, courseId }: { weeklyId: string; co
   // da tela quando o repositorio ja veio de um template por linguagem (Chosen) - e ali, no README.md,
   // que ela mora agora; semana sem template (ou sem briefing) segue com o cartao de especificacao.
   const showDialogue = released && !project.isLocked && focadaLines.length > 0;
-  const specInReadme = showDialogue && project.languageStep === ProjectLanguageStep.Chosen;
+  // Com a Focada falando e o repositorio ja criado, o enunciado mora no README.md do repo (botao no dialogo):
+  // a tela nao repete o cartao de especificacao embaixo (bug: Focada e enunciado apareciam juntos).
+  const specInReadme = showDialogue && !!project.submissionUrl;
 
   // Repositorio de Projeto Semanal e provisionado pela Focadu (fork no Forgejo interno, ver
   // secret/rascunhos/repositorios-gerenciados-projeto-semanal.md) - o aluno nao digita mais URL

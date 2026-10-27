@@ -69,7 +69,18 @@ public class GetTodayUseCase
 
         var target = DailySequencing.FindInProgress(allWeeklies) ?? DailySequencing.FindNext(allWeeklies);
         if (target is null)
+        {
+            // Acabaram as Dailies, mas a ultima semana ainda tem projeto (ou publicacao) por fechar: "hoje" e o
+            // projeto, nao um 404. Mesmo retorno da Fase 54 (WeekPendingClosure), que o cliente leva pra semana.
+            var openWeekly = allWeeklies.OrderBy(w => w.Number)
+                .FirstOrDefault(w => w.RequiresProjectToUnlock() || w.RequiresPublicationToUnlock());
+            var lastDaily = openWeekly?.Dailies.Where(d => !d.IsReinforcement).MaxBy(d => d.DayNumber);
+            if (lastDaily is not null)
+                return DailyStateMapper.ToDto(lastDaily, DailyAccessMode.WeekPendingClosure)
+                    with { PendingReinforcementDailyId = DailySequencing.FindPendingReinforcement(allWeeklies)?.Id };
+
             throw new NotFoundException("daily_hoje_nao_encontrada", "Nenhuma Daily pendente encontrada.");
+        }
 
         var weekly = allWeeklies.First(w => w.Id == target.WeeklyId);
         var today = _clock.Today();

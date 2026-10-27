@@ -1,10 +1,10 @@
 ---
 name: curar-conteudo
-description: "Cura UM dia de um curso da Focadu (Web Security, Linux, Python pra Web Security, Design Patterns, Arquitetura de Software) pelo pipeline do plano de curadoria: texto (D2), linter (D3), revisão de escrita (D4), atividades (D5), validação (D6), revisão editorial (D7) e importação (D8). Grava em secret/conteudo/<curso>/semana-N/dia-N.json. Exige a ficha do dia aprovada (skill ficha-do-dia). Use quando o usuário pedir para curar, montar ou gerar o conteúdo de um dia, corrigir um dia a partir de uma lista do linter ou do revisor, ou invocar /curar-conteudo."
+description: "Cura UM dia (ou o Projeto Semanal de uma semana, etapas P2 a P6) de um curso da Focadu (Web Security, Linux, Python pra Web Security, Design Patterns, Arquitetura de Software) pelo pipeline do plano de curadoria: texto (D2), linter (D3), revisão de escrita (D4), atividades (D5), validação (D6), revisão editorial (D7) e importação (D8). Grava em secret/conteudo/<curso>/semana-N/dia-N.json. Exige a ficha do dia aprovada (skill ficha-do-dia). Use quando o usuário pedir para curar, montar ou gerar o conteúdo de um dia, corrigir um dia a partir de uma lista do linter ou do revisor, ou invocar /curar-conteudo."
 model: sonnet
 effort: medium
 metadata:
-  version: 2.3.0
+  version: 2.4.0
 ---
 
 # Curar um dia
@@ -54,6 +54,22 @@ Estado visível no `estado.md`: `a fazer` → `ficha ok` → `validado` (após D
 - Conversa por voz: situação de 2 linhas e 1 pergunta; fala da Focada até 200 caracteres (`processo/guias/GUIA-DE-VOZ-FOCADA.md`); `referenceAnswer` com a resposta correta.
 - Schema só com os campos de `dia.schema.json`. Nunca invente chave nova.
 
+## Projeto semanal (P2 a P6)
+
+Quando o pedido for "projeto da semana N": **um projeto por sessão**, depois que os dias e a ponte da semana estão `pronto`. Regras: `PLANO-CURADORIA.md` ("Projeto semanal"), schema em `processo/molde/schema-projeto.md`. Portão: `fichas/semana-N.ficha.md` aprovada (campos `projeto`, `alvos dos dias que o projeto cobra` e critérios de rascunho com alvo). Sem ela, pare e mande rodar `/ficha-do-dia` (S1). **O projeto só cobra o que os dias ensinaram.**
+
+Leia só: a ficha da semana, `schema-projeto.md`, `regras-de-leitura.md`, `GUIA-DE-VOZ-FOCADA.md` e o `dia-6.json` (a ponte, para o código-base partir dela). Nada de outros dias.
+
+| Etapa | Faz | Portão |
+|---|---|---|
+| **P2 Enunciado** | Escreve `secret/conteudo/<curso>/semana-N/projeto.json` com um `Write` só: `weekNumber`, `title`, `specText` (4 seções fixas: Objetivo, Entregável, Critérios de "pronto", Ferramentas; até 450 palavras; Objetivo até 3 frases; até 6 critérios, 1 frase de até 20 palavras, verificável, cada um com alvo da ficha; até 5 referências por linguagem, só fonte oficial) e `briefing` (3 a 5 falas da Focada de até 200 caracteres, no guia de voz). Linguagem padrão **Python**, sem escolha do aluno | P3 |
+| **P3 Linter** | `node secret/processo/scripts/linter-dia/src/projeto-cli.js <projeto.json> --ficha secret/processo/cursos/<curso>/fichas/semana-N.ficha.md` (palavras, seções, critérios, palavras subjetivas, tamanho das falas, alvo existente na ficha) | `PASSOU`; senão volta ao P2 (máx. 2 voltas) |
+| **P4 Repositório-modelo rodando** | Monta `semana-N/modelos/python/` (código-base funcionando, 2 ou 3 partes marcadas para o aluno, `README.base.md` com `{{ENUNCIADO}}`); gera o README com `processo/scripts/gerar_readme_modelo.py semana-N` (nunca à mão); **executa de verdade** em `python:3.12-slim` contra o site de laboratório: a versão resolvida passa em todos os critérios, o modelo incompleto falha só nas partes marcadas. Registra em `logs/projeto-N.log` | log sem erro inesperado |
+| **P5 Revisão editorial** | Agente `revisor-editorial` em contexto limpo, com `projeto.json`, ficha da semana, linha editorial e log. Reprova critério sem alvo ou que cobra o que os dias não ensinaram | `aprovado` |
+| **P6 Importar e publicar** | O importador ainda não lê `projeto.json` (não consta em `processo/importador.md`): **avise o dono** e não use SQL. Publicar o modelo no Forgejo (`publicar_modelo_forgejo.py`) só com ele autorizando | dono aprova o enunciado e o projeto rodando |
+
+Estado: anote o projeto numa linha do `estado.md` da semana (`projeto N: enunciado ok / validado / revisado / pronto`) e os tokens gastos. Termine pedindo a aprovação do dono.
+
 ## Regras de ouro
 
 - **Leitura fácil manda** (`processo/linha-editorial.md`). **Sem analogia**: nem no texto, nem âncora para analogia.
@@ -91,4 +107,4 @@ Cada uma passou pelo linter e só apareceu na revisão ou no teste no app. Confi
 - `secret/processo/molde/`: `molde-v1.md`, `dia.schema.json`, `regras-de-leitura.md`, `regras-de-quiz.md`
 - `secret/processo/scripts/linter-dia/README.md`
 - `secret/processo/cursos/<curso>/`: `roteiro.md`, `estado.md`, `glossario.md`, `fichas/`
-- Agentes: `editor-pedagogico` (D4), `revisor-editorial` (D7). Skill `ficha-do-dia` (D1/S1).
+- Agentes: `editor-pedagogico` (D4), `revisor-editorial` (D7 e P5). Skill `ficha-do-dia` (D1/S1).
