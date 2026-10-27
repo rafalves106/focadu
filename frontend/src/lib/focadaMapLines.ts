@@ -59,6 +59,37 @@ export function isWeekDailiesDone(week: WeeklyOverviewDto): boolean {
   return days.length > 0 && days.every((d) => d.status === DailyStatus.Completed);
 }
 
+/**
+ * Fase 106: semana com os dias feitos esperando o castelo fechar - projeto nao avaliado ou, depois dele, publicacao
+ * do modulo nao validada. Enquanto isso o aluno "esta" no castelo, nao na ponte (o proximo dia da sequencia e o da
+ * semana seguinte, que segue trancada).
+ */
+export function isWeekClosurePending(week: WeeklyOverviewDto): boolean {
+  if (week.isPracticeOnly || !isWeekDailiesDone(week)) return false;
+  return week.projectStatus !== WeeklyProjectStatus.Evaluated || week.requiresPublicationToUnlock;
+}
+
+export type CourseStop = { week: WeeklyOverviewDto; day: DailyStatusSummaryDto } | { week: WeeklyOverviewDto; day: null };
+
+/**
+ * Fase 106: onde o aluno esta no curso - a Daily em andamento, o castelo de uma semana que ainda nao fechou (dias
+ * feitos) ou o proximo dia de uma semana destrancada. Mesma ordem pra trilha, start e card de missao.
+ */
+export function currentStop(course: CourseDetailDto): CourseStop | null {
+  const weeks = course.monthlies.flatMap((m) => m.weeklies).sort((a, b) => a.number - b.number);
+  for (const week of weeks) {
+    const inProgress = primaryDays(week).find((d) => d.status === DailyStatus.InProgress);
+    if (inProgress) return { week, day: inProgress };
+  }
+  for (const week of weeks) {
+    if (isWeekClosurePending(week)) return { week, day: null };
+    if (week.isLocked) return null;
+    const next = primaryDays(week).find((d) => d.isNext);
+    if (next) return { week, day: next };
+  }
+  return null;
+}
+
 /** Reforco ainda nao concluido gerado a partir deste dia (o reforco mora na mesma semana). */
 export function pendingReinforcementOf(week: WeeklyOverviewDto, day: DailyStatusSummaryDto): DailyStatusSummaryDto | null {
   if (!day.reinforcementDailyId) return null;

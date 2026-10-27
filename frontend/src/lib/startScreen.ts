@@ -1,5 +1,5 @@
-import { DailyStatus, WeeklyProjectStatus, type CourseDetailDto, type WeeklyOverviewDto } from '../api/types';
-import { primaryDays } from './focadaMapLines';
+import { WeeklyProjectStatus, type CourseDetailDto, type WeeklyOverviewDto } from '../api/types';
+import { currentStop, primaryDays } from './focadaMapLines';
 
 /**
  * Derivacoes da tela de start com varios cursos (23/09/2026, redesign do Figma "Start — redesign
@@ -12,16 +12,10 @@ export function isCourseFinished(course: CourseDetailDto): boolean {
   return weeks.length > 0 && weeks[weeks.length - 1].projectStatus === WeeklyProjectStatus.Evaluated;
 }
 
-/** Onde o agente parou no curso: semana + dia da proxima Daily (ou a em andamento). */
+/** Onde o agente parou no curso: semana + dia da proxima Daily (ou a em andamento); dia null = castelo da semana. */
 export function courseWhereabouts(course: CourseDetailDto): { week: WeeklyOverviewDto; dayNumber: number | null } | null {
-  const weeks = course.monthlies.flatMap((m) => m.weeklies).sort((a, b) => a.number - b.number);
-  for (const week of weeks) {
-    const day = primaryDays(week).find((d) => d.status === DailyStatus.InProgress || d.isNext);
-    if (day) return { week, dayNumber: day.dayNumber };
-  }
-  // Sem proxima Daily: semana com os dias feitos esperando o projeto (ou a publicacao) fechar.
-  const open = weeks.find((w) => w.projectStatus !== WeeklyProjectStatus.Evaluated);
-  return open ? { week: open, dayNumber: null } : null;
+  const stop = currentStop(course);
+  return stop ? { week: stop.week, dayNumber: stop.day?.dayNumber ?? null } : null;
 }
 
 /** Alguma Daily original concluida hoje, em qualquer curso - o streak do agente e global. */

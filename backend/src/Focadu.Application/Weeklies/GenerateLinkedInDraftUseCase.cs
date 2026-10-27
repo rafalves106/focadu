@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.RegularExpressions;
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
 using Focadu.Application.Shared;
@@ -8,33 +10,41 @@ namespace Focadu.Application.Weeklies;
 
 /// <summary>
 /// Caso de uso: gera o rascunho de post do LinkedIn pra prova de aprendizado do modulo (Fase 11).
-/// Contexto do prompt: tema da Weekly + titulos dos CuratedContent de Leitura/Video da semana (os
-/// "conceitos-chave" citados no prompt tecnico) - nao usa AiFeedback de nenhuma atividade porque
-/// esse texto e sobre a atividade especifica de um aluno, nao sobre o modulo como um todo, e
-/// poderia vazar detalhes de uma unica tentativa (ex: um erro) num post publico.
+/// Gerado so quando o aluno escolhe publicar, entao sai do que ele fez de verdade.
 ///
-/// Fase 27: tambem injeta `Interests`/`AdditionalProfileNotes` do usuario (PersonalizationPrompt
-/// Builder, mesmo texto que SubmitVoiceSummaryResponseUseCase passou a usar) - o rascunho pode
-/// puxar um gancho pessoal ("como alguem que curte moto, isso me lembrou...") em vez de generico.
-/// Sem perfil preenchido, o prompt fica identico ao de antes desta fase.
+/// Fase 106: o prompt deixou de usar so o tema e 3 titulos de leitura com "trilha de seguranca web" fixo. Agora leva o
+/// nome do curso (Fase 85), o que cada dia da semana ensinou (titulo do material e os pontos de "O que levar daqui"), o
+/// objetivo do Projeto Semanal e o comentario da avaliacao do projeto do aluno. A nota fica de fora, e o prompt manda
+/// usar so o que deu certo: o post e publico e nao deve expor erro de uma tentativa.
+///
+/// Fase 27: tambem injeta `Interests`/`AdditionalProfileNotes` do usuario (PersonalizationPromptBuilder) - o rascunho
+/// pode puxar um gancho pessoal. Sem perfil preenchido, o bloco some.
 /// </summary>
 public class GenerateLinkedInDraftUseCase
 {
+    private const int MaxTakeawaysPerDay = 3;
+    private const int MaxFeedbackLength = 1200;
+    private const int MaxObjectiveLength = 600;
+
     private readonly IAiUsageContext _aiUsage;
     private readonly IWeeklyRepository _weeklyRepository;
+    private readonly IEnrollmentRepository _enrollmentRepository;
+    private readonly ICourseRepository _courseRepository;
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDraftGenerationService _draftGenerationService;
     private readonly PersonalizationOptions _personalization;
 
     public GenerateLinkedInDraftUseCase(
-        IWeeklyRepository weeklyRepository, IUserRepository userRepository, IUnitOfWork unitOfWork,
-        IDraftGenerationService draftGenerationService, PersonalizationOptions personalization,
-        IAiUsageContext aiUsage)
+        IWeeklyRepository weeklyRepository, IEnrollmentRepository enrollmentRepository, ICourseRepository courseRepository,
+        IUserRepository userRepository, IUnitOfWork unitOfWork, IDraftGenerationService draftGenerationService,
+        PersonalizationOptions personalization, IAiUsageContext aiUsage)
     {
         _aiUsage = aiUsage;
         _personalization = personalization;
         _weeklyRepository = weeklyRepository;
+        _enrollmentRepository = enrollmentRepository;
+        _courseRepository = courseRepository;
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _draftGenerationService = draftGenerationService;
@@ -45,16 +55,28 @@ public class GenerateLinkedInDraftUseCase
         var weekly = await _weeklyRepository.GetByIdAsync(weeklyId, userId, cancellationToken)
             ?? throw new NotFoundException("semana_nao_encontrada", "Semana nao encontrada.");
 
-        var keyConcepts = weekly.Template.CuratedContents
-            .Where(c => c.Type is CuratedContentType.Reading or CuratedContentType.Video)
-            .Select(c => c.Title)
-            .Take(3)
+        var enrollment = (await _enrollmentRepository.GetByUserIdAsync(userId, cancellationToken)).FirstOrDefault(e => e.Id == weekly.EnrollmentId);
+        var courseName = enrollment is null ? null : (await _courseRepository.GetByIdAsync(enrollment.CourseId, cancellationToken))?.Name;
+
+        // Um item por dia, na ordem: titulo do material (Leitura, ou Video) e os pontos de "O que levar daqui".
+        var contentById = weekly.Template.CuratedContents.ToDictionary(c => c.Id);
+        var days = weekly.Dailies
+            .Where(d => !d.IsReinforcement)
+            .OrderBy(d => d.DayNumber)
+            .Select(d => (d.Activities.FirstOrDefault(a => a.Type == ActivityType.Reading) ?? d.Activities.FirstOrDefault(a => a.Type == ActivityType.Video))?.ContentId)
+            .Where(id => id is not null && contentById.ContainsKey(id.Value))
+            .Select(id => contentById[id!.Value])
+            .DistinctBy(c => c.Id)
+            .Select(c => new WeekDay(c.Title, ExtractTakeaways(c.BodyText)))
             .ToList();
 
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
         var personalization = PersonalizationPromptBuilder.BuildInstruction(_personalization.Interests(user?.Interests), _personalization.Notes(user?.AdditionalProfileNotes));
 
-        var prompt = BuildPrompt(weekly.Theme ?? weekly.Title, keyConcepts, personalization);
+        var prompt = BuildPrompt(
+            courseName, weekly.Theme ?? weekly.Title, days,
+            ExtractObjective(weekly.Template.WeeklyProjectSpecText), Truncate(weekly.Project?.Feedback, MaxFeedbackLength),
+            personalization);
         // Fase 94: Medicao de IA anota aluno e dia/semana desta chamada.
         await _aiUsage.EnsureBudgetAsync(userId, cancellationToken);
         using var aiUsage = _aiUsage.Begin(userId, weeklyId: weeklyId);
@@ -68,20 +90,67 @@ public class GenerateLinkedInDraftUseCase
             weeklyId, publication.Status, publication.Platform, publication.SubmittedUrl, publication.GeneratedDraft, publication.ValidationError);
     }
 
-    private static string BuildPrompt(string theme, IReadOnlyCollection<string> keyConcepts, string? personalization)
+    internal record WeekDay(string Title, IReadOnlyList<string> Takeaways);
+
+    internal static string BuildPrompt(
+        string? courseName, string theme, IReadOnlyList<WeekDay> days, string? projectObjective, string? projectFeedback, string? personalization)
     {
-        var conceitos = keyConcepts.Count > 0
-            ? string.Join(", ", keyConcepts)
-            : theme;
+        var sb = new StringBuilder();
+        var curso = string.IsNullOrWhiteSpace(courseName) ? "um curso da Focadu" : $"o curso \"{courseName}\" da Focadu";
+        sb.Append("Escreva em português um post de LinkedIn, em primeira pessoa e tom pessoal, contando que acabei de fechar ")
+          .Append($"a semana \"{theme}\" de {curso}.");
 
-        var personalizationBlock = personalization is null ? string.Empty : $" {personalization}";
+        if (days.Count > 0)
+        {
+            sb.Append("\n\nO que estudei, dia a dia:");
+            foreach (var day in days)
+            {
+                sb.Append($"\n- {day.Title}");
+                if (day.Takeaways.Count > 0) sb.Append(": ").Append(string.Join(" ", day.Takeaways));
+            }
+        }
 
-        return
-            $"Escreva um post de LinkedIn (em português, primeira pessoa, tom pessoal) contando que " +
-            $"acabei de concluir um módulo de estudos sobre \"{theme}\" numa trilha de segurança web. " +
-            $"Os principais conceitos que estudei foram: {conceitos}." + personalizationBlock + " " +
-            "Fale sobre o que aprendi e por que isso importa pra segurança de aplicações web de " +
-            "verdade, sem soar corporativo ou genérico. No máximo 3 parágrafos curtos, termine com " +
-            "2 a 4 hashtags relevantes (ex: #websecurity, #cybersecurity).";
+        if (!string.IsNullOrWhiteSpace(projectObjective))
+            sb.Append("\n\nNo fim da semana entreguei um projeto prático. Objetivo do projeto: ").Append(projectObjective);
+        if (!string.IsNullOrWhiteSpace(projectFeedback))
+            sb.Append("\n\nComentário da avaliação do meu projeto (use só o que deu certo; nunca cite erro, ponto fraco ou nota): ")
+              .Append(projectFeedback);
+        if (personalization is not null) sb.Append("\n\n").Append(personalization);
+
+        sb.Append("\n\nEscolha 2 ou 3 coisas concretas do que estudei e do projeto, explique em palavras simples por que importam ")
+          .Append("e conte o que eu construí. Sem soar corporativo, sem inventar nada que não esteja acima e sem citar a nota. ")
+          .Append("No máximo 3 parágrafos curtos, até 1200 caracteres, e termine com 2 a 4 hashtags ligadas ao assunto do curso.");
+        return sb.ToString();
     }
+
+    /// <summary>Os pontos da lista em "### O que levar daqui" do texto do dia (molde v1), sem o numero.</summary>
+    internal static IReadOnlyList<string> ExtractTakeaways(string? body)
+    {
+        if (string.IsNullOrEmpty(body)) return [];
+        var match = Regex.Match(body, @"^#+\s*O que levar daqui\s*$", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        if (!match.Success) return [];
+        return body[(match.Index + match.Length)..]
+            .Split('\n')
+            .Select(l => l.Trim())
+            .TakeWhile(l => !l.StartsWith('#'))
+            .Select(l => Regex.Match(l, @"^(?:\d+[.)]|[-*])\s+(.+)$"))
+            .Where(m => m.Success)
+            .Select(m => m.Groups[1].Value.Trim())
+            .Take(MaxTakeawaysPerDay)
+            .ToList();
+    }
+
+    /// <summary>O primeiro paragrafo da secao "### Objetivo" do enunciado (projeto.json, specText), ou o comeco do texto.</summary>
+    internal static string? ExtractObjective(string? spec)
+    {
+        if (string.IsNullOrWhiteSpace(spec)) return null;
+        var match = Regex.Match(spec, @"^#+\s*Objetivo\s*$", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        var rest = match.Success ? spec[(match.Index + match.Length)..] : spec;
+        var paragraph = rest.Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault(p => !p.StartsWith('#'));
+        return Truncate(paragraph, MaxObjectiveLength);
+    }
+
+    private static string? Truncate(string? text, int max) =>
+        string.IsNullOrWhiteSpace(text) ? null : text.Length <= max ? text.Trim() : text[..max].TrimEnd() + "...";
 }

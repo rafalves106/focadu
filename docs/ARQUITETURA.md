@@ -4,7 +4,7 @@
 > retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
 > como e quando este arquivo e atualizado.
 >
-> Ultima fase que atualizou este documento: **Fase 105 - Repositorio do Projeto Semanal sai quando o projeto abre** (Fase 104: `importar` le o projeto.json; Fase 103: Medicao de produto, aba Retencao; Fase 102: Termos, privacidade e aceite; Fase 100b: README do Projeto Semanal no app; Fase 101: Travas de IA; Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
+> Ultima fase que atualizou este documento: **Fase 106 - Publicacao so no LinkedIn com post da Focada; trilha aponta pro castelo** (Fase 105: repositorio do Projeto Semanal sai quando o projeto abre; Fase 104: `importar` le o projeto.json; Fase 103: Medicao de produto, aba Retencao; Fase 102: Termos, privacidade e aceite; Fase 100b: README do Projeto Semanal no app; Fase 101: Travas de IA; Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
 
 ## Visao geral do projeto
 
@@ -153,8 +153,8 @@ src/
     Weeklies/                       <- GetWeeklyDetailUseCase, Dtos.cs, EvaluateWeeklyProjectUseCase
                                        (Fase 11 - fecha lacuna aberta desde a Fase 7),
                                        GetPublicationStatusUseCase, GenerateLinkedInDraftUseCase,
-                                       GetGitHubRepositoriesUseCase, CommitModuleSummaryUseCase,
-                                       SubmitPublicationUseCase, PublicationDtos.cs (Fase 11) -
+                                       SubmitPublicationUseCase (Fase 106: o fluxo GitHub
+                                       saiu), PublicationDtos.cs (Fase 11) -
                                        todos +userId na Fase 13 (filtro de propriedade)
     Content/                         <- CreateCuratedContentUseCase, UpdateCuratedContentUseCase
                                        (Fase 4; Fase 13: passam a usar IWeeklyTemplateRepository,
@@ -1253,16 +1253,17 @@ GitHub) antes da proxima Weekly liberar.
   automaticamente logo apos aceitar a URL (composicao, chama `EvaluateWeeklyProjectUseCase.
   ExecuteAsync` por dentro), entao o bloqueio acima passou de "nunca engata de verdade" pra
   funcional - ver "Fase 27b" no changelog de fases.
-- **Geracao do rascunho de LinkedIn** (`GenerateLinkedInDraftUseCase` + `GroqDraftGenerationService`):
-  usa `Weekly.Theme` (ou `Title`) + ate 3 titulos de `CuratedContent` (`Reading`/`Video`) como
-  contexto - **nao** usa `AiFeedback` de nenhuma `ActivityResponse` de proposito (evita vazar o
-  resultado de uma tentativa especifica num post publico). Groq sem JSON mode (texto livre, tom
-  pessoal em primeira pessoa).
-- **Fluxo GitHub** (`GetGitHubRepositoriesUseCase`, `CommitModuleSummaryUseCase`,
-  `GitHubService`): lista repos publicos, cria/reusa um repo, commita um resumo Markdown
-  (`MODULO-{n}.md`) via `PUT /repos/{owner}/{repo}/contents/{path}`. O commit bem sucedido *e* a
-  prova - `CommitModuleSummaryUseCase` ja chama `Submit`+`MarkValidated` na mesma operacao, sem
-  round-trip de validacao redundante depois.
+- **Geracao do rascunho de LinkedIn** (`GenerateLinkedInDraftUseCase` + `GroqDraftGenerationService`),
+  feita so quando o aluno clica para publicar. Fase 106: o prompt leva o nome do curso (matricula ->
+  `Course.Name`), cada dia da semana (titulo do material `Reading`/`Video` + ate 3 pontos de
+  "### O que levar daqui"), o objetivo do Projeto Semanal (1o paragrafo de "### Objetivo" do
+  `WeeklyProjectSpecText`) e o `WeeklyProject.Feedback` da avaliacao, com a ordem de usar so o que deu
+  certo; a nota nunca entra. Continua **sem** `AiFeedback` de `ActivityResponse` (evita vazar uma
+  tentativa num post publico). Interesses do perfil seguem (Fase 27). Groq sem JSON mode.
+- **Fluxo GitHub removido (Fase 106)**: `CommitModuleSummaryUseCase`/`GetGitHubRepositoriesUseCase` e
+  os endpoints `github-commit` e `/github/repositories` sairam. Commitavam pelo token do servidor (repo
+  na conta da plataforma, nao na do aluno) e, com `GitHub:Token` em branco em producao, so davam 502.
+  `PublicationPlatform.GitHub` fica no enum: publicacoes antigas assim seguem `Validated`.
 - **Validacao de LinkedIn e so estrutural, decisao permanente (Fase 21+), nao e mais pendencia**:
   regex (`linkedin.com/(posts|feed/update)/...`) confirma que a URL tem formato de post, nunca que
   o post fala sobre o modulo de verdade. Avaliado e descartado validar conteudo via API oficial do
@@ -1270,10 +1271,8 @@ GitHub) antes da proxima Weekly liberar.
   de parceiros da LinkedIn (processo de negocio, nao self-serve), desproporcional pra um app de
   estudo pessoal solo. Fluxo GitHub continua validando de verdade (`IGitHubService.
   GetRepositoryAsync`, acima) porque a API do GitHub e publica e gratuita pra isso.
-- **Um unico `SubmitPublicationUseCase` cobre LinkedIn e GitHub** (nao ha
-  `ValidatePublicationUseCase` separado) - GitHub valida via `IGitHubService.GetRepositoryAsync`
-  (owner/repo extraidos da URL, exige `IsPrivate == false`); retry e so resubmeter a mesma URL
-  pelo mesmo endpoint, nao precisa de logica nova.
+- **`SubmitPublicationUseCase` so aceita LinkedIn** (Fase 106; outra plataforma = 400
+  `platform_invalida`); retry e so resubmeter a URL pelo mesmo endpoint.
 - **GitHub nunca foi testado contra a API real** (decisao explicita do usuario na Fase 11, ver
   `docs/fase-11/resumo-implementacao-fase-11.md`) - verificado via `page.route()` do Playwright
   mockando as chamadas que tocariam GitHub de verdade. Revisado por leitura de codigo nesta fase
@@ -1340,9 +1339,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 PUT | `/api/agent/skin` | `UpdateAgentSkinToneUseCase` (Fase 71) | 200 (catalogo recalculado), 400, 409 (`agente_nao_criado`) |
 | 🔒 GET | `/api/weeklies/{weeklyId}/publication/status` | `GetPublicationStatusUseCase` (Fase 11) | 200, 404 |
 | 🔒 POST | `/api/weeklies/{weeklyId}/publication/draft` | `GenerateLinkedInDraftUseCase` (Fase 11) | 200, 404, 502 (Groq) |
-| 🔒 POST | `/api/weeklies/{weeklyId}/publication/github-commit` | `CommitModuleSummaryUseCase` (Fase 11) | 200, 400/404, 502 (GitHub) |
-| 🔒 POST | `/api/weeklies/{weeklyId}/publication/submit` | `SubmitPublicationUseCase` (Fase 11) | 200, 400/404 - LinkedIn valida por regex, GitHub chama a API real |
-| 🔒 GET | `/api/github/repositories` | `GetGitHubRepositoriesUseCase` (Fase 11) | 200, 502 (GitHub) - exige login, sem filtro por usuario (1 token global do GitHub) |
+| 🔒 POST | `/api/weeklies/{weeklyId}/publication/submit` | `SubmitPublicationUseCase` (Fase 11) | 200, 400/404 - so `platform=LinkedIn`, valida por regex (Fase 106: GitHub e `github-commit`/`/github/repositories` sairam) |
 | 🔒 POST | `/api/squads` | `CreateSquadUseCase` (Fase 24) | 201 (`SquadDto`), 409 `ja_esta_em_squad` |
 | 🔒 POST | `/api/squads/join` | `JoinSquadUseCase` (Fase 24; pedido desde a Fase 77) | 200 (`SquadJoinRequestDto` pendente - o mesmo se ja havia um aberto pra este squad), 404 `codigo_invalido`, 409 `ja_esta_em_squad`/`pedido_recusado` |
 | 🔒 DELETE | `/api/squads/members/{userId}` | `LeaveSquadUseCase` (se `{userId}` = usuario logado) ou `RemoveMemberUseCase` (Fase 24) | 204, 404 `squad_nao_encontrado`/`membro_nao_encontrado`, 409 `dono_nao_pode_sair`/`dono_nao_pode_se_remover` |
@@ -2186,7 +2183,8 @@ validacao real do Groq na Fase 5):**
   precisar de um `Code` por status.
 - **Ainda pendente (exige chave real, nao verificavel so por leitura de codigo):** confirmar que
   os fluxos abaixo batem na API de verdade e que as mensagens acima realmente aparecem assim.
-  Checklist pro Falves (mesmo escopo do pedido original da Fase 11):
+  Checklist pro Falves (mesmo escopo do pedido original da Fase 11). **Obsoleto desde a Fase 106**: a
+  prova publica do modulo nao passa mais pelo GitHub; fica so como registro do adapter `GitHubService`:
   1. `github-commit` (`CommitModuleSummaryUseCase`) num repo **novo** - confirma o caminho feliz.
   2. `github-commit` **de novo pro mesmo modulo** (mesmo repo, mesmo `MODULO-{n}.md`) - e o teste
      que valida o fix do `sha` acima; sem ele, essa chamada quebrava com 422.
@@ -2571,6 +2569,10 @@ Refacao dos cursos (`secret/produto/PLANO-CURADORIA.md`, 02/10/2026). Detalhe do
 - **Curso em Draft** visivel ao dono (desde a Fase 96 pelo `CourseAccess`/`CourseViewer`) em `/courses/{id}/curriculum` e `/weekly-templates/{id}`.
 - **Trilha:** `CourseTrail` (`components/courseMap/`) gera a trilha so dos dados do curso; o mapa por regioes
   (`CourseMap.tsx`, `lib/courseMaps.ts`) foi apagado. Ponte marcada por `IsBridge` nos DTOs de resumo da Daily.
+  Fase 106: onde o aluno esta vem de `currentStop` (`lib/focadaMapLines.ts`): Daily em andamento, senao o castelo
+  da 1a semana com os dias feitos e projeto nao avaliado ou publicacao pendente (`isWeekClosurePending`), senao o
+  proximo dia de semana destrancada. Trilha, `WeekPathCard`, seletor de curso e `DailyMissionCard` usam a mesma regra
+  (antes a Focada sumia: `isNext` apontava o 1o dia da semana seguinte, trancada, e o card mostrava a ponte).
 - **Seed do Web Security:** nao cria o curso sem `conteudo/web-security/semana-1/dia-1.json`. `arquitetura-de-software`
   entra no seed generico (Draft).
 

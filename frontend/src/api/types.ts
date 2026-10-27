@@ -852,14 +852,6 @@ export interface ModulePublicationDto {
   validationError: string | null;
 }
 
-export interface GitHubRepoDto {
-  owner: string;
-  name: string;
-  fullName: string;
-  url: string;
-  isPrivate: boolean;
-}
-
 export interface ApiErrorBody {
   error: string;
   message: string;

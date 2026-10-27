@@ -54,8 +54,6 @@ public static class DependencyInjection
         services.AddScoped<AcceptTermsUseCase>();
         services.AddScoped<GetWeeklyProjectReadmeUseCase>();
         services.AddScoped<GenerateLinkedInDraftUseCase>();
-        services.AddScoped<GetGitHubRepositoriesUseCase>();
-        services.AddScoped<CommitModuleSummaryUseCase>();
         services.AddScoped<SubmitPublicationUseCase>();
         services.AddScoped<GetPublicationStatusUseCase>();
         services.AddScoped<GetDailyStateUseCase>();
