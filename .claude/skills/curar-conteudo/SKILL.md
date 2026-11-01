@@ -1,6 +1,6 @@
 ---
 name: curar-conteudo
-description: "Cura UM dia (ou o Projeto Semanal de uma semana, etapas P2 a P6) de um curso da Focadu (Web Security, Linux, Python pra Web Security, Design Patterns, Arquitetura de Software) pelo pipeline do plano de curadoria: texto (D2), linter (D3), revisão de escrita (D4), atividades (D5), validação (D6), revisão editorial (D7) e importação (D8). Grava em secret/conteudo/<curso>/semana-N/dia-N.json. Exige a ficha do dia aprovada (skill ficha-do-dia). Use quando o usuário pedir para curar, montar ou gerar o conteúdo de um dia, corrigir um dia a partir de uma lista do linter ou do revisor, ou invocar /curar-conteudo."
+description: "Cura UM dia (ou o Projeto Semanal de uma semana, etapas P2 a P6) de um curso da Focadu (Web Security, Linux, Python pra Web Security, Design Patterns, Arquitetura de Software) pelo pipeline do plano de curadoria: texto (D2), linter (D3), revisão de escrita (D4), atividades (D5), validação (D6), revisão editorial (D7) e publicação em produção (D8). Grava em secret/conteudo/<curso>/semana-N/dia-N.json. Exige a ficha do dia aprovada (skill ficha-do-dia). Use quando o usuário pedir para curar, montar ou gerar o conteúdo de um dia, corrigir um dia a partir de uma lista do linter ou do revisor, ou invocar /curar-conteudo."
 model: sonnet
 effort: medium
 metadata:
@@ -16,7 +16,7 @@ Regras e decisões: `secret/produto/PLANO-CURADORIA.md` (aprovado em 02/10/2026)
 ## Economia de tokens (meta: até ~60 mil de contexto por dia)
 
 - **Leitura do D2 e do D5 = pacote do dia**, um comando só: `node secret/processo/scripts/pacote-dia.mjs <curso> <dia> --etapa d2` (depois `--etapa d5`). Ele extrai dos arquivos-fonte a ficha, os termos do dia no glossário (dos dias anteriores, só os nomes), os assumidos, as regras do molde certo e um esqueleto do dia exemplo (1 peça por tipo). Não abra esses arquivos de novo por fora; o `dia.schema.json` quem confere é o linter.
-- **Sessão só de curadoria:** a ficha (D1) roda em outra sessão; infra, workflow e código ficam fora. Modelo Sonnet; esforço médio no D2, baixo no D5/D6/D8.
+- **Sessão só de curadoria:** a ficha (D1) roda em outra sessão; infra, workflow e código ficam fora. Modelo Sonnet; esforço médio no D2, baixo no D5/D6.
 - **O `dia-N.json` nasce com um `Write` só**, já completo. Correção é `Edit` cirúrgico no trecho apontado. Nada de gerador Python que reemite o dia inteiro a cada ajuste.
 - **Saída de comando sempre filtrada:** linter e docker com `| tail -40` ou `grep`; nunca `cat` de JSON ou log inteiro.
 - **D2 a D6 rodam no agente `curador`** (Sonnet, poucas ferramentas, contexto inicial menor), e os ajustes pedidos pelo D7 também, em outra chamada dele. A sessão principal só coordena: dispara o `curador`, o `revisor-editorial`, importa (D8) e atualiza o `estado.md`.
@@ -28,7 +28,7 @@ Slugs: `web-security`, `linux`, `python-websec`, `design-patterns`, `arquitetura
 
 1. A ficha do dia existe e está `ficha ok` em `secret/processo/cursos/<curso>/estado.md`. Sem ela, pare e mande rodar `/ficha-do-dia`.
 2. O molde está congelado ou o pedido é um **piloto** autorizado pelo dono (plano, Fase 2). Nenhum dia novo fora disso.
-3. **Dia-âncora** (dia 1 do curso ou da semana): cure só ele e pare no D7; o dono lê e aprova antes de qualquer outro dia da semana. Se reprovar, o ajuste vai para a **ficha**, não para o texto.
+3. **Dia-âncora** (dia 1 do curso ou da semana): cure só ele e pare no D7; depois do D8 (em produção) o dono lê no app e aprova antes de qualquer outro dia da semana. Se reprovar, o ajuste vai para a **ficha**, não para o texto.
 
 ## Etapas
 
@@ -41,10 +41,9 @@ Slugs: `web-security`, `linux`, `python-websec`, `design-patterns`, `arquitetura
 | **D6 Validação** | nada (script) | Linter em modo completo, `json.load`, log de execução, verificadores do lab; Haiku só para o que script não pega | `PASSOU`; senão volta ao D5 |
 | **D7 Revisão editorial** | (o agente lê) | Agente `revisor-editorial`, em **contexto limpo**, com dia, ficha do dia, ficha do curso, linha editorial e relatório do linter | `aprovado` |
 | **D7b Leitura por persona** (só dia-âncora) | (o agente lê) | Um agente em contexto limpo lê o dia como o aluno lê (Reading, missões, atividades) no papel de uma persona do público-alvo e grava `secret/processo/cursos/<curso>/avaliacao-persona-<persona>-dia-N.md` (onde trava, sugestão, prioridade). Personas de referência: usuária de Windows que nunca abriu terminal; pessoa com dificuldade de leitura e ansiedade. Ponto de prioridade alta volta ao D2/D5 antes de o dono ler | sem ponto alto |
-| **D9 Publicar** (só depois do dono abrir o dia no app e aprovar) | nada (workflow) | Dono dispara o workflow `Publicar conteudo curado` (`workflow_dispatch`, curso e dias): atualiza o `secret/` da VM, roda o linter, faz o dry-run em produção; com `aplicar` faz backup, importa e confere que um novo dry-run dá `Unchanged`. A sessão **não** dispara nem faz push sozinha | resumo do job sem erro; marcar `no ar` no `estado.md` |
-| **D8 Importar** | nada (comando) | `dotnet run --project backend/src/Focadu.Api -- importar <curso> --dia N` (`--dry-run` antes); depois abrir o dia no app local (`rodar-projeto`) e marcar `pronto` no `estado.md`. Detalhes em `secret/processo/importador.md` | dia aberto no app |
+| **D8 Publicar em produção** | nada (workflow) | Não existe banco nem app local: o dono testa direto na plataforma em produção. Com o dia revisado (D7), siga a skill `importar-producao`: commit e push do `secret/` só com o ok do dono, workflow `publicar-conteudo` em dry-run (linter + conferência na VM) e, com o ok do dono, `aplicar=true` (backup, importa e confere `Unchanged`). Detalhes em `secret/processo/importador.md` | resumo do job sem erro; marcar `no ar` no `estado.md` |
 
-Estado visível no `estado.md`: `a fazer` → `ficha ok` → `validado` (após D6) → `revisado` (após D7) → `pronto` (após D8 e o dia aberto no app) → `no ar` (após D9, em produção). Anote também os tokens gastos pelo dia.
+Estado visível no `estado.md`: `a fazer` → `ficha ok` → `validado` (após D6) → `revisado` (após D7) → `no ar` (após D8, importado em produção, o dono ainda testando) → `pronto` (o dono aprovou no app em produção). Anote também os tokens gastos pelo dia.
 
 ### D2 e D5: como escrever
 
@@ -66,7 +65,7 @@ Leia só: a ficha da semana, `schema-projeto.md`, `regras-de-leitura.md`, `GUIA-
 | **P3 Linter** | `node secret/processo/scripts/linter-dia/src/projeto-cli.js <projeto.json> --ficha secret/processo/cursos/<curso>/fichas/semana-N.ficha.md` (palavras, seções, critérios, palavras subjetivas, tamanho das falas, alvo existente na ficha) | `PASSOU`; senão volta ao P2 (máx. 2 voltas) |
 | **P4 Repositório-modelo rodando** | Monta `semana-N/modelos/python/` (código-base funcionando, 2 ou 3 partes marcadas para o aluno, `README.base.md` com `{{ENUNCIADO}}`); gera o README com `processo/scripts/gerar_readme_modelo.py semana-N` (nunca à mão); **executa de verdade** em `python:3.12-slim` contra o site de laboratório: a versão resolvida passa em todos os critérios, o modelo incompleto falha só nas partes marcadas. Registra em `logs/projeto-N.log` | log sem erro inesperado |
 | **P5 Revisão editorial** | Agente `revisor-editorial` em contexto limpo, com `projeto.json`, ficha da semana, linha editorial e log. Reprova critério sem alvo ou que cobra o que os dias não ensinaram | `aprovado` |
-| **P6 Importar e publicar** | O importador ainda não lê `projeto.json` (não consta em `processo/importador.md`): **avise o dono** e não use SQL. Publicar o modelo no Forgejo (`publicar_modelo_forgejo.py`) só com ele autorizando | dono aprova o enunciado e o projeto rodando |
+| **P6 Importar e publicar** | Direto em produção, sem banco local: skill `importar-producao` com `projeto=so` (dry-run, depois `aplicar=true` com o ok do dono). Publicar o modelo no Forgejo (`publicar_modelo_forgejo.py`) só com ele autorizando. Nunca SQL | dono aprova o enunciado e o projeto rodando |
 
 Estado: anote o projeto numa linha do `estado.md` da semana (`projeto N: enunciado ok / validado / revisado / pronto`) e os tokens gastos. Termine pedindo a aprovação do dono.
 
@@ -93,7 +92,7 @@ Cada uma passou pelo linter e só apareceu na revisão ou no teste no app. Confi
 - **Uma pergunta por conversa por voz** (não "e por quê? E o que...?"); o Quiz muda o ângulo da voz do mesmo bloco (`processo/molde/regras-de-quiz.md`, "Repetição entre peças").
 - **Negrito só nos `newTerms`.** Termo de apoio da ficha leva meia frase, sem negrito.
 - **Sem afirmação numérica solta** ("dezenas de requisições") que o log não mostra.
-- **Primeiro dia de um curso:** o importador (D8) exige `conteudo/<curso>/curso.json`; sem ele, crie a partir do `roteiro.md` com `published: false` e avise o dono.
+- **Primeiro dia de um curso:** o importador (D8, em produção) exige `conteudo/<curso>/curso.json`; sem ele, crie a partir do `roteiro.md` com `published: false` e avise o dono.
 
 ## Correção
 

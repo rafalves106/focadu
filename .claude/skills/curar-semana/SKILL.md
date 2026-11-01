@@ -1,6 +1,6 @@
 ---
 name: curar-semana
-description: "Orquestra a curadoria de uma semana inteira de um curso da Focadu, de ponta a ponta: resolve as pendências (escreve as fichas dos dias que faltam e constrói o lab da semana quando a ficha da semana pede), depois para cada dia chama o agente curador (D2 a D6), o revisor-editorial (D7) e as voltas de ajuste, sem /clear entre dias. Respeita o portão do dia-âncora (para no D7 do dia 1 da semana e espera o dono). Use quando o usuário invocar /curar-semana <curso> <semana> [dia N aprovado] [conferir-fichas] ou pedir para curar a semana toda de uma vez. NÃO escreve a ficha da semana, NÃO publica em produção (D9), NÃO faz commit nem push."
+description: "Orquestra a curadoria de uma semana inteira de um curso da Focadu, de ponta a ponta: resolve as pendências (escreve as fichas dos dias que faltam e constrói o lab da semana quando a ficha da semana pede), depois para cada dia chama o agente curador (D2 a D6), o revisor-editorial (D7) e as voltas de ajuste, sem /clear entre dias. Respeita o portão do dia-âncora (para no D7 do dia 1 da semana e espera o dono). Use quando o usuário invocar /curar-semana <curso> <semana> [dia N aprovado] [conferir-fichas] ou pedir para curar a semana toda de uma vez. NÃO escreve a ficha da semana, NÃO publica em produção (D8), NÃO faz commit nem push."
 argument-hint: "<curso> <semana> [dia N aprovado] [conferir-fichas]"
 model: sonnet
 effort: low
@@ -56,7 +56,7 @@ Para cada dia a curar:
    - `aprovado`: anote `revisado` no `estado.md` e passe ao próximo dia.
    - Lista de ajustes: chame o `curador` em **modo ajuste**, passando a lista literal do revisor, e depois o revisor de novo (outra chamada, contexto limpo). **No máximo 2 voltas de ajuste.** Se ainda reprovar, pare nesse dia e relate.
    - `pergunta ao dono:` do revisor: não decida sozinho. Guarde para o relatório final e siga só se o revisor também deu `aprovado`.
-3. **Importação local (D8):** opcional. Só se o dono pediu, rode `dotnet run --project backend/src/Focadu.Api -- importar <curso> --dia N --dry-run | tail -20` e relate. Nunca sem `--dry-run` por conta própria.
+3. **Importação:** não existe banco local. A importação é direto em produção, depois (skill `importar-producao`); não rode `dotnet ... importar` aqui.
 4. Registre no `estado.md` os tokens do dia quando o agente informar; não invente.
 
 Entre dias, não releia nada além do resumo que o agente devolveu.
@@ -76,7 +76,7 @@ Fichas escritas, lab construído (com o resultado do teste) e uma tabela, nada a
 | Dia | Estado | Voltas | Observação |
 |---|---|---|---|
 
-Depois: perguntas ao dono guardadas, dias pulados, fichas que faltam, e o próximo passo. Os passos que sobram são do dono: ler o dia no app (`rodar-projeto`) e disparar o workflow `Publicar conteudo curado` (D9, ver `importar-producao`). Não dispare, não faça commit nem push.
+Depois: perguntas ao dono guardadas, dias pulados, fichas que faltam, e o próximo passo. Os passos que sobram são do dono: publicar em produção pelo workflow `publicar-conteudo` (D8, ver `importar-producao`) e ler o dia direto no app em produção. Não dispare, não faça commit nem push.
 
 ## Limites
 
