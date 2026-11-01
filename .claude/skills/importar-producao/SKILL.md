@@ -39,6 +39,22 @@ o dono pedir, simule antes de `--apply` e nunca imprima o `FORGEJO_ADMIN_TOKEN` 
    `confirmar=true` apaga respostas das atividades trocadas e recomeça Dailies não concluídas: só com autorização explícita.
 5. **Conferir**: o workflow já repete o dry-run e falha se algo não ficou igual ao arquivo. Atualize o `estado.md` do curso se for a etapa D8/P6 (`no ar`; `pronto` só quando o dono aprovar no app). Não há banco nem app local: a produção é o único ambiente de teste do dono.
 
+## Projeto Semanal novo: publicar o modelo no Forgejo (passo fixo, antes do `aplicar=true`)
+
+Todo projeto semanal novo tem um repositório-modelo (`semana-N/modelos/python/`) que precisa existir no Forgejo **antes** de importar com o
+slug ligado; senão o projeto aponta para um template inexistente. Ordem:
+
+1. Ponha `"forgejoTemplateSlug": "template-web-security-semana-N-<nome>"` no `projeto.json` (padrão dos projetos 1 a 3), rode o linter do projeto,
+   `gerar_readme_modelo.py --check`, faça commit e push do `focadu-secret`.
+2. Dry-run do workflow (`aplicar=false`): isso também atualiza o `secret/` da VM, de onde o script lê o modelo.
+3. Publique o modelo por SSH (comando abaixo): primeiro **sem** `--apply` (simulação: confere os arquivos e se o repo já existe), depois com `--apply`.
+   ```
+   ssh -i ~/.ssh/focadu_oracle -o IdentitiesOnly=yes -o BatchMode=yes ubuntu@204.216.169.181 'cd ~/focadu && export FORGEJO_ADMIN_TOKEN=$(grep -E "^FORGEJO_ADMIN_TOKEN=" .env | cut -d= -f2-) && python3 secret/processo/scripts/publicar_modelo_forgejo.py --url http://localhost:3020 --slug <slug> --dir secret/conteudo/web-security/semana-N/modelos/python [--apply]'
+   ```
+   O script nunca sobrescreve: se o repositório existir, aborta. Se o modo automático bloquear a escrita remota, pare e peça ao dono (`!` + o comando)
+   ou uma regra em `.claude/settings.local.json`; não contorne.
+4. `aplicar=true` no workflow, conferir `Unchanged` e atualizar o `estado.md` (`no ar`, slug do template).
+
 ## Plano B (workflow indisponível)
 
 Dry-run manual no container (por SSH, como acima, ou o dono roda com `!`):
