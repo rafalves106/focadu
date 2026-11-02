@@ -2,12 +2,12 @@
 
 | Arquivo                                      | O que é                                                                                                                                                                                                                                                                                                                | Quando muda                                                       |
 | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `docs/ARQUITETURA.md`                        | **Fonte da verdade técnica.** Retrato sempre atual do estado do projeto (schema, endpoints, decisões, pendências). É grande (~200KB) — busque a seção relevante em vez de ler tudo; o cabeçalho tem a linha "Última fase que atualizou este documento", que é a forma mais barata de saber em que fase o projeto está. | Toda fase, editado em cima do que existe, nunca recriado do zero. |
+| `docs/arch/estado/`                        | **Fonte da verdade técnica.** Retrato sempre atual do estado do projeto (schema, endpoints, decisões, pendências). É grande (~200KB) — busque a seção relevante em vez de ler tudo; o cabeçalho tem a linha "Última fase que atualizou este documento", que é a forma mais barata de saber em que fase o projeto está. | Toda fase, editado em cima do que existe, nunca recriado do zero. |
 | `docs/HISTORICO-FASES.md`                    | Uma linha por fase (1–92+) e o resumo detalhado das Fases 86–91, tirados deste arquivo em 06/10/2026 para economizar contexto.                                                                                                                                                                                         | Ao fechar fase, acrescentar a linha dela lá (não aqui).           |
 | `docs/ESTADO-HISTORICO.md`                   | Marcos das Fases 25–87 com o porquê de cada decisão, arquivado deste arquivo em 30/09/2026.                                                                                                                                                                                                                            | Não editar; só consultar.                                         |
 | `docs/DOCKER.md`                             | Guia prático de Docker/deploy: subir local, variáveis (`.env`), runbook, runner.                                                                                                                                                                                                                                       | Quando o deploy mudar.                                            |
 | `docs/CONVENCOES.md`                         | A própria convenção de documentação/fechamento de fase descrita abaixo.                                                                                                                                                                                                                                                | Só se a convenção em si mudar.                                    |
-| `docs/fase-N/resumo-implementacao-fase-N.md` | Histórico imutável de cada fase (o que foi feito, decisões, dúvidas em aberto).                                                                                                                                                                                                                                        | Escrito uma vez ao fechar a fase N, nunca editado depois.         |
+| `docs/fases/fase-N/resumo-implementacao-fase-N.md` | Histórico imutável de cada fase (o que foi feito, decisões, dúvidas em aberto).                                                                                                                                                                                                                                        | Escrito uma vez ao fechar a fase N, nunca editado depois.         |
 | `secret/MESTRE.md`                           | Princípios de decisão, filosofia de produto e regras de negócio ("o porquê"), em repo próprio e ignorado. Não duplica o nível de detalhe técnico do `ARQUITETURA.md`.                                                                                                                                                  | Quando o escopo de produto muda (passo 4 do fechamento de fase).  |
 | `secret/curadoria/`, `secret/rascunhos/`     | Conteúdo didático curado e ideias não decididas ainda. Geridos pelas skills `curar-conteudo` e `registrar-rascunho` já em `.claude/skills/`.                                                                                                                                                                           | Via as skills acima.                                              |
 
@@ -16,8 +16,8 @@
 Definida em `docs/CONVENCOES.md`; resumo aqui porque este arquivo é sempre carregado e aquele não.
 Ao final de **toda fase de implementação**:
 
-1. Criar `docs/fase-N/resumo-implementacao-fase-N.md` (modelo fixo em `docs/CONVENCOES.md`).
-2. Atualizar `docs/ARQUITETURA.md` in-place (nunca recriar do zero) para refletir o estado novo,
+1. Criar `docs/fases/fase-N/resumo-implementacao-fase-N.md` (modelo fixo em `docs/CONVENCOES.md`).
+2. Atualizar `docs/arch/estado/` in-place (nunca recriar do zero) para refletir o estado novo,
    incluindo a linha do cabeçalho "Última fase que atualizou este documento".
 3. Acrescentar a linha da fase em `docs/HISTORICO-FASES.md`. Se a fase mudou o resumo de alto nível do produto (não só detalhe técnico), atualizar a seção
    "Estado atual" deste arquivo (abaixo) com a fase/data mais recente.
@@ -42,7 +42,7 @@ Regra geral: **o modelo mais barato que dá conta**, e o contexto principal fica
 
 Hábitos obrigatórios:
 
-- Ler `docs/ARQUITETURA.md` por seção (grep no cabeçalho), nunca inteiro (~200KB).
+- Ler `docs/arch/estado/` por seção (grep no cabeçalho), nunca inteiro (~200KB).
 - Não reler arquivo que acabou de ser editado; não narrar opções que não serão seguidas.
 - Tarefa longa e independente (ex.: curar semana) → sessão nova por unidade (dia/semana), com `/clear` ou `/compact` entre elas.
 - Só spawnar agente quando a tarefa gera muita leitura e pouca conclusão. Tarefa pequena: fazer direto.

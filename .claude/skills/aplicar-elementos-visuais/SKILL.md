@@ -11,7 +11,7 @@ Fases 30/31 acrescentaram elementos visuais ao `bodyText` de uma Reading: blocos
 em 4 tipos (`sequencia`, `comparacao`, `camadas`, `partes` — ver processo/molde/diagramas.md pra sintaxe de
 cada um) e blocos ` ``` ` genéricos (código monoespaçado). Esta skill aplica esses elementos a
 **conteúdo que já existe** em `secret/processo/arquivo/conteudo-antigo/` (dias novos já nascem com diagrama na etapa D2 de `curar-conteudo`), sem tocar em domínio/backend/frontend (isso já
-foi implementado — ver `docs/fase-30/` e `docs/fase-31/`).
+foi implementado — ver `docs/fases/fase-30/` e `docs/fases/fase-31/`).
 
 ## Antes de qualquer coisa
 
@@ -100,6 +100,6 @@ foi implementado — ver `docs/fase-30/` e `docs/fase-31/`).
   `secret/processo/arquivo/conteudo-antigo/web-security/semana-2/dia-8.json`,
   `secret/processo/arquivo/conteudo-antigo/web-security/semana-12/dia-56.json` — os exemplos canônicos já aplicados (um
   de cada tipo, ver item 2 de "Antes de qualquer coisa" acima).
-- `docs/fase-30/resumo-implementacao-fase-30.md` (tipo `sequencia` + infra de fence) e
-  `docs/fase-31/resumo-implementacao-fase-31.md` (tipos `comparacao`/`camadas`/`partes`) — como o
+- `docs/fases/fase-30/resumo-implementacao-fase-30.md` (tipo `sequencia` + infra de fence) e
+  `docs/fases/fase-31/resumo-implementacao-fase-31.md` (tipos `comparacao`/`camadas`/`partes`) — como o
   recurso foi implementado (parser, componentes, efeitos colaterais tratados).

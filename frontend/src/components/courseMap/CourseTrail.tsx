@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DailyStatus, WeeklyProjectStatus, type CourseDetailDto, type DailyStatusSummaryDto, type WeeklyOverviewDto } from '../../api/types';
-import { isWeekDailiesDone, pendingReinforcementOf, primaryDays } from '../../lib/focadaMapLines';
+import { currentStop, isWeekDailiesDone, pendingReinforcementOf, primaryDays } from '../../lib/focadaMapLines';
 import type { FocadaLine } from '../../lib/focadaLines';
 import { FocadaSays } from '../session/FocadaSays';
 import pontoConcluido from '../../assets/pixel/mapa/ponto-concluido.png';
@@ -15,7 +15,7 @@ import badgeReforco from '../../assets/pixel/mapa/badge-reforco.png';
 import focadaMarcador from '../../assets/pixel/mapa/focada-marcador.png';
 
 type DayState = 'concluido' | 'em-andamento' | 'disponivel' | 'trancado';
-type CastleState = 'trancado' | 'pendente' | 'entregue' | 'concluido';
+type CastleState = 'trancado' | 'pendente' | 'entregue' | 'publicar' | 'concluido';
 
 const DAY_SPRITE: Record<DayState, string> = {
   concluido: pontoConcluido,
@@ -33,12 +33,14 @@ const CASTLE_SPRITE: Record<CastleState, string> = {
   trancado: casteloTrancado,
   pendente: casteloPendente,
   entregue: casteloPendente,
+  publicar: casteloPendente,
   concluido: casteloConcluido,
 };
 const CASTLE_LABEL: Record<CastleState, string> = {
   trancado: 'Abre quando os dias da semana acabarem',
   pendente: 'Liberado',
   entregue: 'Entregue, em avaliação',
+  publicar: 'Avaliado: falta publicar',
   concluido: 'Concluído',
 };
 
@@ -50,7 +52,7 @@ function dayState(day: DailyStatusSummaryDto): DayState {
 
 function castleState(week: WeeklyOverviewDto): CastleState {
   if (week.isPracticeOnly) return week.isClosed ? 'concluido' : 'trancado';
-  if (week.projectStatus === WeeklyProjectStatus.Evaluated) return 'concluido';
+  if (week.projectStatus === WeeklyProjectStatus.Evaluated) return week.requiresPublicationToUnlock ? 'publicar' : 'concluido';
   if (week.projectStatus === WeeklyProjectStatus.Submitted) return 'entregue';
   return isWeekDailiesDone(week) ? 'pendente' : 'trancado';
 }
@@ -66,7 +68,9 @@ type Selection = { weekId: string; kind: 'dia'; dayId: string } | { weekId: stri
  */
 export function CourseTrail({ course, courseId, focadaLine = null }: { course: CourseDetailDto; courseId: string; focadaLine?: FocadaLine | null }) {
   const monthlies = [...course.monthlies].sort((a, b) => a.number - b.number);
-  const currentMonthly = monthlies.find((m) => m.weeklies.some((w) => w.days.some((d) => d.isNext))) ?? monthlies[0];
+  // Fase 106: a Focada fica onde o aluno esta (dia ou castelo pendente), nao no proximo dia de uma semana trancada.
+  const stop = currentStop(course);
+  const currentMonthly = (stop && monthlies.find((m) => m.weeklies.some((w) => w.id === stop.week.id))) ?? monthlies[0];
   const [monthlyId, setMonthlyId] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
 
@@ -114,6 +118,7 @@ export function CourseTrail({ course, courseId, focadaLine = null }: { course: C
             key={week.id}
             week={week}
             selection={selection?.weekId === week.id ? selection : null}
+            focada={stop?.week.id === week.id ? (stop.day?.id ?? 'castelo') : null}
             onSelect={setSelection}
           />
         ))}
@@ -124,7 +129,18 @@ export function CourseTrail({ course, courseId, focadaLine = null }: { course: C
   );
 }
 
-function WeekRow({ week, selection, onSelect }: { week: WeeklyOverviewDto; selection: Selection | null; onSelect: (s: Selection) => void }) {
+function WeekRow({
+  week,
+  selection,
+  focada,
+  onSelect,
+}: {
+  week: WeeklyOverviewDto;
+  selection: Selection | null;
+  /** Id do dia onde a Focada fica, 'castelo' quando o aluno esta no projeto, ou null (outra semana). */
+  focada: string | null;
+  onSelect: (s: Selection) => void;
+}) {
   const days = primaryDays(week);
   const locked = week.isLocked;
   const showCastle = !week.isPracticeOnly;
@@ -158,7 +174,7 @@ function WeekRow({ week, selection, onSelect }: { week: WeeklyOverviewDto; selec
                 selected ? 'border-accent bg-surface-alt' : bridge ? 'border-project' : 'border-stroke hover:border-secondary'
               } disabled:cursor-default disabled:hover:border-stroke`}
             >
-              {state === 'disponivel' && !locked && <img src={focadaMarcador} alt="Focada" className="absolute -top-4 size-5 pixelated" />}
+              {focada === day.id && !locked && <img src={focadaMarcador} alt="Focada" className="absolute -top-4 size-5 pixelated" />}
               <img src={DAY_SPRITE[state]} alt="" className="size-5 pixelated" aria-hidden="true" />
               <span className={`font-pixel-label text-[8px] ${bridge ? 'text-project' : 'text-secondary'}`}>D{String(day.dayNumber).padStart(2, '0')}</span>
               {days.some((d) => pendingReinforcementOf(week, d) && d.id === day.id) && (
@@ -178,10 +194,11 @@ function WeekRow({ week, selection, onSelect }: { week: WeeklyOverviewDto; selec
               onClick={() => onSelect({ weekId: week.id, kind: 'castelo' })}
               aria-label={`Projeto da semana ${week.number}: ${CASTLE_LABEL[cState]}`}
               aria-pressed={selection?.kind === 'castelo'}
-              className={`flex min-h-12 min-w-12 items-center justify-center border-2 ${
+              className={`relative flex min-h-12 min-w-12 items-center justify-center border-2 ${
                 selection?.kind === 'castelo' ? 'border-accent bg-surface-alt' : 'border-stroke hover:border-secondary'
               } disabled:cursor-default disabled:hover:border-stroke`}
             >
+              {focada === 'castelo' && !locked && <img src={focadaMarcador} alt="Focada" className="absolute -top-4 size-5 pixelated" />}
               <img src={locked ? casteloTrancado : CASTLE_SPRITE[cState]} alt="" className="size-7 pixelated" aria-hidden="true" />
             </button>
           </>
@@ -213,7 +230,8 @@ function NodePanel({ courseId, week, selection, onClose }: { courseId: string; w
     kicker = `Projeto · Semana ${week.number}`;
     heading = week.theme ?? week.title;
     status = { text: CASTLE_LABEL[state], tone: state === 'concluido' ? 'text-accent' : state === 'trancado' ? 'text-muted' : 'text-project' };
-    if (state !== 'trancado') primary = { label: 'Abrir projeto ›', to: `${weekUrl}&project=1` };
+    if (state === 'publicar') primary = { label: 'Publicar ›', to: weekUrl };
+    else if (state !== 'trancado') primary = { label: 'Abrir projeto ›', to: `${weekUrl}&project=1` };
   }
 
   return (

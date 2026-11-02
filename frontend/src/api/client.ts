@@ -19,7 +19,6 @@ import {
   type EnrollmentDto,
   type ForgotPasswordRequest,
   type GamificationSummaryDto,
-  type GitHubRepoDto,
   type ListNotesFilter,
   type LabRunPayload,
   type LoginRequest,
@@ -249,12 +248,6 @@ export const api = {
   getPublicationStatus: (weeklyId: string) => request<ModulePublicationDto>(`/api/weeklies/${weeklyId}/publication/status`),
   generateLinkedInDraft: (weeklyId: string) =>
     request<ModulePublicationDto>(`/api/weeklies/${weeklyId}/publication/draft`, { method: 'POST' }),
-  getGitHubRepositories: () => request<GitHubRepoDto[]>('/api/github/repositories'),
-  commitToGitHub: (weeklyId: string, repoName: string, isNewRepo: boolean) =>
-    request<ModulePublicationDto>(`/api/weeklies/${weeklyId}/publication/github-commit`, {
-      method: 'POST',
-      body: JSON.stringify({ repoName, isNewRepo }),
-    }),
   submitPublication: (weeklyId: string, platform: PublicationPlatform, url: string) =>
     request<ModulePublicationDto>(`/api/weeklies/${weeklyId}/publication/submit`, {
       method: 'POST',

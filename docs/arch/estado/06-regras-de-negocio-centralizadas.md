@@ -190,16 +190,23 @@ GitHub) antes da proxima Weekly liberar.
   automaticamente logo apos aceitar a URL (composicao, chama `EvaluateWeeklyProjectUseCase.
   ExecuteAsync` por dentro), entao o bloqueio acima passou de "nunca engata de verdade" pra
   funcional - ver "Fase 27b" no changelog de fases.
-- **Geracao do rascunho de LinkedIn** (`GenerateLinkedInDraftUseCase` + `GroqDraftGenerationService`):
-  usa `Weekly.Theme` (ou `Title`) + ate 3 titulos de `CuratedContent` (`Reading`/`Video`) como
-  contexto - **nao** usa `AiFeedback` de nenhuma `ActivityResponse` de proposito (evita vazar o
-  resultado de uma tentativa especifica num post publico). Groq sem JSON mode (texto livre, tom
-  pessoal em primeira pessoa).
-- **Fluxo GitHub** (`GetGitHubRepositoriesUseCase`, `CommitModuleSummaryUseCase`,
-  `GitHubService`): lista repos publicos, cria/reusa um repo, commita um resumo Markdown
-  (`MODULO-{n}.md`) via `PUT /repos/{owner}/{repo}/contents/{path}`. O commit bem sucedido *e* a
-  prova - `CommitModuleSummaryUseCase` ja chama `Submit`+`MarkValidated` na mesma operacao, sem
-  round-trip de validacao redundante depois.
+- **Geracao do rascunho de LinkedIn** (`GenerateLinkedInDraftUseCase` + `GroqDraftGenerationService`),
+  feita so quando o aluno clica para publicar. Fase 106: o prompt leva o nome do curso (matricula ->
+  `Course.Name`), cada dia da semana (titulo do material `Reading`/`Video` + ate 3 pontos de
+  "### O que levar daqui"), o objetivo do Projeto Semanal (1o paragrafo de "### Objetivo" do
+  `WeeklyProjectSpecText`) e o `WeeklyProject.Feedback` da avaliacao, com a ordem de usar so o que deu
+  certo; a nota nunca entra. Continua **sem** `AiFeedback` de `ActivityResponse` (evita vazar uma
+  tentativa num post publico). Interesses do perfil seguem (Fase 27). Fase 107: Groq em JSON mode, devolve
+  `{post, destaques[3], projeto}`; o use case normaliza (3 destaques de ate 70, projeto ate 50, corte na palavra) e
+  responde `ModulePublicationDto.Image` (`PublicationImageDto`, nao persistido).
+- **Imagem de conclusao da semana (Fase 107)**: `lib/weekCompletionImage.ts` desenha em canvas o modelo quadrado
+  1080x1080 do Figma ("Focadu — Pixel Art", pagina "Imagem de conclusao da semana — v1", componente `323:4912`) com
+  os campos da Focada, nome do aluno e data; selos por semana em `assets/pixel/selos/`. O modal mostra a previa, baixa
+  a imagem e baixa de novo no "Copiar e publicar". Texto longo quebra (2 linhas) e a fonte desce ate caber.
+- **Fluxo GitHub removido (Fase 106)**: `CommitModuleSummaryUseCase`/`GetGitHubRepositoriesUseCase` e
+  os endpoints `github-commit` e `/github/repositories` sairam. Commitavam pelo token do servidor (repo
+  na conta da plataforma, nao na do aluno) e, com `GitHub:Token` em branco em producao, so davam 502.
+  `PublicationPlatform.GitHub` fica no enum: publicacoes antigas assim seguem `Validated`.
 - **Validacao de LinkedIn e so estrutural, decisao permanente (Fase 21+), nao e mais pendencia**:
   regex (`linkedin.com/(posts|feed/update)/...`) confirma que a URL tem formato de post, nunca que
   o post fala sobre o modulo de verdade. Avaliado e descartado validar conteudo via API oficial do
@@ -207,10 +214,8 @@ GitHub) antes da proxima Weekly liberar.
   de parceiros da LinkedIn (processo de negocio, nao self-serve), desproporcional pra um app de
   estudo pessoal solo. Fluxo GitHub continua validando de verdade (`IGitHubService.
   GetRepositoryAsync`, acima) porque a API do GitHub e publica e gratuita pra isso.
-- **Um unico `SubmitPublicationUseCase` cobre LinkedIn e GitHub** (nao ha
-  `ValidatePublicationUseCase` separado) - GitHub valida via `IGitHubService.GetRepositoryAsync`
-  (owner/repo extraidos da URL, exige `IsPrivate == false`); retry e so resubmeter a mesma URL
-  pelo mesmo endpoint, nao precisa de logica nova.
+- **`SubmitPublicationUseCase` so aceita LinkedIn** (Fase 106; outra plataforma = 400
+  `platform_invalida`); retry e so resubmeter a URL pelo mesmo endpoint.
 - **GitHub nunca foi testado contra a API real** (decisao explicita do usuario na Fase 11, ver
   `docs/fase-11/resumo-implementacao-fase-11.md`) - verificado via `page.route()` do Playwright
   mockando as chamadas que tocariam GitHub de verdade. Revisado por leitura de codigo nesta fase

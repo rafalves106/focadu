@@ -58,9 +58,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | 🔒 PUT | `/api/agent/skin` | `UpdateAgentSkinToneUseCase` (Fase 71) | 200 (catalogo recalculado), 400, 409 (`agente_nao_criado`) |
 | 🔒 GET | `/api/weeklies/{weeklyId}/publication/status` | `GetPublicationStatusUseCase` (Fase 11) | 200, 404 |
 | 🔒 POST | `/api/weeklies/{weeklyId}/publication/draft` | `GenerateLinkedInDraftUseCase` (Fase 11) | 200, 404, 502 (Groq) |
-| 🔒 POST | `/api/weeklies/{weeklyId}/publication/github-commit` | `CommitModuleSummaryUseCase` (Fase 11) | 200, 400/404, 502 (GitHub) |
-| 🔒 POST | `/api/weeklies/{weeklyId}/publication/submit` | `SubmitPublicationUseCase` (Fase 11) | 200, 400/404 - LinkedIn valida por regex, GitHub chama a API real |
-| 🔒 GET | `/api/github/repositories` | `GetGitHubRepositoriesUseCase` (Fase 11) | 200, 502 (GitHub) - exige login, sem filtro por usuario (1 token global do GitHub) |
+| 🔒 POST | `/api/weeklies/{weeklyId}/publication/submit` | `SubmitPublicationUseCase` (Fase 11) | 200, 400/404 - so `platform=LinkedIn`, valida por regex (Fase 106: GitHub e `github-commit`/`/github/repositories` sairam) |
 | 🔒 POST | `/api/squads` | `CreateSquadUseCase` (Fase 24) | 201 (`SquadDto`), 409 `ja_esta_em_squad` |
 | 🔒 POST | `/api/squads/join` | `JoinSquadUseCase` (Fase 24; pedido desde a Fase 77) | 200 (`SquadJoinRequestDto` pendente - o mesmo se ja havia um aberto pra este squad), 404 `codigo_invalido`, 409 `ja_esta_em_squad`/`pedido_recusado` |
 | 🔒 DELETE | `/api/squads/members/{userId}` | `LeaveSquadUseCase` (se `{userId}` = usuario logado) ou `RemoveMemberUseCase` (Fase 24) | 204, 404 `squad_nao_encontrado`/`membro_nao_encontrado`, 409 `dono_nao_pode_sair`/`dono_nao_pode_se_remover` |

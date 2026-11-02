@@ -48,7 +48,8 @@ validacao real do Groq na Fase 5):**
   precisar de um `Code` por status.
 - **Ainda pendente (exige chave real, nao verificavel so por leitura de codigo):** confirmar que
   os fluxos abaixo batem na API de verdade e que as mensagens acima realmente aparecem assim.
-  Checklist pro Falves (mesmo escopo do pedido original da Fase 11):
+  Checklist pro Falves (mesmo escopo do pedido original da Fase 11). **Obsoleto desde a Fase 106**: a
+  prova publica do modulo nao passa mais pelo GitHub; fica so como registro do adapter `GitHubService`:
   1. `github-commit` (`CommitModuleSummaryUseCase`) num repo **novo** - confirma o caminho feliz.
   2. `github-commit` **de novo pro mesmo modulo** (mesmo repo, mesmo `MODULO-{n}.md`) - e o teste
      que valida o fix do `sha` acima; sem ele, essa chamada quebrava com 422.

@@ -190,7 +190,7 @@ function PublicationBanner({ nextWeek, onPublish }: { nextWeek: number; onPublis
         <div className="flex min-w-0 flex-col gap-1">
           <p className="font-pixel-label text-[9px] text-project">Próxima semana trancada</p>
           <p className="font-pixel text-[21px] leading-tight text-primary">
-            Publique a prova do módulo no LinkedIn ou no GitHub pra liberar a Semana {nextWeek}.
+            A Focada escreve o post com o que você estudou e o projeto entregue. Publique no LinkedIn pra liberar a Semana {nextWeek}.
           </p>
         </div>
       </div>

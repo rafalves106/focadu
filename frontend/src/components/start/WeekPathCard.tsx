@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { DailyStatus, WeeklyProjectStatus, type DailyStatusSummaryDto, type WeeklyOverviewDto } from '../../api/types';
-import { isWeekDailiesDone, pendingReinforcementOf, primaryDays } from '../../lib/focadaMapLines';
+import { isWeekClosurePending, isWeekDailiesDone, pendingReinforcementOf, primaryDays } from '../../lib/focadaMapLines';
 import pontoConcluido from '../../assets/pixel/mapa/ponto-concluido.png';
 import pontoEmAndamento from '../../assets/pixel/mapa/ponto-em-andamento.png';
 import pontoDisponivel from '../../assets/pixel/mapa/ponto-disponivel.png';
@@ -22,7 +22,10 @@ export function WeekPathCard({ week, courseId }: { week: WeeklyOverviewDto; cour
   const days = primaryDays(week);
   const remaining = days.filter((d) => d.status !== DailyStatus.Completed).length;
   const castle = castleOf(week, remaining);
-  const focadaDayId = (days.find((d) => d.status === DailyStatus.InProgress) ?? days.find((d) => d.isNext))?.id ?? null;
+  // Fase 106: dias feitos e castelo ainda aberto (projeto ou publicacao) - a Focada fica no castelo, nao na ponte.
+  const atCastle = isWeekClosurePending(week);
+  const focadaDayId = atCastle ? null : ((days.find((d) => d.status === DailyStatus.InProgress) ?? days.find((d) => d.isNext))?.id ?? null);
+  const castleTo = week.requiresPublicationToUnlock ? `/start?course=${courseId}&weekly=${week.id}` : `/start?course=${courseId}&weekly=${week.id}&project=1`;
 
   return (
     <section data-guia="start-castelo" className="pixel-box flex shrink-0 flex-col gap-3 bg-base px-5 py-4">
@@ -48,10 +51,11 @@ export function WeekPathCard({ week, courseId }: { week: WeeklyOverviewDto; cour
         </ol>
 
         <Link
-          to={`/start?course=${courseId}&weekly=${week.id}&project=1`}
-          className={`flex items-center gap-3 border-2 px-3 py-2 ${castle.border} hover:brightness-110`}
+          to={castleTo}
+          className={`relative flex items-center gap-3 border-2 px-3 py-2 ${castle.border} hover:brightness-110`}
           aria-label={`Projeto da Semana ${week.number}: ${castle.text}`}
         >
+          {atCastle && <img src={focadaMarcador} alt="" className="absolute -top-7 left-3 size-8 pixelated motion-safe:animate-map-bob" aria-hidden="true" />}
           <img src={castle.sprite} alt="" className="size-12 shrink-0 pixelated" aria-hidden="true" />
           <span className="flex flex-col gap-1">
             <span className="flex items-center gap-1.5">
@@ -158,6 +162,8 @@ function DayPoint({ day, week, withFocada }: { day: DailyStatusSummaryDto; week:
 }
 
 function castleOf(week: WeeklyOverviewDto, remaining: number): { sprite: string; text: string; border: string } {
+  if (week.projectStatus === WeeklyProjectStatus.Evaluated && week.requiresPublicationToUnlock)
+    return { sprite: casteloPendente, text: 'Avaliado: publique', border: 'border-project' };
   if (week.projectStatus === WeeklyProjectStatus.Evaluated) return { sprite: casteloConcluido, text: 'Concluído', border: 'border-accent' };
   if (week.projectStatus === WeeklyProjectStatus.Submitted) return { sprite: casteloPendente, text: 'Em avaliação', border: 'border-project' };
   if (isWeekDailiesDone(week)) return { sprite: casteloPendente, text: 'Aberto: entregue', border: 'border-project' };

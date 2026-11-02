@@ -78,9 +78,10 @@ export function DailyMissionCard({
     <Shell label="// Missão do dia" badge={<StatusBadge {...badge} />}>
       <div className="flex flex-col gap-1">
         <p className="font-pixel-label text-[9px] text-secondary">
-          {course.name} · Semana {weekly.number} · Dia {daily.dayNumber}
+          {/* Fase 106: com o castelo pendente o aluno esta no projeto, nao no ultimo dia (a ponte). */}
+          {course.name} · Semana {weekly.number} · {closurePending ? 'Projeto' : `Dia ${daily.dayNumber}`}
         </p>
-        <h2 className="font-pixel text-3xl leading-none text-primary">{title ?? weekly.theme ?? weekly.title}</h2>
+        <h2 className="font-pixel text-3xl leading-none text-primary">{closurePending ? (weekly.theme ?? weekly.title) : (title ?? weekly.theme ?? weekly.title)}</h2>
       </div>
 
       {closurePending ? (

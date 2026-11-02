@@ -361,6 +361,10 @@ Refacao dos cursos (`secret/produto/PLANO-CURADORIA.md`, 02/10/2026). Detalhe do
 - **Curso em Draft** visivel ao dono (desde a Fase 96 pelo `CourseAccess`/`CourseViewer`) em `/courses/{id}/curriculum` e `/weekly-templates/{id}`.
 - **Trilha:** `CourseTrail` (`components/courseMap/`) gera a trilha so dos dados do curso; o mapa por regioes
   (`CourseMap.tsx`, `lib/courseMaps.ts`) foi apagado. Ponte marcada por `IsBridge` nos DTOs de resumo da Daily.
+  Fase 106: onde o aluno esta vem de `currentStop` (`lib/focadaMapLines.ts`): Daily em andamento, senao o castelo
+  da 1a semana com os dias feitos e projeto nao avaliado ou publicacao pendente (`isWeekClosurePending`), senao o
+  proximo dia de semana destrancada. Trilha, `WeekPathCard`, seletor de curso e `DailyMissionCard` usam a mesma regra
+  (antes a Focada sumia: `isNext` apontava o 1o dia da semana seguinte, trancada, e o card mostrava a ponte).
 - **Seed do Web Security:** nao cria o curso sem `conteudo/web-security/semana-1/dia-1.json`. `arquitetura-de-software`
   entra no seed generico (Draft).
 

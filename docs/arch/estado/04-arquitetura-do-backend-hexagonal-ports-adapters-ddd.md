@@ -98,8 +98,8 @@ src/
     Weeklies/                       <- GetWeeklyDetailUseCase, Dtos.cs, EvaluateWeeklyProjectUseCase
                                        (Fase 11 - fecha lacuna aberta desde a Fase 7),
                                        GetPublicationStatusUseCase, GenerateLinkedInDraftUseCase,
-                                       GetGitHubRepositoriesUseCase, CommitModuleSummaryUseCase,
-                                       SubmitPublicationUseCase, PublicationDtos.cs (Fase 11) -
+                                       SubmitPublicationUseCase (Fase 106: o fluxo GitHub
+                                       saiu), PublicationDtos.cs (Fase 11) -
                                        todos +userId na Fase 13 (filtro de propriedade)
     Content/                         <- CreateCuratedContentUseCase, UpdateCuratedContentUseCase
                                        (Fase 4; Fase 13: passam a usar IWeeklyTemplateRepository,
