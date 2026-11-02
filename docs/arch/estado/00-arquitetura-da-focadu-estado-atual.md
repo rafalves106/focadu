@@ -1,0 +1,7 @@
+## # Arquitetura da Focadu — estado atual
+
+> Documento vivo. Nao e historico de decisoes (isso fica em `docs/fase-N/`) - e sempre um
+> retrato do estado atual e consolidado do projeto. Ver `docs/CONVENCOES.md` para a regra de
+> como e quando este arquivo e atualizado.
+>
+> Ultima fase que atualizou este documento: **Fase 105 - Repositorio do Projeto Semanal sai quando o projeto abre** (Fase 104: `importar` le o projeto.json; Fase 103: Medicao de produto, aba Retencao; Fase 102: Termos, privacidade e aceite; Fase 100b: README do Projeto Semanal no app; Fase 101: Travas de IA; Fase 100: Backup e Forgejo privado; Fase 99: Seguranca de borda; Fase 98: Higiene da base; Fase 97: Painel de gestao, lacunas de operacao; Fase 96: Turmas; Fase 95: SQLite no laboratorio de codigo; Fase 94: Painel de gestao (admin) e Medicao de IA; Fase 93: cadastro so com convite de tester e confirmacao de e-mail por codigo; Fase 92: Plano de curadoria, Fase 1: importador `importar` com linter e hash, molde v1, analogia desligada, devolutiva da voz, feedback do dia, aquecimento, reset de usuarios e trilha gerada dos dados do curso; (Fase 91: telas de notebook; Fase 90: missao no terminal v3).
