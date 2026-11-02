@@ -29,10 +29,10 @@ automaticamente pelo Claude Code no inicio de toda sessao - complementa este arq
 `ARQUITETURA.md`, nao os substitui. Ele traz so a secao "Estado atual" (fase mais recente + 1-2
 marcos de produto) como conteudo que muda com o tempo; o resto e estrutural e estavel.
 
-- Cada fase de implementacao ganha sua propria pasta `docs/fase-N/`, numerada em ordem
+- Cada fase de implementacao ganha sua propria pasta `docs/fases/fase-N/`, numerada em ordem
   sequencial (N = 1, 2, 3, ...), correspondendo a ordem em que os prompts tecnicos forem colados
   neste chat.
-- `docs/ARQUITETURA.md` **nao e um historico** - e sempre a foto do estado atual, consolidado.
+- `docs/arch/estado/` **nao e um historico** - e sempre a foto do estado atual, consolidado.
   Ele nunca deve ser recriado do zero: cada fase nova o **atualiza** (edita as secoes que
   mudaram, adiciona o que for novo, remove o que deixou de ser verdade).
 - `docs/CONVENCOES.md` (este arquivo) so muda se a propria convencao mudar.
@@ -42,9 +42,9 @@ marcos de produto) como conteudo que muda com o tempo; o resto e estrutural e es
 Ao final de **toda fase de implementacao** (ou seja, sempre que um prompt tecnico novo for
 concluido), o Claude Code deve, sem que o Falves precise pedir de novo:
 
-1. Criar `docs/fase-N/resumo-implementacao-fase-N.md` com o resumo daquela fase especifica,
+1. Criar `docs/fases/fase-N/resumo-implementacao-fase-N.md` com o resumo daquela fase especifica,
    seguindo o modelo fixo abaixo.
-2. Atualizar `docs/ARQUITETURA.md` para refletir o estado atual e consolidado do projeto apos
+2. Atualizar `docs/arch/estado/` para refletir o estado atual e consolidado do projeto apos
    aquela fase (nao recriar do zero - editar em cima do que ja existe), incluindo a linha do
    cabecalho "Ultima fase que atualizou este documento".
 3. Se a fase mudou o resumo de alto nivel do produto (nao so detalhe tecnico interno), atualizar
@@ -97,6 +97,6 @@ Todo resumo de fase segue exatamente esta estrutura:
 - Separar "resumo por fase" (historico, imutavel depois de escrito) de "arquitetura" (vivo,
   sempre atual) evita que o documento vivo vire uma colcha de retalhos com informacao
   desatualizada competindo com informacao atual.
-- Uma sessao futura sem memoria desta conversa consegue, lendo so `docs/ARQUITETURA.md`, entender
+- Uma sessao futura sem memoria desta conversa consegue, lendo so `docs/arch/estado/`, entender
   o estado atual sem ler todo o codigo; e, se precisar entender uma decisao especifica ou o
-  contexto de uma fase passada, consegue abrir o `docs/fase-N/` correspondente.
+  contexto de uma fase passada, consegue abrir o `docs/fases/fase-N/` correspondente.

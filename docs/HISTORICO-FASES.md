@@ -1,10 +1,10 @@
 # Histórico por fase
 
-Tirado do `CLAUDE.md` em 06/10/2026 (economia de contexto: o `CLAUDE.md` entra em toda sessão). Ao fechar uma fase, acrescente a linha dela no fim do bloco certo. Detalhe de cada uma em `docs/fase-N/`; o porquê das decisões 25–87 em `docs/ESTADO-HISTORICO.md`.
+Tirado do `CLAUDE.md` em 06/10/2026 (economia de contexto: o `CLAUDE.md` entra em toda sessão). Ao fechar uma fase, acrescente a linha dela no fim do bloco certo. Detalhe de cada uma em `docs/fases/fase-N/`; o porquê das decisões 25–87 em `docs/ESTADO-HISTORICO.md`.
 
 ## Uma linha por fase
 
-Detalhe de cada uma em `docs/fase-N/resumo-implementacao-fase-N.md`; o porquê das decisões 25–87 em
+Detalhe de cada uma em `docs/fases/fase-N/resumo-implementacao-fase-N.md`; o porquê das decisões 25–87 em
 `docs/ESTADO-HISTORICO.md`. 13a/13b/27b/38b existem como fases próprias; 24b/24c só têm commit.
 
 **Fundação (1–11)**
@@ -64,15 +64,15 @@ Detalhe de cada uma em `docs/fase-N/resumo-implementacao-fase-N.md`; o porquê d
 - **94** Painel de gestão só para admin (`User.Role`, comando `admin promover`, `/api/admin`, `/gestao`): visão geral, alunos (reset de curso), convites (1–20 usos, 1–30 dias), curadoria (importar tudo ou nada, apagar dias antigos) e Medição de IA (handler no Groq, custo estimado com tabela de preços). Branch própria.
 - **95** SQLite no laboratório de código (`lab.runtime: sqlite`): SQL puro no SQLite do Pyodide, banco novo a cada execução montado por `files`/`setup`, saída em tabela, `Erro na linha N`, `.tables`/`.schema`; verificador da curadoria ganhou o runtime. Para o curso Banco de Dados (A1 da UNA).
 - **96** Turmas: `Cohort` com cursos, convite de turma matricula nos cursos dela e o aluno só vê esses cursos (`CourseViewer`, regra única de quem vê cada curso), curso "só pra turmas", aba Turmas no painel, turma em Convites/Alunos e "quem vê" na Curadoria. Para o teste fechado com a turma da UNA.
-- **97** Painel de gestão, lacunas de operação: editar nome e e-mail, redefinir senha por e-mail (o admin nunca vê a senha), desativar e reativar conta (soft delete `Users.DisabledAt`, vale na hora e some do ranking/squad), tornar e tirar admin, e aba Cursos (criar curso vazio, editar o catálogo, publicar, arquivar, voltar ao curso.json; seed e importador respeitam a edição). Ver `docs/fase-97/`.
-- **98** Higiene da base (1ª fase do plano da v0.1.0): 3 testes do Linux alinhados ao conteúdo da Fase 92, ponte marcada no JSON (`"ponte": true` → `DailyTemplate.BridgeMark`, migration `Fase98PonteMarcada`) para a ponte de missões de terminal do Linux, `sessionMock.ts` lendo `secret/conteudo`, CI reprovando pacote vulnerável (.NET e npm), pacotes do backend nos patches 10.0.13. Ver `docs/fase-98/`.
-- **99** Segurança de borda (2ª fase do plano da v0.1.0): limite de requisições (`RateLimiting.cs`: login 10/min por IP, cadastro e e-mail 10 por 15 min por IP, endpoints de IA 20/min por aluno, 429 com `Retry-After`), `UseForwardedHeaders` para o IP real atrás de Cloudflare e nginx, headers de segurança no `nginx.conf`, CORS por `Cors__AllowedOrigins`. Ver `docs/fase-99/`.
-- **100** Backup e Forgejo privado (3ª fase do plano da v0.1.0): `pg_dump` antes de cada deploy (falha fechado, 14 últimos, só do dono), restauração testada, fork de aluno privado (templates privados + leitura concedida no fork + recusa de fork público), Postgres e Api só em loopback. Ver `docs/fase-100/`.
-- **101** Travas de IA (4ª fase do plano da v0.1.0): orçamento diário por aluno (429 antes de chamar o Groq), teto mensal com troca para modelo reserva (`AiModelDowngradeHandler`), duração máxima do áudio (16 min), 10 tentativas por atividade por dia; painel "Limites de IA" na aba Uso de IA. Ver `docs/fase-101/`.
-- **100b** README do Projeto Semanal no app: `GET /api/weeklies/{id}/project/readme` lê o README do fork com o token de admin (só o dono) e o botão "Abrir README.md" abre um modal pixel art no lugar do link do Forgejo; destrava ligar o fork privado. Ver `docs/fase-100b/`.
-- **102** Termos, privacidade e aceite (5ª fase do plano da v0.1.0): páginas `/termos` e `/privacidade`, caixa de aceite obrigatória no cadastro, tela `/aceite` para contas antigas e versão nova, `TermsAcceptedVersion`/`TermsAcceptedAt` no `User`. Ver `docs/fase-102/`.
-- **103** Medição de produto (6ª fase do plano da v0.1.0): `ScreenVisit` (tela e aparelho por aluno/dia, `POST /api/visits`) e aba Retenção no `/gestao` — retorno D1/D7/D30 por coorte (abriu o app × fez Daily), Daily → Projeto Semanal, onde param e aparelho por tela, tudo calculado na leitura. Ver `docs/fase-103/`.
-- **104** `importar` lê o `projeto.json`: com o linter de projeto e a comparação por conteúdo, troca o Projeto Semanal por completo (texto, briefing, slug, variantes e referências), `--confirmar` se algum aluno já entregou; projeto novo da Semana 1 sai do arquivo para o banco sem SQL. Ver `docs/fase-104/`.
+- **97** Painel de gestão, lacunas de operação: editar nome e e-mail, redefinir senha por e-mail (o admin nunca vê a senha), desativar e reativar conta (soft delete `Users.DisabledAt`, vale na hora e some do ranking/squad), tornar e tirar admin, e aba Cursos (criar curso vazio, editar o catálogo, publicar, arquivar, voltar ao curso.json; seed e importador respeitam a edição). Ver `docs/fases/fase-97/`.
+- **98** Higiene da base (1ª fase do plano da v0.1.0): 3 testes do Linux alinhados ao conteúdo da Fase 92, ponte marcada no JSON (`"ponte": true` → `DailyTemplate.BridgeMark`, migration `Fase98PonteMarcada`) para a ponte de missões de terminal do Linux, `sessionMock.ts` lendo `secret/conteudo`, CI reprovando pacote vulnerável (.NET e npm), pacotes do backend nos patches 10.0.13. Ver `docs/fases/fase-98/`.
+- **99** Segurança de borda (2ª fase do plano da v0.1.0): limite de requisições (`RateLimiting.cs`: login 10/min por IP, cadastro e e-mail 10 por 15 min por IP, endpoints de IA 20/min por aluno, 429 com `Retry-After`), `UseForwardedHeaders` para o IP real atrás de Cloudflare e nginx, headers de segurança no `nginx.conf`, CORS por `Cors__AllowedOrigins`. Ver `docs/fases/fase-99/`.
+- **100** Backup e Forgejo privado (3ª fase do plano da v0.1.0): `pg_dump` antes de cada deploy (falha fechado, 14 últimos, só do dono), restauração testada, fork de aluno privado (templates privados + leitura concedida no fork + recusa de fork público), Postgres e Api só em loopback. Ver `docs/fases/fase-100/`.
+- **101** Travas de IA (4ª fase do plano da v0.1.0): orçamento diário por aluno (429 antes de chamar o Groq), teto mensal com troca para modelo reserva (`AiModelDowngradeHandler`), duração máxima do áudio (16 min), 10 tentativas por atividade por dia; painel "Limites de IA" na aba Uso de IA. Ver `docs/fases/fase-101/`.
+- **100b** README do Projeto Semanal no app: `GET /api/weeklies/{id}/project/readme` lê o README do fork com o token de admin (só o dono) e o botão "Abrir README.md" abre um modal pixel art no lugar do link do Forgejo; destrava ligar o fork privado. Ver `docs/fases/fase-100b/`.
+- **102** Termos, privacidade e aceite (5ª fase do plano da v0.1.0): páginas `/termos` e `/privacidade`, caixa de aceite obrigatória no cadastro, tela `/aceite` para contas antigas e versão nova, `TermsAcceptedVersion`/`TermsAcceptedAt` no `User`. Ver `docs/fases/fase-102/`.
+- **103** Medição de produto (6ª fase do plano da v0.1.0): `ScreenVisit` (tela e aparelho por aluno/dia, `POST /api/visits`) e aba Retenção no `/gestao` — retorno D1/D7/D30 por coorte (abriu o app × fez Daily), Daily → Projeto Semanal, onde param e aparelho por tela, tudo calculado na leitura. Ver `docs/fases/fase-103/`.
+- **104** `importar` lê o `projeto.json`: com o linter de projeto e a comparação por conteúdo, troca o Projeto Semanal por completo (texto, briefing, slug, variantes e referências), `--confirmar` se algum aluno já entregou; projeto novo da Semana 1 sai do arquivo para o banco sem SQL. Ver `docs/fases/fase-104/`.
 
 ## Resumo detalhado das Fases 86–91 (como estava no Estado atual)
 
@@ -81,16 +81,16 @@ Detalhe de cada uma em `docs/fase-N/resumo-implementacao-fase-N.md`; o porquê d
   Bash num Linux emulado no v86, sempre no navegador); a saída que vai pra avaliação é a do laboratório e a dica
   da Focada (3 por passo) não gasta tentativa. O código do aluno roda em Workers de `/lab/` com CSP que só libera
   `connect-src` em `/lab/` (não alcança a API). Formato do bloco em `secret/curadoria/CURADORIA.md` 5.2, verificador
-  em `secret/curadoria/scripts/lab/`. Ver `docs/fase-86/`, `docs/fase-87/`.
+  em `secret/curadoria/scripts/lab/`. Ver `docs/fases/fase-86/`, `docs/fases/fase-87/`.
 - **Missão no terminal (Fase 88)**: nos dias normais do Linux (piloto: Dia 2) a atividade `TerminalMission` dá ao aluno um
   Linux embutido, já logado como usuário comum, com missões de comando conferidas no navegador (sem IA, sem nota, sem
-  tentativa). Formato em `secret/curadoria/CURADORIA.md` 5.3, verificador `scripts/lab/verificar-missoes.mjs`. Ver `docs/fase-88/`.
+  tentativa). Formato em `secret/curadoria/CURADORIA.md` 5.3, verificador `scripts/lab/verificar-missoes.mjs`. Ver `docs/fases/fase-88/`.
 - **Telas de notebook (Fase 91)**: abaixo de 1440×820 a sessão diária (inclusive laboratório e missão) e o Projeto Semanal
-  trocam as colunas laterais por trilhos de 64px que abrem gavetas (`SideSlot`, `useIsWideSession`). Ver `docs/fase-91/`.
+  trocam as colunas laterais por trilhos de 64px que abrem gavetas (`SideSlot`, `useIsWideSession`). Ver `docs/fases/fase-91/`.
 - **Missão no terminal v3 (Fase 90)**: cada missão diz situação, objetivo e passos; ao lado do terminal, a cola "Comandos de
-  hoje" (clique copia pro campo); prompt com o diretório atual e `clear` que deixa o último comando visível. Ver `docs/fase-90/`.
+  hoje" (clique copia pro campo); prompt com o diretório atual e `clear` que deixa o último comando visível. Ver `docs/fases/fase-90/`.
 - **Mais de um curso (Fase 89)**: com 2+ matrículas o "Hoje" pergunta o curso (o último aberto já vem marcado) e Trilha,
-  Ranking, Perfil e o ranking do Squad têm seletor de curso (`CourseSwitcher`, `lib/courseChoice.ts`). Ver `docs/fase-89/`.
-- **105** Repositório do Projeto Semanal sai quando o projeto abre (Dailies concluídas), não na matrícula: `WeeklyProjectRepositoryProvisioner` forka o modelo atual, idempotente, falha do Forgejo tenta de novo na próxima abertura. Ver `docs/fase-105/`.
-- **106** Publicação só no LinkedIn com post da Focada (curso, dias da semana com "O que levar daqui", objetivo do projeto e comentário da avaliação, sem nota; GitHub e seus endpoints saíram) e trilha que aponta pro castelo quando a semana tem os dias feitos e projeto ou publicação pendente (`currentStop`). Ver `docs/fase-106/`.
-- **107** Imagem de conclusão da semana pro post do LinkedIn: modelo no Figma (quadrado 1080x1080, selo por semana), a Focada devolve destaques e nome do projeto junto com o post (JSON mode) e o front desenha a imagem em canvas para baixar e anexar. Ver `docs/fase-107/`.
+  Ranking, Perfil e o ranking do Squad têm seletor de curso (`CourseSwitcher`, `lib/courseChoice.ts`). Ver `docs/fases/fase-89/`.
+- **105** Repositório do Projeto Semanal sai quando o projeto abre (Dailies concluídas), não na matrícula: `WeeklyProjectRepositoryProvisioner` forka o modelo atual, idempotente, falha do Forgejo tenta de novo na próxima abertura. Ver `docs/fases/fase-105/`.
+- **106** Publicação só no LinkedIn com post da Focada (curso, dias da semana com "O que levar daqui", objetivo do projeto e comentário da avaliação, sem nota; GitHub e seus endpoints saíram) e trilha que aponta pro castelo quando a semana tem os dias feitos e projeto ou publicação pendente (`currentStop`). Ver `docs/fases/fase-106/`.
+- **107** Imagem de conclusão da semana pro post do LinkedIn: modelo no Figma (quadrado 1080x1080, selo por semana), a Focada devolve destaques e nome do projeto junto com o post (JSON mode) e o front desenha a imagem em canvas para baixar e anexar. Ver `docs/fases/fase-107/`.

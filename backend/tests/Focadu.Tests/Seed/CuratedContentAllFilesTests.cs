@@ -21,7 +21,7 @@ public class CuratedContentAllFilesTests
 {
     // Todos os cursos em conteudo/; na falta de dias novos, o arquivo morto (processo/arquivo/conteudo-antigo/)
     // segue como fixture do importador. Fora do checkout (CI) a lista fica so com um marcador.
-    private static readonly string[] CourseSlugs = ["web-security", "linux", "python-websec", "design-patterns", "arquitetura-de-software"];
+    private static readonly string[] CourseSlugs = ["web-security", "linux", "python-websec"];
 
     private static IEnumerable<string> CourseDirs() =>
         CourseSlugs.Select(TestContent.CourseDir).Where(d => d is not null).Select(d => d!);

@@ -27,7 +27,7 @@ Leia só o `dia-N.json`, a ficha e o log do dia. Aplique **cada item da lista do
 ## Regras
 
 - Saída de comando sempre filtrada (`| tail`, `grep`). Nunca `cat` de JSON ou log inteiro.
-- Não faça D7, D8, commit, push nem edite `estado.md`. Isso é da sessão principal.
+- Não faça D7, D8 (publicar em produção), commit, push nem edite `estado.md`. Isso é da sessão principal.
 - Na dúvida de produto ou de escopo da ficha, não decida: registre como dúvida para o dono.
 
 ## Entrega

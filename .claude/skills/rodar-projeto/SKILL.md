@@ -8,8 +8,8 @@ metadata:
 # Rodar o Focadu localmente
 
 Fonte da verdade do setup: seção "Como configurar a chave JWT" / "Como rodar localmente" de
-`docs/ARQUITETURA.md`. Este SKILL só automatiza esses mesmos passos e valida que funcionaram —
-se os dois divergirem, `docs/ARQUITETURA.md` vence.
+`docs/arch/estado/`. Este SKILL só automatiza esses mesmos passos e valida que funcionaram —
+se os dois divergirem, `docs/arch/estado/` vence.
 
 ## 1. Postgres
 
@@ -92,5 +92,5 @@ para o usuário usar o app; só pare se o usuário pedir.
 
 ## Referências
 
-- `docs/ARQUITETURA.md` — seções "Como configurar a chave JWT" e "Como rodar localmente"
+- `docs/arch/estado/` — seções "Como configurar a chave JWT" e "Como rodar localmente"
   (contém também a connection string default do Postgres e onde ela pode ser sobrescrita).

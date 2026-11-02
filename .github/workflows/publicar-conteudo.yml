@@ -1,7 +1,7 @@
 name: Publicar conteudo curado
 
-# Etapa D9 do plano de curadoria (secret/produto/PLANO-CURADORIA.md): leva dias ja prontos
-# (linter + revisao + dia aberto no app local) para o banco de producao, pelo runner da VM.
+# Etapa D8 (antes D9) do plano de curadoria (secret/produto/PLANO-CURADORIA.md): leva dias ja prontos
+# (linter + revisao) para o banco de producao, pelo runner da VM.
 # Manual de proposito: quem dispara e o dono, e isso e a aprovacao. Nao roda em push.
 #
 # Padrao seguro: sem `aplicar`, so confere (atualiza o secret/, roda o linter e faz o dry-run).

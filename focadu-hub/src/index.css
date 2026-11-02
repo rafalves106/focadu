@@ -1,0 +1,16 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --font-mono:
+    "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-slate-900 font-mono antialiased;
+}
