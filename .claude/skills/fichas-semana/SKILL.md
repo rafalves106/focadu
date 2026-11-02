@@ -10,7 +10,7 @@ effort: low
 
 Roda na **sessão principal**; cada ficha é escrita por um subagente `general-purpose` em contexto próprio, um dia por vez, em ordem (a ficha do dia N lê a do dia N-1 para não repetir o que já foi ensinado, então nunca em paralelo). Regras da ficha: `.claude/skills/ficha-do-dia/SKILL.md` (seção "Ficha do dia"). Plano: `secret/produto/PLANO-CURADORIA.md`. Responda em português do Brasil, direto.
 
-Slugs: `web-security`, `linux`, `python-websec`, `design-patterns`, `arquitetura-de-software`. Sem curso ou semana, pergunte.
+Slugs: `web-security`, `linux`, `python-websec`. Sem curso ou semana, pergunte.
 
 ## 1. Mapear (só `ls` e `grep`)
 

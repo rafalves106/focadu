@@ -22,7 +22,7 @@ Regras e decisões: `secret/produto/PLANO-CURADORIA.md` (aprovado em 02/10/2026)
 - **D2 a D6 rodam no agente `curador`** (Sonnet, poucas ferramentas, contexto inicial menor), e os ajustes pedidos pelo D7 também, em outra chamada dele. A sessão principal só coordena: dispara o `curador`, o `revisor-editorial`, importa (D8) e atualiza o `estado.md`.
 - Subagente (D4, D7, D7b) só recebe caminhos, nunca o texto colado.
 
-Slugs: `web-security`, `linux`, `python-websec`, `design-patterns`, `arquitetura-de-software`. Sem curso claro, pergunte. Molde A (conceito): web-security, design-patterns, arquitetura-de-software. Molde B (prática): linux, python-websec.
+Slugs: `web-security`, `linux`, `python-websec`. Sem curso claro, pergunte. Molde A (conceito): web-security. Molde B (prática): linux, python-websec.
 
 ## Portões antes de começar
 
@@ -78,7 +78,7 @@ Estado: anote o projeto numa linha do `estado.md` da semana (`projeto N: enuncia
 - Diagrama só quando a estrutura é real (`processo/molde/diagramas.md`); bloco de código até 8 linhas com a saída real logo abaixo.
 - `lab` e `TerminalMission` só sobem depois de `verificar.mjs`/`verificar-missoes.mjs` (`processo/scripts/lab`, ou `linter-dia --lab`).
 - Todo dia de Linux/Python liga a um uso em segurança, sem ensinar o ataque.
-- **Curso de faculdade** (existe `secret/material/<curso>/`, hoje o `banco-de-dados`): texto e atividades seguem a didática do professor do dia (exemplos, listas, ordem e nomes dele); questões e gabaritos do professor são a referência das atividades. A ficha diz quais slides e questões usar (decisão do dono, 12/10/2026).
+- **Curso de faculdade** (existe `secret/material/<curso>/`, hoje nenhum): texto e atividades seguem a didática do professor do dia (exemplos, listas, ordem e nomes dele); questões e gabaritos do professor são a referência das atividades. A ficha diz quais slides e questões usar (decisão do dono, 12/10/2026).
 - Quiz: os 4 critérios anti-resposta-óbvia (`processo/molde/criterios-anti-resposta-obvia.md`); reescreva distratores, nunca a certa.
 
 ## Armadilhas já vistas (piloto Web Security Dia 1, 05/10/2026)

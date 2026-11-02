@@ -12,7 +12,7 @@ Orquestrador. Roda na **sessão principal** (subagente não chama subagente) e s
 
 Regras do pipeline: `.claude/skills/curar-conteudo/SKILL.md` e `secret/produto/PLANO-CURADORIA.md`. Se divergir, o plano vence.
 
-Slugs: `web-security`, `linux`, `python-websec`, `design-patterns`, `arquitetura-de-software`. Sem curso ou semana nos argumentos, pergunte.
+Slugs: `web-security`, `linux`, `python-websec`. Sem curso ou semana nos argumentos, pergunte.
 
 ## 1. Mapear a semana (só `grep` e `ls`)
 

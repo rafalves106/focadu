@@ -10,7 +10,7 @@ effort: low
 
 Uma etapa por sessão. Responda em português do Brasil, direto. Regras e modelos: `secret/produto/PLANO-CURADORIA.md` (tabela "Etapa | Lê | Modelo e esforço"); se divergir, o plano vence.
 
-Slugs: `web-security`, `linux`, `python-websec`, `design-patterns`, `arquitetura-de-software`. Sem curso nos argumentos, pergunte.
+Slugs: `web-security`, `linux`, `python-websec`. Sem curso nos argumentos, pergunte.
 
 ## 1. Descobrir a etapa (só `ls` e `grep`, sem ler arquivo inteiro)
 
