@@ -45,6 +45,8 @@ O dia 1 da semana (ou do curso) é o âncora. Ele só avança até o D7 e para.
 - Âncora `pronto` ou `no ar` (o dono já aprovou): cure os demais dias.
 - Reprovado pelo dono: o ajuste vai para a **ficha**, não para o texto. Pare.
 
+**Modo automático** (script `secret/processo/scripts/curar-semana-auto.sh`, decisão do dono de 04/11/2026): o portão acima não vale. O dono aprova tudo e corrige em produção depois, dia a dia. O dia-âncora é curado como os outros e o relatório final só indica quais dias testar primeiro.
+
 ## 3. Laço por dia (um de cada vez, em ordem, nunca em paralelo)
 
 Para cada dia a curar:
@@ -54,8 +56,8 @@ Para cada dia a curar:
    - Travou (linter não passa depois das 2 voltas dele, ficha ausente, comando que não roda): **pare a semana neste dia** e relate. Não pule para o próximo.
 2. **Revisar (D7):** chame o `revisor-editorial` em contexto limpo (Agent, `subagent_type: "revisor-editorial"`), passando só caminhos: `dia-N.json`, ficha do dia, ficha do curso, linha editorial e o log do linter.
    - `aprovado`: anote `revisado` no `estado.md` e passe ao próximo dia.
-   - Lista de ajustes: chame o `curador` em **modo ajuste**, passando a lista literal do revisor, e depois o revisor de novo (outra chamada, contexto limpo). **No máximo 2 voltas de ajuste.** Se ainda reprovar, pare nesse dia e relate.
-   - `pergunta ao dono:` do revisor: não decida sozinho. Guarde para o relatório final e siga só se o revisor também deu `aprovado`.
+   - Lista de ajustes: chame o `curador` em **modo ajuste**, passando a lista literal do revisor, e depois o revisor de novo (outra chamada, contexto limpo). **No máximo 3 voltas de ajuste.** Se ainda reprovar depois da 3ª, não pare: decida pela melhor opção (ver "Autonomia"), aplique, rode o linter e siga, registrando a decisão no relatório final.
+   - `pergunta ao dono:` do revisor: decida você pela melhor opção (ver "Autonomia"), passe a decisão ao `curador` se exigir mudança, e liste a pergunta e a decisão tomada no relatório final.
 3. **Importação:** não existe banco local. A importação é direto em produção, depois (skill `importar-producao`); não rode `dotnet ... importar` aqui.
 4. Registre no `estado.md` os tokens do dia quando o agente informar; não invente.
 
@@ -77,6 +79,10 @@ Fichas escritas, lab construído (com o resultado do teste) e uma tabela, nada a
 |---|---|---|---|
 
 Depois: perguntas ao dono guardadas, dias pulados, fichas que faltam, e o próximo passo. Os passos que sobram são do dono: publicar em produção pelo workflow `publicar-conteudo` (D8, ver `importar-producao`) e ler o dia direto no app em produção. Não dispare, não faça commit nem push.
+
+## Autonomia (decisão do dono, 01/11/2026)
+
+O dono mandou tomar sempre a melhor decisão, sem ficar perguntando. Dúvida de interpretação de regra, pergunta do revisor, distrator fraco, conflito entre regra do curso e ficha do dia: escolha a opção mais coerente com `PLANO-CURADORIA.md`, a ficha do curso e a ficha aprovada (a ficha aprovada vence a regra geral; o plano vence esta skill), aplique e registre no relatório final "decisão tomada: X, porque Y" para o dono revisar depois. **A autonomia vale só para redação e detalhe de conteúdo, nunca para escopo.** Dias, ponte, projeto, alvos e critérios são os da ficha da semana e do `roteiro.md`, à risca: não crie, corte nem mude escopo, e não deduza "sem projeto" de uma ficha que falta. Se a ficha da semana não existe, não tem "Aprovada pelo dono" ou diverge do roteiro, pare (no script, o portão do início já recusa). Só pare a semana por falha técnica real (linter que não passa depois das voltas, comando que não roda, lab sem teste verde, ficha da semana ausente).
 
 ## Limites
 
