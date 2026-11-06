@@ -41,6 +41,8 @@ public class CuratedEnrollmentSync
                 if (weekly is null)
                 {
                     weekly = new Weekly(enrollment.Id, template, today);
+                    // Sem isso a semana nasce sem projeto e nada segura a proxima (bug real, 06/11/2026: Daily 12 -> Daily 13).
+                    if (!template.IsPracticeOnly) weekly.InitializeProject();
                     await _weeklyRepository.AddAsync(weekly, cancellationToken);
                     weeklies.Add(weekly);
                 }
@@ -61,5 +63,25 @@ public class CuratedEnrollmentSync
             }
         }
         return (added, skipped);
+    }
+
+    /// <summary>
+    /// Cria o projeto das Weeklies de matricula que ficaram sem (semana criada por este sync antes de ele iniciar o
+    /// projeto). Sem projeto, Weekly.RequiresProjectToUnlock e falso e o aluno passa direto da ultima Daily da semana
+    /// pra primeira da seguinte. Idempotente: so toca Weekly sem projeto e que nao seja so de pratica.
+    /// </summary>
+    public async Task<int> BackfillMissingProjectsAsync(Guid courseId, CancellationToken cancellationToken)
+    {
+        var fixedCount = 0;
+        foreach (var enrollment in await _enrollmentRepository.GetByCourseIdAsync(courseId, cancellationToken))
+        {
+            foreach (var weekly in await _weeklyRepository.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken))
+            {
+                if (weekly.Project is not null || weekly.Template.IsPracticeOnly) continue;
+                weekly.InitializeProject();
+                fixedCount++;
+            }
+        }
+        return fixedCount;
     }
 }

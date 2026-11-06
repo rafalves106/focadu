@@ -193,6 +193,9 @@ public class ImportCuratedDaysUseCase
             }
         }
 
+        if (!options.DryRun && !courseCreated && await _enrollmentSync.BackfillMissingProjectsAsync(course.Id, cancellationToken) > 0)
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
         return new ImportReport(manifest.Name, courseCreated, options.DryRun, outcomes, dailiesAdded, dailiesReset, skipped, projectOutcomes);
     }
 

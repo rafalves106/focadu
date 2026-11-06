@@ -74,6 +74,8 @@ public class SeedCuratedCoursesUseCase
                 : await _enrollmentSync.SyncAsync(course.Id, created, cancellationToken);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+            if (!courseCreated && await _enrollmentSync.BackfillMissingProjectsAsync(course.Id, cancellationToken) > 0)
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
             results.Add(new CuratedCourseSeedResult(manifest.Name, courseCreated, created.Count, dailiesAdded, course.Status.ToString(), skipped, recreated));
         }
         return results;
