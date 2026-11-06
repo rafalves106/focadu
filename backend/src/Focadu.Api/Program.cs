@@ -486,7 +486,7 @@ if (args.Contains("seed"))
     var result = await seeder.ExecuteAsync();
 
     Console.WriteLine(result.AlreadyExisted
-        ? "Seed: curso 'Web Security' ja existe - nada foi inserido."
+        ? $"Seed: curso 'Web Security' ja existe - nada foi inserido ({result.ProjectsBackfilled} projeto(s) de semana reparado(s))."
         : result.SkippedNoContent
             ? "Seed: curso 'Web Security' NAO criado - sem conteudo em conteudo/web-security (refacao da curadoria, plano de 02/10/2026)."
             : $"Seed: curso 'Web Security' criado com sucesso (CourseId={result.CourseId}).");

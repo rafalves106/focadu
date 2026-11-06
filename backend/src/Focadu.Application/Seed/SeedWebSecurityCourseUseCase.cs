@@ -27,11 +27,13 @@ public class SeedWebSecurityCourseUseCase
 
     private readonly ICourseRepository _courseRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly CuratedEnrollmentSync _enrollmentSync;
 
-    public SeedWebSecurityCourseUseCase(ICourseRepository courseRepository, IUnitOfWork unitOfWork)
+    public SeedWebSecurityCourseUseCase(ICourseRepository courseRepository, IUnitOfWork unitOfWork, CuratedEnrollmentSync enrollmentSync)
     {
         _courseRepository = courseRepository;
         _unitOfWork = unitOfWork;
+        _enrollmentSync = enrollmentSync;
     }
 
     public async Task<SeedResult> ExecuteAsync(CancellationToken cancellationToken = default)
@@ -41,7 +43,14 @@ public class SeedWebSecurityCourseUseCase
         if (existingCourse is not null)
         {
             await BackfillCertificationCoverageAsync(existingCourse, cancellationToken);
-            return new SeedResult(AlreadyExisted: true, CourseId: null);
+
+            // Semana de matricula criada sem projeto deixa o aluno passar direto pra semana seguinte
+            // (bug real, 06/11/2026) - todo deploy repara, sem depender de um `importar`.
+            var projectsBackfilled = await _enrollmentSync.BackfillMissingProjectsAsync(existingCourse.Id, cancellationToken);
+            if (projectsBackfilled > 0)
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            return new SeedResult(AlreadyExisted: true, CourseId: null, ProjectsBackfilled: projectsBackfilled);
         }
 
         // Plano de curadoria (02/10/2026): o conteudo antigo do Web Security foi arquivado e o curso sera refeito.
@@ -298,4 +307,4 @@ public class SeedWebSecurityCourseUseCase
 }
 
 /// <summary>Resultado do seed: CourseId nulo quando o curso ja existia (nada foi inserido) ou quando nao ha conteudo em conteudo/ (SkippedNoContent).</summary>
-public record SeedResult(bool AlreadyExisted, Guid? CourseId, bool SkippedNoContent = false);
+public record SeedResult(bool AlreadyExisted, Guid? CourseId, bool SkippedNoContent = false, int ProjectsBackfilled = 0);
