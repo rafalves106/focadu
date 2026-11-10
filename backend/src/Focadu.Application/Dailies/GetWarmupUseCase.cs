@@ -11,9 +11,11 @@ namespace Focadu.Application.Dailies;
 /// ordem, e nada e gravado - a tela (passo C) decide como mostrar. As perguntas saem de Quiz e Cloze que o aluno ja
 /// respondeu, entao o gabarito delas ja foi revelado antes.
 ///
-/// Regra de escolha (<see cref="WarmupSelector"/>): as de menor nota primeiro (o que o aluno errou volta antes), depois as
-/// mais antigas; cada dia de origem entra uma vez antes de repetir. Na ponte (dia 6) so contam os dias da mesma semana;
-/// nos outros dias, qualquer dia anterior da matricula.
+/// Regra de escolha (<see cref="WarmupSelector"/>): sorteio com semente no dia atual, entao cada dia traz perguntas
+/// diferentes e reabrir o mesmo dia traz as mesmas; o que o aluno errou tem o dobro de chance de voltar, sem lugar
+/// garantido (senao as mesmas perguntas erradas voltariam todo dia, ja que o aquecimento nao grava nada); cada dia de
+/// origem entra uma vez antes de repetir. Na ponte (dia 6) so contam os dias da mesma semana; nos outros dias,
+/// qualquer dia anterior da matricula.
 /// </summary>
 public class GetWarmupUseCase
 {
@@ -50,7 +52,7 @@ public class GetWarmupUseCase
             }
         }
 
-        return WarmupSelector.Select(candidates, QuestionCount).Select(ToDto).ToList();
+        return WarmupSelector.Select(candidates, QuestionCount, current.Id.GetHashCode()).Select(ToDto).ToList();
     }
 
     private static bool IsBefore(int week, int day, int currentWeek, int currentDay) =>
@@ -72,10 +74,15 @@ public record WarmupQuestionDto(
 /// <summary>Escolha pura das perguntas do aquecimento, separada para teste.</summary>
 public static class WarmupSelector
 {
-    public static IReadOnlyList<WarmupCandidate> Select(IEnumerable<WarmupCandidate> candidates, int count)
+    public static IReadOnlyList<WarmupCandidate> Select(IEnumerable<WarmupCandidate> candidates, int count, int seed)
     {
+        // Ordem de base fixa antes do sorteio: a mesma semente da sempre o mesmo resultado, venha a lista em que ordem vier.
+        var random = new Random(seed);
         var ordered = candidates
-            .OrderBy(c => c.LastScore).ThenBy(c => c.WeekNumber).ThenBy(c => c.DayNumber).ThenBy(c => c.Activity.OrderIndex)
+            .OrderBy(c => c.WeekNumber).ThenBy(c => c.DayNumber).ThenBy(c => c.Activity.OrderIndex)
+            .Select(c => (Candidate: c, Key: random.NextDouble() * (c.LastScore < 100 ? 0.5 : 1.0)))
+            .OrderBy(x => x.Key)
+            .Select(x => x.Candidate)
             .ToList();
 
         var picked = new List<WarmupCandidate>();

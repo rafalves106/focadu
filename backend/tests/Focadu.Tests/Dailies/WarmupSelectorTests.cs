@@ -6,7 +6,10 @@ using Xunit;
 
 namespace Focadu.Tests.Dailies;
 
-/// <summary>Aquecimento (plano de curadoria, 02/10/2026): 2 perguntas de dias anteriores, as de menor nota primeiro.</summary>
+/// <summary>
+/// Aquecimento (plano de curadoria, 02/10/2026): 2 perguntas de dias anteriores, sorteadas com semente no dia atual para
+/// rodar de um dia pro outro; o que o aluno errou tem mais chance de voltar, sem lugar garantido.
+/// </summary>
 public class WarmupSelectorTests
 {
     private static WarmupCandidate Candidate(Guid dailyId, int week, int day, int score, int order = 0)
@@ -17,38 +20,54 @@ public class WarmupSelectorTests
         return new WarmupCandidate(dailyId, activity, week, day, score);
     }
 
+    private static List<WarmupCandidate> OnePerDay(int days, int score = 100) =>
+        Enumerable.Range(1, days).Select(d => Candidate(Guid.NewGuid(), 1 + (d - 1) / 6, 1 + (d - 1) % 6, score)).ToList();
+
     [Fact]
-    public void Select_PicksTheLowestScoresFirst()
+    public void Select_SameSeed_GivesTheSameQuestions_WhateverTheInputOrder()
     {
-        var a = Candidate(Guid.NewGuid(), 1, 1, 100);
-        var b = Candidate(Guid.NewGuid(), 1, 2, 40);
-        var c = Candidate(Guid.NewGuid(), 1, 3, 70);
+        var candidates = OnePerDay(10);
+        var reversed = Enumerable.Reverse(candidates).ToList();
 
-        var picked = WarmupSelector.Select([a, b, c], 2);
-
-        Assert.Equal([b, c], picked);
+        Assert.Equal(WarmupSelector.Select(candidates, 2, seed: 42), WarmupSelector.Select(reversed, 2, seed: 42));
     }
 
     [Fact]
-    public void Select_TiesGoToTheOldestDay()
+    public void Select_RotatesAcrossDays_InsteadOfRepeatingTheSamePair()
     {
-        var newer = Candidate(Guid.NewGuid(), 2, 8, 100);
-        var older = Candidate(Guid.NewGuid(), 1, 2, 100);
+        var candidates = OnePerDay(12);
 
-        Assert.Equal([older, newer], WarmupSelector.Select([newer, older], 2));
+        var seen = Enumerable.Range(0, 30).SelectMany(seed => WarmupSelector.Select(candidates, 2, seed)).Distinct().Count();
+
+        Assert.True(seen >= 10, $"so {seen} perguntas diferentes em 30 dias");
+    }
+
+    [Fact]
+    public void Select_MissedQuestionsComeBackMoreOften_ButDoNotTakeEveryDay()
+    {
+        var candidates = OnePerDay(10);
+        var missed = Candidate(Guid.NewGuid(), 2, 6, 0);
+        candidates.Add(missed);
+
+        var days = Enumerable.Range(0, 200).Count(seed => WarmupSelector.Select(candidates, 2, seed).Contains(missed));
+
+        // Sem peso, cada pergunta entra em ~2/11 dos dias (~36 de 200); com o dobro de chance, bem mais, mas nao todo dia.
+        Assert.InRange(days, 50, 150);
     }
 
     [Fact]
     public void Select_UsesEachSourceDayOnceBeforeRepeatingOne()
     {
         var sameDay = Guid.NewGuid();
-        var low1 = Candidate(sameDay, 1, 1, 10, order: 0);
-        var low2 = Candidate(sameDay, 1, 1, 20, order: 1);
-        var otherDay = Candidate(Guid.NewGuid(), 1, 2, 90);
+        var q1 = Candidate(sameDay, 1, 1, 100, order: 0);
+        var q2 = Candidate(sameDay, 1, 1, 100, order: 1);
+        var otherDay = Candidate(Guid.NewGuid(), 1, 2, 100);
 
-        var picked = WarmupSelector.Select([low1, low2, otherDay], 2);
-
-        Assert.Equal([low1, otherDay], picked);
+        foreach (var seed in Enumerable.Range(0, 20))
+        {
+            var picked = WarmupSelector.Select([q1, q2, otherDay], 2, seed);
+            Assert.Contains(otherDay, picked);
+        }
     }
 
     [Fact]
@@ -58,14 +77,14 @@ public class WarmupSelectorTests
         var q1 = Candidate(sameDay, 1, 1, 10, order: 0);
         var q2 = Candidate(sameDay, 1, 1, 20, order: 1);
 
-        Assert.Equal([q1, q2], WarmupSelector.Select([q2, q1], 2));
+        Assert.Equal(2, WarmupSelector.Select([q2, q1], 2, seed: 7).Count);
     }
 
     [Fact]
     public void Select_WithFewerCandidatesThanRequested_ReturnsWhatThereIs()
     {
-        Assert.Empty(WarmupSelector.Select([], 2));
+        Assert.Empty(WarmupSelector.Select([], 2, seed: 1));
         var only = Candidate(Guid.NewGuid(), 1, 1, 50);
-        Assert.Equal([only], WarmupSelector.Select([only], 2));
+        Assert.Equal([only], WarmupSelector.Select([only], 2, seed: 1));
     }
 }

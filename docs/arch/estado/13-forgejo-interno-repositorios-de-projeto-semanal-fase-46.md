@@ -354,8 +354,9 @@ Refacao dos cursos (`secret/produto/PLANO-CURADORIA.md`, 02/10/2026). Detalhe do
 - **Devolutiva da voz:** a avaliacao Groq devolve resposta correta e pontos a melhorar (`VoiceDebrief`), mostrada no `FeedbackPanel`.
 - **Feedback do dia** (`DayFeedback`): `PUT/GET /api/dailies/{id}/feedback`, so depois de concluir, um por Daily;
   `DayFeedbackScreen` ao fim da sessao (pulavel); comando `feedback <curso>` gera o relatorio de clareza.
-- **Aquecimento:** `GET /api/dailies/{id}/warmup` (2 Quiz/Cloze de dias anteriores, menor nota primeiro; nao e atividade
-  do dia); `WarmupScreen` antes da sessao (pulavel).
+- **Aquecimento:** `GET /api/dailies/{id}/warmup` (2 Quiz/Cloze de dias anteriores, sorteados com semente no Id do dia atual:
+  roda de um dia pro outro e repete ao reabrir o mesmo dia; errada tem o dobro de chance, sem lugar garantido, desde
+  10/11/2026 - antes era "menor nota primeiro" fixo e as mesmas 2 voltavam todo dia; nao e atividade do dia); `WarmupScreen` antes da sessao (pulavel).
 - **`resetar-usuarios --manter <email>`**: dry-run por padrao, `--confirmar` exige `--backup-feito`; apaga todos os outros
   usuarios e zera o progresso do dono. Contas do Forgejo ficam pra limpar a mao.
 - **Curso em Draft** visivel ao dono (desde a Fase 96 pelo `CourseAccess`/`CourseViewer`) em `/courses/{id}/curriculum` e `/weekly-templates/{id}`.
