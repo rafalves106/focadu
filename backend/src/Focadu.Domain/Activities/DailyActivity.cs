@@ -71,7 +71,7 @@ public class DailyActivity : Entity
     /// <summary>Terminal v3: a cola "Comandos de hoje" da atividade (vazia em missao curada antes dela).</summary>
     public IReadOnlyList<TerminalCommand> TerminalCommandList => TerminalMissions.ParseCommands(TerminalMissionsJson);
 
-    /// <summary>Molde v1: alvo de aprendizagem do dia ("t1", "t2" ou "t3") que esta atividade cobra. Nulo em atividade antiga.</summary>
+    /// <summary>Molde v1: alvo de aprendizagem do dia ("t1" a "t15") que esta atividade cobra. Nulo em atividade antiga.</summary>
     public string? Target { get; private set; }
 
     /// <summary>
@@ -191,13 +191,21 @@ public class DailyActivity : Entity
         if (prompt is not null) Prompt = prompt;
     }
 
-    /// <summary>Molde v1: aponta a atividade para um dos alvos do dia (t1, t2, t3).</summary>
+    /// <summary>
+    /// Molde v1: aponta a atividade para um dos alvos do dia. Moldes A e B usam t1 a t3; o molde C (Fase 108) tem um alvo
+    /// por bloco de leitura, ate t15.
+    /// </summary>
     public void SetTarget(string? target)
     {
-        if (target is not null && target is not ("t1" or "t2" or "t3"))
-            throw new DomainException("O alvo de aprendizagem deve ser t1, t2 ou t3.", "alvo_invalido");
+        if (target is not null && !IsValidTarget(target))
+            throw new DomainException("O alvo de aprendizagem deve ser de t1 a t15.", "alvo_invalido");
         Target = target;
     }
+
+    /// <summary>"t" seguido de 1 a 15, sem zero a esquerda.</summary>
+    internal static bool IsValidTarget(string target) =>
+        target.Length is 2 or 3 && target[0] == 't' && int.TryParse(target.AsSpan(1), out var n)
+        && n is >= 1 and <= 15 && target[1] != '0';
 
     /// <summary>
     /// Molde v1: dados da conversa por voz. <paramref name="referenceAnswer"/> e a resposta correta da pergunta;

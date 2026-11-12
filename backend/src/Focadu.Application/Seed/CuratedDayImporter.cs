@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Focadu.Domain.Activities;
 using Focadu.Domain.Dailies;
 using Focadu.Domain.Enums;
+using Focadu.Domain.Exceptions;
 using Focadu.Domain.Weeklies;
 
 namespace Focadu.Application.Seed;
@@ -112,8 +113,9 @@ public static class CuratedDayImporter
         dailyTemplate.SetCurationInfo(day.MoldeVersion, ComputeHash(json), day.Targets?.Select(x => new LearningTarget(x.Id, x.Text)));
         dailyTemplate.SetBridgeMark(day.Ponte);
 
+        var declaredTargets = day.Targets?.Select(x => x.Id).ToHashSet();
         for (var i = 0; i < day.Activities.Count; i++)
-            AddActivity(dailyTemplate, day.Activities[i], i, contentByRef);
+            AddActivity(dailyTemplate, day.Activities[i], i, contentByRef, declaredTargets);
 
         // Fase 86: laboratorio de codigo do dia (depois das atividades: SetLab exige um CodeStep).
         if (day.Lab is not null)
@@ -251,8 +253,13 @@ public static class CuratedDayImporter
         return LabConfig.Create(lab.Runtime, lab.Image, fileIds, lab.Packages, lab.Services, lab.Entry, lab.Command, lab.TimeoutSeconds, lab.Setup, lab.User);
     }
 
-    private static void AddActivity(DailyTemplate dailyTemplate, ActivityJson json, int orderIndex, Dictionary<string, Guid> contentByRef)
+    private static void AddActivity(DailyTemplate dailyTemplate, ActivityJson json, int orderIndex, Dictionary<string, Guid> contentByRef,
+        HashSet<string>? declaredTargets)
     {
+        // Fase 108: com alvos de t1 a t15, o alvo tambem precisa estar entre os declarados no proprio dia.
+        if (json.Target is not null && declaredTargets is not null && !declaredTargets.Contains(json.Target))
+            throw new DomainException($"Activity #{orderIndex}: o alvo '{json.Target}' nao esta em targets do dia.", "alvo_invalido");
+
         Guid? contentId = null;
         if (json.ContentRef is not null)
         {
@@ -336,7 +343,7 @@ public static class CuratedDayImporter
         List<MissionJson>? Missions = null,
         /// <summary>So em TerminalMission (terminal v3): a cola "Comandos de hoje".</summary>
         List<CommandJson>? Commands = null,
-        /// <summary>Molde v1: alvo de aprendizagem (t1, t2, t3) e dados da conversa por voz.</summary>
+        /// <summary>Molde v1: alvo de aprendizagem (t1 a t15) e dados da conversa por voz.</summary>
         string? Target = null, string? Hint = null, string? ReferenceAnswer = null, bool? Final = null, List<string>? Topics = null);
 
     private record MissionJson(

@@ -72,7 +72,7 @@ public record DailyActivityDto(
     bool IsFinalQuestion = false,
     /// <summary>Pergunta final: os 3 topicos-pista.</summary>
     IReadOnlyCollection<string>? Topics = null,
-    /// <summary>Molde v1: alvo de aprendizagem (t1, t2, t3) que a atividade cobra.</summary>
+    /// <summary>Molde v1: alvo de aprendizagem (t1 a t15) que a atividade cobra.</summary>
     string? Target = null);
 
 /// <summary>Missao no terminal (ActivityType.TerminalMission): o navegador do aluno confere pelo <see cref="TerminalMissionCheckDto"/>; nada aqui e segredo.</summary>

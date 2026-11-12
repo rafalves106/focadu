@@ -163,8 +163,8 @@ namespace Focadu.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Target")
-                        .HasMaxLength(2)
-                        .HasColumnType("character varying(2)");
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
 
                     b.Property<string>("TerminalMissionsJson")
                         .HasColumnType("text");
