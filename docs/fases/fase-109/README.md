@@ -178,3 +178,32 @@ da semana no desktop fica a ~6 px do limite; a Trilha no celular, a ~12 px). Con
 - Visão da semana: sete linhas no notebook sem rolar, a linha atual com sombra verde, publicação pendente;
 - Modal "Trocar curso" com dois cursos;
 - a contagem "Dia N de M" e o "k/n aprovadas" com dados reais.
+
+## Etapa 3b: ajustes da comparação com o Figma (12/11/2026)
+
+Prints locais das etapas 1 a 3 (`docs/design/prints/fase-109/`) comparados com os quadros em
+`docs/design/comparacao-fase-109.md`. Corrigidos os 10 itens do resumo de lá e o plural das gems:
+
+- **Breakpoint de 1400 px** (`index.css`): `--breakpoint-wide: 87.5rem` no `@theme`; os `min-[1400px]:` viraram
+  `wide:`. O arbitrário em px saía no CSS antes de `md:`/`lg:` e nunca valia (margem 24 em vez de 32, coluna
+  400 em vez de 432 no desktop). Conferido no CSS do build: as regras `wide:` agora vêm depois.
+- **Visão da semana**: linhas com `md:py-2` (78 px, como o quadro `28:1242`) e `lg:short:py-1.5` no notebook; a
+  lista não estica mais (`flex-1` saiu), então o Primário do celular vem logo abaixo dela.
+- **Início no celular**: o cartão "Caminho da semana" perde o título abaixo de md (quadro `15:833`), e a Fala
+  cabe sem rolar. O `Card` passou a aceitar `title` como nó (sem o `title` do HTML).
+- **Confirmação de sair**: `Modal` novo com a Fala da Focada, Perigo "Sim, sair da conta" e Secundário "Não,
+  fico por aqui"; saiu o `PixelConfirmDialog` do menu. O `Modal` vai pro `body` por portal (o véu cobre a
+  gaveta) e o `useDialogKeys` guarda uma pilha: o ESC fecha só o diálogo de cima.
+- **Trilha**: no celular, segmentos em vez de Nós de dia. Semana à frente da atual conta como trancada
+  (`isWeekReached` em `lib/weekPath.ts`): mostra "Abre com o projeto da semana N" e o code comigo vira cadeado.
+  O `isLocked` da API só cobre semana atrás de projeto ou publicação pendente.
+- **Configurações**: Caixa de seleção marcada com o check escuro e Escolha selecionada com o check verde
+  (`PixelIcon`). O rodapé "Termos de Uso · Política de Privacidade" **ficou**: é o único acesso aos termos
+  para quem já entrou; tirar ou mudar de lugar é decisão do dono.
+- **Eyebrow do Destaque** em cinza (Cartão `13:18`).
+- **"1 gem"** no singular na nav e no menu do agente.
+
+Conferido com prints locais (Playwright, `tools/capturar-telas/conferir-109b.mjs`, contas `aluno.f109.1` e `.4`):
+Início, Visão da semana, confirmação de sair e Configurações sem rolagem nos três tamanhos; o ESC na confirmação
+fecha só ela. A Trilha ainda rola nos três tamanhos porque o `curso.json` do Web Security tem um módulo só com as
+12 semanas (sem abas); isso é conteúdo, não código. Ficaram de fora os itens de gravidade baixa da comparação.

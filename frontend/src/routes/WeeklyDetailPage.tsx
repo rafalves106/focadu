@@ -62,7 +62,7 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
   const theme = weekly.theme ?? weekly.title;
 
   return (
-    <div className="tela-cheia flex gap-6 p-4 md:p-6 min-[1400px]:p-8">
+    <div className="tela-cheia flex gap-6 p-4 md:p-6 wide:p-8">
       <div className="flex min-w-0 flex-1 flex-col gap-4 lg:short:gap-3">
         <div className="flex shrink-0 flex-col gap-4 lg:short:gap-2">
           <Breadcrumb parts={[course?.name, course && { label: 'Trilha', to: `/start?course=${cid}` }, `Semana ${weekly.number}`]} />
@@ -79,7 +79,7 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
 
         {publish && <div className="shrink-0 xl:hidden">{publish}</div>}
 
-        <ol className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto md:gap-4 lg:short:gap-2">
+        <ol className="flex min-h-0 flex-col gap-2 overflow-y-auto md:gap-4 lg:short:gap-2">
           {rows.map((row) => (
             <DayRow key={row.day.id} row={row} primary={row === current ? primary : null} />
           ))}
@@ -271,7 +271,7 @@ function ProjectRow({ row, primary }: { row: ProjectRowData; primary: { label: s
 function Row({ highlight, node, side, children }: { highlight: boolean; node: PathNode; side: ReactNode; children: ReactNode }) {
   return (
     <li
-      className={`grid shrink-0 grid-cols-[56px_minmax(0,1fr)] items-center gap-4 md:border-2 md:px-6 md:py-3 lg:grid-cols-[72px_minmax(0,1fr)_200px] lg:short:py-2 ${
+      className={`grid shrink-0 grid-cols-[56px_minmax(0,1fr)] items-center gap-4 md:border-2 md:px-6 md:py-2 lg:grid-cols-[72px_minmax(0,1fr)_200px] lg:short:py-1.5 ${
         highlight ? 'md:border-accent md:bg-surface md:shadow-[4px_4px_0_0_var(--color-accent-shadow)]' : 'md:border-stroke md:bg-surface'
       }`}
     >

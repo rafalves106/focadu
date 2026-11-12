@@ -5,7 +5,7 @@ import { useApiResource } from '../api/useApiResource';
 import { DailyStatus, WeeklyProjectStatus, type CourseDetailDto, type WeeklyOverviewDto } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
-import { WeekPath } from '../components/trail/WeekPath';
+import { WeekPath, WeekSegments } from '../components/trail/WeekPath';
 import { Breadcrumb } from '../components/ui/Breadcrumb';
 import { ButtonLink } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -18,6 +18,7 @@ import {
   courseDoneDayCount,
   courseDoneToday,
   courseSizeText,
+  isWeekReached,
   projectLink,
   weekLink,
   weekPathNodes,
@@ -54,7 +55,7 @@ function Trail({ course }: { course: CourseDetailDto }) {
   const here = stop?.day ? ` · você está no dia ${stop.day.dayNumber}` : '';
 
   return (
-    <div className="tela-cheia flex gap-6 p-4 md:p-6 min-[1400px]:p-8">
+    <div className="tela-cheia flex gap-6 p-4 md:p-6 wide:p-8">
       <div className="flex min-w-0 flex-1 flex-col gap-4 md:gap-6 lg:short:gap-4">
         <div className="flex shrink-0 flex-col gap-4 lg:short:gap-2">
           <Breadcrumb parts={[course.name, 'Trilha']} />
@@ -183,7 +184,7 @@ function WeekRow({
         {action.link && <TextLink to={action.link.to}>{action.link.label}</TextLink>}
       </span>
     );
-  } else if (week.isLocked) {
+  } else if (!isWeekReached(week)) {
     side = (
       <span className="text-pequeno text-muted">
         {week.isPracticeOnly ? `Abre quando a Semana ${week.number - 1} fechar` : `Abre com o projeto da semana ${week.number - 1}`}
@@ -199,15 +200,20 @@ function WeekRow({
     <li className="shrink-0">
       <Card
         kind={highlight ? 'destaque' : 'padrao'}
-        pad="gap-3 p-3 md:gap-4 md:p-4 min-[1400px]:p-6 lg:short:py-4"
-        className="lg:grid lg:grid-cols-[minmax(160px,240px)_auto_minmax(160px,200px)] lg:items-center lg:gap-4 min-[1400px]:gap-6"
+        pad="gap-3 p-3 md:gap-4 md:p-4 wide:p-6 lg:short:py-4"
+        className="lg:grid lg:grid-cols-[minmax(160px,240px)_auto_minmax(160px,200px)] lg:items-center lg:gap-4 wide:gap-6"
       >
         <Link to={weekLink(course.id, week.id)} className="group flex min-w-0 flex-col gap-1">
           <span className={`text-rotulo-sm ${highlight ? 'text-accent' : 'text-secondary'}`}>{label}</span>
           <span className="truncate text-corpo text-primary group-hover:text-accent lg:whitespace-normal">{week.theme ?? week.title}</span>
           {meta && <span className="hidden text-pequeno text-muted md:block">{meta}</span>}
         </Link>
-        <WeekPath nodes={nodes} label={`Dias da ${label}`} />
+        <div className="hidden md:block">
+          <WeekPath nodes={nodes} label={`Dias da ${label}`} />
+        </div>
+        <div className="md:hidden">
+          <WeekSegments nodes={nodes} label={`Dias da ${label}`} />
+        </div>
         <div className="hidden lg:block">{side}</div>
       </Card>
     </li>

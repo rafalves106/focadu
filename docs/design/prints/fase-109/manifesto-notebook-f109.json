@@ -1,0 +1,347 @@
+{
+  "manifesto": [
+    {
+      "arquivo": "01-inicio-1o-dia-sem-agente.png",
+      "rota": "/start",
+      "estado": "Inicio (/start) - conta nova, nenhum Dia feito, sem agente (contorno tracejado)",
+      "nota": ""
+    },
+    {
+      "arquivo": "02-menu-agente-1o-dia-sem-agente.png",
+      "rota": "/start",
+      "estado": "menu do agente aberto (gaveta) sobre o Inicio - conta nova, nenhum Dia feito, sem agente (contorno tracejado)",
+      "nota": ""
+    },
+    {
+      "arquivo": "03-sair-da-conta-1o-dia-sem-agente.png",
+      "rota": "/start",
+      "estado": "confirmacao de \"Sair da conta\" sobre o menu do agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "04-configuracoes-1o-dia-sem-agente.png",
+      "rota": "/start",
+      "estado": "modal de Configuracoes",
+      "nota": ""
+    },
+    {
+      "arquivo": "05-ajuda-inicio-1o-dia-sem-agente.png",
+      "rota": "/start",
+      "estado": "modal \"Ajuda desta tela\" aberto no Inicio",
+      "nota": ""
+    },
+    {
+      "arquivo": "06-trilha-1o-dia-sem-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "Trilha (pagina do curso) - conta nova, nenhum Dia feito, sem agente (contorno tracejado)",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "07-ajuda-trilha-1o-dia-sem-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "modal \"Ajuda desta tela\" aberto na Trilha",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "08-semana-1o-dia-sem-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=f06d5f25-3f4c-4ddb-afa6-9bfde7c71304",
+      "estado": "Visao da semana 1 - conta nova, nenhum Dia feito, sem agente (contorno tracejado)",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "09-ajuda-semana-1o-dia-sem-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=f06d5f25-3f4c-4ddb-afa6-9bfde7c71304",
+      "estado": "modal \"Ajuda desta tela\" aberto na Visao da semana",
+      "nota": "2 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "101-inicio-dia-feito-reforco-sem-agente.png",
+      "rota": "/start",
+      "estado": "Inicio (/start) - Dia 1 feito hoje (3 erros no quiz: reforco pendente), sem agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "102-menu-agente-dia-feito-reforco-sem-agente.png",
+      "rota": "/start",
+      "estado": "menu do agente aberto (gaveta) sobre o Inicio - Dia 1 feito hoje (3 erros no quiz: reforco pendente), sem agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "103-sair-da-conta-dia-feito-reforco-sem-agente.png",
+      "rota": "/start",
+      "estado": "confirmacao de \"Sair da conta\" sobre o menu do agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "104-configuracoes-dia-feito-reforco-sem-agente.png",
+      "rota": "/start",
+      "estado": "modal de Configuracoes",
+      "nota": ""
+    },
+    {
+      "arquivo": "105-ajuda-inicio-dia-feito-reforco-sem-agente.png",
+      "rota": "/start",
+      "estado": "modal \"Ajuda desta tela\" aberto no Inicio",
+      "nota": ""
+    },
+    {
+      "arquivo": "106-trilha-dia-feito-reforco-sem-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "Trilha (pagina do curso) - Dia 1 feito hoje (3 erros no quiz: reforco pendente), sem agente",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "107-ajuda-trilha-dia-feito-reforco-sem-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "modal \"Ajuda desta tela\" aberto na Trilha",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "108-semana-dia-feito-reforco-sem-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=2131fcd8-a2bb-403d-9862-4b468a28e535",
+      "estado": "Visao da semana 1 - Dia 1 feito hoje (3 erros no quiz: reforco pendente), sem agente",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "109-ajuda-semana-dia-feito-reforco-sem-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=2131fcd8-a2bb-403d-9862-4b468a28e535",
+      "estado": "modal \"Ajuda desta tela\" aberto na Visao da semana",
+      "nota": "2 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "201-inicio-dia-feito-reforco-com-agente.png",
+      "rota": "/start",
+      "estado": "Inicio (/start) - Dia 1 feito hoje (reforco pendente), com agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "202-menu-agente-dia-feito-reforco-com-agente.png",
+      "rota": "/start",
+      "estado": "menu do agente aberto (gaveta) sobre o Inicio - Dia 1 feito hoje (reforco pendente), com agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "203-sair-da-conta-dia-feito-reforco-com-agente.png",
+      "rota": "/start",
+      "estado": "confirmacao de \"Sair da conta\" sobre o menu do agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "204-configuracoes-dia-feito-reforco-com-agente.png",
+      "rota": "/start",
+      "estado": "modal de Configuracoes",
+      "nota": ""
+    },
+    {
+      "arquivo": "205-ajuda-inicio-dia-feito-reforco-com-agente.png",
+      "rota": "/start",
+      "estado": "modal \"Ajuda desta tela\" aberto no Inicio",
+      "nota": ""
+    },
+    {
+      "arquivo": "206-trilha-dia-feito-reforco-com-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "Trilha (pagina do curso) - Dia 1 feito hoje (reforco pendente), com agente",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "207-ajuda-trilha-dia-feito-reforco-com-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "modal \"Ajuda desta tela\" aberto na Trilha",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "208-semana-dia-feito-reforco-com-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=1fe2fd38-8b0c-444f-a1a8-72153d6eb7e0",
+      "estado": "Visao da semana 1 - Dia 1 feito hoje (reforco pendente), com agente",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "209-ajuda-semana-dia-feito-reforco-com-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=1fe2fd38-8b0c-444f-a1a8-72153d6eb7e0",
+      "estado": "modal \"Ajuda desta tela\" aberto na Visao da semana",
+      "nota": "2 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "151-inicio-dia-por-fazer-sem-agente.png",
+      "rota": "/start",
+      "estado": "Inicio (/start) - Dia 1 feito ontem (recuado no banco local), Dia 2 por fazer, sem agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "152-menu-agente-dia-por-fazer-sem-agente.png",
+      "rota": "/start",
+      "estado": "menu do agente aberto (gaveta) sobre o Inicio - Dia 1 feito ontem (recuado no banco local), Dia 2 por fazer, sem agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "153-sair-da-conta-dia-por-fazer-sem-agente.png",
+      "rota": "/start",
+      "estado": "confirmacao de \"Sair da conta\" sobre o menu do agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "154-configuracoes-dia-por-fazer-sem-agente.png",
+      "rota": "/start",
+      "estado": "modal de Configuracoes",
+      "nota": ""
+    },
+    {
+      "arquivo": "155-ajuda-inicio-dia-por-fazer-sem-agente.png",
+      "rota": "/start",
+      "estado": "modal \"Ajuda desta tela\" aberto no Inicio",
+      "nota": ""
+    },
+    {
+      "arquivo": "156-trilha-dia-por-fazer-sem-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "Trilha (pagina do curso) - Dia 1 feito ontem (recuado no banco local), Dia 2 por fazer, sem agente",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "157-ajuda-trilha-dia-por-fazer-sem-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "modal \"Ajuda desta tela\" aberto na Trilha",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "158-semana-dia-por-fazer-sem-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=2131fcd8-a2bb-403d-9862-4b468a28e535",
+      "estado": "Visao da semana 1 - Dia 1 feito ontem (recuado no banco local), Dia 2 por fazer, sem agente",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "159-ajuda-semana-dia-por-fazer-sem-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=2131fcd8-a2bb-403d-9862-4b468a28e535",
+      "estado": "modal \"Ajuda desta tela\" aberto na Visao da semana",
+      "nota": "2 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "251-inicio-dia-por-fazer-com-agente.png",
+      "rota": "/start",
+      "estado": "Inicio (/start) - Dia 1 feito ontem (recuado no banco local), Dia 2 por fazer, com agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "252-menu-agente-dia-por-fazer-com-agente.png",
+      "rota": "/start",
+      "estado": "menu do agente aberto (gaveta) sobre o Inicio - Dia 1 feito ontem (recuado no banco local), Dia 2 por fazer, com agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "253-sair-da-conta-dia-por-fazer-com-agente.png",
+      "rota": "/start",
+      "estado": "confirmacao de \"Sair da conta\" sobre o menu do agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "254-configuracoes-dia-por-fazer-com-agente.png",
+      "rota": "/start",
+      "estado": "modal de Configuracoes",
+      "nota": ""
+    },
+    {
+      "arquivo": "255-ajuda-inicio-dia-por-fazer-com-agente.png",
+      "rota": "/start",
+      "estado": "modal \"Ajuda desta tela\" aberto no Inicio",
+      "nota": ""
+    },
+    {
+      "arquivo": "256-trilha-dia-por-fazer-com-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "Trilha (pagina do curso) - Dia 1 feito ontem (recuado no banco local), Dia 2 por fazer, com agente",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "257-ajuda-trilha-dia-por-fazer-com-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "modal \"Ajuda desta tela\" aberto na Trilha",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "258-semana-dia-por-fazer-com-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=1fe2fd38-8b0c-444f-a1a8-72153d6eb7e0",
+      "estado": "Visao da semana 1 - Dia 1 feito ontem (recuado no banco local), Dia 2 por fazer, com agente",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "259-ajuda-semana-dia-por-fazer-com-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=1fe2fd38-8b0c-444f-a1a8-72153d6eb7e0",
+      "estado": "modal \"Ajuda desta tela\" aberto na Visao da semana",
+      "nota": "2 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "51-inicio-1o-dia-com-agente.png",
+      "rota": "/start",
+      "estado": "Inicio (/start) - conta nova, nenhum Dia feito, com agente criado pelo Perfil",
+      "nota": ""
+    },
+    {
+      "arquivo": "52-menu-agente-1o-dia-com-agente.png",
+      "rota": "/start",
+      "estado": "menu do agente aberto (gaveta) sobre o Inicio - conta nova, nenhum Dia feito, com agente criado pelo Perfil",
+      "nota": ""
+    },
+    {
+      "arquivo": "53-sair-da-conta-1o-dia-com-agente.png",
+      "rota": "/start",
+      "estado": "confirmacao de \"Sair da conta\" sobre o menu do agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "54-configuracoes-1o-dia-com-agente.png",
+      "rota": "/start",
+      "estado": "modal de Configuracoes",
+      "nota": ""
+    },
+    {
+      "arquivo": "55-ajuda-inicio-1o-dia-com-agente.png",
+      "rota": "/start",
+      "estado": "modal \"Ajuda desta tela\" aberto no Inicio",
+      "nota": ""
+    },
+    {
+      "arquivo": "56-trilha-1o-dia-com-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "Trilha (pagina do curso) - conta nova, nenhum Dia feito, com agente criado pelo Perfil",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "57-ajuda-trilha-1o-dia-com-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "modal \"Ajuda desta tela\" aberto na Trilha",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "58-semana-1o-dia-com-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=2c81f1c9-7ec1-4851-aaff-86f7f53d721b",
+      "estado": "Visao da semana 1 - conta nova, nenhum Dia feito, com agente criado pelo Perfil",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "59-ajuda-semana-1o-dia-com-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=2c81f1c9-7ec1-4851-aaff-86f7f53d721b",
+      "estado": "modal \"Ajuda desta tela\" aberto na Visao da semana",
+      "nota": "2 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "301-inicio-dois-cursos-com-agente.png",
+      "rota": "/start",
+      "estado": "Inicio do curso aberto por padrao (Linux, o ultimo em que se matriculou) de quem tem dois cursos (Web Security e Linux); Dia 1 do Linux por fazer, com agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "302-inicio-dois-cursos-trocar-curso.png",
+      "rota": "/start",
+      "estado": "modal \"Trocar curso\" aberto sobre o Inicio, com dois cursos",
+      "nota": ""
+    },
+    {
+      "arquivo": "303-inicio-web-security-dois-cursos-com-agente.png",
+      "rota": "/start?curso=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "Inicio do Web Security depois de trocar no modal; Dia 2 por fazer, reforco pendente, com agente e dois cursos",
+      "nota": ""
+    }
+  ],
+  "naoCapturado": []
+}

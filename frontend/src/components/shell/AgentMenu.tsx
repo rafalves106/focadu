@@ -10,9 +10,10 @@ import { useSettings } from '../../contexts/useSettings';
 import { AI_SHORT } from '../../lib/aiStatusText';
 import type { AiHealth } from '../../lib/useAiStatus';
 import type { ShellData } from '../../lib/useShellData';
-import { PixelConfirmDialog } from '../PixelConfirmDialog';
 import { Button } from '../ui/Button';
 import { Drawer } from '../ui/Drawer';
+import { FocadaLine } from '../ui/FocadaLine';
+import { Modal } from '../ui/Modal';
 import { AgentAvatar } from './AgentAvatar';
 
 /**
@@ -41,7 +42,7 @@ export function AgentMenu({ data, health, onClose }: { data: ShellData; health: 
           <p className="truncate text-lead text-primary">{user?.displayName}</p>
           {showNumbers && (
             <p className="flex gap-3 text-rotulo-sm">
-              <span className="text-accent">{data.gems} gems</span>
+              <span className="text-accent">{data.gems} {data.gems === 1 ? 'gem' : 'gems'}</span>
               <span className="text-project">
                 {data.streak} {data.streak === 1 ? 'dia' : 'dias'}
               </span>
@@ -95,18 +96,27 @@ export function AgentMenu({ data, health, onClose }: { data: ShellData; health: 
         </Button>
       </div>
 
-      <PixelConfirmDialog
-        open={confirmingLogout}
-        message="Sair da conta, agente? Pra continuar estudando você vai precisar entrar de novo."
-        cancelLabel="Não, fico por aqui"
-        confirmLabel="Sim, sair da conta"
-        onCancel={() => setConfirmingLogout(false)}
-        onConfirm={() => {
-          setConfirmingLogout(false);
-          onClose();
-          void logout().then(() => navigate('/login'));
-        }}
-      />
+      {confirmingLogout && (
+        <Modal label="Sair da conta" eyebrow="Sair da conta" onClose={() => setConfirmingLogout(false)} width={480}>
+          <FocadaLine size="devolutiva">Sair da conta, agente? Pra continuar estudando você vai precisar entrar de novo.</FocadaLine>
+          <div className="flex flex-col gap-4 md:flex-row-reverse md:justify-start">
+            <Button
+              kind="perigo"
+              className="w-full md:w-auto"
+              onClick={() => {
+                setConfirmingLogout(false);
+                onClose();
+                void logout().then(() => navigate('/login'));
+              }}
+            >
+              Sim, sair da conta
+            </Button>
+            <Button kind="secundario" className="w-full md:w-auto" onClick={() => setConfirmingLogout(false)}>
+              Não, fico por aqui
+            </Button>
+          </div>
+        </Modal>
+      )}
     </Drawer>
   );
 }

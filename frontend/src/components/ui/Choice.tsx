@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react';
+import { PixelIcon } from './PixelIcon';
 
 /**
  * "Escolha" do redesign v1 (Fase 109; Figma `23:251`): múltipla escolha e filtros (interesses,
@@ -21,9 +22,7 @@ export function Choice({
       } ${className}`}
       {...rest}
     >
-      {selected && (
-        <span aria-hidden="true" className="size-2 bg-accent" />
-      )}
+      {selected && <PixelIcon name="check" />}
       {children}
     </button>
   );
