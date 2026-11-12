@@ -36,12 +36,12 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        {/* Precisa estar DENTRO do AuthProvider (SettingsMenu.onLogout usa useAuth()) e DENTRO do
-            BrowserRouter (onLogout navega) - ver contexts/SettingsProvider.tsx. Envolve o
-            app inteiro pra o GlobalNav conseguir abrir o mesmo <SettingsMenu> de qualquer tela
+        {/* Precisa estar DENTRO do AuthProvider (SettingsMenu usa useAuth()) e DENTRO do
+            BrowserRouter ("Editar interesses" navega) - ver contexts/SettingsProvider.tsx. Envolve o
+            app inteiro pra o menu do agente (Fase 109) abrir o mesmo <SettingsMenu> de qualquer tela
             (Fase 25) - nas telas sem sessao (Login/Splash/onboarding) so fica montado sem uso. */}
         <SettingsProvider>
-          {/* Fase 75: guia das telas (botao "?", janela e tour) - montado 1x, precisa de rota e usuario. */}
+          {/* Fase 75/109: ajuda das telas (modal aberto pelo menu do agente) - montado 1x, precisa de rota. */}
           <GuideProvider>
           <Routes>
             <Route index element={<SplashPage />} />

@@ -340,7 +340,7 @@ export const api = {
     request<MarketplaceCatalogDto>('/api/agent', { method: 'POST', body: JSON.stringify({ skinTone, hairCode }) }),
   updateAgentSkinTone: (skinTone: number) =>
     request<MarketplaceCatalogDto>('/api/agent/skin', { method: 'PUT', body: JSON.stringify({ skinTone }) }),
-  // Status de IA (Fase 28) - robozinho do GlobalNav, ver AiStatusMenu.tsx.
+  // Status de IA (Fase 28) - desde a Fase 109, ponto no avatar do agente e linha nas Configuracoes.
   getAiProviderStatus: () => request<AiProviderStatusDto[]>('/api/system/ai-status'),
   // Caderninho de Anotacoes (Fase 29) - painel de captura rapida na Daily + aba "Caderninho" no Course.
   createNote: (dailyId: string, content: string, tags: string[]) =>

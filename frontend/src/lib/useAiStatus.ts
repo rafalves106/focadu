@@ -28,8 +28,8 @@ function overallHealth(providers: AiProviderStatusDto[] | null): AiHealth {
 /**
  * Status dos provedores de IA (Fase 28), com polling a cada 45s enquanto a aba estiver aberta.
  * Extraido do antigo `AiStatusBadge` na Fase 62, quando o status saiu do selo fixo do nav e foi
- * pro menu do usuario (`UserMenu`); desde 24/09/2026 quem monta o hook e o icone de IA do nav
- * (`AiStatusMenu`). `checking` = consulta em andamento (inclusive o polling), pro icone animar.
+ * pro menu do usuario; desde a Fase 109 quem monta o hook e a casca (`App`: ponto no avatar e menu do
+ * agente) e as Configuracoes (linha "Status da IA"). `checking` = consulta em andamento (inclusive o polling).
  */
 export function useAiStatus() {
   const [providers, setProviders] = useState<AiProviderStatusDto[] | null>(null);
