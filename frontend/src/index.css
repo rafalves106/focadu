@@ -19,6 +19,9 @@
  * text-muted.
  */
 @theme {
+  /* Fase 109b: 1400px como breakpoint do tema (em rem), pra ordenar depois de md/lg/xl no CSS. Um
+     `min-[1400px]:` arbitrario saia antes de `md:`/`lg:` e nunca vencia. */
+  --breakpoint-wide: 87.5rem;
   --color-base: #0a0a0a;
   --color-surface: #151515;
   --color-surface-alt: #1e1e1e;

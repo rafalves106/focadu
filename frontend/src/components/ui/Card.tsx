@@ -12,7 +12,7 @@ const KIND: Record<CardKind, string> = {
 
 const EYEBROW: Record<CardKind, string> = {
   padrao: 'text-secondary',
-  destaque: 'text-accent',
+  destaque: 'text-secondary',
   ambar: 'text-project',
   suave: 'text-secondary',
 };
@@ -30,7 +30,7 @@ export function Card({
   className = '',
   children,
   ...rest
-}: HTMLAttributes<HTMLElement> & { kind?: CardKind; eyebrow?: ReactNode; title?: ReactNode; pad?: string }) {
+}: Omit<HTMLAttributes<HTMLElement>, 'title'> & { kind?: CardKind; eyebrow?: ReactNode; title?: ReactNode; pad?: string }) {
   return (
     <section className={`flex flex-col border-2 ${pad} ${KIND[kind]} ${className}`} {...rest}>
       {(eyebrow || title) && (

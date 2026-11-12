@@ -8,8 +8,8 @@ import { Chip } from '../ui/Chip';
 
 /**
  * "Caminho da semana" do Início (Fase 109; Figma `15:2`/`15:477`, celular `15:833`): os Nós de dia da
- * semana e o castelo do Projeto da semana. No celular vira segmentos. Embaixo, o reforço pendente (Chip
- * âmbar, quando o Destaque não é ele) e uma frase sobre o que vem.
+ * semana e o castelo do Projeto da semana. No celular vira segmentos, sem o título (quadro `15:833`).
+ * Embaixo, o reforço pendente (Chip âmbar, quando o Destaque não é ele) e uma frase sobre o que vem.
  */
 export function WeekPathCard({
   week,
@@ -54,7 +54,7 @@ export function WeekPathCard({
         .join(' ');
 
   return (
-    <Card kind="padrao" eyebrow="Caminho da semana" title={title} pad="gap-4 p-4 md:p-6" className="shrink-0">
+    <Card kind="padrao" eyebrow="Caminho da semana" title={<span className="hidden md:inline">{title}</span>} pad="gap-4 p-4 md:p-6" className="shrink-0">
       <div className="hidden md:block">
         <WeekPath nodes={nodes} label={label} fill />
       </div>

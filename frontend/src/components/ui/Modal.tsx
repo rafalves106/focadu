@@ -1,11 +1,13 @@
 import { useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useDialogKeys } from '../../lib/useDialogKeys';
 
 /**
  * Modal do redesign v1 (Fase 109; Figma `13:584`): véu escuro a 72%, caixa com borda forte e sombra
  * sólida neutra de 4px, cabeçalho com o eyebrow em verde e "Fechar · Esc". Um modal nunca abre outro:
  * quem abre de dentro de uma gaveta fecha a gaveta antes. ESC e clique no véu fecham. Se o conteúdo
- * não couber na janela, rola dentro da caixa (último recurso; a página nunca rola).
+ * não couber na janela, rola dentro da caixa (último recurso; a página nunca rola). Vai pro `body` por
+ * portal: aberto de dentro da Gaveta (confirmação de sair), o véu precisa cobrir a gaveta também.
  */
 export function Modal({
   label,
@@ -27,7 +29,7 @@ export function Modal({
   const ref = useRef<HTMLDivElement>(null);
   useDialogKeys(ref, onClose);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/72 p-4" onClick={onClose} role="presentation">
       <div
         ref={ref}
@@ -48,6 +50,7 @@ export function Modal({
         {title && <h2 className="-mt-2 text-titulo text-primary">{title}</h2>}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

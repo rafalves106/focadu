@@ -1,0 +1,29 @@
+{
+  "manifesto": [
+    {
+      "arquivo": "401-login-entrar.png",
+      "rota": "/login",
+      "estado": "aba Entrar (AINDA NAO REFEITA no redesign)",
+      "nota": ""
+    },
+    {
+      "arquivo": "402-login-criar-conta.png",
+      "rota": "/login",
+      "estado": "aba Criar conta (AINDA NAO REFEITA no redesign)",
+      "nota": "A pagina rola (842px de 768px); fullPage em 402-login-criar-conta-full.png."
+    },
+    {
+      "arquivo": "403-esqueci-senha.png",
+      "rota": "/esqueci-senha",
+      "estado": "Esqueci a senha (AINDA NAO REFEITA no redesign)",
+      "nota": ""
+    },
+    {
+      "arquivo": "404-termos.png",
+      "rota": "/termos",
+      "estado": "Termos de Uso (AINDA NAO REFEITA no redesign)",
+      "nota": "A pagina rola (2561px de 768px); fullPage em 404-termos-full.png."
+    }
+  ],
+  "naoCapturado": []
+}

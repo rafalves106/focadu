@@ -80,17 +80,29 @@ export function weekLink(courseId: string, weekId: string): string {
 }
 
 /**
+ * A semana já chegou (Fase 109b): algum Dia começado ou feito, ou o próximo Dia do curso está nela. O
+ * `isLocked` da API só cobre semana atrás de projeto ou publicação pendente; semana à frente da atual,
+ * pela sequência dos Dias, também conta como trancada.
+ */
+export function isWeekReached(week: WeeklyOverviewDto): boolean {
+  if (week.isLocked) return false;
+  return primaryDays(week).some((d) => d.isNext || d.status === DailyStatus.InProgress || d.status === DailyStatus.Completed);
+}
+
+/**
  * Os nós de uma semana (Fase 109, redesign v1): um por Dia e, no curso com projeto, o castelo do Projeto da
  * semana no fim. O Dia que dá pra fazer agora é "Atual"; se o Dia de hoje já foi feito neste curso, o
- * próximo fica "Disponível" (abre amanhã). O code comigo mostra a borda âmbar até chegar a vez dele.
+ * próximo fica "Disponível" (abre amanhã). O code comigo mostra a borda âmbar até chegar a vez dele, só
+ * na semana já alcançada: em semana futura é cadeado, como os outros Dias (Figma `18:1613`).
  */
 export function weekPathNodes(week: WeeklyOverviewDto, courseId: string, doneToday: boolean): PathNode[] {
+  const reached = isWeekReached(week);
   const nodes: PathNode[] = primaryDays(week).map((day) => {
     let state: DayNodeState;
     if (day.status === DailyStatus.Completed) state = pendingReinforcementOf(week, day) ? 'feito-reforco' : 'feito';
     else if (day.status === DailyStatus.InProgress) state = 'atual';
     else if (day.isNext && !week.isLocked) state = doneToday ? 'disponivel' : 'atual';
-    else state = day.isBridge ? 'code' : 'trancado';
+    else state = day.isBridge && reached ? 'code' : 'trancado';
     const open = isDone(state) || state === 'atual';
     return {
       key: day.id,

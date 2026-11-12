@@ -11,7 +11,7 @@ const [antes, depois = ''] = extra.split('<!--TABELAS-->')
 let md = antes
 for (const t of ['desktop', 'notebook', 'celular']) {
   let itens = []
-  for (const fase of ['novo', 'progresso', 'progresso2', 'projeto']) {
+  for (const fase of ['novo', 'progresso', 'progresso2', 'projeto', 'f109', 'f109-resto-login', 'f109-resto']) {
     const f = path.join(saida, `manifesto-${t}-${fase}.json`)
     if (fs.existsSync(f)) itens = itens.concat(JSON.parse(fs.readFileSync(f, 'utf8')).manifesto)
   }

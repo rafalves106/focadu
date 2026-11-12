@@ -99,7 +99,7 @@ export function StartDashboard() {
   }
 
   return (
-    <div className="tela-cheia flex flex-col gap-4 overflow-y-auto p-4 md:gap-6 md:p-6 lg:flex-row min-[1400px]:p-8">
+    <div className="tela-cheia flex flex-col gap-4 overflow-y-auto p-4 md:gap-6 md:p-6 lg:flex-row wide:p-8">
       {!dismissed && gamification.streakJustBroken && (
         <StreakLostModal longestStreak={gamification.longestStreak} onClose={() => setDismissed(true)} />
       )}
@@ -119,7 +119,7 @@ export function StartDashboard() {
         )}
       </div>
 
-      <aside aria-label="Seu estado" className="flex shrink-0 flex-col gap-4 md:gap-6 lg:w-[400px] min-[1400px]:w-[432px]">
+      <aside aria-label="Seu estado" className="flex shrink-0 flex-col gap-4 md:gap-6 lg:w-[400px] wide:w-[432px]">
         {state && <FocadaLine size="devolutiva">{startFocadaLine(state, gamification.currentStreak, studied)}</FocadaLine>}
         {state && !state.firstDay && (
           <div className="hidden md:contents">

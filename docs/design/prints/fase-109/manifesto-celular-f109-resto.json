@@ -1,0 +1,89 @@
+{
+  "manifesto": [
+    {
+      "arquivo": "601-hoje-abertura-conta-nova-sem-agente.png",
+      "rota": "/hoje",
+      "estado": "sessao do dia (/hoje), primeira tela (AINDA NAO REFEITA no redesign)",
+      "nota": "A pagina rola (1710px de 844px); fullPage em 601-hoje-abertura-conta-nova-sem-agente-full.png."
+    },
+    {
+      "arquivo": "602-perfil-conta-nova-sem-agente.png",
+      "rota": "/perfil",
+      "estado": "Perfil (AINDA NAO REFEITA no redesign)",
+      "nota": "A pagina rola (2280px de 844px); fullPage em 602-perfil-conta-nova-sem-agente-full.png."
+    },
+    {
+      "arquivo": "603-squad-conta-nova-sem-agente.png",
+      "rota": "/squad",
+      "estado": "Squad (AINDA NAO REFEITA no redesign)",
+      "nota": "A pagina rola (1782px de 844px); fullPage em 603-squad-conta-nova-sem-agente-full.png."
+    },
+    {
+      "arquivo": "604-loja-conta-nova-sem-agente.png",
+      "rota": "/loja",
+      "estado": "Loja (no 1o dia a rota abre ou redireciona; ver nota) (AINDA NAO REFEITA no redesign)",
+      "nota": "A pagina rola (1665px de 844px); fullPage em 604-loja-conta-nova-sem-agente-full.png."
+    },
+    {
+      "arquivo": "605-ranking-conta-nova-sem-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&ranking=1",
+      "estado": "Ranking do curso (AINDA NAO REFEITA no redesign)",
+      "nota": "A pagina rola (1780px de 844px); fullPage em 605-ranking-conta-nova-sem-agente-full.png."
+    },
+    {
+      "arquivo": "606-caderninho-conta-nova-sem-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&caderninho=1",
+      "estado": "Caderninho (AINDA NAO REFEITA no redesign)",
+      "nota": ""
+    },
+    {
+      "arquivo": "607-certificacoes-conta-nova-sem-agente.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&certifications=1",
+      "estado": "Certificacoes (AINDA NAO REFEITA no redesign)",
+      "nota": "A pagina rola (1000px de 844px); fullPage em 607-certificacoes-conta-nova-sem-agente-full.png."
+    },
+    {
+      "arquivo": "501-hoje-abertura-conta-com-agente-dia-2.png",
+      "rota": "/hoje",
+      "estado": "sessao do dia (/hoje), primeira tela (AINDA NAO REFEITA no redesign)",
+      "nota": ""
+    },
+    {
+      "arquivo": "502-perfil-conta-com-agente-dia-2.png",
+      "rota": "/perfil",
+      "estado": "Perfil (AINDA NAO REFEITA no redesign)",
+      "nota": "A pagina rola (2289px de 844px); fullPage em 502-perfil-conta-com-agente-dia-2-full.png."
+    },
+    {
+      "arquivo": "503-squad-conta-com-agente-dia-2.png",
+      "rota": "/squad",
+      "estado": "Squad (AINDA NAO REFEITA no redesign)",
+      "nota": "A pagina rola (1782px de 844px); fullPage em 503-squad-conta-com-agente-dia-2-full.png."
+    },
+    {
+      "arquivo": "504-loja-conta-com-agente-dia-2.png",
+      "rota": "/loja",
+      "estado": "Loja (no 1o dia a rota abre ou redireciona; ver nota) (AINDA NAO REFEITA no redesign)",
+      "nota": "A pagina rola (2918px de 844px); fullPage em 504-loja-conta-com-agente-dia-2-full.png."
+    },
+    {
+      "arquivo": "505-ranking-conta-com-agente-dia-2.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&ranking=1",
+      "estado": "Ranking do curso (AINDA NAO REFEITA no redesign)",
+      "nota": "A pagina rola (1809px de 844px); fullPage em 505-ranking-conta-com-agente-dia-2-full.png."
+    },
+    {
+      "arquivo": "506-caderninho-conta-com-agente-dia-2.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&caderninho=1",
+      "estado": "Caderninho (AINDA NAO REFEITA no redesign)",
+      "nota": ""
+    },
+    {
+      "arquivo": "507-certificacoes-conta-com-agente-dia-2.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&certifications=1",
+      "estado": "Certificacoes (AINDA NAO REFEITA no redesign)",
+      "nota": "A pagina rola (1000px de 844px); fullPage em 507-certificacoes-conta-com-agente-dia-2-full.png."
+    }
+  ],
+  "naoCapturado": []
+}

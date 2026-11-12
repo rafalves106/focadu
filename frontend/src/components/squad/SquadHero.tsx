@@ -69,7 +69,7 @@ export function SquadHero({ hq, userId, onInvite }: { hq: SquadHqDto; userId: st
 function Lineup({ members, ownerUserId, coLeaderUserId, userId }: { members: SquadMemberDto[]; ownerUserId: string; coLeaderUserId: string | null; userId: string }) {
   return (
     <PixelStage className="min-w-0 flex-1 border-y-2 border-stroke lg:border-y-0 lg:border-r-2" floor="bottom-[58px]" steps={9}>
-      <ul className="scrollbar-none flex items-end justify-center-safe gap-1 overflow-x-auto px-2 pt-6 pb-3 sm:gap-2 lg:pt-10 min-[1400px]:gap-4 lg:short:pt-4 lg:short:pb-2">
+      <ul className="scrollbar-none flex items-end justify-center-safe gap-1 overflow-x-auto px-2 pt-6 pb-3 sm:gap-2 lg:pt-10 wide:gap-4 lg:short:pt-4 lg:short:pb-2">
         {members.map((m) => (
           <LineupMember key={m.userId} member={m} you={m.userId === userId} leader={m.userId === ownerUserId} coLeader={m.userId === coLeaderUserId} />
         ))}
@@ -82,7 +82,7 @@ function LineupMember({ member, you, leader, coLeader }: { member: SquadMemberDt
   const look = lookFromDto(member.look);
   const status = member.studiedToday ? null : you ? 'Ainda não' : lastStudiedLabel(member.lastStudiedOn);
   return (
-    <li className="flex w-[52px] shrink-0 flex-col items-center gap-1.5 sm:w-16 min-[1400px]:w-[84px]" title={member.displayName}>
+    <li className="flex w-[52px] shrink-0 flex-col items-center gap-1.5 sm:w-16 wide:w-[84px]" title={member.displayName}>
       <span className="flex h-7 flex-col items-center justify-end">
         {you ? (
           <span className="flex flex-col items-center gap-1 font-pixel-label text-[8px] text-accent">
@@ -95,11 +95,11 @@ function LineupMember({ member, you, leader, coLeader }: { member: SquadMemberDt
       </span>
       {look ? (
         <>
-          <AgentSprite look={look} frame={{ mini: 'baixo', step: 0 }} scale={3} className="min-[1400px]:hidden" />
-          <AgentSprite look={look} frame={{ mini: 'baixo', step: 0 }} scale={4} className="hidden min-[1400px]:block" />
+          <AgentSprite look={look} frame={{ mini: 'baixo', step: 0 }} scale={3} className="wide:hidden" />
+          <AgentSprite look={look} frame={{ mini: 'baixo', step: 0 }} scale={4} className="hidden wide:block" />
         </>
       ) : (
-        <span className="flex size-12 min-[1400px]:size-16 items-center justify-center border-2 border-dashed border-muted font-pixel text-3xl text-muted">?</span>
+        <span className="flex size-12 wide:size-16 items-center justify-center border-2 border-dashed border-muted font-pixel text-3xl text-muted">?</span>
       )}
       <span className={`mt-3 max-w-full truncate font-pixel-label text-[9px] ${you ? 'text-accent' : 'text-primary'}`}>
         {you ? 'Você' : member.displayName}
