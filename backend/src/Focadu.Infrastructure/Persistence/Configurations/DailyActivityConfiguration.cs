@@ -29,7 +29,7 @@ public class DailyActivityConfiguration : IEntityTypeConfiguration<DailyActivity
         builder.Ignore(a => a.TerminalMissionList);
         builder.Ignore(a => a.TerminalCommandList);
         // Molde v1: alvo de aprendizagem e dados da conversa por voz.
-        builder.Property(a => a.Target).HasMaxLength(2);
+        builder.Property(a => a.Target).HasMaxLength(3);
         builder.Property(a => a.Hint).HasMaxLength(200);
         builder.Property(a => a.ReferenceAnswer);
         builder.Property(a => a.IsFinalQuestion).IsRequired().HasDefaultValue(false);

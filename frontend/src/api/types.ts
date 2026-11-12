@@ -166,7 +166,7 @@ export interface DailyActivityDto {
   isFinalQuestion?: boolean;
   /** Pergunta final: os 3 topicos-pista. */
   topics?: string[] | null;
-  /** Molde v1: alvo de aprendizagem (t1, t2, t3) que a atividade cobra. */
+  /** Molde v1: alvo de aprendizagem (t1 a t15) que a atividade cobra. */
   target?: string | null;
 }
 

@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace Focadu.Domain.Dailies;
 
 /// <summary>
-/// Molde v1 (plano de curadoria, 02/10/2026): um dos 3 alvos de aprendizagem do dia (t1, t2, t3), definidos na
+/// Molde v1 (plano de curadoria, 02/10/2026): um dos alvos de aprendizagem do dia (t1 a t3 nos moldes A e B; ate t15 no molde C, Fase 108), definidos na
 /// ficha. Cada bloco, pergunta de voz, Quiz e Cloze aponta para um alvo (<c>DailyActivity.Target</c>).
 /// </summary>
 public sealed record LearningTarget(string Id, string Text)
