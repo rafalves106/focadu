@@ -40,4 +40,28 @@ public class LearningTargetIdTests
         var ex = Assert.Throws<DomainException>(() => NewActivity().SetTarget(target));
         Assert.Equal("alvo_invalido", ex.Code);
     }
+
+    private static IEnumerable<Focadu.Domain.Dailies.LearningTarget> Targets(int n) =>
+        Enumerable.Range(1, n).Select(i => new Focadu.Domain.Dailies.LearningTarget($"t{i}", $"Alvo {i}"));
+
+    [Theory]
+    [InlineData(3)]
+    [InlineData(11)]
+    [InlineData(15)]
+    public void SetCurationInfo_AcceptsThreeToFifteenTargets(int count)
+    {
+        var template = DailyFixtures.NewWeekly().Template.AddDailyTemplate(1);
+        template.SetCurationInfo("v1", "hash", Targets(count));
+        Assert.NotNull(template.TargetsJson);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(16)]
+    public void SetCurationInfo_RejectsOutsideThreeToFifteen(int count)
+    {
+        var template = DailyFixtures.NewWeekly().Template.AddDailyTemplate(1);
+        var ex = Assert.Throws<DomainException>(() => template.SetCurationInfo("v1", "hash", Targets(count)));
+        Assert.Equal("alvos_invalidos", ex.Code);
+    }
 }

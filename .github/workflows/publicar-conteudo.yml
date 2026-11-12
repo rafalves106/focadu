@@ -144,10 +144,13 @@ jobs:
           {
             echo "### Importado: $CURSO (dias:$LISTA)"
             for d in $LISTA; do
-              docker compose exec -T backend dotnet Focadu.Api.dll importar "$CURSO" --dia "$d" --sem-linter $extra 2>&1 \
-                | grep -E "^\s+(Dia|Resumo)|recus|confirmar"
+              # Falha na importacao (excecao) fica visivel e deixa o passo vermelho, em vez de sumir no grep.
+              saida=$(docker compose exec -T backend dotnet Focadu.Api.dll importar "$CURSO" --dia "$d" --sem-linter $extra 2>&1) \
+                || { echo "$saida" | grep -vE "^\s+(SELECT|FROM|WHERE|ORDER|INNER|LEFT|AND|Executed)|info:" | tail -40; exit 1; }
+              echo "$saida" | grep -E "^\s+(Dia|Resumo)|recus|confirmar"
             done
           } | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "${PIPESTATUS[0]}"
 
       - name: Conferir os dias (novo dry-run nao pode mudar nada)
         if: ${{ inputs.aplicar && inputs.projeto != 'so' }}
@@ -196,9 +199,11 @@ jobs:
           [ "$CONFIRMAR" = "true" ] && extra="--confirmar"
           {
             echo "### Projeto importado: $CURSO"
-            docker compose exec -T backend dotnet Focadu.Api.dll importar "$CURSO" --projeto --sem-linter $extra 2>&1 \
-              | grep -E "^\s+(Projeto|Resumo)|recus|confirmar"
+            saida=$(docker compose exec -T backend dotnet Focadu.Api.dll importar "$CURSO" --projeto --sem-linter $extra 2>&1) \
+              || { echo "$saida" | grep -vE "^\s+(SELECT|FROM|WHERE|ORDER|INNER|LEFT|AND|Executed)|info:" | tail -40; exit 1; }
+            echo "$saida" | grep -E "^\s+(Projeto|Resumo)|recus|confirmar"
           } | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "${PIPESTATUS[0]}"
 
       - name: Conferir o projeto (novo dry-run nao pode mudar nada)
         if: ${{ inputs.aplicar && inputs.projeto != 'nao' }}

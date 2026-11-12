@@ -9,3 +9,8 @@ Os moldes A e B continuam com t1 a t3.
 - Testes: `LearningTargetIdTests`.
 
 O lado da curadoria (schema `moldeTipo: "C"`, linter, pacote do dia) vive no repositório `secret/`.
+
+## 108b (mesmo dia)
+
+- `DailyTemplate.SetCurationInfo` ainda exigia exatamente 3 alvos e derrubou a 1ª importação do Dia 1 em produção. Agora aceita de 3 a 15.
+- `publicar-conteudo.yml`: o passo de importar escondia a exceção no `grep` e ficava verde. Agora mostra o fim da saída e falha.
