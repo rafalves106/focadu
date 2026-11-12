@@ -2,11 +2,10 @@ import { DailyStatus, WeeklyProjectStatus, type CourseDetailDto, type DailyStatu
 import type { FocadaLine } from './focadaLines';
 
 /**
- * Falas da Focada no mapa da trilha (Fase 65) - aprovadas pelo dono em 23/09/2026, ver
- * secret/rascunhos/mapa-da-trilha-pixel-art.md ("Falas padrao da Focada no mapa"). Voz:
+ * Falas da Focada na Trilha (Fase 65, aprovadas em 23/09/2026; vocabulario do redesign v1 na Fase 109:
+ * Dia, Projeto da semana, code comigo, sem "mapa", "nevoa" nem "ponte"). Voz:
  * secret/curadoria/GUIA-DE-VOZ-FOCADA.md. Ao abrir a trilha ela diz UMA fala: vale a primeira
- * situacao verdadeira na ordem de MAP_LINE_ORDER. Molde v1: todo curso usa estas falas padrao
- * (as falas.json por curso da Fase 76 sairam com a arte de mapa por curso).
+ * situacao verdadeira na ordem de `buildFocadaMapLine`. Molde v1: todo curso usa estas falas padrao.
  */
 export type FocadaMapLineKey =
   | 'cursoConcluido'
@@ -23,30 +22,28 @@ export type FocadaMapLineKey =
   | 'padrao';
 
 export const DEFAULT_MAP_LINES: Record<FocadaMapLineKey, string> = {
-  cursoConcluido: 'Setenta e dois dias, doze projetos, uma bandeira. Você terminou o curso, agente. Eu diria que estou surpresa, mas vi cada commit.',
-  reforcoPendente: 'Tem um reforço esperando no dia {dia}, agente. Ele não some se você fingir que não viu. Eu já testei.',
-  projetoLiberado: 'Os seis dias da Semana {semana} estão feitos. O castelo está aberto, agente, e a próxima semana não abre enquanto ele não cair.',
-  projetoEntregue: 'Projeto da Semana {semana} entregue. A avaliação está lendo seu código. O mapa espera, eu também.',
-  dailyEmAndamento: 'Você deixou o dia {dia} pela metade, agente. Termine antes que eu comece a cobrar juros.',
-  diaFeitoHoje: 'Dia {dia} feito. Por hoje acabou, agente: o próximo ponto só abre amanhã. Descansar também é treino.',
-  primeiraVez: 'Este é o mapa, agente. Cada ponto é um dia, cada castelo é um projeto. Você começa no primeiro. Eu fico de olho.',
-  novoMes: 'Mês {mes}: {tituloMes}. Terreno novo, agente. A névoa sai conforme você anda.',
-  novaSemana: 'Semana {semana} liberada. O castelo anterior caiu; esse aqui é mais alto. O dia {dia} te espera.',
-  ultimoDiaAntesDoCastelo: 'Falta um dia pro castelo da Semana {semana}, agente. Depois dele, sem atalho: é projeto de verdade.',
-  // Fase 76: antes o mapa ficava calado com a semana fechada esperando a publicacao - mesma fala da visao da semana.
-  publicacaoPendente: 'Castelo derrubado, agente! Agora mostra pro mundo: publique a prova do módulo e a Semana {proxima} abre.',
-  padrao: 'Próxima parada: dia {dia}. Faltam {faltam} dias pro castelo da Semana {semana}. Não é longe, mas também não anda sozinho.',
+  cursoConcluido: 'Todos os dias e projetos do curso feitos, agente. Eu diria que estou surpresa, mas vi cada commit.',
+  reforcoPendente: 'Tem um reforço do Dia {dia} esperando, agente. Ele não some se você fingir que não viu.',
+  projetoLiberado: 'Os dias da Semana {semana} estão feitos. O castelo abriu: a próxima semana espera o projeto.',
+  projetoEntregue: 'Projeto da Semana {semana} entregue. A avaliação está lendo seu código; eu também.',
+  dailyEmAndamento: 'Você deixou o Dia {dia} pela metade, agente. Termine antes que eu comece a cobrar juros.',
+  diaFeitoHoje: 'Dia {dia} feito. Por hoje acabou, agente: o próximo abre amanhã. Descansar também é treino.',
+  primeiraVez: 'Cada linha é uma semana e termina num castelo: o Projeto da semana. Eu fico parada no seu próximo dia.',
+  novoMes: 'Módulo {mes}: {tituloMes}. Terreno novo, agente. Um dia por vez.',
+  novaSemana: 'Semana {semana} aberta. O castelo anterior caiu; o Dia {dia} te espera.',
+  ultimoDiaAntesDoCastelo: 'Falta o code comigo pro castelo da Semana {semana}, agente. Depois dele, é projeto de verdade.',
+  publicacaoPendente: 'Castelo derrubado, agente! Publique a semana no LinkedIn e a Semana {proxima} abre.',
+  padrao: 'Próxima parada: Dia {dia}. Faltam {faltam} dias pro castelo da Semana {semana}.',
 };
 
 /**
- * Fase 83: curso sem Projeto Semanal (pre-requisito, Figma "Cursos de pre-requisito — v2"): o castelo fecha
- * a semana em vez de guardar um projeto. Troca so as falas que falavam de projeto; um `falas.json` do curso
- * ainda vence estas.
+ * Fase 83: curso sem Projeto Semanal (pre-requisito): a semana fecha no code comigo em vez de guardar um
+ * projeto. Troca so as falas que falavam de projeto.
  */
 export const PRACTICE_ONLY_MAP_LINES: Partial<Record<FocadaMapLineKey, string>> = {
-  cursoConcluido: 'Todos os castelos caíram, agente. Curso fechado: o terminal agora é seu, e o Web Security vai cobrar cada comando.',
-  primeiraVez: 'Este é o mapa, agente. Cada ponto é um dia, cada castelo fecha uma semana. Você começa no primeiro. Eu fico de olho.',
-  ultimoDiaAntesDoCastelo: 'Falta a ponte pro castelo da Semana {semana}, agente. Fechou ela, a semana fecha junto.',
+  cursoConcluido: 'Todas as semanas fechadas, agente. O terminal agora é seu, e o Web Security vai cobrar cada comando.',
+  primeiraVez: 'Cada linha é uma semana e fecha no code comigo. Eu fico parada no seu próximo dia.',
+  ultimoDiaAntesDoCastelo: 'Falta o code comigo pra fechar a Semana {semana}, agente. Fechou ele, a semana fecha junto.',
 };
 
 /** Dias "de verdade" da semana (sem os de reforco, que nao tem ponto no mapa), em ordem. */
@@ -173,14 +170,14 @@ export function buildFocadaMapLine(
  * "concluida hoje"); sem ele, essas duas situacoes ficam de fora.
  */
 export const WEEK_LINES = {
-  publicacaoPendente: 'Castelo derrubado, agente! Agora mostra pro mundo: publique a prova do módulo e a Semana {proxima} abre.',
-  semanaFechada: 'Semana {semana} fechada com {nota} no castelo. Pode revisar o que quiser, agente: aqui nada tranca de novo.',
-  semanaTrancada: 'Essa semana ainda está na névoa, agente. Ela abre quando a semana anterior fechar.',
-  // Fase 83: semana sem Projeto Semanal (Figma "Cursos de pre-requisito — v2", quadros 01/02).
-  semanaFechadaSemProjeto: 'Semana {semana} fechada, agente. Castelo conquistado, sem projeto nem post: a Semana {proxima} já te espera.',
-  cursoFechadoSemProjeto: 'Último castelo conquistado, agente. Curso fechado: o terminal agora é seu, e o Web Security vai cobrar cada comando.',
-  emAndamentoSemProjeto: 'Você parou no Dia {dia}, agente. O castelo desta semana abre quando você fechar a ponte, e a Semana {proxima} vem junto.',
-  pontePendenteSemProjeto: 'Falta a ponte pro castelo da Semana {semana}, agente. Fechou ela, a semana fecha junto.',
+  publicacaoPendente: DEFAULT_MAP_LINES.publicacaoPendente,
+  semanaFechada: 'Semana {semana} fechada com {nota} no projeto. Pode rever o que quiser, agente: nada tranca de novo.',
+  semanaTrancada: 'Essa semana ainda está trancada, agente. Ela abre quando a anterior fechar.',
+  // Fase 83: semana sem Projeto Semanal.
+  semanaFechadaSemProjeto: 'Semana {semana} fechada, agente. Sem projeto nem publicação: a Semana {proxima} já te espera.',
+  cursoFechadoSemProjeto: PRACTICE_ONLY_MAP_LINES.cursoConcluido as string,
+  emAndamentoSemProjeto: 'Você parou no Dia {dia}, agente. A semana fecha com o code comigo, e a Semana {proxima} vem junto.',
+  pontePendenteSemProjeto: PRACTICE_ONLY_MAP_LINES.ultimoDiaAntesDoCastelo as string,
 } as const;
 
 export function buildFocadaWeekLine(weekly: WeeklyDetailDto, overview: WeeklyOverviewDto | null, hasNextWeek = true): FocadaLine {

@@ -30,7 +30,14 @@ export function FocadaLine({
   const big = size === 'abertura';
   return (
     <div className={`flex items-start gap-4 ${className}`}>
-      <img src={PORTRAIT[tone]} alt="" aria-hidden="true" className={`shrink-0 pixelated ${big ? 'size-16' : 'size-8 m-1'}`} />
+      {big ? (
+        <img src={PORTRAIT[tone]} alt="" aria-hidden="true" className="size-16 shrink-0 pixelated" />
+      ) : (
+        // Retrato 40 (Figma `12:142`): caixa elevada com borda e o sprite 32 em 1x no meio.
+        <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center border-2 border-stroke bg-surface-alt">
+          <img src={PORTRAIT[tone]} alt="" className="size-8 pixelated" />
+        </span>
+      )}
       <div role="status" aria-live="polite" className={`flex min-w-0 flex-1 flex-col gap-2 border-2 bg-surface ${big ? 'px-4 py-4' : 'px-4 py-3'} ${BORDER[tone]}`}>
         <p className={`text-rotulo-sm ${LABEL_COLOR[tone]}`}>{LABEL[tone]}</p>
         <p className={`${big ? 'text-corpo' : 'text-pequeno'} text-primary`}>{children}</p>

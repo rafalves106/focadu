@@ -19,18 +19,20 @@ const EYEBROW: Record<CardKind, string> = {
 
 /**
  * Cartão do redesign v1 (Fase 109; docs/design/sistema.md §4): borda 2px, canto reto. `eyebrow` é o
- * rótulo pequeno acima do título (Rótulo/10); `title` em Pixel/Lead 24.
+ * rótulo pequeno acima do título (Rótulo/10); `title` em Pixel/Lead 24. `pad` troca o respiro (24) e o
+ * vão interno (16): linhas de lista e o celular usam menos.
  */
 export function Card({
   kind = 'padrao',
   eyebrow,
   title,
+  pad = 'gap-4 p-6',
   className = '',
   children,
   ...rest
-}: HTMLAttributes<HTMLElement> & { kind?: CardKind; eyebrow?: ReactNode; title?: ReactNode }) {
+}: HTMLAttributes<HTMLElement> & { kind?: CardKind; eyebrow?: ReactNode; title?: ReactNode; pad?: string }) {
   return (
-    <section className={`flex flex-col gap-4 border-2 p-6 ${KIND[kind]} ${className}`} {...rest}>
+    <section className={`flex flex-col border-2 ${pad} ${KIND[kind]} ${className}`} {...rest}>
       {(eyebrow || title) && (
         <header className="flex flex-col gap-2">
           {eyebrow && <p className={`text-rotulo-sm ${EYEBROW[kind]}`}>{eyebrow}</p>}

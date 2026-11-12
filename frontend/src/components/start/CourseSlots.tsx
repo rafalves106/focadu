@@ -24,7 +24,7 @@ export function CourseSlots({
 }) {
   const cohortName = useAuth().user?.cohortName ?? null;
   return (
-    <div data-guia="start-cursos" className="pixel-box flex shrink-0 flex-col gap-3 bg-base p-4">
+    <div className="pixel-box flex shrink-0 flex-col gap-3 bg-base p-4">
       <p className="font-pixel-label text-[10px] text-accent">// Seus cursos</p>
       <div className="flex flex-col gap-2" role="radiogroup" aria-label="Curso exibido na tela">
         {courses.map((course) => (

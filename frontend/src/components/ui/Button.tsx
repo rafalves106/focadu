@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react';
+import { Link, type LinkProps } from 'react-router-dom';
 
 /** Tipo do botão no Figma (Botão `12:368`). */
 export type ButtonKind = 'primario' | 'secundario' | 'perigo';
@@ -8,6 +9,8 @@ const KIND: Record<ButtonKind, string> = {
   secundario: 'border-stroke-strong bg-transparent text-primary hover:border-accent hover:bg-accent-tint hover:text-accent',
   perigo: 'border-alert bg-transparent text-alert hover:bg-alert-tint',
 };
+
+const BASE = 'inline-flex h-12 shrink-0 items-center justify-center gap-2 border-2 px-6 text-rotulo transition-none';
 
 const LOADING_DOTS: Record<ButtonKind, string> = { primario: 'bg-base', secundario: 'bg-primary', perigo: 'bg-alert' };
 
@@ -33,7 +36,7 @@ export function Button({
       type={type}
       disabled={off}
       aria-busy={loading || undefined}
-      className={`inline-flex h-12 items-center justify-center gap-2 border-2 px-6 text-rotulo transition-none ${look} ${full ? 'w-full' : ''} ${className}`}
+      className={`${BASE} ${look} ${full ? 'w-full' : ''} ${className}`}
       {...rest}
     >
       {loading ? (
@@ -50,4 +53,9 @@ export function Button({
       )}
     </button>
   );
+}
+
+/** O mesmo Botão quando a ação é ir pra outra tela (link de verdade: abre em nova aba, leitor de tela diz "link"). */
+export function ButtonLink({ kind = 'primario', full = false, className = '', ...rest }: LinkProps & { kind?: ButtonKind; full?: boolean }) {
+  return <Link className={`${BASE} ${KIND[kind]} ${full ? 'w-full' : ''} ${className}`} {...rest} />;
 }

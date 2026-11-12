@@ -1,175 +1,74 @@
-import { Link } from 'react-router-dom';
-import { DailyStatus, WeeklyProjectStatus, type DailyStatusSummaryDto, type WeeklyOverviewDto } from '../../api/types';
-import { isWeekClosurePending, isWeekDailiesDone, pendingReinforcementOf, primaryDays } from '../../lib/focadaMapLines';
-import pontoConcluido from '../../assets/pixel/mapa/ponto-concluido.png';
-import pontoEmAndamento from '../../assets/pixel/mapa/ponto-em-andamento.png';
-import pontoDisponivel from '../../assets/pixel/mapa/ponto-disponivel.png';
-import pontoTrancado from '../../assets/pixel/mapa/ponto-trancado.png';
-import casteloTrancado from '../../assets/pixel/mapa/castelo-trancado.png';
-import casteloPendente from '../../assets/pixel/mapa/castelo-pendente.png';
-import casteloConcluido from '../../assets/pixel/mapa/castelo-concluido.png';
-import badgeReforco from '../../assets/pixel/mapa/badge-reforco.png';
-import focadaMarcador from '../../assets/pixel/mapa/focada-marcador.png';
+import { DailyStatus, WeeklyProjectStatus, type WeeklyOverviewDto } from '../../api/types';
+import { primaryDays } from '../../lib/focadaMapLines';
+import type { StartState } from '../../lib/startScreen';
+import { weekPathNodes } from '../../lib/weekPath';
+import { WeekPath, WeekSegments } from '../trail/WeekPath';
+import { Card } from '../ui/Card';
+import { Chip } from '../ui/Chip';
 
 /**
- * "Rumo ao castelo" (tela de start, 23/09/2026): a semana atual do curso escolhido como um pedaco do
- * mapa da trilha - mesmos sprites e mesmos estados do CourseMap (ponto por dia, Focada no dia atual,
- * selo de reforco pendente) e o Projeto Semanal como castelo/BOSS. Substitui os cartoes soltos
- * "Projeto desta semana" e "Trilha completa".
+ * "Caminho da semana" do Início (Fase 109; Figma `15:2`/`15:477`, celular `15:833`): os Nós de dia da
+ * semana e o castelo do Projeto da semana. No celular vira segmentos. Embaixo, o reforço pendente (Chip
+ * âmbar, quando o Destaque não é ele) e uma frase sobre o que vem.
  */
-export function WeekPathCard({ week, courseId }: { week: WeeklyOverviewDto; courseId: string }) {
-  if (week.isPracticeOnly) return <BridgePathCard week={week} courseId={courseId} />;
+export function WeekPathCard({
+  week,
+  courseId,
+  state,
+  doneToday,
+}: {
+  week: WeeklyOverviewDto;
+  courseId: string;
+  state: StartState;
+  doneToday: boolean;
+}) {
   const days = primaryDays(week);
   const remaining = days.filter((d) => d.status !== DailyStatus.Completed).length;
-  const castle = castleOf(week, remaining);
-  // Fase 106: dias feitos e castelo ainda aberto (projeto ou publicacao) - a Focada fica no castelo, nao na ponte.
-  const atCastle = isWeekClosurePending(week);
-  const focadaDayId = atCastle ? null : ((days.find((d) => d.status === DailyStatus.InProgress) ?? days.find((d) => d.isNext))?.id ?? null);
-  const castleTo = week.requiresPublicationToUnlock ? `/start?course=${courseId}&weekly=${week.id}` : `/start?course=${courseId}&weekly=${week.id}&project=1`;
+  const nodes = weekPathNodes(week, courseId, doneToday);
+  const label = `Dias da Semana ${week.number}`;
+  const bridge = days.find((d) => d.isBridge && d.status !== DailyStatus.Completed);
+  const showChip = state.reinforcement && state.highlight.kind !== 'reforco';
+
+  const title = week.isPracticeOnly
+    ? remaining > 0
+      ? `Faltam ${remaining} ${remaining === 1 ? 'dia' : 'dias'} para fechar a semana`
+      : 'Semana fechada'
+    : remaining > 0
+      ? `Faltam ${remaining} ${remaining === 1 ? 'dia' : 'dias'} para o Projeto da semana`
+      : week.projectStatus === WeeklyProjectStatus.Evaluated
+        ? 'Projeto da semana avaliado'
+        : 'Projeto da semana aberto';
+
+  const note = state.firstDay
+    ? `${days.length} dias e, no fim, ${week.isPracticeOnly ? 'o code comigo fecha a semana' : 'o Projeto da semana'}. Um dia por vez.`
+    : [
+        // Na prévia de amanhã o Destaque já diz isso.
+        state.tomorrow && state.highlight.kind === 'reforco' ? `Dia ${state.tomorrow.dayNumber} abre amanhã.` : null,
+        bridge
+          ? week.isPracticeOnly
+            ? `O ${days.length}º dia é o code comigo: um script com o que você viu. Depois dele, a semana fecha.`
+            : `O ${days.length}º dia é o code comigo: um script com o que você viu. Depois dele, o castelo abre.`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' ');
 
   return (
-    <section data-guia="start-castelo" className="pixel-box flex shrink-0 flex-col gap-3 bg-base px-5 py-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="font-pixel-label text-[10px] text-accent">// Rumo ao castelo — Semana {week.number}</p>
-        <Link to={`/start?course=${courseId}`} className="font-pixel-label text-[9px] text-secondary hover:text-primary">
-          Ver trilha ›
-        </Link>
+    <Card kind="padrao" eyebrow="Caminho da semana" title={title} pad="gap-4 p-4 md:p-6" className="shrink-0">
+      <div className="hidden md:block">
+        <WeekPath nodes={nodes} label={label} fill />
       </div>
-
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-4">
-        <ol className="flex min-w-[220px] flex-1 items-start" aria-label={`Dias da Semana ${week.number}`}>
-          {days.map((day) => (
-            <li key={day.id} className="flex flex-1 items-start">
-              <DayPoint day={day} week={week} withFocada={day.id === focadaDayId} />
-              {/* Linha no centro do ponto: marcador (32) + gap (4) + metade do ponto (16) - metade da linha (2). */}
-              <span
-                className={`mt-[50px] h-1 min-w-3 flex-1 ${day.status === DailyStatus.Completed ? 'bg-accent' : 'bg-stroke'}`}
-                aria-hidden="true"
-              />
-            </li>
-          ))}
-        </ol>
-
-        <Link
-          to={castleTo}
-          className={`relative flex items-center gap-3 border-2 px-3 py-2 ${castle.border} hover:brightness-110`}
-          aria-label={`Projeto da Semana ${week.number}: ${castle.text}`}
-        >
-          {atCastle && <img src={focadaMarcador} alt="" className="absolute -top-7 left-3 size-8 pixelated motion-safe:animate-map-bob" aria-hidden="true" />}
-          <img src={castle.sprite} alt="" className="size-12 shrink-0 pixelated" aria-hidden="true" />
-          <span className="flex flex-col gap-1">
-            <span className="flex items-center gap-1.5">
-              <span className="border-2 border-project px-1 font-pixel-label text-[8px] text-project">Boss</span>
-              <span className="font-pixel-label text-[9px] text-project">Projeto</span>
-            </span>
-            <span className="font-pixel text-lg leading-none text-secondary">{castle.text}</span>
-          </span>
-        </Link>
+      <div className="md:hidden">
+        <WeekSegments nodes={nodes} label={label} />
       </div>
-    </section>
+      {(showChip || note) && (
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+          {showChip && state.reinforcement && (
+            <Chip tone="ambar">Reforço{state.reinforcement.dayNumber ? ` do Dia ${state.reinforcement.dayNumber}` : ''} pendente</Chip>
+          )}
+          {note && <p className="text-pequeno text-secondary">{note}</p>}
+        </div>
+      )}
+    </Card>
   );
-}
-
-/**
- * Fase 83 (Figma "Cursos de pre-requisito — v2", quadro 03): semana sem Projeto Semanal. A linha termina na
- * ponte (o ultimo dia), que fecha a semana - "Rumo a ponte" no lugar de "Rumo ao castelo".
- */
-function BridgePathCard({ week, courseId }: { week: WeeklyOverviewDto; courseId: string }) {
-  const all = primaryDays(week);
-  const bridge = all[all.length - 1] ?? null;
-  const days = bridge ? all.slice(0, -1) : all;
-  const focadaDayId = (all.find((d) => d.status === DailyStatus.InProgress) ?? all.find((d) => d.isNext))?.id ?? null;
-  const bridgeDone = bridge?.status === DailyStatus.Completed;
-  const bridgeOpen = bridge && (bridge.status === DailyStatus.InProgress || bridge.isNext);
-  const bridgeTo = bridge && (bridgeDone || bridgeOpen) ? `/hoje?daily=${bridge.id}` : `/start?course=${courseId}&weekly=${week.id}`;
-
-  return (
-    <section data-guia="start-castelo" className="pixel-box flex shrink-0 flex-col gap-3 bg-base px-5 py-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="font-pixel-label text-[10px] text-accent">// Rumo à ponte — Semana {week.number}</p>
-        <Link to={`/start?course=${courseId}`} className="font-pixel-label text-[9px] text-secondary hover:text-primary">
-          Ver trilha ›
-        </Link>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-4">
-        <ol className="flex min-w-[220px] flex-1 items-start" aria-label={`Dias da Semana ${week.number}`}>
-          {days.map((day) => (
-            <li key={day.id} className="flex flex-1 items-start">
-              <DayPoint day={day} week={week} withFocada={day.id === focadaDayId} />
-              <span
-                className={`mt-[50px] h-1 min-w-3 flex-1 ${day.status === DailyStatus.Completed ? 'bg-accent' : 'bg-stroke'}`}
-                aria-hidden="true"
-              />
-            </li>
-          ))}
-        </ol>
-
-        {bridge && (
-          <Link
-            to={bridgeTo}
-            className={`flex items-center gap-3 border-2 px-3 py-2 ${bridgeDone ? 'border-accent' : 'border-project'} hover:brightness-110`}
-            aria-label={`Ponte da Semana ${week.number}: ${bridge.title ?? `Dia ${bridge.dayNumber}`}`}
-          >
-            <span className="flex flex-col gap-1">
-              <span className="flex items-center gap-1.5">
-                <span className="border-2 border-project px-1 font-pixel-label text-[8px] text-project">Ponte</span>
-                <span className="max-w-[180px] truncate font-pixel-label text-[9px] text-project">{bridge.title ?? `Dia ${bridge.dayNumber}`}</span>
-              </span>
-              <span className="font-pixel text-lg leading-none text-secondary">
-                D{String(bridge.dayNumber).padStart(2, '0')} · {bridgeDone ? 'semana fechada' : 'fecha a semana'}
-              </span>
-            </span>
-          </Link>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function DayPoint({ day, week, withFocada }: { day: DailyStatusSummaryDto; week: WeeklyOverviewDto; withFocada: boolean }) {
-  const sprite =
-    day.status === DailyStatus.Completed
-      ? pontoConcluido
-      : day.status === DailyStatus.InProgress
-        ? pontoEmAndamento
-        : day.isNext
-          ? pontoDisponivel
-          : pontoTrancado;
-  const current = withFocada;
-  const reinforcement = pendingReinforcementOf(week, day);
-  return (
-    <div className="flex w-10 shrink-0 flex-col items-center gap-1" title={day.title ?? `Dia ${day.dayNumber}`}>
-      <span className="flex size-8 items-end justify-center">
-        {withFocada && <img src={focadaMarcador} alt="" className="size-8 pixelated motion-safe:animate-map-bob" aria-hidden="true" />}
-      </span>
-      <img src={sprite} alt="" className="size-8 pixelated" aria-hidden="true" />
-      <span className="flex h-4 items-center">
-        {reinforcement && (
-          // Unico atalho pro reforco pendente na tela de start (Fase 56: precisa ficar sempre alcancavel).
-          <Link to={`/hoje?daily=${reinforcement.id}`} title="Sessão de reforço pendente" className="hover:brightness-125">
-            <img src={badgeReforco} alt={`Reforço pendente do dia ${day.dayNumber}`} className="size-4 pixelated" />
-          </Link>
-        )}
-      </span>
-      <span
-        className={`font-pixel-label text-[8px] ${day.status === DailyStatus.Completed ? 'text-accent' : current ? 'text-primary' : 'text-muted'}`}
-      >
-        D{day.dayNumber}
-      </span>
-    </div>
-  );
-}
-
-function castleOf(week: WeeklyOverviewDto, remaining: number): { sprite: string; text: string; border: string } {
-  if (week.projectStatus === WeeklyProjectStatus.Evaluated && week.requiresPublicationToUnlock)
-    return { sprite: casteloPendente, text: 'Avaliado: publique', border: 'border-project' };
-  if (week.projectStatus === WeeklyProjectStatus.Evaluated) return { sprite: casteloConcluido, text: 'Concluído', border: 'border-accent' };
-  if (week.projectStatus === WeeklyProjectStatus.Submitted) return { sprite: casteloPendente, text: 'Em avaliação', border: 'border-project' };
-  if (isWeekDailiesDone(week)) return { sprite: casteloPendente, text: 'Aberto: entregue', border: 'border-project' };
-  return {
-    sprite: casteloTrancado,
-    text: `Abre em ${remaining} ${remaining === 1 ? 'dia' : 'dias'}`,
-    border: 'border-stroke',
-  };
 }
