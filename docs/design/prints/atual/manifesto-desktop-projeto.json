@@ -1,0 +1,35 @@
+{
+  "manifesto": [
+    {
+      "arquivo": "201-inicio-ponte-concluida.png",
+      "rota": "/start",
+      "estado": "Inicio com a ponte concluida (6 dias), aponta pro projeto",
+      "nota": ""
+    },
+    {
+      "arquivo": "202-semana-ponte-concluida.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=07f913f7-94e7-4c27-80c1-bb7062eeef0f",
+      "estado": "visao da semana 1 com a ponte concluida, castelo/projeto liberado",
+      "nota": ""
+    },
+    {
+      "arquivo": "203-projeto-dialogo-focada.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=07f913f7-94e7-4c27-80c1-bb7062eeef0f&project=1",
+      "estado": "Projeto Semanal: dialogo de abertura da Focada (1 de 4)",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "204-projeto-briefing.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=07f913f7-94e7-4c27-80c1-bb7062eeef0f&project=1",
+      "estado": "Projeto Semanal: briefing (objetivo, entregavel)",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "205-projeto-criterios-e-repositorio.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=07f913f7-94e7-4c27-80c1-bb7062eeef0f&project=1",
+      "estado": "Projeto Semanal: fim da pagina, criterios e aviso de repositorio nao provisionado (Forgejo local)",
+      "nota": "1 area(s) com rolagem interna."
+    }
+  ],
+  "naoCapturado": []
+}

@@ -1,0 +1,77 @@
+{
+  "manifesto": [
+    {
+      "arquivo": "101-inicio-com-progresso.png",
+      "rota": "/start",
+      "estado": "Inicio com 5 dias feitos, ofensiva de 5 dias, selos de reforco e Ponte do Dia 6 em destaque",
+      "nota": ""
+    },
+    {
+      "arquivo": "102-trilha-com-progresso.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "trilha do curso com 5 dias feitos (a trilha agora lista as 12 semanas do curso apos importar o curso inteiro no banco local)",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "103-semana-com-dias-feitos.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=07f913f7-94e7-4c27-80c1-bb7062eeef0f",
+      "estado": "visao da semana 1: 5 dias feitos, selos de reforco pendente, ponte em andamento, castelo bloqueado",
+      "nota": ""
+    },
+    {
+      "arquivo": "104-reforco-abertura.png",
+      "rota": "/hoje?daily=184e3766-eeaf-4af3-b6a9-72ed9df0aba3",
+      "estado": "sessao de reforco de um dia anterior (abertura)",
+      "nota": ""
+    },
+    {
+      "arquivo": "105-reforco-etapa-1.png",
+      "rota": "/hoje?daily=184e3766-eeaf-4af3-b6a9-72ed9df0aba3",
+      "estado": "primeira etapa do reforco",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "106-reforco-leitura.png",
+      "rota": "/hoje?daily=184e3766-eeaf-4af3-b6a9-72ed9df0aba3",
+      "estado": "leitura (etapa 1 de 6)",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "107-hoje-voz-pronta.png",
+      "rota": "/hoje?daily=184e3766-eeaf-4af3-b6a9-72ed9df0aba3",
+      "estado": "conversa por voz, antes de gravar",
+      "nota": ""
+    },
+    {
+      "arquivo": "108-hoje-voz-gravando.png",
+      "rota": "/hoje?daily=184e3766-eeaf-4af3-b6a9-72ed9df0aba3",
+      "estado": "conversa por voz gravando (microfone falso com fala sintetica)",
+      "nota": ""
+    },
+    {
+      "arquivo": "109-hoje-voz-processando.png",
+      "rota": "/hoje?daily=184e3766-eeaf-4af3-b6a9-72ed9df0aba3",
+      "estado": "logo depois de enviar, transcricao e nota em andamento",
+      "nota": ""
+    },
+    {
+      "arquivo": "110-hoje-voz-devolutiva.png",
+      "rota": "/hoje?daily=184e3766-eeaf-4af3-b6a9-72ed9df0aba3",
+      "estado": "devolutiva da conversa por voz (nota e comentario da Focada)",
+      "nota": ""
+    },
+    {
+      "arquivo": "111-reforco-fim.png",
+      "rota": "/hoje?daily=184e3766-eeaf-4af3-b6a9-72ed9df0aba3",
+      "estado": "reforco todo respondido, antes de concluir",
+      "nota": ""
+    },
+    {
+      "arquivo": "112-reforco-concluido.png",
+      "rota": "/hoje?daily=184e3766-eeaf-4af3-b6a9-72ed9df0aba3",
+      "estado": "depois de concluir o reforco",
+      "nota": ""
+    }
+  ],
+  "naoCapturado": []
+}

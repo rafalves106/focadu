@@ -1018,7 +1018,7 @@ export interface WeeklyTemplateDetailDto {
 /**
  * GET /api/system/ai-status (Fase 28) - status de cada provedor de IA externo (hoje so Groq, ver
  * GroqHealthCheckService). `configured=false` (chave ausente) implica `available=false` sem sequer
- * o backend ter tentado a chamada de teste. Alimenta o robozinho de status da IA no GlobalNav - ver AiStatusMenu.tsx.
+ * o backend ter tentado a chamada de teste. Alimenta o ponto de status da IA no avatar do agente e a linha das Configuracoes (Fase 109).
  */
 export interface AiProviderStatusDto {
   provider: string;

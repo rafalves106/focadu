@@ -1,0 +1,119 @@
+{
+  "manifesto": [
+    {
+      "arquivo": "141-ponte-leitura.png",
+      "rota": "/hoje",
+      "estado": "Dia 6 (ponte \"code comigo\"): leitura com o arquivo do dia para baixar",
+      "nota": ""
+    },
+    {
+      "arquivo": "142-ponte-passo-1-preparando.png",
+      "rota": "/hoje",
+      "estado": "passo de codigo 1: editor e o laboratorio ainda preparando os arquivos",
+      "nota": ""
+    },
+    {
+      "arquivo": "143-ponte-passo-1-pronto.png",
+      "rota": "/hoje",
+      "estado": "passo de codigo 1: laboratorio pronto (terminal bash no navegador)",
+      "nota": ""
+    },
+    {
+      "arquivo": "144-ponte-passo-1-rodado.png",
+      "rota": "/hoje",
+      "estado": "codigo escrito e rodado no terminal do laboratorio",
+      "nota": ""
+    },
+    {
+      "arquivo": "145-ponte-passo-1-devolutiva.png",
+      "rota": "/hoje",
+      "estado": "passo enviado, devolutiva da Focada",
+      "nota": ""
+    },
+    {
+      "arquivo": "146-projeto-bloqueado.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=07f913f7-94e7-4c27-80c1-bb7062eeef0f&project=1",
+      "estado": "Projeto da Semana 1 antes de fechar a ponte: cadeado e aviso de repositorio nao provisionado (Forgejo local sem provisionamento)",
+      "nota": ""
+    },
+    {
+      "arquivo": "147-reforco-bloqueado.png",
+      "rota": "/hoje?daily=9e3ae551-6bbe-40a7-836f-76fe972326d2",
+      "estado": "tentar abrir um reforco com a ponte do dia em andamento: aviso de sessao em andamento",
+      "nota": ""
+    },
+    {
+      "arquivo": "148-perfil.png",
+      "rota": "/perfil",
+      "estado": "perfil do aluno com progresso e agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "149-perfil-guarda-roupa.png",
+      "rota": "/perfil?abrir=guarda-roupa",
+      "estado": "guarda-roupa aberto em modal",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "150-perfil-conquistas.png",
+      "rota": "/perfil?abrir=conquistas",
+      "estado": "lista de conquistas em modal",
+      "nota": ""
+    },
+    {
+      "arquivo": "151-squad-criado.png",
+      "rota": "/squad",
+      "estado": "QG com squad criado (so o aluno, sem outros membros)",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "152-loja-vitrine.png",
+      "rota": "/loja",
+      "estado": "vitrine da semana e agente, saldo baixo",
+      "nota": ""
+    },
+    {
+      "arquivo": "153-loja-provador.png",
+      "rota": "/loja",
+      "estado": "peca da vitrine no provador (frente)",
+      "nota": ""
+    },
+    {
+      "arquivo": "154-loja-provador-costas.png",
+      "rota": "/loja",
+      "estado": "provador de costas",
+      "nota": ""
+    },
+    {
+      "arquivo": "155-ranking.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&ranking=1",
+      "estado": "ranking do curso com o aluno veterano",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "156-certificacoes.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&certifications=1",
+      "estado": "Certificacoes do curso",
+      "nota": ""
+    },
+    {
+      "arquivo": "157-caderninho-vazio.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&caderninho=1",
+      "estado": "Caderninho sem nenhuma nota",
+      "nota": ""
+    },
+    {
+      "arquivo": "158-configuracoes.png",
+      "rota": "/start",
+      "estado": "menu de Configuracoes aberto",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "159-status-da-ia.png",
+      "rota": "/start",
+      "estado": "menu de status da IA aberto",
+      "nota": ""
+    }
+  ],
+  "naoCapturado": []
+}

@@ -1,0 +1,383 @@
+{
+  "manifesto": [
+    {
+      "arquivo": "01-login-entrar.png",
+      "rota": "/login",
+      "estado": "aba Entrar, vazia",
+      "nota": ""
+    },
+    {
+      "arquivo": "02-login-entrar-erro.png",
+      "rota": "/login",
+      "estado": "credenciais invalidas",
+      "nota": ""
+    },
+    {
+      "arquivo": "03-login-criar-conta.png",
+      "rota": "/login",
+      "estado": "aba Criar conta, vazia",
+      "nota": ""
+    },
+    {
+      "arquivo": "04-login-criar-conta-erro.png",
+      "rota": "/login",
+      "estado": "envio vazio, validacao",
+      "nota": ""
+    },
+    {
+      "arquivo": "05-login-criar-conta-erro-valores.png",
+      "rota": "/login",
+      "estado": "valores invalidos (nome curto, e-mail ruim, senha fraca, confirmacao diferente)",
+      "nota": ""
+    },
+    {
+      "arquivo": "06-esqueci-senha.png",
+      "rota": "/esqueci-senha",
+      "estado": "formulario",
+      "nota": ""
+    },
+    {
+      "arquivo": "07-esqueci-senha-enviado.png",
+      "rota": "/esqueci-senha",
+      "estado": "depois de enviar",
+      "nota": ""
+    },
+    {
+      "arquivo": "08-confirmar-email-sem-sessao.png",
+      "rota": "/login",
+      "estado": "aberta sem sessao (a confirmacao so e exigida com Signup:* ligado)",
+      "nota": ""
+    },
+    {
+      "arquivo": "09-aceite-sem-sessao.png",
+      "rota": "/login",
+      "estado": "aberta sem sessao (o aceite so e exigido com Signup:* ligado)",
+      "nota": ""
+    },
+    {
+      "arquivo": "10-termos.png",
+      "rota": "/termos",
+      "estado": "Termos de Uso",
+      "nota": "A pagina rola (2561px de 900px); fullPage em 10-termos-full.png."
+    },
+    {
+      "arquivo": "11-privacidade.png",
+      "rota": "/privacidade",
+      "estado": "Politica de Privacidade",
+      "nota": "A pagina rola (2709px de 900px); fullPage em 11-privacidade-full.png."
+    },
+    {
+      "arquivo": "12-login-criar-conta-preenchida.png",
+      "rota": "/login",
+      "estado": "formulario preenchido, antes de enviar",
+      "nota": ""
+    },
+    {
+      "arquivo": "13-onboarding-1-boas-vindas.png",
+      "rota": "/onboarding",
+      "estado": "passo 1 de 3",
+      "nota": ""
+    },
+    {
+      "arquivo": "14-onboarding-2-perfil.png",
+      "rota": "/onboarding/perfil",
+      "estado": "passo 2 de 3, nenhum interesse marcado",
+      "nota": ""
+    },
+    {
+      "arquivo": "15-onboarding-2-perfil-preenchido.png",
+      "rota": "/onboarding/perfil",
+      "estado": "passo 2 de 3, interesses marcados e texto livre",
+      "nota": ""
+    },
+    {
+      "arquivo": "16-selecionar-curso-linguagem.png",
+      "rota": "/selecionar-curso",
+      "estado": "passo 3 de 3, janela da linguagem dos projetos",
+      "nota": "A pagina rola (1293px de 900px); fullPage em 16-selecionar-curso-linguagem-full.png."
+    },
+    {
+      "arquivo": "17-selecionar-curso.png",
+      "rota": "/selecionar-curso",
+      "estado": "catalogo de cursos (Web Security aparece por CoursePreview__Emails)",
+      "nota": "A pagina rola (1293px de 900px); fullPage em 17-selecionar-curso-full.png."
+    },
+    {
+      "arquivo": "18-selecionar-curso-ver-curso.png",
+      "rota": "/selecionar-curso",
+      "estado": "\"Ver curso\" aberto no Web Security",
+      "nota": "A pagina rola (1293px de 900px); fullPage em 18-selecionar-curso-ver-curso-full.png."
+    },
+    {
+      "arquivo": "19-inicio-tour-passo-1.png",
+      "rota": "/start",
+      "estado": "Inicio de aluno novo com o tour do guia \"?\" no passo 1 de 10",
+      "nota": ""
+    },
+    {
+      "arquivo": "20-inicio-aluno-novo.png",
+      "rota": "/start",
+      "estado": "Inicio de aluno novo, sem progresso, tour fechado",
+      "nota": ""
+    },
+    {
+      "arquivo": "21-inicio-guia-aberto.png",
+      "rota": "/start",
+      "estado": "guia da tela \"?\" aberto",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "22-trilha-mapa-sem-progresso.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "trilha do curso sem progresso",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "23-semana-sem-progresso.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=91927d38-86b6-4f7a-9ff3-2dba176d0be7&project=1",
+      "estado": "visao da semana 1 sem progresso",
+      "nota": ""
+    },
+    {
+      "arquivo": "24-ranking.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&ranking=1",
+      "estado": "ranking do curso, aluno novo",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "25-hoje-etapa-1-leitura.png",
+      "rota": "/hoje",
+      "estado": "Dia 1, primeira etapa, primeira visita (balao \"Primeira vez aqui?\" visivel)",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "26-hoje-anotacao-preenchida.png",
+      "rota": "/hoje",
+      "estado": "anotacao rapida preenchida (trilho direito)",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "27-hoje-anotacao-salva.png",
+      "rota": "/hoje",
+      "estado": "anotacao salva",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "28-hoje-suporte-rapido-pensando.png",
+      "rota": "/hoje",
+      "estado": "Suporte Rapido logo depois de enviar a duvida",
+      "nota": "2 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "29-hoje-suporte-rapido-resposta.png",
+      "rota": "/hoje",
+      "estado": "Suporte Rapido com a resposta da IA",
+      "nota": "2 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "30-hoje-leitura.png",
+      "rota": "/hoje",
+      "estado": "leitura (etapa 1 de 14)",
+      "nota": "2 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "31-hoje-voz-pronta.png",
+      "rota": "/hoje",
+      "estado": "conversa por voz, antes de gravar",
+      "nota": ""
+    },
+    {
+      "arquivo": "32-hoje-voz-gravando.png",
+      "rota": "/hoje",
+      "estado": "conversa por voz gravando (microfone falso com fala sintetica)",
+      "nota": ""
+    },
+    {
+      "arquivo": "33-hoje-voz-processando.png",
+      "rota": "/hoje",
+      "estado": "logo depois de enviar, transcricao e nota em andamento",
+      "nota": ""
+    },
+    {
+      "arquivo": "34-hoje-voz-devolutiva.png",
+      "rota": "/hoje",
+      "estado": "devolutiva da conversa por voz (nota e comentario da Focada)",
+      "nota": ""
+    },
+    {
+      "arquivo": "35-hoje-quiz-abertura.png",
+      "rota": "/hoje",
+      "estado": "abertura do bloco \"quiz\" (etapa 7 de 14)",
+      "nota": ""
+    },
+    {
+      "arquivo": "36-hoje-quiz.png",
+      "rota": "/hoje",
+      "estado": "quiz, questao aberta (etapa 7 de 14)",
+      "nota": ""
+    },
+    {
+      "arquivo": "37-hoje-quiz-erro-focada.png",
+      "rota": "/hoje",
+      "estado": "quiz respondido, feedback da Focada (a opcao 1 e escolhida sempre)",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "38-hoje-complete-a-lacuna-abertura.png",
+      "rota": "/hoje",
+      "estado": "abertura do bloco \"complete a lacuna\" (etapa 10 de 14)",
+      "nota": ""
+    },
+    {
+      "arquivo": "39-hoje-lacuna.png",
+      "rota": "/hoje",
+      "estado": "lacuna aberta",
+      "nota": ""
+    },
+    {
+      "arquivo": "40-hoje-lacuna-resposta.png",
+      "rota": "/hoje",
+      "estado": "lacuna respondida",
+      "nota": ""
+    },
+    {
+      "arquivo": "41-hoje-ligar-palavras-abertura.png",
+      "rota": "/hoje",
+      "estado": "abertura do bloco \"ligar palavras\" (etapa 12 de 14)",
+      "nota": ""
+    },
+    {
+      "arquivo": "42-hoje-ligar-palavras.png",
+      "rota": "/hoje",
+      "estado": "ligar palavras, nenhum par",
+      "nota": ""
+    },
+    {
+      "arquivo": "43-hoje-ligar-palavras-pares.png",
+      "rota": "/hoje",
+      "estado": "ligar palavras, pares feitos antes de confirmar",
+      "nota": ""
+    },
+    {
+      "arquivo": "44-hoje-ligar-palavras-resposta.png",
+      "rota": "/hoje",
+      "estado": "ligar palavras corrigido",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "45-hoje-roleplay-abertura.png",
+      "rota": "/hoje",
+      "estado": "abertura do bloco \"roleplay\" (etapa 13 de 14)",
+      "nota": ""
+    },
+    {
+      "arquivo": "46-hoje-roleplay.png",
+      "rota": "/hoje",
+      "estado": "roleplay, decisao aberta",
+      "nota": ""
+    },
+    {
+      "arquivo": "47-hoje-roleplay-resposta.png",
+      "rota": "/hoje",
+      "estado": "roleplay, depois da escolha 1",
+      "nota": ""
+    },
+    {
+      "arquivo": "48-hoje-fim-da-sessao.png",
+      "rota": "/hoje",
+      "estado": "tudo respondido, antes de concluir a sessao",
+      "nota": ""
+    },
+    {
+      "arquivo": "49-hoje-feedback-do-dia.png",
+      "rota": "/hoje",
+      "estado": "tela \"Como foi o dia\" antes da recompensa, nada marcado",
+      "nota": ""
+    },
+    {
+      "arquivo": "50-hoje-feedback-do-dia-preenchido.png",
+      "rota": "/hoje",
+      "estado": "nota 4 e comentario preenchidos",
+      "nota": ""
+    },
+    {
+      "arquivo": "51-hoje-sessao-concluida.png",
+      "rota": "/hoje",
+      "estado": "depois de enviar o feedback do dia",
+      "nota": ""
+    },
+    {
+      "arquivo": "52-perfil.png",
+      "rota": "/perfil",
+      "estado": "perfil do aluno novo, ainda sem agente",
+      "nota": ""
+    },
+    {
+      "arquivo": "53-perfil-guarda-roupa.png",
+      "rota": "/perfil?abrir=guarda-roupa",
+      "estado": "guarda-roupa aberto em modal",
+      "nota": ""
+    },
+    {
+      "arquivo": "54-perfil-conquistas.png",
+      "rota": "/perfil?abrir=conquistas",
+      "estado": "lista de conquistas em modal",
+      "nota": ""
+    },
+    {
+      "arquivo": "55-squad-sem-squad.png",
+      "rota": "/squad",
+      "estado": "QG sem squad: criar squad ou entrar por codigo",
+      "nota": ""
+    },
+    {
+      "arquivo": "56-ranking.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&ranking=1",
+      "estado": "ranking do curso",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "57-certificacoes.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&certifications=1",
+      "estado": "Certificacoes do curso",
+      "nota": ""
+    },
+    {
+      "arquivo": "58-caderninho-com-nota.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&caderninho=1",
+      "estado": "Caderninho com a nota feita na sessao do Dia 1",
+      "nota": ""
+    },
+    {
+      "arquivo": "59-configuracoes.png",
+      "rota": "/start",
+      "estado": "menu de Configuracoes aberto",
+      "nota": ""
+    },
+    {
+      "arquivo": "60-status-da-ia.png",
+      "rota": "/start",
+      "estado": "menu de status da IA aberto",
+      "nota": ""
+    },
+    {
+      "arquivo": "61-loja-criar-agente.png",
+      "rota": "/loja",
+      "estado": "loja de quem ainda nao criou o agente (tom de pele e cabelo)",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "62-loja-criar-agente-escolhas.png",
+      "rota": "/loja",
+      "estado": "pele 2 e cabelo Black power escolhidos",
+      "nota": "1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "63-loja-vitrine.png",
+      "rota": "/loja",
+      "estado": "loja depois de criar o agente: vitrine e saldo",
+      "nota": ""
+    }
+  ],
+  "naoCapturado": []
+}

@@ -3,7 +3,7 @@ import type { ActivityType } from '../api/types';
 
 // Objeto de contexto + tipo isolados (mesmo motivo de settingsContextObject.ts: fast refresh do Vite).
 
-/** O que a sessao diaria conta pro guia (a etapa em tela troca o 1o item de "Esta tela"). */
+/** O que o Dia conta pra ajuda (a etapa em tela troca o 1o item da lista). */
 export interface GuideSessionDetail {
   activityType: ActivityType | null;
   isReinforcement: boolean;
@@ -11,10 +11,8 @@ export interface GuideSessionDetail {
 }
 
 export interface GuideContextValue {
-  /** Abre a janela do guia na tela atual. */
+  /** Abre a Ajuda desta tela (item do menu do agente). */
   openGuide: () => void;
-  /** Roda o tour da tela atual. */
-  startScreenTour: () => void;
   setSessionDetail: (detail: GuideSessionDetail | null) => void;
 }
 

@@ -2,21 +2,21 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
-import { useAuth } from '../contexts/useAuth';
-import { type CourseDetailDto, type DailyStateDto, type GamificationSummaryDto, type WeeklyDetailDto } from '../api/types';
+import { DailyStatus, type CourseDetailDto, type DailyStateDto, type GamificationSummaryDto } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
 import { StreakLostModal } from '../components/gamification/StreakLostModal';
-import { ScrollArea } from '../components/ScrollArea';
-import { DialogueBox } from '../components/DialogueBox';
-import { CourseSlots } from '../components/start/CourseSlots';
-import { AgentCard } from '../components/start/AgentCard';
-import { DailyMissionCard } from '../components/start/DailyMissionCard';
+import { CoursesCard } from '../components/start/CoursesCard';
+import { HighlightCard } from '../components/start/HighlightCard';
 import { WeekPathCard } from '../components/start/WeekPathCard';
+import { YouCard } from '../components/start/YouCard';
+import { Breadcrumb } from '../components/ui/Breadcrumb';
+import { FocadaLine } from '../components/ui/FocadaLine';
 import { EmptyStateStartPage } from './EmptyStateStartPage';
-import { buildFocadaMapLine } from '../lib/focadaMapLines';
-import { studiedToday } from '../lib/startScreen';
+import { primaryDays } from '../lib/focadaMapLines';
+import { buildStartState, startFocadaLine, studiedToday } from '../lib/startScreen';
 import { pickCourse, rememberCourse } from '../lib/courseChoice';
+import { courseDoneToday } from '../lib/weekPath';
 
 interface HubData {
   /** Todos os cursos matriculados, com o detalhe (progresso, semanas, dias). */
@@ -26,85 +26,65 @@ interface HubData {
 
 interface SelectedData {
   courseId: string;
-  /** null = curso sem Daily pendente (concluido) - GET /api/today devolve daily_hoje_nao_encontrada. */
+  /** null = curso sem Dia pendente (concluído) - GET /api/today devolve daily_hoje_nao_encontrada. */
   daily: DailyStateDto | null;
-  weekly: WeeklyDetailDto | null;
 }
 
 /**
- * Hub de entrada (`/start` sem params). Historico: Fase 8 (hub de cards), Fase 14 (gemas/streak
- * reais), Fase 10 retomada (StreakLostModal), Fase 38c (carrossel de cursos), Fase 45 (certificacoes),
- * Fase 56 (reforco pendente).
+ * Início (`/start` sem params). Histórico: Fase 8 (hub de cards), Fase 14 (gemas/sequência reais), Fase
+ * 10 retomada (StreakLostModal), Fase 38c (vários cursos), Fase 56 (reforço pendente).
  *
- * Redesign de 23/09/2026 (Figma "Focadu — Pixel Art", pagina "Start — redesign proposto", node
- * 55:4502, aprovado pelo dono): 3 colunas como a trilha e o Projeto Semanal, pixel art.
- * - Esquerda, global: cursos como "save slots" (escolher um troca o centro e a direita, guardado em
- *   `?curso=`) e o cartao do agente (gemas, streak e a semana do streak).
- * - Centro, do curso escolhido: a Missao do dia (unica acao principal), "Rumo ao
- *   castelo" (a semana atual como pedaco do mapa, com o Projeto Semanal de BOSS) e a fala da Focada
- *   (as falas aprovadas do mapa, no lugar do "Ola, fulano").
- * A coluna direita do desenho (missoes extras, numeros, certificacoes, atalhos) saiu a pedido do
- * dono - o resto ja esta na trilha, e a tela nao deve rolar. Pelo mesmo motivo saiu o HUD do curso no
- * topo do centro (repetia o slot escolhido: nome e %) - o nome foi pra linha de contexto da missao. O reforco pendente (Fase 56: sempre
- * alcancavel) ficou no selo do caminho da semana, que leva direto a sessao, e na fala da Focada.
- * A Daily do curso escolhido vem de GET /api/today?courseId= - a cota de 1 Daily por dia e por curso.
- * Conquistas e a versao de celular ficaram pra depois (decisao do dono); abaixo de `lg` as colunas so
- * empilham.
+ * Redesign v1 (Fase 109, molde Hub; Figma `15:2` dia por fazer, `15:477` dia feito com reforço pendente,
+ * `15:833` 1º dia no celular): a coluna do dia (fio, cartão Destaque com o único Primário, caminho da
+ * semana) e a coluna de estado de 432 (400 no notebook) com a fala da Focada, "Você" e "Seus cursos". No
+ * 1º dia (nenhum Dia fechado no curso) somem sequência e gems. No celular a coluna de estado fica só com
+ * a Focada (Você e Seus cursos não cabem sem rolar; os números estão no Perfil e o curso no fio).
+ * A página não rola: a tela tem a altura da janela (`tela-cheia`) e só rola por dentro se não couber.
  */
 export function StartDashboard() {
-  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const hub = useApiResource<HubData>(async () => {
     const [summaries, gamification] = await Promise.all([api.getCourses(), api.getGamification()]);
-    // Detalhe de todos os cursos (N+1 aceitavel - poucos cursos por usuario, ver docs/ARQUITETURA.md).
+    // Detalhe de todos os cursos (N+1 aceitável - poucos cursos por usuário, ver docs/ARQUITETURA.md).
     const courses = await Promise.all(summaries.map((c) => api.getCourse(c.id)));
     return { courses, gamification };
   }, []);
 
   const courses = useMemo(() => hub.data?.courses ?? [], [hub.data]);
-  const requestedId = searchParams.get('curso');
-  const selectedCourse = pickCourse(courses, requestedId);
+  const selectedCourse = pickCourse(courses, searchParams.get('curso'));
   const selectedId = selectedCourse?.id ?? null;
 
   const selected = useApiResource<SelectedData | null>(async () => {
     if (!selectedId) return null;
     try {
-      const daily = await api.getToday(selectedId);
-      const weekly = await api.getWeekly(daily.weeklyId);
-      return { courseId: selectedId, daily, weekly };
+      return { courseId: selectedId, daily: await api.getToday(selectedId) };
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'daily_hoje_nao_encontrada') return { courseId: selectedId, daily: null, weekly: null };
+      if (err instanceof ApiError && err.code === 'daily_hoje_nao_encontrada') return { courseId: selectedId, daily: null };
       throw err;
     }
   }, [selectedId]);
 
-  // Molde v1: titulos de modulo direto do curso (sem arte por curso) e falas padrao da Focada (sem falas.json por curso).
-  const monthTitles = useMemo(
-    () => new Map((selectedCourse?.monthlies ?? []).map((m) => [m.number, m.title])),
-    [selectedCourse],
-  );
-  const focadaLine = useMemo(() => (selectedCourse ? buildFocadaMapLine(selectedCourse, monthTitles) : null), [selectedCourse, monthTitles]);
-
-  // Derivado direto do fetch (nao um effect) - so precisa "lembrar" um dismiss local pra nao
-  // reaparecer no mesmo carregamento depois que StreakLostModal ja chamou acknowledgeStreakBreak.
+  // Só "lembra" o fechamento local pra não reaparecer no mesmo carregamento depois que o
+  // StreakLostModal já chamou acknowledgeStreakBreak.
   const [dismissed, setDismissed] = useState(false);
 
   if (hub.loading) return <Centered text="Carregando..." />;
   if (hub.error) return <ApiErrorScreen error={hub.error} onRetry={hub.retry} />;
   if (!hub.data) return null;
-  // Guarda de seguranca (Fase 13b) - perfil completo mas sem matricula (SplashPage evita a maioria
-  // desses casos, mas /start continua acessivel direto pela URL/back-button).
+  // Guarda (Fase 13b): perfil completo mas sem matrícula.
   if (!selectedCourse) return <EmptyStateStartPage />;
 
   const { gamification } = hub.data;
-  const todayDone = studiedToday(courses);
-  // Dados do "hoje" so valem se forem do curso escolhido (na troca de slot, o anterior fica ate chegar o novo).
+  const studied = studiedToday(courses);
+  // Na troca de curso, o "hoje" anterior fica até chegar o novo: só vale se for do curso escolhido.
   const current = selected.data?.courseId === selectedCourse.id ? selected.data : null;
-  const currentWeekId = current?.weekly?.id;
-  const currentWeek = currentWeekId
-    ? (selectedCourse.monthlies.flatMap((m) => m.weeklies).find((w) => w.id === currentWeekId) ?? null)
-    : null;
+  const state = current ? buildStartState(selectedCourse, current.daily) : null;
+  const week = state?.week ?? null;
+  const weekDays = week ? primaryDays(week) : [];
+  // Último segmento do fio: o Dia de hoje, ou "Dia 3 feito" quando o Destaque já é a pendência seguinte.
+  const dayCrumb =
+    state?.highlight.kind === 'dia' ? `Dia ${state.highlight.daily.dayNumber}` : state?.doneToday ? `Dia ${state.doneToday.dayNumber} feito` : null;
 
   function selectCourse(courseId: string) {
     rememberCourse(courseId);
@@ -119,42 +99,42 @@ export function StartDashboard() {
   }
 
   return (
-    <div className="flex flex-col gap-6 bg-base px-4 pt-6 pb-8 lg:min-h-0 lg:flex-1 lg:flex-row lg:overflow-hidden lg:px-16 lg:pt-[45px] lg:pb-12 lg:[@media(max-height:820px)]:py-6">
+    <div className="tela-cheia flex flex-col gap-4 overflow-y-auto p-4 md:gap-6 md:p-6 lg:flex-row min-[1400px]:p-8">
       {!dismissed && gamification.streakJustBroken && (
         <StreakLostModal longestStreak={gamification.longestStreak} onClose={() => setDismissed(true)} />
       )}
 
-      <ScrollArea className="w-full shrink-0 lg:min-h-0 lg:w-[272px]" contentClassName="flex flex-col gap-5 lg:pr-3">
-        <CourseSlots courses={courses} selectedId={selectedCourse.id} onSelect={selectCourse} />
-        <AgentCard displayName={user?.displayName ?? 'agente'} gamification={gamification} todayDone={todayDone} />
-      </ScrollArea>
-
-      <ScrollArea className="min-h-0 min-w-0 flex-1" contentClassName="flex flex-col gap-5 lg:pr-3">
-        {/* Sem HUD visivel no centro (o slot escolhido ja mostra nome e %) - o titulo da pagina fica pro leitor de tela. */}
+      <div className="flex min-w-0 flex-col gap-4 md:gap-6 lg:flex-1">
         <h1 className="sr-only">Início: {selectedCourse.name}</h1>
+        <Breadcrumb parts={[selectedCourse.name, week && `Semana ${week.number}`, dayCrumb]} />
         {selected.error && !current ? (
           <ApiErrorScreen error={selected.error} onRetry={selected.retry} />
-        ) : !current ? (
-          <div className="pixel-box flex h-40 shrink-0 items-center justify-center bg-base">
-            <p className="font-pixel text-xl text-secondary">Carregando o curso...</p>
-          </div>
+        ) : !state ? (
+          <p className="text-corpo text-secondary">Carregando o curso...</p>
         ) : (
           <>
-            <DailyMissionCard
-              course={selectedCourse}
-              daily={current.daily}
-              weekly={current.weekly}
-              studiedToday={todayDone}
-              currentStreak={gamification.currentStreak}
-            />
-            {currentWeek && <WeekPathCard week={currentWeek} courseId={selectedCourse.id} />}
+            <HighlightCard course={selectedCourse} state={state} streak={gamification.currentStreak} studied={studied} />
+            {week && <WeekPathCard week={week} courseId={selectedCourse.id} state={state} doneToday={courseDoneToday(selectedCourse)} />}
           </>
         )}
-        {focadaLine && (
-          <DialogueBox key={selectedCourse.id} projectId={`start-${selectedCourse.id}`} lines={[focadaLine]} onOpenReadme={null} compact />
+      </div>
+
+      <aside aria-label="Seu estado" className="flex shrink-0 flex-col gap-4 md:gap-6 lg:w-[400px] min-[1400px]:w-[432px]">
+        {state && <FocadaLine size="devolutiva">{startFocadaLine(state, gamification.currentStreak, studied)}</FocadaLine>}
+        {state && !state.firstDay && (
+          <div className="hidden md:contents">
+            <YouCard
+              gamification={gamification}
+              todayDone={studied}
+              weekDone={weekDays.filter((d) => d.status === DailyStatus.Completed).length}
+              weekTotal={weekDays.length}
+            />
+          </div>
         )}
-      </ScrollArea>
+        <div className="hidden md:contents">
+          <CoursesCard courses={courses} selected={selectedCourse} firstDay={state?.firstDay ?? false} onSelect={selectCourse} />
+        </div>
+      </aside>
     </div>
   );
 }
-

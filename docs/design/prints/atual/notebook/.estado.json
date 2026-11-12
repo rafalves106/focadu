@@ -1,0 +1,29 @@
+{
+  "cookies": [
+    {
+      "name": "focadu_auth",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmNWIwMDM2OS1iMmI5LTRhMDQtYjEyNC0xMGQ5ZTg2ZTk2YjgiLCJlbWFpbCI6ImFsdW5vLnByaW50LjQyQGxvY2FsLnRlc3QiLCJlbWFpbF92ZXJpZmllZCI6ImZhbHNlIiwiZXhwIjoxNzk1MDQyNDk5fQ.QBTqkioKDnguGoSOmpv8m3jeoadsf2PwlJmt0Y6mq5A",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1795042500.32908,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:5174",
+      "localStorage": [
+        {
+          "name": "focadu:focada-vistas:start-7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+          "value": "[\"Este é o mapa, agente. Cada ponto é um dia, cada castelo é um projeto. Você começa no primeiro. Eu fico de olho.\",\"Tem um reforço esperando no dia 1, agente. Ele não some se você fingir que não viu. Eu já testei.\"]"
+        },
+        {
+          "name": "focadu:ultimo-curso",
+          "value": "7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476"
+        }
+      ]
+    }
+  ]
+}

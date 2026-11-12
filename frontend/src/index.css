@@ -28,8 +28,26 @@
      um tom proprio (ambar) so pra telas de projeto/"chefe de fase", nao o verde padrao. */
   --color-project: #ffb800;
   --color-primary: #f5f5f5;
-  --color-secondary: #9a9a9a;
+  /* Redesign v1 (Fase 109, coleção "Focadu tokens v2" do Figma KZkoT5d33KsbBWEcQ0EBXj): secundário
+     clareou de #9a9a9a pra #b4b4b4 (contraste no fundo #151515). */
+  --color-secondary: #b4b4b4;
   --color-muted: #5c5c5c;
+  /* Tokens novos do redesign v1 (ver docs/design/sistema.md §3). Os nomes seguem o "code syntax" das
+     variáveis no Figma: accent-tint = cor/fundo/verde-suave, stroke-strong = cor/borda/forte etc. */
+  --color-accent-hover: #7dff9e;
+  --color-accent-tint: #0f2a17;
+  --color-accent-shadow: #1d8f3e;
+  --color-alert-tint: #2a0c0c;
+  --color-project-tint: #2a2000;
+  --color-stroke-strong: #3a3a3a;
+  /* Desabilitado é cinza, nunca verde escuro (regra 6 do sistema). */
+  --color-disabled: #2a2a2a;
+  /* Tons de pele do agente (cor/pele/1..5 = SKIN_SWATCH). Só na amostra de pele, nunca como cor de UI. */
+  --color-pele-1: #f2c8a8;
+  --color-pele-2: #e0a47a;
+  --color-pele-3: #c07f52;
+  --color-pele-4: #8d5530;
+  --color-pele-5: #5e3620;
   /* stroke/subtle (Fase 19) - borda de cards/inputs no Figma (#2a2a2a), token proprio e distinto
      de --color-surface-alt (#1e1e1e, "surface-raised" - fundo de pilulas/linhas elevadas, nao
      borda). As 2 cores sao proximas mas genuinamente diferentes e usadas de forma consistente com
@@ -44,21 +62,6 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-pixel: "VT323", ui-monospace, monospace;
   --font-pixel-label: "Silkscreen", ui-monospace, monospace;
-  /* Fase 65: a Focada no mapa da trilha "respira" parada no ponto (2 quadros, sem suavizacao - pixel art). */
-  --animate-map-bob: map-bob 1s steps(1) infinite;
-
-  @keyframes map-bob {
-    0% { translate: 0 0; }
-    50% { translate: 0 -2px; }
-  }
-
-  /* Fase 75: o botao "?" pisca na 1a visita a cada tela - anel que aparece e some em 2 quadros, 4 vezes. */
-  --animate-guide-pulse: guide-pulse 0.9s steps(1) 4;
-
-  @keyframes guide-pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0; }
-  }
 }
 
 body {
@@ -136,15 +139,25 @@ body {
    essenciais (ex.: "Como a semana fecha" na visao da semana), sem empurrar o resto pra rolagem. */
 @custom-variant tall (@media (min-height: 960px));
 
-/* Altura do GlobalNav, borda inclusa (Fase 62, Figma node 178:143: 73px no desktop). Desde a Fase 67
-   as telas nao descontam mais isso (a casca do App faz o <main> ocupar o resto da janela); so o
-   proprio nav le daqui. */
+/* Altura da nav superior, borda inclusa (redesign v1, Fase 109; sistema.md §5): 56 no celular, 64
+   (`tamanho/nav`) a partir de md. Lida pela propria nav, pela gaveta (que abre logo abaixo dela) e
+   pelas telas antigas que ainda descontam a altura. */
 :root {
-  --nav-height: 57px;
+  --nav-height: 56px;
 }
-@media (width >= 80rem) {
+@media (width >= 48rem) {
   :root {
-    --nav-height: 73px;
+    --nav-height: 64px;
+  }
+}
+
+/* Tela que não rola (redesign v1, Fase 109; sistema.md regra 1): exatamente a altura entre a nav e a
+   barra inferior do celular (sem a barra a partir de md). Telas refeitas usam isto em vez de rolar a
+   janela; quem ainda não cabe rola por dentro (último recurso, anotado em docs/fases/fase-109). */
+@utility tela-cheia {
+  height: calc(100dvh - var(--nav-height) - 64px - env(safe-area-inset-bottom));
+  @media (width >= 48rem) {
+    height: calc(100dvh - var(--nav-height));
   }
 }
 
@@ -168,4 +181,67 @@ body {
     calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px),
     0 calc(100% - 4px), 0 4px, 4px 4px
   );
+}
+
+/*
+ * Redesign v1 (Fase 109): estilos de texto do Figma (docs/design/sistema.md §3) como utilitários.
+ * VT323 no corpo e nos títulos, Silkscreen só em rótulo (nav, botão, tecla, fio, chip), Fira Code em
+ * código. O espaçamento de letra dos rótulos é 4% no Figma.
+ */
+@utility text-display {
+  font-family: var(--font-pixel);
+  font-size: 40px;
+  line-height: 44px;
+}
+@utility text-titulo {
+  font-family: var(--font-pixel);
+  font-size: 32px;
+  line-height: 36px;
+}
+@utility text-lead {
+  font-family: var(--font-pixel);
+  font-size: 24px;
+  line-height: 30px;
+}
+@utility text-corpo {
+  font-family: var(--font-pixel);
+  font-size: 20px;
+  line-height: 28px;
+}
+@utility text-pequeno {
+  font-family: var(--font-pixel);
+  font-size: 16px;
+  line-height: 22px;
+}
+@utility text-rotulo {
+  font-family: var(--font-pixel-label);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+@utility text-rotulo-sm {
+  font-family: var(--font-pixel-label);
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+@utility text-codigo {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  line-height: 24px;
+}
+
+/* Tamanhos do redesign v1 (tamanho/* no Figma). Espaço (espaco/xs..2xl = 4..48) já é a escala padrão
+   do Tailwind: 1, 2, 4, 6, 8, 12. */
+:root {
+  --tamanho-controle: 48px;
+  --tamanho-controle-sm: 36px;
+  --tamanho-toque: 44px;
+  --tamanho-trilho: 64px;
+  --tamanho-no-dia: 40px;
+  --tamanho-etapa: 32px;
+  --tamanho-nav: 64px;
+  --tamanho-coluna-foco: 720px;
 }

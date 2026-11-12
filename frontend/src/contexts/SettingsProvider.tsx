@@ -1,25 +1,17 @@
 import { useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { SettingsMenu } from '../components/SettingsMenu';
-import { useAuth } from './useAuth';
 import { SettingsContext } from './settingsContextObject';
 
 /**
- * Fase 25: o Menu de Configuracoes (Fase 7) deixou de morar so dentro de `/hoje` - o GlobalNav
- * novo precisa abri-lo de qualquer tela. Precisa de UM estado/instancia so pro app inteiro (senao
- * GlobalNav e TodayPage cada um abriria seu proprio modal, sem saber do outro) - mesmo padrao de
- * `AuthProvider`: o Provider guarda o estado e renderiza o modal 1x como irmao de `children`,
- * sobrevive a qualquer navegacao/rota. `useSessionExitGuard` (TodayPage) chama `toggle()` no
- * ESC/voltar do navegador durante uma sessao ativa - unica coisa que faz "ESC" fechar o menu de
- * verdade (SettingsMenu nao tem listener de teclado proprio).
+ * Fase 25: as Configuracoes deixaram de morar so dentro de `/hoje` - a casca abre de qualquer tela
+ * (desde a Fase 109, pelo menu do agente). UM estado/instancia so pro app inteiro: o Provider guarda o
+ * estado e renderiza o modal 1x como irmao de `children`, sobrevive a qualquer navegacao.
+ * `useSessionExitGuard` (TodayPage) chama `toggle()` no ESC/voltar do navegador durante o Dia.
  *
- * 2026-09-10: removido "Sair e salvar progresso" (onExit) do SettingsMenu - so navegava pra
- * /start sem salvar nada extra, acao redundante.
+ * Fase 109: "Sair da conta" saiu das Configuracoes e foi pro menu do agente (`AgentMenu`).
  */
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
-  const navigate = useNavigate();
-  const { logout } = useAuth();
 
   return (
     <SettingsContext.Provider
@@ -31,13 +23,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-      <SettingsMenu
-        open={isOpen}
-        onClose={() => setIsOpen(false)}
-        onLogout={() => {
-          void logout().then(() => navigate('/login'));
-        }}
-      />
+      <SettingsMenu open={isOpen} onClose={() => setIsOpen(false)} />
     </SettingsContext.Provider>
   );
 }
