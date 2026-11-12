@@ -1,0 +1,115 @@
+{
+  "manifesto": [
+    {
+      "arquivo": "141-ponte-leitura.png",
+      "rota": "/hoje",
+      "estado": "Dia 6 (ponte \"code comigo\"): leitura com o arquivo do dia para baixar",
+      "nota": "A pagina rola (973px de 844px); fullPage em 141-ponte-leitura-full.png."
+    },
+    {
+      "arquivo": "142-ponte-passo-1-preparando.png",
+      "rota": "/hoje",
+      "estado": "passo de codigo 1: editor e o laboratorio ainda preparando os arquivos",
+      "nota": "A pagina rola (973px de 844px); fullPage em 142-ponte-passo-1-preparando-full.png."
+    },
+    {
+      "arquivo": "143-ponte-passo-1-pronto.png",
+      "rota": "/hoje",
+      "estado": "passo de codigo 1: laboratorio pronto (terminal bash no navegador)",
+      "nota": "A pagina rola (973px de 844px); fullPage em 143-ponte-passo-1-pronto-full.png."
+    },
+    {
+      "arquivo": "144-projeto-bloqueado.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=07f913f7-94e7-4c27-80c1-bb7062eeef0f&project=1",
+      "estado": "Projeto da Semana 1 antes de fechar a ponte: cadeado e aviso de repositorio nao provisionado (Forgejo local sem provisionamento)",
+      "nota": "A pagina rola (1438px de 844px); fullPage em 144-projeto-bloqueado-full.png."
+    },
+    {
+      "arquivo": "145-reforco-bloqueado.png",
+      "rota": "/hoje?daily=9e3ae551-6bbe-40a7-836f-76fe972326d2",
+      "estado": "tentar abrir um reforco com a ponte do dia em andamento: aviso de sessao em andamento",
+      "nota": ""
+    },
+    {
+      "arquivo": "146-perfil.png",
+      "rota": "/perfil",
+      "estado": "perfil do aluno com progresso e agente",
+      "nota": "A pagina rola (2281px de 844px); fullPage em 146-perfil-full.png."
+    },
+    {
+      "arquivo": "147-perfil-guarda-roupa.png",
+      "rota": "/perfil?abrir=guarda-roupa",
+      "estado": "guarda-roupa aberto em modal",
+      "nota": "A pagina rola (2281px de 844px); fullPage em 147-perfil-guarda-roupa-full.png. 1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "148-perfil-conquistas.png",
+      "rota": "/perfil?abrir=conquistas",
+      "estado": "lista de conquistas em modal",
+      "nota": "A pagina rola (2281px de 844px); fullPage em 148-perfil-conquistas-full.png."
+    },
+    {
+      "arquivo": "149-squad-criado.png",
+      "rota": "/squad",
+      "estado": "QG com squad criado (so o aluno, sem outros membros)",
+      "nota": "A pagina rola (2299px de 844px); fullPage em 149-squad-criado-full.png."
+    },
+    {
+      "arquivo": "150-loja-vitrine.png",
+      "rota": "/loja",
+      "estado": "vitrine da semana e agente, saldo baixo",
+      "nota": "A pagina rola (2855px de 844px); fullPage em 150-loja-vitrine-full.png."
+    },
+    {
+      "arquivo": "151-loja-provador.png",
+      "rota": "/loja",
+      "estado": "peca da vitrine no provador (frente)",
+      "nota": "A pagina rola (2879px de 844px); fullPage em 151-loja-provador-full.png."
+    },
+    {
+      "arquivo": "152-loja-provador-costas.png",
+      "rota": "/loja",
+      "estado": "provador de costas",
+      "nota": "A pagina rola (2879px de 844px); fullPage em 152-loja-provador-costas-full.png."
+    },
+    {
+      "arquivo": "153-ranking.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&ranking=1",
+      "estado": "ranking do curso com o aluno veterano",
+      "nota": "A pagina rola (1717px de 844px); fullPage em 153-ranking-full.png."
+    },
+    {
+      "arquivo": "154-certificacoes.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&certifications=1",
+      "estado": "Certificacoes do curso",
+      "nota": "A pagina rola (936px de 844px); fullPage em 154-certificacoes-full.png."
+    },
+    {
+      "arquivo": "155-caderninho-vazio.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&caderninho=1",
+      "estado": "Caderninho sem nenhuma nota",
+      "nota": ""
+    },
+    {
+      "arquivo": "156-menu-celular.png",
+      "rota": "/start",
+      "estado": "menu hamburguer aberto (celular)",
+      "nota": "A pagina rola (1724px de 844px); fullPage em 156-menu-celular-full.png."
+    },
+    {
+      "arquivo": "157-configuracoes.png",
+      "rota": "/start",
+      "estado": "menu de Configuracoes aberto",
+      "nota": "A pagina rola (1342px de 844px); fullPage em 157-configuracoes-full.png."
+    },
+    {
+      "arquivo": "158-status-da-ia.png",
+      "rota": "/start",
+      "estado": "menu de status da IA aberto",
+      "nota": "A pagina rola (1342px de 844px); fullPage em 158-status-da-ia-full.png."
+    }
+  ],
+  "naoCapturado": [
+    "ponte: locator.fill: Timeout 30000ms exceeded."
+  ]
+}

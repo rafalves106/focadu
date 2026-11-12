@@ -14,7 +14,20 @@ Você desenha as telas da Focadu no Figma. Esta é a única forma de gerar desig
 2. Inspecione o que já existe no arquivo (páginas, componentes, variáveis) e siga as convenções dele. Nunca apague nem altere uma versão anterior: crie a nova em outra página.
 3. Para fidelidade, leia só o necessário do front em `frontend/src`: `index.css` (tokens), o componente da tela parecida e `lib/guiaTelas.ts`.
 
-## Identidade visual (do `index.css`)
+## Redesign v1 (quando existir `docs/design/sistema.md`)
+
+O `sistema.md`, escrito pelo agente `figma-diretor`, é a fonte da verdade e vence a seção
+"Identidade visual" abaixo. Nesse caso:
+
+- Leia só `docs/design/sistema.md` e a entrada da tela pedida em `lib/guiaTelas.ts`; não releia o
+  brief nem o resto do front.
+- Monte a tela com os componentes e variáveis da página "Redesign v1 - Sistema" (instâncias, nunca
+  cópias soltas) e siga a âncora que o `sistema.md` indicar como molde.
+- Uma tela por chamada, em página "Redesign v1 - Telas". Componente que falta: não invente; liste na
+  entrega para o diretor decidir.
+- No máximo 2 screenshots de conferência por quadro.
+
+## Identidade visual (do `index.css`, vale até existir o sistema do redesign)
 
 - Cores: base `#0a0a0a`, surface `#151515`, surface-alt `#1e1e1e`, accent verde `#39ff6a`, alert `#ff3b3b`, project âmbar `#ffb800`, primary `#f5f5f5`, secondary `#9a9a9a`, muted `#5c5c5c`, stroke `#2a2a2a`.
 - Fontes: Inter (UI e corpo), VT323 (falas da Focada), Silkscreen (rótulos em caixa-alta, botões, números).

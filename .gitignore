@@ -30,3 +30,7 @@ backups/
 # Permissoes pessoais do Claude Code (ex.: ssh na VM)
 .claude/settings.local.json
 .serena/
+
+# Prints do redesign (locais; so o INDICE.md e versionado)
+docs/design/prints/**/*.png
+tools/capturar-telas/node_modules/

@@ -1,0 +1,389 @@
+{
+  "manifesto": [
+    {
+      "arquivo": "01-login-entrar.png",
+      "rota": "/login",
+      "estado": "aba Entrar, vazia",
+      "nota": ""
+    },
+    {
+      "arquivo": "02-login-entrar-erro.png",
+      "rota": "/login",
+      "estado": "credenciais invalidas",
+      "nota": ""
+    },
+    {
+      "arquivo": "03-login-criar-conta.png",
+      "rota": "/login",
+      "estado": "aba Criar conta, vazia",
+      "nota": "A pagina rola (1030px de 844px); fullPage em 03-login-criar-conta-full.png."
+    },
+    {
+      "arquivo": "04-login-criar-conta-erro.png",
+      "rota": "/login",
+      "estado": "envio vazio, validacao",
+      "nota": "A pagina rola (1071px de 844px); fullPage em 04-login-criar-conta-erro-full.png."
+    },
+    {
+      "arquivo": "05-login-criar-conta-erro-valores.png",
+      "rota": "/login",
+      "estado": "valores invalidos (nome curto, e-mail ruim, senha fraca, confirmacao diferente)",
+      "nota": "A pagina rola (1071px de 844px); fullPage em 05-login-criar-conta-erro-valores-full.png."
+    },
+    {
+      "arquivo": "06-esqueci-senha.png",
+      "rota": "/esqueci-senha",
+      "estado": "formulario",
+      "nota": ""
+    },
+    {
+      "arquivo": "07-esqueci-senha-enviado.png",
+      "rota": "/esqueci-senha",
+      "estado": "depois de enviar",
+      "nota": ""
+    },
+    {
+      "arquivo": "08-confirmar-email-sem-sessao.png",
+      "rota": "/login",
+      "estado": "aberta sem sessao (a confirmacao so e exigida com Signup:* ligado)",
+      "nota": ""
+    },
+    {
+      "arquivo": "09-aceite-sem-sessao.png",
+      "rota": "/login",
+      "estado": "aberta sem sessao (o aceite so e exigido com Signup:* ligado)",
+      "nota": ""
+    },
+    {
+      "arquivo": "10-termos.png",
+      "rota": "/termos",
+      "estado": "Termos de Uso",
+      "nota": "A pagina rola (3791px de 844px); fullPage em 10-termos-full.png."
+    },
+    {
+      "arquivo": "11-privacidade.png",
+      "rota": "/privacidade",
+      "estado": "Politica de Privacidade",
+      "nota": "A pagina rola (4363px de 844px); fullPage em 11-privacidade-full.png."
+    },
+    {
+      "arquivo": "12-login-criar-conta-preenchida.png",
+      "rota": "/login",
+      "estado": "formulario preenchido, antes de enviar",
+      "nota": "A pagina rola (1030px de 844px); fullPage em 12-login-criar-conta-preenchida-full.png."
+    },
+    {
+      "arquivo": "13-onboarding-1-boas-vindas.png",
+      "rota": "/onboarding",
+      "estado": "passo 1 de 3",
+      "nota": "A pagina rola (1353px de 844px); fullPage em 13-onboarding-1-boas-vindas-full.png."
+    },
+    {
+      "arquivo": "14-onboarding-2-perfil.png",
+      "rota": "/onboarding/perfil",
+      "estado": "passo 2 de 3, nenhum interesse marcado",
+      "nota": "A pagina rola (1108px de 844px); fullPage em 14-onboarding-2-perfil-full.png."
+    },
+    {
+      "arquivo": "15-onboarding-2-perfil-preenchido.png",
+      "rota": "/onboarding/perfil",
+      "estado": "passo 2 de 3, interesses marcados e texto livre",
+      "nota": "A pagina rola (1108px de 844px); fullPage em 15-onboarding-2-perfil-preenchido-full.png."
+    },
+    {
+      "arquivo": "16-selecionar-curso-linguagem.png",
+      "rota": "/selecionar-curso",
+      "estado": "passo 3 de 3, janela da linguagem dos projetos",
+      "nota": "A pagina rola (2618px de 844px); fullPage em 16-selecionar-curso-linguagem-full.png."
+    },
+    {
+      "arquivo": "17-selecionar-curso.png",
+      "rota": "/selecionar-curso",
+      "estado": "catalogo de cursos (Web Security aparece por CoursePreview__Emails)",
+      "nota": "A pagina rola (2618px de 844px); fullPage em 17-selecionar-curso-full.png."
+    },
+    {
+      "arquivo": "18-selecionar-curso-ver-curso.png",
+      "rota": "/selecionar-curso",
+      "estado": "\"Ver curso\" aberto no Web Security",
+      "nota": "A pagina rola (2618px de 844px); fullPage em 18-selecionar-curso-ver-curso-full.png."
+    },
+    {
+      "arquivo": "19-inicio-tour-passo-1.png",
+      "rota": "/start",
+      "estado": "Inicio de aluno novo com o tour do guia \"?\" no passo 1 de 10",
+      "nota": "A pagina rola (1350px de 844px); fullPage em 19-inicio-tour-passo-1-full.png."
+    },
+    {
+      "arquivo": "20-inicio-aluno-novo.png",
+      "rota": "/start",
+      "estado": "Inicio de aluno novo, sem progresso, tour fechado",
+      "nota": "A pagina rola (1350px de 844px); fullPage em 20-inicio-aluno-novo-full.png."
+    },
+    {
+      "arquivo": "21-inicio-guia-aberto.png",
+      "rota": "/start",
+      "estado": "guia da tela \"?\" aberto",
+      "nota": "A pagina rola (1350px de 844px); fullPage em 21-inicio-guia-aberto-full.png. 1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "22-trilha-mapa-sem-progresso.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+      "estado": "trilha do curso sem progresso",
+      "nota": "A pagina rola (3250px de 844px); fullPage em 22-trilha-mapa-sem-progresso-full.png."
+    },
+    {
+      "arquivo": "23-semana-sem-progresso.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&weekly=cd31319f-570b-40a0-878f-1f59a01b860f&project=1",
+      "estado": "visao da semana 1 sem progresso",
+      "nota": "A pagina rola (1438px de 844px); fullPage em 23-semana-sem-progresso-full.png."
+    },
+    {
+      "arquivo": "24-ranking.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&ranking=1",
+      "estado": "ranking do curso, aluno novo",
+      "nota": "A pagina rola (1717px de 844px); fullPage em 24-ranking-full.png."
+    },
+    {
+      "arquivo": "25-hoje-etapa-1-leitura.png",
+      "rota": "/hoje",
+      "estado": "Dia 1, primeira etapa, primeira visita (balao \"Primeira vez aqui?\" visivel)",
+      "nota": "A pagina rola (1711px de 844px); fullPage em 25-hoje-etapa-1-leitura-full.png."
+    },
+    {
+      "arquivo": "26-hoje-gaveta-material.png",
+      "rota": "/hoje",
+      "estado": "gaveta Material aberta",
+      "nota": "A pagina rola (1711px de 844px); fullPage em 26-hoje-gaveta-material-full.png."
+    },
+    {
+      "arquivo": "27-hoje-gaveta-notas.png",
+      "rota": "/hoje",
+      "estado": "gaveta Notas aberta (anotacao rapida)",
+      "nota": "A pagina rola (1711px de 844px); fullPage em 27-hoje-gaveta-notas-full.png."
+    },
+    {
+      "arquivo": "28-hoje-gaveta-duvida.png",
+      "rota": "/hoje",
+      "estado": "gaveta Duvida aberta (Suporte Rapido)",
+      "nota": "A pagina rola (1711px de 844px); fullPage em 28-hoje-gaveta-duvida-full.png."
+    },
+    {
+      "arquivo": "29-hoje-gaveta-pomodoro.png",
+      "rota": "/hoje",
+      "estado": "gaveta Pomodoro aberta",
+      "nota": "A pagina rola (1711px de 844px); fullPage em 29-hoje-gaveta-pomodoro-full.png."
+    },
+    {
+      "arquivo": "30-hoje-leitura.png",
+      "rota": "/hoje",
+      "estado": "leitura (etapa 1 de 14)",
+      "nota": "A pagina rola (1711px de 844px); fullPage em 30-hoje-leitura-full.png."
+    },
+    {
+      "arquivo": "31-hoje-voz-pronta.png",
+      "rota": "/hoje",
+      "estado": "conversa por voz, antes de gravar",
+      "nota": "A pagina rola (978px de 844px); fullPage em 31-hoje-voz-pronta-full.png."
+    },
+    {
+      "arquivo": "32-hoje-voz-gravando.png",
+      "rota": "/hoje",
+      "estado": "conversa por voz gravando (microfone falso com fala sintetica)",
+      "nota": "A pagina rola (1026px de 844px); fullPage em 32-hoje-voz-gravando-full.png."
+    },
+    {
+      "arquivo": "33-hoje-voz-processando.png",
+      "rota": "/hoje",
+      "estado": "logo depois de enviar, transcricao e nota em andamento",
+      "nota": ""
+    },
+    {
+      "arquivo": "34-hoje-voz-devolutiva.png",
+      "rota": "/hoje",
+      "estado": "devolutiva da conversa por voz (nota e comentario da Focada)",
+      "nota": "A pagina rola (1131px de 844px); fullPage em 34-hoje-voz-devolutiva-full.png."
+    },
+    {
+      "arquivo": "35-hoje-quiz-abertura.png",
+      "rota": "/hoje",
+      "estado": "abertura do bloco \"quiz\" (etapa 7 de 14)",
+      "nota": "A pagina rola (925px de 844px); fullPage em 35-hoje-quiz-abertura-full.png."
+    },
+    {
+      "arquivo": "36-hoje-quiz.png",
+      "rota": "/hoje",
+      "estado": "quiz, questao aberta (etapa 7 de 14)",
+      "nota": "A pagina rola (891px de 844px); fullPage em 36-hoje-quiz-full.png."
+    },
+    {
+      "arquivo": "37-hoje-quiz-erro-focada.png",
+      "rota": "/hoje",
+      "estado": "quiz respondido, feedback da Focada (a opcao 1 e escolhida sempre)",
+      "nota": "A pagina rola (996px de 844px); fullPage em 37-hoje-quiz-erro-focada-full.png."
+    },
+    {
+      "arquivo": "38-hoje-complete-a-lacuna-abertura.png",
+      "rota": "/hoje",
+      "estado": "abertura do bloco \"complete a lacuna\" (etapa 10 de 14)",
+      "nota": ""
+    },
+    {
+      "arquivo": "39-hoje-lacuna.png",
+      "rota": "/hoje",
+      "estado": "lacuna aberta",
+      "nota": ""
+    },
+    {
+      "arquivo": "40-hoje-lacuna-resposta.png",
+      "rota": "/hoje",
+      "estado": "lacuna respondida",
+      "nota": ""
+    },
+    {
+      "arquivo": "41-hoje-ligar-palavras-abertura.png",
+      "rota": "/hoje",
+      "estado": "abertura do bloco \"ligar palavras\" (etapa 12 de 14)",
+      "nota": "A pagina rola (864px de 844px); fullPage em 41-hoje-ligar-palavras-abertura-full.png."
+    },
+    {
+      "arquivo": "42-hoje-ligar-palavras.png",
+      "rota": "/hoje",
+      "estado": "ligar palavras, nenhum par",
+      "nota": "A pagina rola (1146px de 844px); fullPage em 42-hoje-ligar-palavras-full.png."
+    },
+    {
+      "arquivo": "43-hoje-ligar-palavras-pares.png",
+      "rota": "/hoje",
+      "estado": "ligar palavras, pares feitos antes de confirmar",
+      "nota": "A pagina rola (1158px de 844px); fullPage em 43-hoje-ligar-palavras-pares-full.png."
+    },
+    {
+      "arquivo": "44-hoje-ligar-palavras-resposta.png",
+      "rota": "/hoje",
+      "estado": "ligar palavras corrigido",
+      "nota": "A pagina rola (1440px de 844px); fullPage em 44-hoje-ligar-palavras-resposta-full.png."
+    },
+    {
+      "arquivo": "45-hoje-roleplay-abertura.png",
+      "rota": "/hoje",
+      "estado": "abertura do bloco \"roleplay\" (etapa 13 de 14)",
+      "nota": ""
+    },
+    {
+      "arquivo": "46-hoje-roleplay.png",
+      "rota": "/hoje",
+      "estado": "roleplay, decisao aberta",
+      "nota": "A pagina rola (892px de 844px); fullPage em 46-hoje-roleplay-full.png."
+    },
+    {
+      "arquivo": "47-hoje-roleplay-resposta.png",
+      "rota": "/hoje",
+      "estado": "roleplay, depois da escolha 1",
+      "nota": "A pagina rola (881px de 844px); fullPage em 47-hoje-roleplay-resposta-full.png."
+    },
+    {
+      "arquivo": "48-hoje-fim-da-sessao.png",
+      "rota": "/hoje",
+      "estado": "tudo respondido, antes de concluir a sessao",
+      "nota": ""
+    },
+    {
+      "arquivo": "49-hoje-feedback-do-dia.png",
+      "rota": "/hoje",
+      "estado": "tela \"Como foi o dia\" antes da recompensa, nada marcado",
+      "nota": ""
+    },
+    {
+      "arquivo": "50-hoje-feedback-do-dia-preenchido.png",
+      "rota": "/hoje",
+      "estado": "nota 4 e comentario preenchidos",
+      "nota": ""
+    },
+    {
+      "arquivo": "51-hoje-sessao-concluida.png",
+      "rota": "/hoje",
+      "estado": "depois de enviar o feedback do dia",
+      "nota": ""
+    },
+    {
+      "arquivo": "52-perfil.png",
+      "rota": "/perfil",
+      "estado": "perfil do aluno novo, ainda sem agente",
+      "nota": "A pagina rola (2217px de 844px); fullPage em 52-perfil-full.png."
+    },
+    {
+      "arquivo": "53-perfil-guarda-roupa.png",
+      "rota": "/perfil?abrir=guarda-roupa",
+      "estado": "guarda-roupa aberto em modal",
+      "nota": "A pagina rola (2217px de 844px); fullPage em 53-perfil-guarda-roupa-full.png. 1 area(s) com rolagem interna."
+    },
+    {
+      "arquivo": "54-perfil-conquistas.png",
+      "rota": "/perfil?abrir=conquistas",
+      "estado": "lista de conquistas em modal",
+      "nota": "A pagina rola (2217px de 844px); fullPage em 54-perfil-conquistas-full.png."
+    },
+    {
+      "arquivo": "55-squad-sem-squad.png",
+      "rota": "/squad",
+      "estado": "QG sem squad: criar squad ou entrar por codigo",
+      "nota": "A pagina rola (1719px de 844px); fullPage em 55-squad-sem-squad-full.png."
+    },
+    {
+      "arquivo": "56-ranking.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&ranking=1",
+      "estado": "ranking do curso",
+      "nota": "A pagina rola (1717px de 844px); fullPage em 56-ranking-full.png."
+    },
+    {
+      "arquivo": "57-certificacoes.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&certifications=1",
+      "estado": "Certificacoes do curso",
+      "nota": "A pagina rola (936px de 844px); fullPage em 57-certificacoes-full.png."
+    },
+    {
+      "arquivo": "58-caderninho-com-nota.png",
+      "rota": "/start?course=7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476&caderninho=1",
+      "estado": "Caderninho com a nota feita na sessao do Dia 1",
+      "nota": ""
+    },
+    {
+      "arquivo": "59-menu-celular.png",
+      "rota": "/start",
+      "estado": "menu hamburguer aberto (celular)",
+      "nota": "A pagina rola (1668px de 844px); fullPage em 59-menu-celular-full.png."
+    },
+    {
+      "arquivo": "60-configuracoes.png",
+      "rota": "/start",
+      "estado": "menu de Configuracoes aberto",
+      "nota": "A pagina rola (1286px de 844px); fullPage em 60-configuracoes-full.png."
+    },
+    {
+      "arquivo": "61-status-da-ia.png",
+      "rota": "/start",
+      "estado": "menu de status da IA aberto",
+      "nota": "A pagina rola (1286px de 844px); fullPage em 61-status-da-ia-full.png."
+    },
+    {
+      "arquivo": "62-loja-criar-agente.png",
+      "rota": "/loja",
+      "estado": "loja de quem ainda nao criou o agente (tom de pele e cabelo)",
+      "nota": "A pagina rola (1602px de 844px); fullPage em 62-loja-criar-agente-full.png."
+    },
+    {
+      "arquivo": "63-loja-criar-agente-escolhas.png",
+      "rota": "/loja",
+      "estado": "pele 2 e cabelo Black power escolhidos",
+      "nota": "A pagina rola (1602px de 844px); fullPage em 63-loja-criar-agente-escolhas-full.png."
+    },
+    {
+      "arquivo": "64-loja-vitrine.png",
+      "rota": "/loja",
+      "estado": "loja depois de criar o agente: vitrine e saldo",
+      "nota": "A pagina rola (2855px de 844px); fullPage em 64-loja-vitrine-full.png."
+    }
+  ],
+  "naoCapturado": []
+}

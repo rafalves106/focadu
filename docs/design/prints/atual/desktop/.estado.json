@@ -1,0 +1,33 @@
+{
+  "cookies": [
+    {
+      "name": "focadu_auth",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0OTVlNzYzZC1jYTUwLTRjZGQtODc1Yy04YWNkMjQyYzg0MWYiLCJlbWFpbCI6ImFsdW5vLnByaW50LjIzQGxvY2FsLnRlc3QiLCJlbWFpbF92ZXJpZmllZCI6ImZhbHNlIiwiZXhwIjoxNzk1MDQwNDY0fQ.3PYTH5Sss0j5FFfnbv_HWwIJX7oFSTIp7u39mWg08_A",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1795040464.937286,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:5174",
+      "localStorage": [
+        {
+          "name": "focadu:focada-vistas:start-7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476",
+          "value": "[\"Este é o mapa, agente. Cada ponto é um dia, cada castelo é um projeto. Você começa no primeiro. Eu fico de olho.\",\"Tem um reforço esperando no dia 2, agente. Ele não some se você fingir que não viu. Eu já testei.\"]"
+        },
+        {
+          "name": "focadu:focada-vistas:a67ff44c-902a-439a-8efb-ef214c0937d5",
+          "value": "[\"Agente. Cinco dias de teoria sobre o caminho de um site até você, e um script que já deu o primeiro passo. Agora o inspetor é todo seu.\",\"Sua missão: completar 3 partes do Inspetor de site e descobrir quais endereços do laboratório usam HTTPS.\",\"Colar a saída esperada num print até engana o verificar.py, agente. Não engana quem avalia o seu código.\",\"O enunciado completo está no README.md do seu repositório. Leia antes de abrir o editor, agente. Parece óbvio, mas muita gente pula.\"]"
+        },
+        {
+          "name": "focadu:ultimo-curso",
+          "value": "7fd98b33-68bb-4ef9-8d1d-30a5ea3bd476"
+        }
+      ]
+    }
+  ]
+}
