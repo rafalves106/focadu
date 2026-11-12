@@ -97,8 +97,9 @@ public class DailyTemplate : Entity
     public void SetCurationInfo(string? moldeVersion, string? contentHash, IEnumerable<LearningTarget>? targets)
     {
         var list = targets?.ToList() ?? [];
-        if (list.Count != 0 && list.Count != 3)
-            throw new DomainException("Um dia tem exatamente 3 alvos de aprendizagem.", "alvos_invalidos");
+        // Moldes A e B tem 3 alvos; o molde C (Fase 108) tem 1 por bloco de leitura, ate 15.
+        if (list.Count != 0 && list.Count is < 3 or > 15)
+            throw new DomainException("Um dia tem de 3 a 15 alvos de aprendizagem.", "alvos_invalidos");
         if (list.Select(x => x.Id).Distinct().Count() != list.Count)
             throw new DomainException("Os alvos de aprendizagem precisam de ids diferentes.", "alvos_invalidos");
 
