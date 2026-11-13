@@ -319,9 +319,12 @@ export function SessionLayout({
               </div>
               {back && (
                 <>
-                  <Button kind="secundario" onClick={back} className="hidden md:inline-flex">
-                    Etapa anterior
-                  </Button>
+                  {/* O `inline-flex` do Botão venceria um `hidden` direto nele: o invólucro é que some no celular. */}
+                  <span className="hidden md:contents">
+                    <Button kind="secundario" onClick={back}>
+                      Etapa anterior
+                    </Button>
+                  </span>
                   <button type="button" onClick={back} className="self-start text-rotulo-sm text-secondary hover:text-primary md:hidden">
                     ← Etapa anterior
                   </button>
