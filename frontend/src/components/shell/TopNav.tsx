@@ -19,11 +19,14 @@ export function TopNav({
   health,
   menuOpen,
   onOpenMenu,
+  hideOnMobile = false,
 }: {
   data: ShellData;
   health: AiHealth | null;
   menuOpen: boolean;
   onOpenMenu: () => void;
+  /** Sessão do dia no celular: a tela tem o próprio topo ("← Início"), Figma `17:1697`. */
+  hideOnMobile?: boolean;
 }) {
   const { pathname, search } = useLocation();
   const active = activeDestination(pathname, search);
@@ -32,7 +35,7 @@ export function TopNav({
   const dot = health && health !== 'ok' ? health : undefined;
 
   return (
-    <nav aria-label="Principal" className="sticky top-0 z-30 h-[var(--nav-height)] shrink-0 border-b-2 border-stroke bg-base">
+    <nav aria-label="Principal" className={`sticky top-0 z-30 h-[var(--nav-height)] shrink-0 border-b-2 border-stroke bg-base ${hideOnMobile ? 'max-md:hidden' : ''}`}>
       <div className="flex h-full items-center justify-between gap-4 px-4 md:grid md:grid-cols-[1fr_auto_1fr] md:px-6 wide:px-8">
         <Link to="/start" aria-label="Focadu, ir para o Início" className="justify-self-start">
           <img src={logoWordmark} alt="Focadu" className="h-[21px] w-[105px] pixelated" />

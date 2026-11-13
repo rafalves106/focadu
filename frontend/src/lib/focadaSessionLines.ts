@@ -99,8 +99,5 @@ export function completionLine(passedCount: number, total: number): string {
   return 'Dia no bolso! O que escapou hoje volta no reforço — é assim que fixa. Amanhã tem mais.';
 }
 
-export const REINFORCEMENT_INTRO =
-  'Só as que escaparam, agente. Acerta todas e o bônus de superação vale +2 gemas no lugar de +1.';
-
 export const BLOCKED_TODAY =
   'Por hoje acabou, agente. Uma sessão por dia é de propósito: o cérebro consolida dormindo. A de amanhã abre à meia-noite.';

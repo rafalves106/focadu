@@ -38,7 +38,7 @@ export function App({ children }: { children?: ReactNode }) {
   // janela ainda rola nas telas antigas; a barra inferior é fixa, então o <main> reserva a altura dela.
   return (
     <div className="flex min-h-dvh flex-col bg-base lg:h-dvh">
-      <TopNav data={shell} health={health} menuOpen={menuOpen} onOpenMenu={openMenu} />
+      <TopNav data={shell} health={health} menuOpen={menuOpen} onOpenMenu={openMenu} hideOnMobile={!withBottomBar} />
       <main
         className={`flex flex-1 flex-col lg:min-h-0 lg:overflow-y-auto ${withBottomBar ? 'pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-0' : ''}`}
       >

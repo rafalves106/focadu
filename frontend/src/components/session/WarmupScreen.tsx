@@ -4,8 +4,8 @@ import type { WarmupQuestionDto } from '../../api/types';
 import { useSessionKeys } from '../../lib/useSessionKeys';
 import { OptionCard } from '../activities/OptionCard';
 import { SessionFooter, SessionLayout } from '../SessionShell';
-import { FocadaSays } from './FocadaSays';
-import { PixelButton, PixelChip } from './PixelButton';
+import { FocadaLine } from '../ui/FocadaLine';
+import { Button } from '../ui/Button';
 
 // Mesma regra da lacuna no dia (SubmitActivityResponseUseCase): so ignora maiuscula e espaco nas pontas.
 const norm = (text: string) => text.toLowerCase().trim();
@@ -85,14 +85,14 @@ export function WarmupScreen({ dailyId, onDone }: { dailyId: string; onDone: () 
   if (failed) {
     return (
       <SessionLayout label="Aquecimento" chain="none" centered>
-        <FocadaSays expression="acolhedora" size="lg">
+        <FocadaLine>
           Não consegui buscar as perguntas de aquecimento agora. Seu dia não depende delas — dá pra seguir.
-        </FocadaSays>
+        </FocadaLine>
         <SessionFooter>
-          <PixelButton ghost tone="muted" onClick={() => setAttempt((n) => n + 1)}>
+          <Button kind="secundario" onClick={() => setAttempt((n) => n + 1)}>
             Tentar de novo
-          </PixelButton>
-          <PixelButton onClick={onDone}>Seguir pro dia ›</PixelButton>
+          </Button>
+          <Button onClick={onDone}>Seguir pro dia</Button>
         </SessionFooter>
       </SessionLayout>
     );
@@ -101,20 +101,17 @@ export function WarmupScreen({ dailyId, onDone }: { dailyId: string; onDone: () 
   if (!question || !questions) {
     return (
       <SessionLayout label="Aquecimento" chain="none" centered>
-        <p className="font-pixel text-2xl text-secondary">Buscando perguntas de dias anteriores...</p>
+        <p className="text-corpo text-secondary">Buscando perguntas de dias anteriores...</p>
       </SessionLayout>
     );
   }
 
   return (
     <SessionLayout label="Aquecimento" sub={`Pergunta ${index + 1} de ${questions.length}`} chain="none" showGauge={false}>
-      <div className="flex flex-wrap gap-2">
-        <PixelChip tone="project">
-          Semana {question.weekNumber} · Dia {question.dayNumber}
-        </PixelChip>
-        <PixelChip>Não conta erro nem nota</PixelChip>
-      </div>
-      <p className="font-pixel text-2xl leading-[1.15] text-primary lg:text-[26px] lg:short:text-[22px]">{question.prompt}</p>
+      <p className="text-pequeno text-muted">
+        Do Dia {question.dayNumber} da Semana {question.weekNumber}. Não conta erro nem nota.
+      </p>
+      <p className="text-lead text-primary">{question.prompt}</p>
 
       {hasOptions ? (
         <div className="flex flex-col gap-2.5">
@@ -139,28 +136,28 @@ export function WarmupScreen({ dailyId, onDone }: { dailyId: string; onDone: () 
           disabled={revealed}
           placeholder="Escreva a lacuna"
           aria-label="Resposta da lacuna"
-          className="border-2 border-stroke bg-base px-4 py-3 font-pixel text-2xl text-primary focus:border-accent focus:outline-none"
+          className="h-12 border-2 border-stroke-strong bg-base px-4 text-corpo text-primary focus:border-accent focus:outline-none"
         />
       )}
 
       {revealed && (
-        <FocadaSays expression={isCorrect ? 'comemorando' : 'acolhedora'} size="sm" tone={isCorrect ? 'accent' : 'metal'}>
+        <FocadaLine tone={isCorrect ? 'acerto' : 'neutro'} size="devolutiva">
           {isCorrect
             ? 'Isso. Você ainda lembra.'
             : `Quase. A resposta era: ${hasOptions ? correctOption?.text : question.expectedAnswer}. Volta agora, vai ficar.`}
-        </FocadaSays>
+        </FocadaLine>
       )}
 
       <SessionFooter>
-        <PixelButton ghost tone="muted" onClick={onDone}>
+        <Button kind="secundario" onClick={onDone}>
           Pular aquecimento
-        </PixelButton>
+        </Button>
         {revealed ? (
-          <PixelButton onClick={next}>{index + 1 >= questions.length ? 'Começar o dia ›' : 'Próxima ›'}</PixelButton>
+          <Button onClick={next}>{index + 1 >= questions.length ? 'Começar o dia' : 'Próxima'}</Button>
         ) : (
-          <PixelButton onClick={confirm} disabled={!canConfirm}>
+          <Button onClick={confirm} disabled={!canConfirm}>
             Confirmar
-          </PixelButton>
+          </Button>
         )}
       </SessionFooter>
     </SessionLayout>

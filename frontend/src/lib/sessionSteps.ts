@@ -40,7 +40,7 @@ export const ACTIVITY_TITLE: Record<ActivityType, string> = {
 
 /** Unidade do contador fino dentro de um bloco com mais de 1 atividade ("QUESTÃO 2 DE 6"). */
 const UNIT: Partial<Record<ActivityType, string>> = {
-  [ActivityType.Quiz]: 'Questão',
+  [ActivityType.Quiz]: 'Pergunta',
   [ActivityType.Cloze]: 'Lacuna',
   [ActivityType.WordMatch]: 'Grupo',
 };

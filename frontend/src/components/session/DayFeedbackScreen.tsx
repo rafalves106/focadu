@@ -4,8 +4,8 @@ import { ActivityType, type DailyStateDto } from '../../api/types';
 import { useSession } from '../../lib/sessionContext';
 import { ACTIVITY_TITLE, sortedActivities } from '../../lib/sessionSteps';
 import { SessionFooter, SessionLayout } from '../SessionShell';
-import { FocadaSays } from './FocadaSays';
-import { PixelButton, PixelChip } from './PixelButton';
+import { FocadaLine } from '../ui/FocadaLine';
+import { Button } from '../ui/Button';
 
 const MAX_COMMENT = 1000;
 const CLARITY_LABEL = ['Muito confuso', 'Confuso', 'Deu pra entender', 'Claro', 'Muito claro'];
@@ -69,7 +69,7 @@ export function DayFeedbackScreen({ daily, onDone }: { daily: DailyStateDto; onD
   if (loading) {
     return (
       <SessionLayout label="Como foi o dia" chain="none" centered>
-        <p className="font-pixel text-2xl text-secondary">Carregando...</p>
+        <p className="text-corpo text-secondary">Carregando...</p>
       </SessionLayout>
     );
   }
@@ -77,14 +77,14 @@ export function DayFeedbackScreen({ daily, onDone }: { daily: DailyStateDto; onD
   if (sent) {
     return (
       <SessionLayout label="Como foi o dia" chain="none" centered>
-        <FocadaSays expression="comemorando" size="lg" tone="accent">
+        <FocadaLine tone="acerto" label="Focada">
           Anotado: {clarity !== null ? CLARITY_LABEL[clarity - 1] : ''}. Isso ajuda a melhorar o curso pra você e pra quem vem depois.
-        </FocadaSays>
+        </FocadaLine>
         <SessionFooter>
-          <PixelButton ghost tone="muted" onClick={() => setSent(false)}>
+          <Button kind="secundario" onClick={() => setSent(false)}>
             Editar
-          </PixelButton>
-          <PixelButton onClick={onDone}>Ver minha recompensa ›</PixelButton>
+          </Button>
+          <Button onClick={onDone}>Ver minha recompensa</Button>
         </SessionFooter>
       </SessionLayout>
     );
@@ -92,9 +92,9 @@ export function DayFeedbackScreen({ daily, onDone }: { daily: DailyStateDto; onD
 
   return (
     <SessionLayout label="Como foi o dia" chain="none" showGauge={false}>
-      <FocadaSays expression="neutra" size="sm">
+      <FocadaLine size="devolutiva">
         Antes da recompensa: o quanto o dia {daily.dayNumber} ficou claro pra você?
-      </FocadaSays>
+      </FocadaLine>
 
       <div role="radiogroup" aria-label="Clareza do dia, de 1 a 5" className="grid grid-cols-5 gap-2">
         {[1, 2, 3, 4, 5].map((n) => (
@@ -105,21 +105,21 @@ export function DayFeedbackScreen({ daily, onDone }: { daily: DailyStateDto; onD
             aria-checked={clarity === n}
             onClick={() => setClarity(n)}
             className={`flex min-h-[64px] flex-col items-center justify-center gap-1 border-2 px-1 py-2 ${
-              clarity === n ? 'border-accent bg-surface-alt text-accent' : 'border-stroke bg-base text-secondary hover:border-secondary'
+              clarity === n ? 'border-accent bg-accent-tint text-accent' : 'border-stroke bg-base text-secondary hover:border-stroke-strong'
             }`}
           >
-            <span className="font-pixel text-3xl leading-none">{n}</span>
-            <span className="font-pixel-label text-[8px] leading-tight">{CLARITY_LABEL[n - 1]}</span>
+            <span className="text-lead">{n}</span>
+            <span className="text-[8px] leading-[10px] font-pixel-label uppercase">{CLARITY_LABEL[n - 1]}</span>
           </button>
         ))}
       </div>
 
       <label className="flex flex-col gap-1.5">
-        <span className="font-pixel-label text-[10px] text-secondary">Onde travei (opcional)</span>
+        <span className="text-rotulo-sm text-secondary">Onde travei (opcional)</span>
         <select
           value={stuckId}
           onChange={(e) => setStuckId(e.target.value)}
-          className="border-2 border-stroke bg-base px-3 py-3 font-pixel text-xl text-primary focus:border-accent focus:outline-none"
+          className="h-12 border-2 border-stroke-strong bg-base px-3 text-corpo text-primary focus:border-accent focus:outline-none"
         >
           <option value="">Não travei</option>
           {activities.map((a, i) => (
@@ -132,7 +132,7 @@ export function DayFeedbackScreen({ daily, onDone }: { daily: DailyStateDto; onD
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="flex items-center justify-between font-pixel-label text-[10px] text-secondary">
+        <span className="flex items-center justify-between text-rotulo-sm text-secondary">
           Comentário (opcional)
           <span className={comment.length > MAX_COMMENT ? 'text-alert' : ''}>
             {comment.length}/{MAX_COMMENT}
@@ -142,20 +142,20 @@ export function DayFeedbackScreen({ daily, onDone }: { daily: DailyStateDto; onD
           value={comment}
           onChange={(e) => setComment(e.target.value.slice(0, MAX_COMMENT))}
           rows={3}
-          className="resize-none border-2 border-stroke bg-base px-3 py-2 font-pixel text-xl leading-tight text-primary focus:border-accent focus:outline-none"
+          className="resize-none border-2 border-stroke-strong bg-base px-3 py-2 text-corpo text-primary focus:border-accent focus:outline-none"
         />
       </label>
 
-      {error && <p className="font-pixel text-lg leading-tight text-alert">{error}</p>}
-      {clarity === null && <PixelChip>Escolha uma nota de clareza para enviar</PixelChip>}
+      {error && <p className="text-pequeno text-alert">{error}</p>}
+      {clarity === null && <p className="text-pequeno text-muted">Escolha uma nota de clareza para enviar.</p>}
 
       <SessionFooter>
-        <PixelButton ghost tone="muted" onClick={onDone}>
+        <Button kind="secundario" onClick={onDone}>
           Pular
-        </PixelButton>
-        <PixelButton onClick={() => void submit()} disabled={clarity === null || sending}>
+        </Button>
+        <Button onClick={() => void submit()} disabled={clarity === null || sending}>
           {sending ? 'Enviando...' : 'Enviar'}
-        </PixelButton>
+        </Button>
       </SessionFooter>
     </SessionLayout>
   );

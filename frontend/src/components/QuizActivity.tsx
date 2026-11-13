@@ -1,10 +1,7 @@
-import { useState } from 'react';
 import { ActivityType, type DailyActivityDto, type DailyStateDto } from '../api/types';
-import { isFirstOfActivityGroup } from '../lib/activityGroup';
 import { ClozeSentence } from './activities/ClozeSentence';
 import { OptionsAnswer } from './OptionsAnswer';
 import { SessionLayout } from './SessionShell';
-import { BlockIntro } from './session/BlockIntro';
 
 /**
  * Quiz e Lacuna de multipla escolha (Fase 9; casca pixel art na Fase 68) - mesma mecanica de
@@ -13,7 +10,6 @@ import { BlockIntro } from './session/BlockIntro';
  */
 export function QuizActivity({
   dailyId,
-  daily,
   activity,
   onDailyRefetched,
   onContinue,
@@ -24,14 +20,11 @@ export function QuizActivity({
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
 }) {
-  const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || activity.responses.length > 0);
-
-  if (!started) return <BlockIntro activity={activity} onStart={() => setStarted(true)} />;
 
   return (
     <SessionLayout>
       {activity.type === ActivityType.Quiz ? (
-        <p className="font-pixel text-[28px] leading-[1.1] text-primary lg:text-[32px] lg:[@media(max-height:820px)]:text-[26px]">{activity.prompt}</p>
+        <p className="text-lead text-primary">{activity.prompt}</p>
       ) : (
         <ClozeSentence text={activity.prompt ?? ''} />
       )}

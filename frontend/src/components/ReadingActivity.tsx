@@ -4,9 +4,10 @@ import { useApiResource } from '../api/useApiResource';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
 import { MarkdownBlock } from './activities/MarkdownBlock';
 import { SessionFooter, SessionLayout } from './SessionShell';
-import { PixelButton } from './session/PixelButton';
+
 import { stripFencedBlocks, stripRedundantTitleHeading } from '../lib/markdown';
 import { PIXEL_PROSE } from '../lib/pixelProse';
+import { Button } from './ui/Button';
 
 const SECTION_HEADING = /^####\s+.+$/gm;
 
@@ -91,9 +92,9 @@ export function ReadingActivity({
       <SessionLayout>
         <p className="font-pixel text-lg leading-tight text-alert">{contentError?.message ?? 'Leitura não encontrada.'}</p>
         <SessionFooter>
-          <PixelButton ghost onClick={retry}>
+          <Button kind="secundario" onClick={retry}>
             Tentar de novo
-          </PixelButton>
+          </Button>
         </SessionFooter>
       </SessionLayout>
     );
@@ -141,9 +142,9 @@ export function ReadingActivity({
 
       <SessionFooter>
         {!alreadyCompleted && readMinutes && <p className="font-pixel-label text-[8px] text-muted">~{readMinutes} min de leitura</p>}
-        <PixelButton onClick={handleComplete} disabled={submitting}>
-          {alreadyCompleted ? 'Próxima etapa ›' : submitting ? 'Enviando...' : 'Concluí a leitura ›'}
-        </PixelButton>
+        <Button onClick={handleComplete} disabled={submitting}>
+          {alreadyCompleted ? 'Próxima etapa' : submitting ? 'Enviando...' : 'Concluí a leitura'}
+        </Button>
       </SessionFooter>
     </SessionLayout>
   );

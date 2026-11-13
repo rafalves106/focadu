@@ -8,9 +8,10 @@ import { useSession } from '../../lib/sessionContext';
 import { useSessionKeys } from '../../lib/useSessionKeys';
 import { PendingReinforcementCard } from '../PendingReinforcementCard';
 import { SessionFooter, SessionLayout } from '../SessionShell';
-import { FocadaSays } from './FocadaSays';
-import { PixelButton, PixelChip, PixelLink } from './PixelButton';
+import { FocadaLine } from '../ui/FocadaLine';
+import { Chip } from '../ui/Chip';
 import castleIcon from '../../assets/pixel/mapa/castelo-pendente.png';
+import { Button, ButtonLink } from '../ui/Button';
 
 /** Carregando dentro da casca global (sem `min-h-screen`, que empurraria a pagina). */
 export function SessionLoading() {
@@ -37,18 +38,18 @@ export function SessionDoneScreen({ onComplete, completing, onReview }: { onComp
   });
   return (
     <SessionLayout label="Tudo respondido" chain="done" centered>
-      <FocadaSays expression="comemorando" size="lg" tone="accent">
+      <FocadaLine tone="acerto" label="Focada">
         {SESSION_DONE_LINE}
-      </FocadaSays>
+      </FocadaLine>
       <SessionFooter>
         {onReview && (
-          <button type="button" onClick={onReview} className="font-pixel-label text-[9px] text-secondary hover:text-primary">
-            ← Revisar a última etapa
-          </button>
+          <Button kind="secundario" onClick={onReview}>
+            Revisar a última etapa
+          </Button>
         )}
-        <PixelButton onClick={onComplete} disabled={completing}>
-          {completing ? 'Concluindo...' : 'Concluir sessão ›'}
-        </PixelButton>
+        <Button onClick={onComplete} disabled={completing}>
+          {completing ? 'Concluindo...' : 'Fechar o Dia'}
+        </Button>
       </SessionFooter>
     </SessionLayout>
   );
@@ -64,7 +65,7 @@ export function BlockedTodayScreen() {
   const countdown = useCountdownToMidnight();
   return (
     <SessionLayout label="Sessão de hoje" sub="1 por dia" showGauge={false} centered>
-      <FocadaSays size="lg">{BLOCKED_TODAY}</FocadaSays>
+      <FocadaLine>{BLOCKED_TODAY}</FocadaLine>
       <div className="flex w-fit items-center gap-3 border-2 border-stroke px-4 py-2.5">
         <span className="font-pixel-label text-[9px] text-secondary">Próxima sessão em</span>
         <span className="font-pixel text-3xl leading-none text-accent tabular-nums">{countdown}</span>
@@ -72,10 +73,10 @@ export function BlockedTodayScreen() {
       {daily.pendingReinforcementDailyId && <PendingReinforcementCard dailyId={daily.pendingReinforcementDailyId} />}
       {weekly && (
         <SessionFooter>
-          <PixelLink to={`/start?course=${weekly.courseId}&weekly=${weekly.id}`} tone="muted" ghost>
+          <ButtonLink kind="secundario" to={`/start?course=${weekly.courseId}&weekly=${weekly.id}`}>
             Ver a semana
-          </PixelLink>
-          <PixelLink to={`/start?course=${weekly.courseId}`}>Voltar pro mapa ›</PixelLink>
+          </ButtonLink>
+          <ButtonLink to={`/start?course=${weekly.courseId}`}>Voltar pro mapa</ButtonLink>
         </SessionFooter>
       )}
     </SessionLayout>
@@ -97,11 +98,11 @@ export function WeekClosureScreen() {
 
   return (
     <SessionLayout tone="project" label={`Semana ${weekly.number} fechando`} sub="Dias concluídos" showGauge={false} centered>
-      <FocadaSays size="lg" tone="project">
+      <FocadaLine>
         {projectPending
           ? `Os dias da Semana ${weekly.number} estão feitos. Falta o castelo: entrega o projeto da semana e a próxima destranca.`
           : `Dias e projeto da Semana ${weekly.number} feitos! Falta validar a publicação do módulo pra próxima semana abrir.`}
-      </FocadaSays>
+      </FocadaLine>
       {projectPending && (
         <div className="flex items-center gap-4 border-2 border-project px-4 py-3">
           <img src={castleIcon} alt="" className="size-16 shrink-0 pixelated" />
@@ -113,17 +114,17 @@ export function WeekClosureScreen() {
       )}
       {daily.pendingReinforcementDailyId && <PendingReinforcementCard dailyId={daily.pendingReinforcementDailyId} />}
       <SessionFooter>
-        <PixelLink to={`/start?course=${weekly.courseId}&weekly=${weekly.id}`} tone="muted" ghost>
+        <ButtonLink kind="secundario" to={`/start?course=${weekly.courseId}&weekly=${weekly.id}`}>
           Ver a semana
-        </PixelLink>
+        </ButtonLink>
         {projectPending ? (
-          <PixelLink to={projectUrl} tone="project">
-            Ir pro castelo ›
-          </PixelLink>
+          <ButtonLink to={projectUrl}>
+            Ir pro castelo
+          </ButtonLink>
         ) : (
-          <PixelLink to={`/start?course=${weekly.courseId}&weekly=${weekly.id}`} tone="project">
-            Publicar o módulo ›
-          </PixelLink>
+          <ButtonLink to={`/start?course=${weekly.courseId}&weekly=${weekly.id}`}>
+            Publicar o módulo
+          </ButtonLink>
         )}
       </SessionFooter>
     </SessionLayout>
@@ -176,17 +177,17 @@ export function BridgeLanguageScreen({ onChosen }: { onChosen: () => void }) {
   if (project?.languageStep === ProjectLanguageStep.NeedsPreference) {
     return (
       <SessionLayout tone="project" label={`Semana ${weekly.number} · ponte pro projeto`} showGauge={false} centered>
-        <FocadaSays size="lg" tone="project">
+        <FocadaLine>
           Antes da ponte você escolhe a linguagem do projeto. Só que você ainda não marcou nenhuma no seu perfil. Marca lá e volta
           aqui, agente.
-        </FocadaSays>
+        </FocadaLine>
         <SessionFooter>
-          <PixelLink to={`/start?course=${weekly.courseId}`} tone="muted" ghost>
+          <ButtonLink kind="secundario" to={`/start?course=${weekly.courseId}`}>
             Voltar pro mapa
-          </PixelLink>
-          <PixelLink to="/onboarding/perfil?edit=1" tone="project">
-            Marcar no perfil ›
-          </PixelLink>
+          </ButtonLink>
+          <ButtonLink to="/onboarding/perfil?edit=1">
+            Marcar no perfil
+          </ButtonLink>
         </SessionFooter>
       </SessionLayout>
     );
@@ -194,36 +195,36 @@ export function BridgeLanguageScreen({ onChosen }: { onChosen: () => void }) {
 
   return (
     <SessionLayout tone="project" label={`Semana ${weekly.number} · ponte pro projeto`} sub="Escolha definitiva" showGauge={false} centered>
-      <FocadaSays size="lg" tone="project">
+      <FocadaLine>
         {pending === null
           ? 'Os dias de teoria acabaram. Hoje é a ponte: o mesmo que você viu na semana, só que em código, pra você chegar no projeto sabendo por onde começar. Em qual linguagem você vai construir?'
           : `${PROJECT_LANGUAGE_NAMES[pending]}, então? A ponte de hoje, o repositório e as referências do projeto vêm nela. Depois de confirmar, não tem troca.`}
-      </FocadaSays>
+      </FocadaLine>
 
       {pending === null ? (
         <div className="flex flex-wrap gap-3">
           {choosable.map((language, i) => (
-            <PixelButton key={language} tone="project" ghost onClick={() => setPending(language)} className="min-w-40 text-[12px]">
+            <Button kind="secundario" key={language} onClick={() => setPending(language)} className="min-w-40 text-[12px]">
               <span className="text-muted">{i + 1}</span> {PROJECT_LANGUAGE_NAMES[language]}
-            </PixelButton>
+            </Button>
           ))}
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-3">
-          <PixelChip tone="project">{PROJECT_LANGUAGE_NAMES[pending]}</PixelChip>
+          <Chip tone="ambar">{PROJECT_LANGUAGE_NAMES[pending]}</Chip>
           {error && <p className="font-pixel text-lg leading-tight text-alert">{error}</p>}
         </div>
       )}
 
       <SessionFooter>
         {pending === null ? (
-          <PixelLink to={`/start?course=${weekly.courseId}`} tone="muted" ghost>
+          <ButtonLink kind="secundario" to={`/start?course=${weekly.courseId}`}>
             Voltar pro mapa
-          </PixelLink>
+          </ButtonLink>
         ) : (
-          <PixelButton
-            tone="muted"
-            ghost
+          <Button kind="secundario"
+           
+           
             disabled={submitting}
             onClick={() => {
               setPending(null);
@@ -231,12 +232,12 @@ export function BridgeLanguageScreen({ onChosen }: { onChosen: () => void }) {
             }}
           >
             ← Trocar
-          </PixelButton>
+          </Button>
         )}
         {pending !== null && (
-          <PixelButton tone="project" onClick={confirm} disabled={submitting}>
-            {submitting ? 'Confirmando...' : `Confirmar ${PROJECT_LANGUAGE_NAMES[pending]} ›`}
-          </PixelButton>
+          <Button onClick={confirm} disabled={submitting}>
+            {submitting ? 'Confirmando...' : `Confirmar ${PROJECT_LANGUAGE_NAMES[pending]}`}
+          </Button>
         )}
       </SessionFooter>
     </SessionLayout>
@@ -261,12 +262,12 @@ export function DailyRefusedScreen({ error }: { error: ApiFailure }) {
     <div className="flex flex-1 items-center justify-center px-4 py-10">
       <div className="flex w-full max-w-2xl flex-col gap-5">
         <p className="font-pixel-label text-[9px] text-alert">// Não dá pra abrir essa sessão agora</p>
-        <FocadaSays expression="acolhedora" size="lg">
+        <FocadaLine>
           {(error.code && DAILY_REFUSAL_COPY[error.code]) ?? error.message}
-        </FocadaSays>
-        <PixelLink to="/start" className="self-end">
-          Voltar ao início ›
-        </PixelLink>
+        </FocadaLine>
+        <ButtonLink to="/start" className="self-end">
+          Voltar ao início
+        </ButtonLink>
       </div>
     </div>
   );

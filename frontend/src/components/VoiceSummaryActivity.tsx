@@ -7,7 +7,7 @@ import { FeedbackPanel } from './FeedbackPanel';
 import { SessionFooter, SessionLayout } from './SessionShell';
 import { DailyNotesModal } from './notebook/DailyNotesModal';
 import { PixelMic } from './session/PixelMic';
-import { PixelButton, PixelChip } from './session/PixelButton';
+import { Button } from './ui/Button';
 
 type RecorderState = 'idle' | 'recording' | 'submitting' | 'answered' | 'permission_denied';
 
@@ -233,91 +233,86 @@ export function VoiceSummaryActivity({
     : null;
 
   return (
-    <SessionLayout notesLocked={busy} hideBack={busy}>
+    <SessionLayout notesLocked={busy} hideBack={busy} sub={conversationLabel ?? undefined}>
       {state !== 'answered' && (
         <>
-          {blockTitle && <p className="font-pixel-label text-[10px] text-project">{blockTitle}</p>}
-          <p className="font-pixel text-2xl leading-[1.15] text-primary lg:text-[26px] lg:short:text-[22px] lg:tight:text-xl">
+          {blockTitle && <p className="text-rotulo-sm text-secondary">{blockTitle}</p>}
+          <p className="text-lead text-primary">
             <VoicedPrompt text={activity.prompt ?? ''} spokenChars={spokenChars} highlight={voiceSupported} />
           </p>
           {activity.hint && (
-            <p className="font-pixel text-xl leading-tight text-secondary">
-              <span className="font-pixel-label text-[10px] text-project">Pista </span>
+            <p className="text-corpo text-secondary">
+              <span className="text-rotulo-sm text-project">Pista </span>
               {activity.hint}
             </p>
           )}
           {activity.isFinalQuestion && activity.topics && activity.topics.length > 0 && (
-            <div className="flex flex-col gap-1.5 border-2 border-stroke bg-surface px-4 py-3">
-              <p className="font-pixel-label text-[10px] text-project">Organize sua fala nestes 3 tópicos</p>
+            <div className="flex flex-col gap-2 border-2 border-stroke bg-base px-4 py-3">
+              <p className="text-rotulo-sm text-secondary">Organize sua fala nestes 3 tópicos</p>
               <ol className="flex flex-col gap-1">
                 {activity.topics.map((topic, i) => (
-                  <li key={i} className="font-pixel text-xl leading-tight text-primary">
+                  <li key={i} className="text-corpo text-primary">
                     {i + 1}. {topic}
                   </li>
                 ))}
               </ol>
             </div>
           )}
-          <div className="flex flex-wrap gap-2">
-            {conversationLabel && <PixelChip tone="accent">{conversationLabel}</PixelChip>}
-            <PixelChip>Só por voz</PixelChip>
-            <PixelChip>Até {Math.round(maxRecordingSeconds / 60)} min</PixelChip>
-            <PixelChip>Vale 2× no score</PixelChip>
-          </div>
+          <p className="text-pequeno text-muted">Só por voz, até {Math.round(maxRecordingSeconds / 60)} min. Vale 2× no score.</p>
 
           <button
             type="button"
             onClick={recording ? handleStop : handleStart}
             disabled={state === 'submitting'}
             aria-label={recording ? 'Parar e enviar' : 'Começar a gravar'}
-            className={`flex min-h-[190px] flex-1 flex-col items-center justify-center gap-3 border-2 bg-surface px-6 py-6 lg:short:min-h-[112px] lg:short:gap-2 lg:short:py-3 lg:tight:min-h-[96px] ${
-              recording ? 'border-alert' : 'border-stroke hover:border-accent'
+            className={`flex min-h-[120px] flex-col items-center justify-center gap-3 border-2 bg-base px-6 py-4 lg:short:min-h-[96px] lg:short:gap-2 lg:short:py-3 ${
+              recording ? 'border-accent' : 'border-stroke hover:border-stroke-strong'
             }`}
           >
-            <PixelMic recording={recording} className="size-24 lg:short:size-16" />
+            <PixelMic recording={recording} className="size-16" />
             {recording && (
               <span className="flex h-9 items-end gap-1" aria-hidden="true">
                 {Array.from({ length: 16 }, (_, i) => (
                   <span
                     key={i}
-                    className="w-2 animate-pulse bg-alert"
+                    className="w-2 animate-pulse bg-accent"
                     style={{ height: `${8 + ((i * 7) % 26)}px`, animationDelay: `${(i % 5) * 120}ms` }}
                   />
                 ))}
               </span>
             )}
             {state === 'submitting' ? (
-              <span className="font-pixel text-2xl text-secondary">Transcrevendo e avaliando...</span>
+              <span className="text-corpo text-secondary">Transcrevendo e avaliando...</span>
             ) : recording ? (
-              <span className="font-pixel text-3xl leading-none text-alert">
+              <span className="text-lead text-accent">
                 ● Gravando {clock(seconds)} / {clock(maxRecordingSeconds)}
               </span>
             ) : (
               <>
-                <span className="font-pixel-label text-[11px] text-accent">
+                <span className="text-rotulo-sm text-secondary">
                   {state === 'permission_denied' ? 'Toque pra tentar de novo' : 'Aperte gravar quando estiver pronto'}
                 </span>
-                <span className="font-pixel text-2xl leading-none text-secondary">00:00 / {clock(maxRecordingSeconds)}</span>
+                <span className="text-corpo text-muted">00:00 / {clock(maxRecordingSeconds)}</span>
               </>
             )}
-            {recording && <span className="font-pixel text-lg leading-tight text-secondary">As anotações ficam travadas até você parar — vale o que você lembra.</span>}
+            {recording && <span className="text-pequeno text-secondary">As anotações ficam travadas até você parar — vale o que você lembra.</span>}
           </button>
 
           {state === 'permission_denied' && (
-            <p className="font-pixel text-lg leading-tight text-alert">Não conseguimos acessar o microfone - verifique a permissão do navegador pra este site e tente de novo.</p>
+            <p className="text-pequeno text-alert">Não conseguimos acessar o microfone - verifique a permissão do navegador pra este site e tente de novo.</p>
           )}
-          {error && <p className="font-pixel text-lg leading-tight text-alert">{error}</p>}
+          {error && <p className="text-pequeno text-alert">{error}</p>}
 
           <SessionFooter>
             {(state === 'idle' || state === 'permission_denied') && weekly && (
-              <PixelButton ghost tone="project" onClick={() => setShowNotes(true)}>
+              <Button kind="secundario" onClick={() => setShowNotes(true)}>
                 {daily.isReinforcement ? 'Reler anotações do dia base' : 'Reler minhas anotações'}
-              </PixelButton>
+              </Button>
             )}
             {state !== 'submitting' && (
-              <PixelButton tone={recording ? 'accent' : 'alert'} onClick={recording ? handleStop : handleStart}>
-                {recording ? '■ Parar e enviar' : '● Gravar'}
-              </PixelButton>
+              <Button onClick={recording ? handleStop : handleStart}>
+                {recording ? 'Parar e enviar' : 'Gravar'}
+              </Button>
             )}
           </SessionFooter>
         </>
