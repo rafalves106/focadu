@@ -23,7 +23,6 @@ import { TerminalMissionActivity } from '../components/code/TerminalMissionActiv
 import { WarmupScreen } from '../components/session/WarmupScreen';
 import { DayFeedbackScreen } from '../components/session/DayFeedbackScreen';
 import { CompletionSummary } from '../components/CompletionSummary';
-import { ReinforcementIntroScreen } from '../components/ReinforcementIntroScreen';
 import {
   BlockedTodayScreen,
   BridgeLanguageScreen,
@@ -126,9 +125,6 @@ export function TodayPage() {
   const [completing, setCompleting] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [replayBaseline, setReplayBaseline] = useState<ReplayBaseline>(null);
-  // Fase 15: entrada da sessao de reforco so numa sessao de reforco genuinamente nova (nenhuma
-  // atividade respondida) - evita reexibir a cada reload de uma sessao ja em andamento/replay.
-  const [reinforcementIntroDismissed, setReinforcementIntroDismissed] = useState(false);
   // Aquecimento (molde v1) so abre numa sessao nova: nao em reforco, replay nem sessao ja em andamento.
   const [warmupDone, setWarmupDone] = useState(true);
   // Feedback do dia: abre entre "Fechar o dia" e a recompensa; "Pular" ou enviar fecha.
@@ -141,6 +137,9 @@ export function TodayPage() {
     [weeklyId],
   );
   useEffect(() => rememberCourse(weekly?.courseId), [weekly?.courseId]);
+  // Nome do curso pro fio da sessao (redesign v1, Fase 109 etapa 4).
+  const { data: courses } = useApiResource(() => (weeklyId ? api.getCourses() : Promise.resolve([] as CourseSummaryDto[])), [weeklyId]);
+  const courseName = courses?.find((c) => c.id === weekly?.courseId)?.name ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -167,7 +166,6 @@ export function TodayPage() {
         }
         if (!cancelled) {
           setDaily(state);
-          setReinforcementIntroDismissed(state.activities.some((a) => a.responses.length > 0));
           setWarmupDone(
             state.isReinforcement || state.accessMode === DailyAccessMode.Replay || state.activities.some((a) => a.responses.length > 0),
           );
@@ -244,7 +242,7 @@ export function TodayPage() {
 
   const sorted = [...daily.activities].sort((a, b) => a.orderIndex - b.orderIndex);
   const provide = (content: ReactNode, activityId: string | null = null, onBack?: () => void, jump?: (id: string) => void) => {
-    const value: SessionContextValue = { daily, weekly: weekly ?? null, activityId, onBack, goToActivity: jump };
+    const value: SessionContextValue = { daily, weekly: weekly ?? null, courseName, activityId, onBack, goToActivity: jump };
     return (
       <LabContext.Provider value={lab}>
         <SessionContext.Provider value={value}>{content}</SessionContext.Provider>
@@ -258,9 +256,6 @@ export function TodayPage() {
   if (!step) return null;
   if (completion && !feedbackDone && !daily.isReinforcement) return provide(<DayFeedbackScreen daily={daily} onDone={() => setFeedbackDone(true)} />);
   if (completion) return provide(<CompletionSummary result={completion} />);
-  if (daily.isReinforcement && !reinforcementIntroDismissed) {
-    return provide(<ReinforcementIntroScreen onStart={() => setReinforcementIntroDismissed(true)} />);
-  }
 
   if (!warmupDone) return provide(<WarmupScreen dailyId={daily.id} onDone={() => setWarmupDone(true)} />);
 

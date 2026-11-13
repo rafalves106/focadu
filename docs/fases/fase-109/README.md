@@ -207,3 +207,60 @@ Conferido com prints locais (Playwright, `tools/capturar-telas/conferir-109b.mjs
 Início, Visão da semana, confirmação de sair e Configurações sem rolagem nos três tamanhos; o ESC na confirmação
 fecha só ela. A Trilha ainda rola nos três tamanhos porque o `curso.json` do Web Security tem um módulo só com as
 12 semanas (sem abas); isso é conteúdo, não código. Ficaram de fora os itens de gravidade baixa da comparação.
+
+## Etapa 4: sessão do dia (13/11/2026)
+
+Figma: leitura `17:753`, quiz com abertura embutida `17:904`, quiz com erro `17:1282`, celular `17:1697`, Ligar
+palavras `55:1857`..`55:2163`, reforço `28:282`. Antes de tudo, um conserto isolado na tela antiga (commit próprio):
+a barra de etapas não passa mais do cartão em dia com muitas etapas (o print de produção tinha 42 nós invadindo o
+painel da direita).
+
+- **Molde Foco** (`SessionShell.tsx`): coluna de 720 centrada; trilhos de 64 a partir de md (Material e Pomodoro à
+  esquerda, Notas e Dúvida à direita), cada item abre uma gaveta por cima, sem painel fixo aberto; Pomodoro só
+  quando o aluno abre (o rótulo do trilho vira o tempo quando ele roda). No celular, a nav some na sessão (topo
+  próprio "← Início" + "Dia N · Etapa k de n") e a barra de baixo vira a de ferramentas com os mesmos quatro itens.
+  As gavetas ficam montadas fechadas (rascunho da nota, conversa da dúvida e Pomodoro não reiniciam).
+- **Cabeçalho**: fio `Curso · Semana · Dia · Etapa k de n` (no reforço, `Reforço do Dia N`), título do Dia com o
+  tipo da etapa ao lado. **Erros do dia** (`session/DayGauge.tsx`) à direita do fio, só depois do 1º erro, 1/3 a
+  3/3; no code comigo vira "Tentativas do passo" e na missão de terminal "Missões". Saíram "← Voltar pro mapa",
+  o título em caixa alta com os temas da semana e o "Erros da sessão" grande em vermelho.
+- **Barra de etapas** (`session/StageBar.tsx`, no lugar do `StageChain`): até 8 nós (Etapa/Nó `12:426`) numa
+  janela em volta da atual, com Chip "+N" nas pontas; no celular, segmentos com "Tipo · Bloco k de n".
+- **Cartão de conteúdo**: borda simples (sem moldura dupla), um Primário no fim alinhado à esquerda; "Etapa
+  anterior" é Secundário (link "← Etapa anterior" no celular). Na conversa por voz, Gravar é o Primário (verde,
+  não mais vermelho à direita) e "Reler minhas anotações" virou Secundário.
+- **Abertura de bloco embutida** (`session/BlockOpening.tsx`, no lugar da tela `BlockIntro`) e Devolutiva da
+  Focada (`FeedbackPanel`) com a `FocadaLine` do redesign; Opção de resposta (`OptionCard`) refeita (sem print ainda).
+- **Reforço**: a tela de entrada (`ReinforcementIntroScreen`) saiu; a fala "Só o que escapou" vai no topo da 1ª
+  etapa, como no quadro `28:282`.
+- **Atividades** (leitura, vídeo, quiz, lacunas, ligar palavras, roleplay, voz, passo de código, missão de
+  terminal), aquecimento, feedback do dia e fim de sessão (`CompletionSummary`) passaram para os componentes
+  novos. A lógica (respostas, nota do servidor, gravação, gabarito) não mudou.
+- **Ajuda** (`guiaTelas.ts`, `sessao`): etapas com "+N" e segmentos, Erros do dia só depois do 1º erro, trilhos
+  em todos os tamanhos.
+- Conserto encontrado nos prints: o "Etapa anterior" aparecia duas vezes no celular (o `inline-flex` do Botão
+  vencia o `hidden`); agora o invólucro é que some.
+
+### Conferido com prints locais (Playwright, `tools/capturar-telas/conferir-etapa4.mjs`, conta `aluno.f109.4`)
+
+Aquecimento, leitura (etapa 1 de 11), conversa por voz (etapa 2) e as gavetas de Notas, Pomodoro e Material em
+1440x900, 1366x768 e 390x844: a janela não rola em nenhum. A leitura longa rola por dentro do cartão (último
+recurso, o texto do dia não cabe em 900 de altura).
+
+### Sem verificação visual
+
+Não chegou a ser fotografado (a conta de teste não passa da conversa por voz sem gravar): quiz antes e depois de
+errar, Erros do dia aparecendo, lacunas, ligar palavras, roleplay, vídeo, code comigo, missão de terminal, fim de
+sessão, feedback do dia e o reforço. Áudio e microfone não dá para conferir sem navegador. Conferir também um dia
+com muitas etapas (o de 42) na barra nova.
+
+### Fica para depois
+
+- **Projeto da semana** (inclusive bloqueado) não foi refeito nesta etapa; segue com o visual antigo.
+- Sem quadro no Figma para conversa por voz, roleplay, lacunas, vídeo, fim de sessão e feedback do dia: seguiram
+  o `sistema.md` (molde Foco, um Primário no fim, Fala da Focada).
+
+### Inter
+
+Continua no `--font-sans`; as telas da sessão não dependem dela (estilos de texto explícitos). Restam a etapa 5
+(acesso), a 6 (lugares) e o `/gestao`, como anotado na etapa 3.

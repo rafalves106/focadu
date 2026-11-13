@@ -19,10 +19,13 @@ const LABEL_COLOR: Record<FocadaTone, string> = { neutro: 'text-accent', acerto:
 export function FocadaLine({
   tone = 'neutro',
   size = 'abertura',
+  label,
   children,
   className = '',
 }: {
   tone?: FocadaTone;
+  /** Rótulo no lugar do padrão ("Focada · hora do quiz", "Focada · errou · 1º erro do dia"). */
+  label?: string;
   size?: 'abertura' | 'devolutiva';
   children: ReactNode;
   className?: string;
@@ -39,8 +42,8 @@ export function FocadaLine({
         </span>
       )}
       <div role="status" aria-live="polite" className={`flex min-w-0 flex-1 flex-col gap-2 border-2 bg-surface ${big ? 'px-4 py-4' : 'px-4 py-3'} ${BORDER[tone]}`}>
-        <p className={`text-rotulo-sm ${LABEL_COLOR[tone]}`}>{LABEL[tone]}</p>
-        <p className={`${big ? 'text-corpo' : 'text-pequeno'} text-primary`}>{children}</p>
+        <p className={`text-rotulo-sm ${LABEL_COLOR[tone]}`}>{label ?? LABEL[tone]}</p>
+        <div className={`${big ? 'text-corpo' : 'text-pequeno'} text-primary`}>{children}</div>
       </div>
     </div>
   );

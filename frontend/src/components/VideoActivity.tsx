@@ -3,8 +3,9 @@ import { api, ApiError } from '../api/client';
 import { useApiResource } from '../api/useApiResource';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
 import { SessionFooter, SessionLayout } from './SessionShell';
-import { PixelButton } from './session/PixelButton';
+
 import { extractYouTubeId } from '../lib/youtube';
+import { Button } from './ui/Button';
 
 /**
  * Etapa de video (ActivityType.Video, ContentId obrigatorio). Embed real do YouTube
@@ -59,9 +60,9 @@ export function VideoActivity({
           <>
             <p className="font-pixel text-lg leading-tight text-alert">{contentError?.message ?? 'Vídeo não encontrado.'}</p>
             <SessionFooter>
-              <PixelButton ghost onClick={retry}>
+              <Button kind="secundario" onClick={retry}>
                 Tentar de novo
-              </PixelButton>
+              </Button>
             </SessionFooter>
           </>
         )}
@@ -97,9 +98,9 @@ export function VideoActivity({
 
       <SessionFooter>
         {!alreadyCompleted && <p className="font-pixel-label text-[8px] text-muted">Assista até o fim pra seguir</p>}
-        <PixelButton onClick={handleComplete} disabled={submitting}>
-          {alreadyCompleted ? 'Próxima etapa ›' : submitting ? 'Enviando...' : 'Assisti ›'}
-        </PixelButton>
+        <Button onClick={handleComplete} disabled={submitting}>
+          {alreadyCompleted ? 'Próxima etapa' : submitting ? 'Enviando...' : 'Assisti'}
+        </Button>
       </SessionFooter>
     </SessionLayout>
   );

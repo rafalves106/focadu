@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { ActivityType, ProjectLanguage, type ActivityResponseDto, type DailyActivityDto, type DailyStateDto } from '../api/types';
-import { isFirstOfActivityGroup } from '../lib/activityGroup';
 import { useSession } from '../lib/sessionContext';
 import { MarkdownBlock } from './activities/MarkdownBlock';
 import { SessionFooter, SessionLayout } from './SessionShell';
-import { BlockIntro } from './session/BlockIntro';
-import { FocadaSays } from './session/FocadaSays';
-import { PixelButton } from './session/PixelButton';
+import { FocadaLine } from './ui/FocadaLine';
+
 import { CodeEditor, OutputBox } from './code/codeParts';
 import { draftKey, lineCount, readDraft, splitPrompt, writeDraft } from './code/codeHelpers';
 import { LabCodeStepActivity } from './code/LabCodeStepActivity';
+import { Button } from './ui/Button';
 
 /**
  * Passo de codigo da ponte (Fase 79, "code comigo" - secret/rascunhos/ponte-code-comigo.md; Figma
@@ -46,7 +45,6 @@ function LegacyCodeStepActivity({
   const passed = responses.some((r) => r.passed);
   const exhausted = !passed && responses.length >= maxAttempts;
 
-  const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || responses.length > 0);
   const [editing, setEditing] = useState(lastResponse === null);
   const [draft] = useState(() => readDraft(key));
   const [code, setCode] = useState(draft?.code ?? lastResponse?.transcript ?? '');
@@ -87,8 +85,6 @@ function LegacyCodeStepActivity({
       setSubmitting(false);
     }
   }
-
-  if (!started) return <BlockIntro activity={activity} onStart={() => setStarted(true)} />;
 
   const view = passed ? 'passou' : exhausted ? 'solucao' : editing ? 'escrevendo' : 'ajuste';
   const attemptLabel = passed
@@ -174,24 +170,24 @@ function LegacyCodeStepActivity({
         {view === 'escrevendo' ? (
           <>
             <p className="font-pixel-label text-[8px] text-muted">Ctrl+Enter envia · a Focada lê o código e a saída</p>
-            <PixelButton onClick={handleSubmit} disabled={!code.trim() || !output.trim() || submitting}>
-              {submitting ? 'Conferindo...' : 'Enviar passo ›'}
-            </PixelButton>
+            <Button onClick={handleSubmit} disabled={!code.trim() || !output.trim() || submitting}>
+              {submitting ? 'Conferindo...' : 'Enviar passo'}
+            </Button>
           </>
         ) : (
           <>
-            <FocadaSays
-              size="xs"
-              expression={view === 'passou' ? 'comemorando' : 'acolhedora'}
-              tone={view === 'passou' ? 'accent' : 'project'}
-              label={
+            <FocadaLine tone={view === 'passou' ? 'acerto' : 'neutro'} size="devolutiva" label={
                 view === 'passou'
                   ? 'Focada · Passou'
                   : view === 'solucao'
                     ? `Focada · ${maxAttempts} de ${maxAttempts}`
                     : `Focada · Ajuste isto · tentativa ${responses.length} de ${maxAttempts}`
               }
-              className="min-w-0 flex-1"
+             
+             
+             
+             
+              className="min-w-0 basis-full"
             >
               {view === 'solucao' ? (
                 <>
@@ -200,18 +196,18 @@ function LegacyCodeStepActivity({
               ) : (
                 lastResponse?.aiFeedback
               )}
-            </FocadaSays>
+            </FocadaLine>
             {view === 'ajuste' ? (
-              <PixelButton
+              <Button
                 onClick={() => {
                   update(lastResponse?.transcript ?? code, lastResponse?.justification ?? output);
                   setEditing(true);
                 }}
               >
-                Editar ›
-              </PixelButton>
+                Editar
+              </Button>
             ) : (
-              <PixelButton onClick={onContinue}>{view === 'passou' ? (stepNumber < codeSteps.length ? 'Próximo passo ›' : 'Continuar ›') : 'Seguir ›'}</PixelButton>
+              <Button onClick={onContinue}>{view === 'passou' ? (stepNumber < codeSteps.length ? 'Próximo passo' : 'Continuar') : 'Seguir'}</Button>
             )}
           </>
         )}

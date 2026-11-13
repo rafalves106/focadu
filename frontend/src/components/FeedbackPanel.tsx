@@ -4,9 +4,10 @@ import { REINFORCEMENT_CREATED, feedbackLine } from '../lib/focadaSessionLines';
 import { useSession } from '../lib/sessionContext';
 import { useSessionKeys } from '../lib/useSessionKeys';
 import { SessionFooter } from './SessionShell';
-import { FocadaSays } from './session/FocadaSays';
-import { PixelButton, PixelChip } from './session/PixelButton';
-import reinforcementIcon from '../assets/pixel/mapa/badge-reforco.png';
+import { Button } from './ui/Button';
+import { Card } from './ui/Card';
+import { Chip } from './ui/Chip';
+import { FocadaLine } from './ui/FocadaLine';
 
 /**
  * Resultado de uma etapa avaliada (Fase 7, redesenhado na Fase 68 - Figma "Daily — redesign
@@ -52,7 +53,7 @@ export function FeedbackPanel({
   const { daily } = useSession();
   const reinforcementNow =
     !passed && !daily.isReinforcement && daily.penaltyThreshold > 0 && daily.penaltyPoints === daily.penaltyThreshold;
-  const errorLabel = !passed && !daily.isReinforcement ? ` · erro ${Math.min(daily.penaltyPoints, daily.penaltyThreshold)} de ${daily.penaltyThreshold}` : '';
+  const errorLabel = !passed && !daily.isReinforcement && daily.penaltyPoints > 0 ? ` · ${Math.min(daily.penaltyPoints, daily.penaltyThreshold)}º erro do dia` : '';
 
   useSessionKeys((key) => {
     if (key === 'Enter' && onContinue) onContinue();
@@ -60,71 +61,60 @@ export function FeedbackPanel({
 
   const debrief = correctAnswer
     ? (
-        <div className="flex flex-col gap-3">
-          <div>
-            <p className="font-pixel-label text-[10px] text-accent">Resposta certa</p>
-            <p>{correctAnswer}</p>
-          </div>
+        <span className="flex flex-col gap-3">
+          <span className="flex flex-col">
+            <span className="text-rotulo-sm text-accent">Resposta certa</span>
+            <span>{correctAnswer}</span>
+          </span>
           {improvementPoints && (
-            <div>
-              <p className="font-pixel-label text-[10px] text-project">Pontos a melhorar</p>
-              <p>{improvementPoints}</p>
-            </div>
+            <span className="flex flex-col">
+              <span className="text-rotulo-sm text-project">Pontos a melhorar</span>
+              <span>{improvementPoints}</span>
+            </span>
           )}
-        </div>
+        </span>
       )
     : null;
 
-  const focada = (
-    <FocadaSays
-      expression={passed ? 'comemorando' : 'acolhedora'}
-      label={`Focada${errorLabel}`}
-      size={focadaInContent ? 'md' : 'sm'}
-      tone={focadaInContent && passed ? 'accent' : 'metal'}
-      className={focadaInContent ? '' : 'min-w-0 flex-1 basis-80'}
-    >
-      {/* A devolutiva (resposta certa + pontos a melhorar) vence o aviso de reforco: o aviso ja tem caixa propria abaixo. */}
-      {debrief ?? (reinforcementNow ? REINFORCEMENT_CREATED : (aiFeedback ?? feedbackLine(passed, seed, roleplayQuality)))}
-    </FocadaSays>
-  );
+  // Devolutiva da Focada logo abaixo da resposta (sistema.md regra 4; Figma `17:1282`), uma fala só.
+  const label = passed ? 'Focada · acertou' : `Focada · errou${errorLabel}`;
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-4">
-        {showScore && <p className={`font-pixel text-7xl leading-none ${passed ? 'text-accent' : 'text-alert'}`}>{score}</p>}
-        <div className="flex flex-col gap-2">
-          <PixelChip tone={passed ? 'accent' : 'alert'}>{passed ? (showScore ? 'Aprovado · mínimo 80' : 'Acertou') : showScore ? 'Abaixo de 80' : 'Errou'}</PixelChip>
-          {showScore && <p className="font-pixel text-lg leading-tight text-secondary">Nota única que pondera correção e clareza.</p>}
-        </div>
-      </div>
-
-      {detail}
-
-      {focadaInContent && focada}
-
-      {transcript && (
-        <details className="border-2 border-stroke bg-surface px-4 py-3">
-          <summary className="cursor-pointer font-pixel-label text-[9px] text-secondary">O que você disse</summary>
-          <p className="mt-2 font-pixel text-lg leading-tight text-primary">“{transcript}”</p>
-        </details>
-      )}
-
-      {reinforcementNow && (
-        <div className="flex items-center gap-3 border-2 border-alert px-4 py-3">
-          <img src={reinforcementIcon} alt="" className="size-8 shrink-0 pixelated" />
-          <div className="flex flex-col gap-1">
-            <p className="font-pixel-label text-[10px] text-alert">Reforço do dia {daily.dayNumber} criado</p>
-            <p className="font-pixel text-lg leading-tight text-secondary">
-              As etapas que você errou viram uma sessão curta. Ela fica no mapa e no start até você fazer — e não gasta a sessão do dia.
-            </p>
+      {showScore && (
+        <div className="flex flex-wrap items-center gap-4">
+          <p className={`font-pixel text-[64px] leading-none ${passed ? 'text-accent' : 'text-alert'}`}>{score}</p>
+          <div className="flex flex-col gap-2">
+            <Chip tone={passed ? 'verde' : 'vermelho'}>{passed ? 'Aprovado · mínimo 80' : 'Abaixo de 80'}</Chip>
+            <p className="text-pequeno text-muted">Nota única que pondera correção e clareza.</p>
           </div>
         </div>
       )}
 
-      <SessionFooter>
-        {!focadaInContent && focada}
-        {onContinue && <PixelButton onClick={onContinue}>Continuar ›</PixelButton>}
-      </SessionFooter>
+      {detail}
+
+      <FocadaLine size={focadaInContent ? 'abertura' : 'devolutiva'} tone={passed ? 'acerto' : 'erro'} label={label}>
+        {/* A devolutiva (resposta certa + pontos a melhorar) vence o aviso de reforco: o aviso ja tem caixa propria abaixo. */}
+        {debrief ?? (reinforcementNow ? REINFORCEMENT_CREATED : (aiFeedback ?? feedbackLine(passed, seed, roleplayQuality)))}
+      </FocadaLine>
+
+      {transcript && (
+        <details className="border-2 border-stroke bg-base px-4 py-3">
+          <summary className="cursor-pointer text-rotulo-sm text-secondary">O que você disse</summary>
+          <p className="mt-2 text-pequeno text-primary">“{transcript}”</p>
+        </details>
+      )}
+
+      {/* Reforço é pendência: âmbar, nunca vermelho (sistema.md regra 6). */}
+      {reinforcementNow && (
+        <Card kind="ambar" pad="gap-1 px-4 py-3" eyebrow={`Reforço do Dia ${daily.dayNumber} criado`}>
+          <p className="text-pequeno text-secondary">
+            As etapas que você errou viram uma sessão curta. Ela fica na Trilha e no Início até você fazer, e não gasta o Dia de hoje.
+          </p>
+        </Card>
+      )}
+
+      <SessionFooter>{onContinue && <Button onClick={onContinue}>Continuar</Button>}</SessionFooter>
     </>
   );
 }

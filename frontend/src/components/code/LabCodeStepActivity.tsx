@@ -1,19 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../../api/client';
 import { ActivityType, type ActivityResponseDto, type DailyActivityDto, type DailyStateDto } from '../../api/types';
-import { isFirstOfActivityGroup } from '../../lib/activityGroup';
 import { useSession } from '../../lib/sessionContext';
 import { useIsDesktop } from '../../lib/useIsDesktop';
 import { useLab } from '../../lab/labContext';
 import { argvFor, displayOutput, errorLine, formatSeconds, runtimeLabel, shellPrompt, toPayload, toRecord, type LabRunRecord } from '../../lab/labOutput';
 import { MarkdownBlock } from '../activities/MarkdownBlock';
 import { SessionFooter, SessionLayout } from '../SessionShell';
-import { BlockIntro } from '../session/BlockIntro';
-import { FocadaSays } from '../session/FocadaSays';
-import { PixelButton, PixelLink } from '../session/PixelButton';
+import { FocadaLine } from '../ui/FocadaLine';
+
 import { CodeEditor, OutputBox } from './codeParts';
 import { draftKey, lineCount, readDraft, splitPrompt, writeDraft } from './codeHelpers';
 import { HintPanel, LabChip, LabProgressBar, TerminalPanel, type TerminalEntry } from './labParts';
+import { Button, ButtonLink } from '../ui/Button';
 
 const LANGUAGE_NAME = { python: 'Python', javascript: 'JavaScript', bash: 'Bash', sqlite: 'SQL' } as const;
 /** Marcador de comentario de cada linguagem (o placeholder do editor). */
@@ -57,7 +56,6 @@ export function LabCodeStepActivity({
   const maxHints = activity.codeStep?.maxHints ?? 3;
   const hintsLeft = Math.max(0, maxHints - hints.length);
 
-  const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || responses.length > 0);
   const [editing, setEditing] = useState(lastResponse === null);
   const [draft] = useState(() => readDraft(key));
   const [code, setCode] = useState(draft?.code ?? lastResponse?.transcript ?? activity.codeStep?.codeStarter ?? '');
@@ -198,8 +196,6 @@ export function LabCodeStepActivity({
     session.ensure(lab, weekly.curatedContents).catch(() => undefined);
   }
 
-  if (!started) return <BlockIntro activity={activity} onStart={() => setStarted(true)} />;
-
   const view = passed ? 'passou' : exhausted ? 'solucao' : editing ? 'escrevendo' : 'ajuste';
   const attemptLabel = passed
     ? `Passou na tentativa ${responses.findIndex((r) => r.passed) + 1}`
@@ -240,14 +236,14 @@ export function LabCodeStepActivity({
         </section>
         <div className="flex flex-col gap-3">
           {detail && (
-            <PixelButton ghost onClick={() => setShowDetail((v) => !v)}>
+            <Button kind="secundario" onClick={() => setShowDetail((v) => !v)}>
               {showDetail ? 'Esconder o enunciado' : 'Ver o enunciado'}
-            </PixelButton>
+            </Button>
           )}
           {weekly && (
-            <PixelLink to={`/start?course=${weekly.courseId}`} ghost tone="muted">
+            <ButtonLink kind="secundario" to={`/start?course=${weekly.courseId}`}>
               Voltar pra trilha
-            </PixelLink>
+            </ButtonLink>
           )}
         </div>
       </SessionLayout>
@@ -347,13 +343,13 @@ export function LabCodeStepActivity({
                 <div className="flex items-center justify-between gap-3">
                   <p className={`font-pixel-label text-[9px] ${hasError ? 'text-project' : 'text-accent'}`}>{outputLabel}</p>
                   {running ? (
-                    <PixelButton ghost className="px-4 py-2 text-[9px]" onClick={() => void session.abort()}>
+                    <Button kind="secundario" className="h-9 px-4" onClick={() => void session.abort()}>
                       Parar
-                    </PixelButton>
+                    </Button>
                   ) : (
-                    <PixelButton ghost className="px-4 py-2 text-[9px]" onClick={handleRun} disabled={!ready || !code.trim()}>
-                      {loading ? 'Aguarde' : 'Rodar ›'}
-                    </PixelButton>
+                    <Button kind="secundario" className="h-9 px-4" onClick={handleRun} disabled={!ready || !code.trim()}>
+                      {loading ? 'Aguarde' : 'Rodar'}
+                    </Button>
                   )}
                 </div>
                 {snapshot.status === 'error' ? (
@@ -379,28 +375,28 @@ export function LabCodeStepActivity({
               {freshRun ? (isBash ? 'Enter roda o comando' : 'Ctrl+Enter roda') : lastRun ? 'Rode de novo pra enviar: o código mudou' : 'Rode o código pra poder enviar'}
             </p>
             <div className="flex items-center gap-3">
-              <PixelButton tone="project" ghost onClick={handleHint} disabled={!code.trim() || hintsLeft <= 0 || hintLoading}>
+              <Button kind="secundario" onClick={handleHint} disabled={!code.trim() || hintsLeft <= 0 || hintLoading}>
                 {hintLoading ? 'Pensando...' : hintsLeft > 0 ? `Dica · ${hintsLeft} ${hintsLeft === 1 ? 'restante' : 'restantes'}` : 'Sem dicas'}
-              </PixelButton>
-              <PixelButton onClick={handleSubmit} disabled={!canSubmit}>
-                {submitting ? 'Conferindo...' : 'Enviar passo ›'}
-              </PixelButton>
+              </Button>
+              <Button onClick={handleSubmit} disabled={!canSubmit}>
+                {submitting ? 'Conferindo...' : 'Enviar passo'}
+              </Button>
             </div>
           </>
         ) : (
           <>
-            <FocadaSays
-              size="xs"
-              expression={view === 'passou' ? 'comemorando' : 'acolhedora'}
-              tone={view === 'passou' ? 'accent' : 'project'}
-              label={
+            <FocadaLine tone={view === 'passou' ? 'acerto' : 'neutro'} size="devolutiva" label={
                 view === 'passou'
                   ? 'Focada · Passou'
                   : view === 'solucao'
                     ? `Focada · ${maxAttempts} de ${maxAttempts}`
                     : `Focada · Ajuste isto · tentativa ${responses.length} de ${maxAttempts}`
               }
-              className="min-w-0 flex-1"
+             
+             
+             
+             
+              className="min-w-0 basis-full"
             >
               {view === 'solucao' ? (
                 <>
@@ -409,9 +405,9 @@ export function LabCodeStepActivity({
               ) : (
                 lastResponse?.aiFeedback
               )}
-            </FocadaSays>
+            </FocadaLine>
             {view === 'ajuste' ? (
-              <PixelButton
+              <Button
                 onClick={() => {
                   update(lastResponse?.transcript ?? code);
                   setLastRun(null);
@@ -421,10 +417,10 @@ export function LabCodeStepActivity({
                   setEditing(true);
                 }}
               >
-                Editar ›
-              </PixelButton>
+                Editar
+              </Button>
             ) : (
-              <PixelButton onClick={onContinue}>{view === 'passou' ? (stepNumber < codeSteps.length ? 'Próximo passo ›' : 'Continuar ›') : 'Seguir ›'}</PixelButton>
+              <Button onClick={onContinue}>{view === 'passou' ? (stepNumber < codeSteps.length ? 'Próximo passo' : 'Continuar') : 'Seguir'}</Button>
             )}
           </>
         )}
@@ -439,9 +435,9 @@ export function LabError({ message, onRetry }: { message: string | null; onRetry
     <div className="flex flex-col items-start gap-3 border-2 border-alert bg-base px-3.5 py-3" role="alert" data-testid="lab-erro">
       <p className="font-pixel text-lg leading-tight text-alert">O laboratório não conseguiu iniciar.</p>
       {message && <p className="font-mono text-xs leading-[18px] text-secondary">{message}</p>}
-      <PixelButton ghost tone="alert" className="px-4 py-2 text-[9px]" onClick={onRetry}>
+      <Button kind="perigo" className="h-9 px-4" onClick={onRetry}>
         Tentar de novo
-      </PixelButton>
+      </Button>
     </div>
   );
 }

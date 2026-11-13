@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
-import { isFirstOfActivityGroup } from '../lib/activityGroup';
 import { ClozeSentence } from './activities/ClozeSentence';
 import { FeedbackPanel } from './FeedbackPanel';
 import { SessionFooter, SessionLayout } from './SessionShell';
-import { BlockIntro } from './session/BlockIntro';
-import { PixelButton } from './session/PixelButton';
+
 import checkIcon from '../assets/pixel/check.png';
+import { Button } from './ui/Button';
 
 /**
  * Lacuna de texto livre (Cloze/FreeText): o aluno digita a palavra, comparada no servidor contra
@@ -19,7 +18,6 @@ import checkIcon from '../assets/pixel/check.png';
  */
 export function ClozeFreeTextActivity({
   dailyId,
-  daily,
   activity,
   onDailyRefetched,
   onContinue,
@@ -30,7 +28,6 @@ export function ClozeFreeTextActivity({
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
 }) {
-  const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || activity.responses.length > 0);
   const [transcript, setTranscript] = useState('');
   const [justification, setJustification] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -62,8 +59,6 @@ export function ClozeFreeTextActivity({
       setSubmitting(false);
     }
   }
-
-  if (!started) return <BlockIntro activity={activity} onStart={() => setStarted(true)} />;
 
   return (
     <SessionLayout>
@@ -105,9 +100,9 @@ export function ClozeFreeTextActivity({
           {error && <p className="font-pixel text-lg leading-tight text-alert">{error}</p>}
           <SessionFooter>
             <p className="font-pixel-label text-[8px] text-muted">1 tentativa · Enter confirma</p>
-            <PixelButton onClick={handleSubmit} disabled={!transcript.trim() || submitting}>
-              {submitting ? 'Enviando...' : 'Confirmar ›'}
-            </PixelButton>
+            <Button onClick={handleSubmit} disabled={!transcript.trim() || submitting}>
+              {submitting ? 'Enviando...' : 'Confirmar'}
+            </Button>
           </SessionFooter>
         </>
       ) : (

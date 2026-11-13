@@ -10,6 +10,8 @@ import type { DailyStateDto, WeeklyDetailDto } from '../api/types';
 export interface SessionContextValue {
   daily: DailyStateDto;
   weekly: WeeklyDetailDto | null;
+  /** Nome do curso, pro fio (redesign v1, Fase 109 etapa 4). Nulo enquanto carrega. */
+  courseName?: string | null;
   /** Atividade em tela - nulo fora de uma etapa (conclusao, avisos). */
   activityId: string | null;
   /** "Etapa anterior" - omitido na 1a atividade ou quando voltar nao e seguro (gravando). */

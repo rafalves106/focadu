@@ -3,7 +3,6 @@ import { api, ApiError } from '../../api/client';
 import type { DailyActivityDto, DailyStateDto, LabConfigDto, TerminalCommandDto, TerminalMissionDto } from '../../api/types';
 import checkIcon from '../../assets/pixel/check.png';
 import playIcon from '../../assets/pixel/play-ativo.png';
-import { isFirstOfActivityGroup } from '../../lib/activityGroup';
 import { useSession } from '../../lib/sessionContext';
 import { useIsDesktop } from '../../lib/useIsDesktop';
 import { useLab } from '../../lab/labContext';
@@ -12,11 +11,11 @@ import { evaluateMission, isCommandNotFound } from '../../lab/terminalMission';
 import { updateMissionProgress, useMissionProgress, type MissionProgress, type MissionStrip } from '../../lab/terminalMissionStore';
 import { SessionFooter, SessionLayout } from '../SessionShell';
 import { InlineMarkdown } from '../activities/MarkdownBlock';
-import { BlockIntro } from '../session/BlockIntro';
-import { PixelButton } from '../session/PixelButton';
+
 import { OutputBox } from './codeParts';
 import { LabError } from './LabCodeStepActivity';
 import { LabProgressBar, TerminalPanel, type TerminalEntry } from './labParts';
+import { Button } from '../ui/Button';
 
 /**
  * Missao no terminal (dias normais do Linux; Figma "Laboratório de código — v2", quadros 08 a 10). So o terminal do
@@ -48,7 +47,6 @@ export function TerminalMissionActivity({
   const alreadyDone = activity.responses.length > 0;
   const progress = useMissionProgress(activity.id, missions.length, alreadyDone);
 
-  const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || alreadyDone);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Terminal v3: clique na cola "Comandos de hoje" poe o comando no campo do terminal, sem rodar.
@@ -152,8 +150,6 @@ export function TerminalMissionActivity({
     session.ensure(currentLab, weekly.curatedContents).catch(() => undefined);
   }
 
-  if (!started) return <BlockIntro activity={activity} onStart={() => setStarted(true)} />;
-
   // ---- celular: o aviso; segue sem as missoes (Figma, quadro 07) ----
   if (!isDesktop) {
     return (
@@ -169,15 +165,15 @@ export function TerminalMissionActivity({
         {error && <p className="font-pixel text-lg leading-tight text-alert">{error}</p>}
         <SessionFooter>
           <p className="font-pixel-label text-[8px] text-muted">Sem nota · sem tentativa</p>
-          <PixelButton onClick={() => void finish()} disabled={submitting}>
-            {submitting ? 'Enviando...' : 'Seguir sem as missões ›'}
-          </PixelButton>
+          <Button onClick={() => void finish()} disabled={submitting}>
+            {submitting ? 'Enviando...' : 'Seguir sem as missões'}
+          </Button>
         </SessionFooter>
       </SessionLayout>
     );
   }
 
-  const nextLabel = alreadyDone ? 'Próxima etapa ›' : allDone ? 'Concluir missões ›' : 'Próxima missão ›';
+  const nextLabel = alreadyDone ? 'Próxima etapa' : allDone ? 'Concluir missões' : 'Próxima missão';
   const canNext = alreadyDone || viewingDone;
 
   return (
@@ -235,12 +231,12 @@ export function TerminalMissionActivity({
         <p className="font-pixel-label text-[8px] text-muted">Erre à vontade</p>
         <div className="flex items-center gap-3">
           {/* Terminal v3: missao cumprida nao tem mais dica pra abrir (o "o que reparar" ja esta na faixa). */}
-          <PixelButton tone="project" ghost onClick={showHint} disabled={hintsTotal === 0 || alreadyDone || viewingDone}>
+          <Button kind="secundario" onClick={showHint} disabled={hintsTotal === 0 || alreadyDone || viewingDone}>
             {alreadyDone || viewingDone ? 'Dica · —' : hintsShown < hintsTotal ? `Dica · ${hintsShown + 1} de ${hintsTotal}` : 'Rever a dica'}
-          </PixelButton>
-          <PixelButton onClick={next} disabled={!canNext || submitting} data-testid="mission-next">
+          </Button>
+          <Button onClick={next} disabled={!canNext || submitting} data-testid="mission-next">
             {submitting ? 'Enviando...' : nextLabel}
-          </PixelButton>
+          </Button>
         </div>
       </SessionFooter>
     </SessionLayout>

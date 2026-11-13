@@ -1,12 +1,11 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto } from '../api/types';
-import { isFirstOfActivityGroup } from '../lib/activityGroup';
 import { OptionCard } from './activities/OptionCard';
 import { FeedbackPanel } from './FeedbackPanel';
 import { SessionFooter, SessionLayout } from './SessionShell';
-import { BlockIntro } from './session/BlockIntro';
-import { PixelButton } from './session/PixelButton';
+import { Button } from './ui/Button';
+
 
 const LETTERS = ['1', '2', '3', '4', '5', '6'];
 
@@ -118,7 +117,6 @@ function ConnectorSvg({ lines }: { lines: ConnectorLine[] }) {
  */
 export function WordMatchActivity({
   dailyId,
-  daily,
   activity,
   onDailyRefetched,
   onContinue,
@@ -129,7 +127,6 @@ export function WordMatchActivity({
   onDailyRefetched: (daily: DailyStateDto) => void;
   onContinue: () => void;
 }) {
-  const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || activity.responses.length > 0);
 
   const [terms, setTerms] = useState(activity.wordMatchTerms);
   const [definitions, setDefinitions] = useState(activity.wordMatchDefinitions);
@@ -257,8 +254,6 @@ export function WordMatchActivity({
     }
   }
 
-  if (!started) return <BlockIntro activity={activity} onStart={() => setStarted(true)} />;
-
   function pendingState(side: 'term' | 'definition', id: string) {
     return pending?.side === side && pending.id === id ? 'selected' : 'neutral';
   }
@@ -331,9 +326,9 @@ export function WordMatchActivity({
           <p className="font-pixel-label text-[8px] text-muted">
             {matchedCount} de {total} ligados · toque num par pra desfazer
           </p>
-          <PixelButton onClick={handleSubmit} disabled={!allMatched || submitting}>
-            {submitting ? 'Enviando...' : 'Confirmar ›'}
-          </PixelButton>
+          <Button onClick={handleSubmit} disabled={!allMatched || submitting}>
+            {submitting ? 'Enviando...' : 'Confirmar'}
+          </Button>
         </SessionFooter>
       )}
 

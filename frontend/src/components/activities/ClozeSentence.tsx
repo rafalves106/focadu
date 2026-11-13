@@ -9,7 +9,7 @@ export function ClozeSentence({ text, fill }: { text: string; fill?: { value: st
   const parts = text.split(BLANK);
 
   return (
-    <div className="border-2 border-stroke bg-surface px-5 py-4 font-pixel text-2xl leading-[1.3] text-secondary lg:text-[26px]">
+    <div className="border-2 border-stroke bg-base px-4 py-3 text-lead text-primary">
       {parts.map((part, i) => (
         <span key={i}>
           {part}

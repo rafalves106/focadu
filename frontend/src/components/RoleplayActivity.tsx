@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api/client';
 import type { DailyActivityDto, DailyStateDto, RoleplayNodeDto } from '../api/types';
-import { isFirstOfActivityGroup } from '../lib/activityGroup';
 import { useSessionKeys } from '../lib/useSessionKeys';
 import { FeedbackPanel } from './FeedbackPanel';
 import { SessionFooter, SessionLayout } from './SessionShell';
-import { BlockIntro } from './session/BlockIntro';
 import terminalIcon from '../assets/pixel/terminal.png';
 
 /**
@@ -19,7 +17,6 @@ import terminalIcon from '../assets/pixel/terminal.png';
  */
 export function RoleplayActivity({
   dailyId,
-  daily,
   activity,
   onDailyRefetched,
   onContinue,
@@ -40,7 +37,6 @@ export function RoleplayActivity({
     activity.roleplayNodes.find((n) => !n.isTerminal) ??
     activity.roleplayNodes[0];
 
-  const [started, setStarted] = useState(!isFirstOfActivityGroup(daily, activity) || activity.responses.length > 0);
   const [currentNodeId, setCurrentNodeId] = useState<string | null>(startNode?.id ?? null);
   const [depth, setDepth] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -84,14 +80,12 @@ export function RoleplayActivity({
     setDepth((d) => d + 1);
   }
 
-  const choosing = started && !answered && !!displayNode && !displayNode.isTerminal;
+  const choosing = !answered && !!displayNode && !displayNode.isTerminal;
   useSessionKeys((key) => {
     const n = Number(key);
     const option = displayNode?.options[n - 1];
     if (Number.isInteger(n) && option) handleChooseOption(option.nextNodeId);
   }, choosing);
-
-  if (!started) return <BlockIntro activity={activity} onStart={() => setStarted(true)} />;
 
   if (!displayNode) {
     return (

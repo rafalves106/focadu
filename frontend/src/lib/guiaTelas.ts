@@ -151,12 +151,12 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
     title: 'Dia',
     focada: 'Uma etapa por vez, agente. Eu apresento cada bloco e comento quando você erra. Na conversa por voz é você explicando, não a IA.',
     items: [
-      { title: 'Etapas', text: 'Onde você está e quanto falta. Dá pra voltar pra etapa anterior sem refazer.' },
-      { title: 'Erros do dia', text: 'Cada erro antes de terminar o Dia soma 1. No 3º, nasce um reforço só com o que você errou.' },
-      { title: 'Material e Pomodoro', text: 'O conteúdo de hoje pra consultar e o timer, se você usa. Em tela de notebook ficam num trilho: clique e abre a gaveta.' },
+      { title: 'Etapas', text: 'Onde você está e quanto falta: o fio no topo diz a etapa, e a barra mostra até 8 etapas em volta da atual (o "+N" conta as outras). No celular, a barra vira segmentos. Dá pra voltar pra etapa anterior sem refazer.' },
+      { title: 'Erros do dia', text: 'Aparece no topo depois do 1º erro. Cada erro antes de terminar o Dia soma 1. No 3º, nasce um reforço só com o que você errou.' },
+      { title: 'Material e Pomodoro', text: 'O conteúdo de hoje pra consultar e o timer, se você usa. Ficam no trilho da esquerda: clique e abre a gaveta. O Pomodoro só aparece quando você abre.' },
       {
         title: 'Anotação e dúvida rápida',
-        text: 'Anote sem sair do Dia e tire dúvida curta sobre o que está na tela. No notebook ficam no trilho da direita; o ponto âmbar é rascunho não salvo ou resposta nova. Esc fecha a gaveta.',
+        text: 'Anote sem sair do Dia e tire dúvida curta sobre o que está na tela. Ficam no trilho da direita; o ponto âmbar é rascunho não salvo ou resposta nova. Esc fecha a gaveta.',
       },
       { title: 'Barra de baixo', text: 'No celular: material, notas, dúvida e Pomodoro.' },
       { title: 'Aquecimento', text: 'No começo do Dia, 2 perguntas de dias anteriores pra recuperar o que você já viu. Não conta erro nem nota, e dá pra pular. No primeiro Dia não tem.' },

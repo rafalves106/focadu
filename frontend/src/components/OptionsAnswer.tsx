@@ -5,7 +5,8 @@ import { useSessionKeys } from '../lib/useSessionKeys';
 import { FeedbackPanel } from './FeedbackPanel';
 import { OptionCard } from './activities/OptionCard';
 import { SessionFooter } from './SessionShell';
-import { PixelButton } from './session/PixelButton';
+import { Button } from './ui/Button';
+
 
 /**
  * Nucleo de "escolher uma opcao" - Quiz e Lacuna de multipla escolha (SelectedOptionId, Score sempre
@@ -91,9 +92,9 @@ export function OptionsAnswer({
       {!answered && (
         <SessionFooter>
           <p className="font-pixel-label text-[8px] text-muted">1 tentativa · teclas 1–{options.length} escolhem, Enter confirma</p>
-          <PixelButton onClick={handleSubmit} disabled={!selectedOptionId || submitting}>
-            {submitting ? 'Enviando...' : 'Confirmar ›'}
-          </PixelButton>
+          <Button onClick={handleSubmit} disabled={!selectedOptionId || submitting}>
+            {submitting ? 'Enviando...' : 'Confirmar'}
+          </Button>
         </SessionFooter>
       )}
 
