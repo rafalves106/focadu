@@ -135,6 +135,28 @@ antes de publicar.
 Aplique a lista do `revisao.md` literalmente, rode S4 de novo (e o `teste.sh` se mexeu no alvo ou numa flag) e
 volte o estado para `validada`. No máximo 2 voltas de ajuste por sala; na terceira reprovação, pare e relate.
 
+## Armadilhas já vistas (teste do dono no app)
+
+Cada uma passou pelo linter e pela revisão e só apareceu quando o dono fez a sala. Confira no S2 e no S5.
+
+- **Gabarito com mais do que a pergunta pede** tira nota de resposta certa (nmap-1 `todas`: cobrava `-p-` numa
+  pergunta de "por quê"; LojaServ: "esconder a versão", "Location", CORS). Correção de confusão e comando extra
+  ficam na teoria. O revisor pergunta, frase a frase: "a pergunta pede isto?".
+- **Pergunta e gabarito com palavras diferentes**: "que formato?" com gabarito cobrando "`-oG`" (nmap-1
+  `relatorio`, nota 70 com resposta certa). Se o gabarito quer a opção, a pergunta diz "que opção".
+- **Duas lições que se cruzam na tela**: a 3306 sai `filtered mysql`; o dono leu "mysql" como fato e concluiu que
+  sabia o banco (fechamento, nota 60). Quando a saída junta dois conceitos da sala, a teoria diz numa frase como
+  ler os dois juntos.
+- **`minutos` de chute**: nmap-1 estimava 50 e levou 16. O tempo vem da leitura por persona ou do teste do dono.
+- **Testar no desktop do Kali**, não só pelo `docker compose exec`: o dono disse que algo "não funcionou no Kali
+  do Docker" na tarefa de arquivo (`-oA`/`grep`). Tarefa que usa pasta, arquivo ou ferramenta gráfica é conferida
+  como o aluno faz.
+- **Da plataforma, não do conteúdo** (registrar e avisar, não contornar na sala): a correção da transcrição já
+  mudou o sentido da fala ("não está segura" → "não prova que está segura"; "LojaServ" → "lab"), e o avaliador
+  desconta fato certo a mais (TTL na nmap-1 `motivo`).
+
+Relatórios completos: `secret/processo/cursos/<curso>/salas/<slug>/teste-dono.md`.
+
 ## Publicação e aprovação do dono (igual ao D8 e ao dia-âncora)
 
 As salas entram no banco só pelo comando `importar-salas <curso> [--sala <slug>]` da Api, na VM (dry-run antes;
