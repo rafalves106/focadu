@@ -1,3 +1,4 @@
+using Focadu.Domain.Rooms;
 using Focadu.Domain.Activities;
 using Focadu.Domain.AiUsage;
 using Focadu.Domain.Content;
@@ -97,6 +98,12 @@ public class FocaduDbContext : DbContext
 
     // Fase 103, Medicao de produto (aba Retencao do Painel de gestao).
     public DbSet<ScreenVisit> ScreenVisits => Set<ScreenVisit>();
+
+    // Fase 110: Salas práticas
+    public DbSet<Room> Rooms => Set<Room>();
+    public DbSet<RoomTask> RoomTasks => Set<RoomTask>();
+    public DbSet<RoomProgress> RoomProgresses => Set<RoomProgress>();
+    public DbSet<RoomTaskResult> RoomTaskResults => Set<RoomTaskResult>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -12,7 +12,7 @@ import { AgentAvatar } from './AgentAvatar';
 export function BottomBar({ data, menuOpen, onOpenMenu }: { data: ShellData; menuOpen: boolean; onOpenMenu: () => void }) {
   const { pathname, search } = useLocation();
   const active = activeDestination(pathname, search);
-  const links = shellLinks(data.courseId, data.firstDayDone);
+  const links = shellLinks(data.courseId, data.firstDayDone).filter((link) => !link.desktopOnly);
 
   return (
     <nav

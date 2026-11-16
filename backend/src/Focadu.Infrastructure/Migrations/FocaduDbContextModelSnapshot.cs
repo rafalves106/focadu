@@ -1096,6 +1096,236 @@ namespace Focadu.Infrastructure.Migrations
                     b.ToTable("Referrals", (string)null);
                 });
 
+            modelBuilder.Entity("Focadu.Domain.Rooms.Room", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentFolder")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("ContentHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Difficulty")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<int>("EstimatedMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FinalPrompt")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("FinalReferenceAnswer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("MachineLabel")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("integer");
+
+                    b.PrimitiveCollection<string[]>("Prerequisites")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("Scenario")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(600)
+                        .HasColumnType("character varying(600)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int?>("WeekNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId", "Slug")
+                        .IsUnique();
+
+                    b.ToTable("Rooms", (string)null);
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Rooms.RoomProgress", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("FinalAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<DateTime[]>("FinalAttempts")
+                        .IsRequired()
+                        .HasColumnType("timestamp with time zone[]");
+
+                    b.Property<string>("FinalCorrectedTranscript")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FinalImprovementPoints")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("FinalScore")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FinalTranscript")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("MachineOn")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomId");
+
+                    b.HasIndex("UserId", "RoomId")
+                        .IsUnique();
+
+                    b.ToTable("RoomProgresses", (string)null);
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Rooms.RoomTask", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AnswerFormat")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("ChainLabel")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("FlagHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.PrimitiveCollection<string[]>("Hints")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Theory")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("VoicePrompt")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("VoiceReferenceAnswer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomId");
+
+                    b.ToTable("RoomTasks", (string)null);
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Rooms.RoomTaskResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CorrectedTranscript")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("FlagSolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ImprovementPoints")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("RoomProgressId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Transcript")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("VoiceAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<DateTime[]>("VoiceAttempts")
+                        .IsRequired()
+                        .HasColumnType("timestamp with time zone[]");
+
+                    b.Property<int?>("VoiceScore")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomProgressId", "TaskId")
+                        .IsUnique();
+
+                    b.ToTable("RoomTaskResults", (string)null);
+                });
+
             modelBuilder.Entity("Focadu.Domain.Squads.Squad", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1972,6 +2202,48 @@ namespace Focadu.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Focadu.Domain.Rooms.Room", b =>
+                {
+                    b.HasOne("Focadu.Domain.Courses.Course", null)
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Rooms.RoomProgress", b =>
+                {
+                    b.HasOne("Focadu.Domain.Rooms.Room", null)
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Focadu.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Rooms.RoomTask", b =>
+                {
+                    b.HasOne("Focadu.Domain.Rooms.Room", null)
+                        .WithMany("Tasks")
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Rooms.RoomTaskResult", b =>
+                {
+                    b.HasOne("Focadu.Domain.Rooms.RoomProgress", null)
+                        .WithMany("Results")
+                        .HasForeignKey("RoomProgressId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Focadu.Domain.Squads.Squad", b =>
                 {
                     b.HasOne("Focadu.Domain.Users.User", null)
@@ -2180,6 +2452,16 @@ namespace Focadu.Infrastructure.Migrations
                     b.Navigation("CertificationCoverages");
 
                     b.Navigation("WeeklyTemplates");
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Rooms.Room", b =>
+                {
+                    b.Navigation("Tasks");
+                });
+
+            modelBuilder.Entity("Focadu.Domain.Rooms.RoomProgress", b =>
+                {
+                    b.Navigation("Results");
                 });
 
             modelBuilder.Entity("Focadu.Domain.Weeklies.Weekly", b =>

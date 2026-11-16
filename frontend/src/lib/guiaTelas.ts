@@ -31,6 +31,7 @@ export type GuideScreenKey =
   | 'ranking'
   | 'certificacoes'
   | 'caderninho'
+  | 'salas'
   | 'gestao';
 
 export interface GuideItem {
@@ -201,6 +202,17 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
       { title: 'Ranking do squad', text: 'Mesmo Score do ranking do curso, só entre vocês. Com mais de um curso, escolha qual ou "Todos".' },
     ],
   },
+  salas: {
+    title: 'Salas práticas',
+    focada: 'Sala é mão na massa: você ataca um alvo no Kali do seu computador e explica cada passo com a sua voz.',
+    items: [
+      { title: 'Como subir a máquina', text: 'Baixe a sala (.zip), descompacte e rode ./iniciar.sh no terminal, com o Docker Desktop aberto. Quando o desktop do Kali abrir em 127.0.0.1:6901, marque "Já subi a máquina". A Focadu não vê a sua máquina: quem marca é você.' },
+      { title: 'Desligar', text: 'Ctrl+C no terminal desliga tudo. Fechar o terminal também. Se esquecer, a sala desliga sozinha em 2 horas. O progresso fica salvo na Focadu.' },
+      { title: 'Tarefas e flags', text: 'Cada tarefa tem uma pergunta cuja resposta só aparece no alvo. Errar a flag não custa nada, e as dicas estão liberadas desde o começo, sem desconto.' },
+      { title: 'Sua voz em cada entrega', text: 'Com a flag certa, grave de 30 a 90 s contando o que fez, o que viu e por que funcionou. A próxima tarefa só abre depois desse áudio; nota baixa deixa seguir. No fim, um áudio curto de como você corrigiria as falhas.' },
+      { title: 'Sala-desafio', text: 'Sem passo a passo: cada elo da cadeia (reconhecimento, falha, acesso, escalada) tem a sua flag e o seu áudio. Abre depois das salas que ela usa.' },
+    ],
+  },
   loja: {
     title: 'Loja',
     focada: 'Gems viram roupa, agente. Só visual: nada aqui compra nota nem posição no ranking.',
@@ -346,6 +358,7 @@ export function guideScreenFor(pathname: string, search: string): GuideScreenKey
   if (pathname === '/loja') return 'loja';
   if (pathname === '/perfil') return 'perfil';
   if (pathname === '/squad') return 'squad';
+  if (pathname.startsWith('/salas')) return 'salas';
   if (pathname.startsWith('/gestao')) return 'gestao';
   if (pathname !== '/start') return null;
   const q = new URLSearchParams(search);

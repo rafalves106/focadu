@@ -27,6 +27,8 @@ import { OnboardingWelcomePage } from './routes/OnboardingWelcomePage';
 import { ProfileInterviewPage } from './routes/ProfileInterviewPage';
 import { ProfilePage } from './routes/ProfilePage';
 import { SquadPage } from './routes/SquadPage';
+import { RoomPage } from './routes/RoomPage';
+import { RoomsPage } from './routes/RoomsPage';
 import { ResetPasswordPage } from './routes/ResetPasswordPage';
 import { SplashPage } from './routes/SplashPage';
 import { StartRoute } from './routes/StartPage';
@@ -72,6 +74,9 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="perfil" element={<ProfilePage />} />
                 {/* Fase 72: o Squad saiu da aba do Perfil e virou o QG, tela propria. */}
                 <Route path="squad" element={<SquadPage />} />
+                {/* Fase 110: Salas práticas. */}
+                <Route path="salas" element={<RoomsPage />} />
+                <Route path="salas/:roomId" element={<RoomPage />} />
                 {/* Fase 18: /conquistas virou a aba "Conquistas" do Perfil - redirect em vez de
                     quebrar links/favoritos antigos (decisao documentada em docs/fase-18). */}
                 <Route path="conquistas" element={<Navigate to="/perfil?abrir=conquistas" replace />} />
