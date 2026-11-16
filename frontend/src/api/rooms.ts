@@ -19,6 +19,8 @@ export interface RoomSummary {
   tasksDone: number;
   status: RoomStatus;
   missingPrerequisites: string[];
+  /** Sala da semana ainda trancada: abre quando o aluno chegar nesta semana. */
+  opensWithWeek: number | null;
   averageScore: number | null;
 }
 
@@ -60,6 +62,7 @@ export interface RoomState {
   environmentFolder: string;
   locked: boolean;
   missingPrerequisites: string[];
+  opensWithWeek: number | null;
   machineOn: boolean;
   startedAt: string | null;
   tasks: RoomTask[];

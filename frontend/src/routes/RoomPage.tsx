@@ -11,7 +11,7 @@ import { Button, ButtonLink } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { FocadaLine } from '../components/ui/FocadaLine';
 import { classifyApiError } from '../lib/apiError';
-import { doneTasks, roomMinutes, roomSubtitle, scoresText, unit } from '../lib/roomText';
+import { doneTasks, lockedText, roomMinutes, roomSubtitle, scoresText, unit } from '../lib/roomText';
 import { useVoiceRecorder } from '../lib/useVoiceRecorder';
 
 /**
@@ -62,7 +62,7 @@ export function RoomPage() {
         <Breadcrumb parts={[courseName, { label: 'Salas', to: roomsLink }, room.title]} />
         <h1 className="text-lead text-primary md:text-titulo">{room.title}</h1>
         <Card kind="ambar" eyebrow="Sala trancada">
-          <p className="text-corpo text-primary">Essa sala abre depois de {room.missingPrerequisites.join(' e ')}.</p>
+          <p className="text-corpo text-primary">{lockedText(room)}.</p>
           <ButtonLink to={roomsLink} kind="secundario" className="self-start">
             Voltar pras salas
           </ButtonLink>

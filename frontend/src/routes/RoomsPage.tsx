@@ -11,7 +11,7 @@ import { Card } from '../components/ui/Card';
 import { Chip } from '../components/ui/Chip';
 import { FocadaLine } from '../components/ui/FocadaLine';
 import { pickCourse } from '../lib/courseChoice';
-import { kindMeta } from '../lib/roomText';
+import { kindMeta, lockedText } from '../lib/roomText';
 import type { DayNodeState } from '../lib/weekPath';
 
 const GROUPS: { kind: RoomSummary['kind']; title: string; prefix: string }[] = [
@@ -142,7 +142,7 @@ function RoomRow({ room, label, number, highlight }: { room: RoomSummary; label:
           )}
           {room.status === 'Completed' && <Chip tone="verde">Concluída · nota {room.averageScore}</Chip>}
         </div>
-        {locked && <p className="text-pequeno text-project">Abre depois de {room.missingPrerequisites.join(' e ')}</p>}
+        {locked && <p className="text-pequeno text-project">{lockedText(room)}</p>}
       </div>
       <div className="hidden w-60 shrink-0 justify-end md:flex">
         {action && (
