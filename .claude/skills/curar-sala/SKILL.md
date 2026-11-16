@@ -148,9 +148,10 @@ Cada uma passou pelo linter e pela revisão e só apareceu quando o dono fez a s
   sabia o banco (fechamento, nota 60). Quando a saída junta dois conceitos da sala, a teoria diz numa frase como
   ler os dois juntos.
 - **`minutos` de chute**: nmap-1 estimava 50 e levou 16. O tempo vem da leitura por persona ou do teste do dono.
-- **Testar no desktop do Kali**, não só pelo `docker compose exec`: o dono disse que algo "não funcionou no Kali
-  do Docker" na tarefa de arquivo (`-oA`/`grep`). Tarefa que usa pasta, arquivo ou ferramenta gráfica é conferida
-  como o aluno faz.
+- **Comando que "não funciona" para quem nunca usou**: na nmap-1 o dono achou que o `grep` não funcionou. O `grep`
+  devolve a linha inteira (no `.gnmap` o host todo é uma linha, então parece que nada foi filtrado) e diferencia
+  maiúscula de minúscula (`ports` ≠ `Ports`). Todo comando novo da sala ganha, na teoria, o que ele mostra e a
+  pegadinha mais comum. A leitura por persona roda os comandos com variações de quem erra (minúscula, sem extensão).
 - **Da plataforma, não do conteúdo** (registrar e avisar, não contornar na sala): a correção da transcrição já
   mudou o sentido da fala ("não está segura" → "não prova que está segura"; "LojaServ" → "lab"), e o avaliador
   desconta fato certo a mais (TTL na nmap-1 `motivo`).
