@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Atalho do curar-salas-auto.sh.  Uso:  ./curar-sala nmap            (web-security, só a sala nmap)
+#                                       ./curar-sala                 (todas com ficha aprovada)
+#                                       CURSO=linux ./curar-sala systemd
+exec "$(dirname "$0")/secret/processo/scripts/curar-salas-auto.sh" "${CURSO:-web-security}" "$@"
