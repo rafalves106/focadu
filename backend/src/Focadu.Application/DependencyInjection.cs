@@ -135,6 +135,15 @@ public static class DependencyInjection
         services.AddScoped<ReviewDailyNotesUseCase>();
         services.AddScoped<ListNotesReviewsUseCase>();
         services.AddScoped<ListNoteTagsUseCase>();
+        // Fase 110: Salas práticas
+        services.AddScoped<Focadu.Application.Rooms.RoomAccess>();
+        services.AddScoped<Focadu.Application.Rooms.ListRoomsUseCase>();
+        services.AddScoped<Focadu.Application.Rooms.GetRoomStateUseCase>();
+        services.AddScoped<Focadu.Application.Rooms.SetRoomMachineUseCase>();
+        services.AddScoped<Focadu.Application.Rooms.SubmitRoomFlagUseCase>();
+        services.AddScoped<Focadu.Application.Rooms.SubmitRoomVoiceUseCase>();
+        services.AddScoped<Focadu.Application.Rooms.GetRoomEnvironmentUseCase>();
+        services.AddScoped<Focadu.Application.Rooms.ImportRoomsUseCase>();
         // Suporte Rapido de IA (Fase 32) - botao flutuante durante a sessao.
         services.AddScoped<AskStudyAssistantUseCase>();
         return services;

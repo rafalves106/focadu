@@ -54,7 +54,7 @@ import {
   type WeeklyTemplateDetailDto,
 } from './types';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5282';
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5282';
 
 // Fase 10: timeout padrao de 10s (sugerido no prompt) - alto o suficiente pra nao disparar em
 // requisicoes normais, baixo o suficiente pra nao deixar a TimeoutError demorar pra aparecer.

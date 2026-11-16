@@ -4,7 +4,7 @@ import navSquad from '../assets/pixel/nav-squad.png';
 import navTrilhas from '../assets/pixel/nav-trilhas.png';
 import { guideScreenFor } from './guiaTelas';
 
-export type ShellDestination = 'hoje' | 'trilha' | 'squad' | 'ranking';
+export type ShellDestination = 'hoje' | 'trilha' | 'salas' | 'squad' | 'ranking';
 
 export interface ShellLink {
   key: ShellDestination;
@@ -12,6 +12,8 @@ export interface ShellLink {
   to: string;
   /** Sprite 16x16 da barra inferior do celular (a nav do desktop é só rótulo). */
   icon: string;
+  /** Só na nav do computador (Salas: a sala roda no Docker do computador, Fase 110). */
+  desktopOnly?: boolean;
 }
 
 /**
@@ -24,6 +26,8 @@ export function shellLinks(courseId: string | null, firstDayDone: boolean): Shel
     { key: 'hoje', label: 'Hoje', to: '/start', icon: navHoje },
     { key: 'trilha', label: 'Trilha', to: courseId ? `/start?course=${courseId}` : '/start', icon: navTrilhas },
   ];
+  // Fase 110: Salas práticas, entre Trilha e Squad, só no computador (Figma 70:95).
+  if (courseId) links.push({ key: 'salas', label: 'Salas', to: `/salas?course=${courseId}`, icon: navTrilhas, desktopOnly: true });
   if (firstDayDone) {
     links.push({ key: 'squad', label: 'Squad', to: '/squad', icon: navSquad });
     links.push({ key: 'ranking', label: 'Ranking', to: courseId ? `/start?course=${courseId}&ranking=1` : '/start', icon: navRanking });
@@ -41,6 +45,8 @@ export function activeDestination(pathname: string, search: string): ShellDestin
     case 'semana':
     case 'projeto':
       return 'trilha';
+    case 'salas':
+      return 'salas';
     case 'squad':
       return 'squad';
     case 'ranking':

@@ -54,6 +54,8 @@ public static class DependencyInjection
         services.AddScoped<Persistence.Curriculum72Migration>();
         services.AddScoped<IMonthlyRepository, MonthlyRepository>();
         services.AddScoped<IWeeklyRepository, WeeklyRepository>();
+        services.AddScoped<IRoomRepository, RoomRepository>();
+        services.AddScoped<IRoomProgressRepository, RoomProgressRepository>();
         services.AddScoped<IWeeklyTemplateRepository, WeeklyTemplateRepository>();
         services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
         services.AddScoped<IUserRepository, UserRepository>();

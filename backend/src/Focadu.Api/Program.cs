@@ -323,6 +323,39 @@ if (args.Contains("importar"))
     return;
 }
 
+// Fase 110: `dotnet run --project src/Focadu.Api -- importar-salas <curso> [--sala <slug>] [--dry-run] [--confirmar]`: importa as
+// Salas práticas de conteudo/<curso>/salas/, separado do `importar` dos dias (decisão do dono). O curso já precisa existir.
+if (args.Contains("importar-salas"))
+{
+    var roomsIndex = Array.IndexOf(args, "importar-salas") + 1;
+    var roomsCourse = roomsIndex < args.Length && !args[roomsIndex].StartsWith("--") ? args[roomsIndex] : null;
+    var onlyRoomIndex = Array.IndexOf(args, "--sala");
+    var onlyRoom = onlyRoomIndex >= 0 && onlyRoomIndex + 1 < args.Length ? args[onlyRoomIndex + 1] : null;
+    if (roomsCourse is null || (onlyRoomIndex >= 0 && onlyRoom is null))
+    {
+        Console.Error.WriteLine("uso: importar-salas <curso> [--sala <slug>] [--dry-run] [--confirmar]");
+        Environment.ExitCode = 2;
+        return;
+    }
+
+    using var roomsScope = app.Services.CreateScope();
+    var roomsReport = await roomsScope.ServiceProvider.GetRequiredService<Focadu.Application.Rooms.ImportRoomsUseCase>()
+        .ExecuteAsync(roomsCourse, new Focadu.Application.Rooms.ImportRoomsOptions(onlyRoom, args.Contains("--dry-run"), args.Contains("--confirmar")));
+
+    Console.WriteLine($"Importar salas de '{roomsReport.CourseName}'{(roomsReport.DryRun ? " (dry-run: nada foi gravado)" : "")}");
+    if (roomsReport.Rooms.Count == 0)
+        Console.WriteLine("  Nenhuma sala encontrada em conteudo/<curso>/salas/.");
+    foreach (var room in roomsReport.Rooms)
+    {
+        Console.WriteLine($"  Sala {room.Slug}: {room.Status} - {room.Detail}");
+        foreach (var error in room.Errors ?? [])
+            Console.WriteLine($"      {error}");
+    }
+    if (roomsReport.Rooms.Any(r => r.Status is ImportStatus.Rejected or ImportStatus.NeedsConfirmation))
+        Environment.ExitCode = 1;
+    return;
+}
+
 // `dotnet run --project src/Focadu.Api -- resetar-usuarios --manter <email> [--confirmar --backup-feito]`: apaga todos os
 // usuarios menos o do dono e zera o progresso dele (plano de curadoria, 02/10/2026). DESTRUTIVO: sem --confirmar e dry-run
 // (so conta); apagar de verdade exige --confirmar e --backup-feito. Rodar primeiro em banco local, depois em producao.
@@ -1297,6 +1330,61 @@ api.MapGet("/courses/{courseId}/notes/reviews", async (ClaimsPrincipal principal
         Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), RouteParsing.RequireGuid(courseId, "courseId"), ct)))
     .RequireAuthorization()
     .WithName("ListNotesReviews");
+
+// Fase 110: Salas práticas (rascunho secret/produto/rascunhos/salas-praticas.md). O ambiente roda na máquina do aluno; aqui
+// só a lista, o estado, a marcação da máquina, a conferência da flag (hash no servidor) e os áudios avaliados por IA.
+api.MapGet("/courses/{courseId}/rooms", async (ClaimsPrincipal principal, string courseId, Focadu.Application.Rooms.ListRoomsUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), RouteParsing.RequireGuid(courseId, "courseId"), ct)))
+    .RequireAuthorization()
+    .WithName("ListRooms");
+
+api.MapGet("/rooms/{roomId}", async (ClaimsPrincipal principal, string roomId, Focadu.Application.Rooms.GetRoomStateUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), RouteParsing.RequireGuid(roomId, "roomId"), ct)))
+    .RequireAuthorization()
+    .WithName("GetRoomState");
+
+api.MapPut("/rooms/{roomId}/machine", async (ClaimsPrincipal principal, string roomId, SetRoomMachineRequest? request, Focadu.Application.Rooms.SetRoomMachineUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), RouteParsing.RequireGuid(roomId, "roomId"), request?.On ?? false, ct)))
+    .RequireAuthorization()
+    .WithName("SetRoomMachine");
+
+api.MapPost("/rooms/{roomId}/tasks/{taskId}/flag", async (ClaimsPrincipal principal, string roomId, string taskId, SubmitRoomFlagRequest? request, Focadu.Application.Rooms.SubmitRoomFlagUseCase useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.ExecuteAsync(
+            CurrentUserId(principal), RouteParsing.RequireGuid(roomId, "roomId"), RouteParsing.RequireGuid(taskId, "taskId"), request?.Answer, ct)))
+    .RequireAuthorization()
+    .WithName("SubmitRoomFlag");
+
+// Áudio de uma entrega (com taskId) ou do fechamento "como eu corrigiria" (rota /final). Multipart, como o resumo falado.
+api.MapPost("/rooms/{roomId}/tasks/{taskId}/voice",
+        async (ClaimsPrincipal principal, string roomId, string taskId, IFormFile? audio, Focadu.Application.Rooms.SubmitRoomVoiceUseCase useCase, CancellationToken ct) =>
+        {
+            if (audio is null) throw new ValidationException("audio_obrigatorio", "O arquivo de audio e obrigatorio.");
+            await using var stream = audio.OpenReadStream();
+            return Results.Ok(await useCase.ExecuteAsync(
+                CurrentUserId(principal), RouteParsing.RequireGuid(roomId, "roomId"), RouteParsing.RequireGuid(taskId, "taskId"), stream, audio.Length, ct));
+        })
+    .RequireAuthorization()
+    .WithName("SubmitRoomTaskVoice")
+    .DisableAntiforgery();
+
+api.MapPost("/rooms/{roomId}/final/voice",
+        async (ClaimsPrincipal principal, string roomId, IFormFile? audio, Focadu.Application.Rooms.SubmitRoomVoiceUseCase useCase, CancellationToken ct) =>
+        {
+            if (audio is null) throw new ValidationException("audio_obrigatorio", "O arquivo de audio e obrigatorio.");
+            await using var stream = audio.OpenReadStream();
+            return Results.Ok(await useCase.ExecuteAsync(CurrentUserId(principal), RouteParsing.RequireGuid(roomId, "roomId"), null, stream, audio.Length, ct));
+        })
+    .RequireAuthorization()
+    .WithName("SubmitRoomFinalVoice")
+    .DisableAntiforgery();
+
+api.MapGet("/rooms/{roomId}/environment", async (ClaimsPrincipal principal, string roomId, Focadu.Application.Rooms.GetRoomEnvironmentUseCase useCase, CancellationToken ct) =>
+    {
+        var (fileName, content) = await useCase.ExecuteAsync(CurrentUserId(principal), RouteParsing.RequireGuid(roomId, "roomId"), ct);
+        return Results.File(content, "application/zip", fileName);
+    })
+    .RequireAuthorization()
+    .WithName("DownloadRoomEnvironment");
 
 // --- Suporte Rapido de IA (Fase 32) -----------------------------------------------------------
 // Botao flutuante durante a sessao (ver secret/rascunhos/visual-ui-ux.md) - pergunta avulsa, sem
