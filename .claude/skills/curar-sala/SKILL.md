@@ -33,6 +33,7 @@ Leia a linha da sala no `estado.md`, o `molde/sala.md` e, se for sala de semana,
 # Ficha da sala — <curso>: <Título>
 slug: <slug>   tipo: semana|ferramenta|desafio   semana: N (só tipo semana)   ordem: N   pré-requisitos: [slugs]
 dificuldade: Fácil|Média|Difícil   minutos: N   máquina: "Kali + <alvo>"
+nível: <da primeira tarefa> → <da última>   (régua de níveis do molde/sala.md, pelo ponto do curso em que a sala abre)
 
 ## Ganchos de entrevista
 Perguntas que o aluno precisa responder de boca no fim (cada uma vira tarefa ou áudio de tarefa).
@@ -44,7 +45,7 @@ Perguntas que o aluno precisa responder de boca no fim (cada uma vira tarefa ou 
 O que roda no alvo (serviços, portas, rotas, versões, arquivos) e por que cada coisa existe.
 
 ## Tarefas
-| chave | o que o aluno faz | comando esperado | flag (de onde sai) | gancho coberto |
+| chave | nível | o que o aluno faz | comando esperado | flag (de onde sai) | gancho coberto |
 
 ## Fechamento
 A pergunta e os pontos que o gabarito precisa cobrir.
@@ -82,6 +83,8 @@ Leia `molde/sala.md`, a ficha, o `sala.json`, o `compose.yml`, os arquivos do al
 - Cada gancho de entrevista da ficha está numa tarefa ou num áudio, e o gabarito responde certo.
 - Cada flag sai do alvo (confira no `teste.log`), não da teoria. Formato sem ambiguidade.
 - Proporção: teoria de 2 a 4 frases por tarefa; nada que entregue a flag na teoria ou na dica 1.
+- Nível de cada tarefa igual ao da ficha: nível 1 com `Faça:`/`Olhe:` e comando completo (e o terminal do Kali
+  na primeira tarefa), nível 2 com `Ferramenta:`, níveis 3 e 4 sem bloco; a última tarefa acima da primeira.
 - Correção técnica de cada afirmação (opção da ferramenta, comportamento padrão, números).
 - Dicas em 3 níveis de verdade; áudio pede "o que rodou, o que viu, por quê".
 - Alvo sem comentário que entregue resposta; rede `internal`, `mem_limit`, nenhuma porta do alvo no host.
