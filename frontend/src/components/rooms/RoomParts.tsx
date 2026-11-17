@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import type { RoomState, RoomTask, RoomVoiceResult } from '../../api/rooms';
-import { clock, startCommands, taskMinutes, unit } from '../../lib/roomText';
+import { clock, detectStartSystem, startCommands, taskMinutes, unit, type StartSystem } from '../../lib/roomText';
 import type { RecorderPhase } from '../../lib/useVoiceRecorder';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -30,7 +30,9 @@ export function MachinePanel({
   onDownload: () => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const commands = startCommands(room);
+  const [system, setSystem] = useState<StartSystem>(detectStartSystem);
+  const commands = startCommands(room, system);
+  const prompt = system === 'windows' ? '>' : '$';
   const copy = () => {
     void navigator.clipboard?.writeText(commands.join('\n')).then(() => {
       setCopied(true);
@@ -52,13 +54,20 @@ export function MachinePanel({
       <div className="flex items-start justify-between gap-4 border-2 border-stroke-strong bg-surface-alt px-4 py-2">
         <div className="flex min-w-0 flex-col text-codigo text-primary">
           {commands.map((line) => (
-            <code key={line} className="break-words">$ {line}</code>
+            <code key={line} className="break-words">{prompt} {line}</code>
           ))}
         </div>
         <button type="button" onClick={copy} className={`shrink-0 ${linkStyle}`}>
           {copied ? 'Copiado' : 'Copiar'}
         </button>
       </div>
+      <button
+        type="button"
+        onClick={() => setSystem(system === 'windows' ? 'unix' : 'windows')}
+        className={`self-start ${linkStyle}`}
+      >
+        {system === 'windows' ? 'Está no macOS ou Linux? Ver os comandos do terminal' : 'Está no Windows? Ver os comandos do PowerShell'}
+      </button>
       {room.machineOn ? (
         <>
           <p className="text-pequeno text-secondary">Kali e alvo no ar na sua máquina.</p>
@@ -81,7 +90,7 @@ export function MachinePanel({
       ) : (
         <>
           <p className="text-pequeno text-secondary">
-            2. No terminal, rode os comandos acima. Quando o desktop do Kali abrir em 127.0.0.1:6901, marque aqui.
+            2. No terminal (no Windows, no PowerShell), rode os comandos acima. Quando o desktop do Kali abrir em 127.0.0.1:6901, marque aqui.
           </p>
           <Button kind="secundario" full loading={busy} onClick={() => onToggle(true)}>
             Já subi a máquina
