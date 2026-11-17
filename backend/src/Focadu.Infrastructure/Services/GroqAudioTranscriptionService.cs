@@ -81,6 +81,9 @@ public class GroqAudioTranscriptionService : IAudioTranscriptionService
         // Fase 94: verbose_json traz "duration" (segundos de audio), que a Medicao de IA usa pra estimar o custo.
         // O campo "text" continua igual.
         content.Add(new StringContent("verbose_json"), "response_format");
+        // Todo curso e falado em portugues. Sem isso o Whisper detecta o idioma sozinho e, num audio quase mudo,
+        // "ouve" ingles: em 17/11/2026 uma gravacao de 15 s virou so "you" e levou nota 0.
+        content.Add(new StringContent("pt"), "language");
 
         var response = await _httpClient.PostAsync("audio/transcriptions", content, cancellationToken);
         await HttpRetry.EnsureSuccessAsync(response, cancellationToken);
@@ -97,8 +100,39 @@ public class GroqAudioTranscriptionService : IAudioTranscriptionService
                 "transcricao_vazia", "A transcricao do audio veio vazia - tente gravar novamente.");
         }
 
+        // Audio sem fala (microfone errado ou mudo): o Whisper inventa uma frase curta ("you", "Obrigado.") em vez de
+        // devolver vazio. Avaliar isso da nota 0 por algo que o aluno nao disse - melhor pedir pra gravar de novo.
+        // Nao entra no retry: o mesmo audio daria o mesmo resultado.
+        if (IsNoSpeech(text, result?.Segments))
+        {
+            throw new ValidationException(
+                "voz_nao_detectada",
+                "Não deu pra ouvir a sua voz nessa gravação. Confira se o microfone certo está selecionado e grave de novo.");
+        }
+
         return new AudioTranscript(text, result?.Duration ?? 0);
     }
 
-    private record GroqTranscriptionResponse(string? Text, double? Duration);
+    /// <summary>Frases que o Whisper costuma inventar em audio mudo, comparadas com o texto inteiro (sem pontuacao).</summary>
+    private static readonly HashSet<string> HallucinatedPhrases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "you", "thank you", "thanks for watching", "bye", "obrigado", "obrigada", "tchau",
+        "legendas pela comunidade amaraorg", "hum",
+    };
+
+    /// <summary>
+    /// Sem fala: todo segmento com no_speech_prob alto, ou o texto inteiro e uma das frases inventadas de sempre.
+    /// </summary>
+    internal static bool IsNoSpeech(string text, IReadOnlyList<GroqSegment>? segments)
+    {
+        if (segments is { Count: > 0 } && segments.All(s => s.NoSpeechProb >= 0.6)) return true;
+        var normalized = new string(text.Where(c => char.IsLetter(c) || char.IsWhiteSpace(c)).ToArray());
+        normalized = string.Join(' ', normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        return HallucinatedPhrases.Contains(normalized);
+    }
+
+    internal record GroqSegment(
+        [property: System.Text.Json.Serialization.JsonPropertyName("no_speech_prob")] double NoSpeechProb);
+
+    private record GroqTranscriptionResponse(string? Text, double? Duration, List<GroqSegment>? Segments);
 }
