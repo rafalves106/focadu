@@ -56,6 +56,12 @@ public class ImportCuratedDaysUseCase
             : await _courseRepository.GetFullTemplateGraphAsync(existing.Id, cancellationToken)
                 ?? throw new InvalidOperationException("Curso sumiu entre as duas leituras.");
 
+        // Fase 111: formato de estudo (Daily / Sessions) do curso.json, reaplicado a cada importacao.
+        var studyFormatChanged = !courseCreated && !options.DryRun
+            ? CuratedCourseImporter.ApplyStudyFormat(course, manifest)
+            : !courseCreated && (course.StudyFormat != CuratedCourseImporter.ParseStudyFormat(manifest.Formato)
+                || (course.StudyFormat == StudyFormat.Sessions && course.SessionsPerDay != manifest.SessoesPorDia));
+
         var responsesByTemplate = courseCreated
             ? new Dictionary<Guid, int>()
             : await CountResponsesByTemplateAsync(course.Id, cancellationToken);
@@ -93,6 +99,14 @@ public class ImportCuratedDaysUseCase
                     if (fileDay != dayNumber)
                     {
                         outcomes.Add(new DayOutcome(dayNumber, ImportStatus.Rejected, $"o arquivo diz dayNumber {fileDay}"));
+                        continue;
+                    }
+
+                    // Fase 111: salaDaSessao precisa apontar para uma sala que existe em conteudo/<curso>/salas/.
+                    if (CuratedDayImporter.PeekSessionRoom(json) is { } sessionRoom
+                        && CuratedContentLocator.Resolve(courseSlug, $"salas/{sessionRoom}", "sala.json", required: false) is null)
+                    {
+                        outcomes.Add(new DayOutcome(dayNumber, ImportStatus.Rejected, $"salaDaSessao \"{sessionRoom}\" nao existe em conteudo/{courseSlug}/salas/"));
                         continue;
                     }
 
@@ -175,7 +189,7 @@ public class ImportCuratedDaysUseCase
         var dailiesAdded = 0;
         var dailiesReset = 0;
         var skipped = new List<string>();
-        if (!options.DryRun && (created.Count > 0 || replaced.Count > 0 || courseCreated || projectChanged))
+        if (!options.DryRun && (created.Count > 0 || replaced.Count > 0 || courseCreated || projectChanged || studyFormatChanged))
         {
             if (manifest.Published && course.CanAutoPublish && outcomes.Any(o => o.Status is ImportStatus.Created or ImportStatus.Updated))
                 course.Activate();
@@ -196,7 +210,8 @@ public class ImportCuratedDaysUseCase
         if (!options.DryRun && !courseCreated && await _enrollmentSync.BackfillMissingProjectsAsync(course.Id, cancellationToken) > 0)
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new ImportReport(manifest.Name, courseCreated, options.DryRun, outcomes, dailiesAdded, dailiesReset, skipped, projectOutcomes);
+        return new ImportReport(manifest.Name, courseCreated, options.DryRun, outcomes, dailiesAdded, dailiesReset, skipped, projectOutcomes,
+            studyFormatChanged ? $"formato de estudo: {CuratedCourseImporter.ParseStudyFormat(manifest.Formato)}{(manifest.SessoesPorDia is { } perDay ? $", {perDay} sessoes por dia" : "")}" : null);
     }
 
     private async Task<(ProjectOutcome Outcome, bool Changed)> ImportProjectAsync(
@@ -300,4 +315,4 @@ public record ProjectOutcome(int WeekNumber, ImportStatus Status, string Detail,
 
 public record ImportReport(
     string CourseName, bool CourseCreated, bool DryRun, IReadOnlyList<DayOutcome> Days, int DailiesAdded, int DailiesReset,
-    IReadOnlyList<string> Skipped, IReadOnlyList<ProjectOutcome>? Projects = null);
+    IReadOnlyList<string> Skipped, IReadOnlyList<ProjectOutcome>? Projects = null, string? StudyFormatChange = null);

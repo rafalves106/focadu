@@ -17,11 +17,13 @@ public class GetDailyStateUseCase
 {
     private readonly IWeeklyRepository _weeklyRepository;
     private readonly IClock _clock;
+    private readonly StudyContextResolver _study;
 
-    public GetDailyStateUseCase(IWeeklyRepository weeklyRepository, IClock clock)
+    public GetDailyStateUseCase(IWeeklyRepository weeklyRepository, IClock clock, StudyContextResolver study)
     {
         _weeklyRepository = weeklyRepository;
         _clock = clock;
+        _study = study;
     }
 
     public async Task<DailyStateDto> ExecuteAsync(Guid userId, Guid dailyId, CancellationToken cancellationToken = default)
@@ -31,10 +33,12 @@ public class GetDailyStateUseCase
 
         var allWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(weekly.EnrollmentId, cancellationToken);
         var daily = weekly.Dailies.First(d => d.Id == dailyId);
+        var today = _clock.Today();
+        var study = await _study.ResolveAsync(userId, allWeeklies, daily, cancellationToken);
         var accessMode = weekly.EvaluateDailyAccess(
-            dailyId, _clock.Today(), DailySequencing.IsNext(allWeeklies, dailyId),
-            DailySequencing.DailiesOfOtherWeeklies(allWeeklies, weekly));
+            dailyId, today, DailySequencing.IsNext(allWeeklies, dailyId),
+            DailySequencing.DailiesOfOtherWeeklies(allWeeklies, weekly), study);
 
-        return DailyStateMapper.ToDto(daily, accessMode);
+        return DailyStateMapper.ToDto(daily, accessMode) with { Session = SessionStudy.ToInfo(study, allWeeklies, today) };
     }
 }

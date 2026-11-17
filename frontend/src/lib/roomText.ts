@@ -12,8 +12,9 @@ export function roomSubtitle(room: RoomState): string {
   return `${kind} · ${room.difficulty} · ${duration(room.estimatedMinutes)}`;
 }
 
-/** Por que a sala está trancada: a semana dela ainda não chegou ou faltam salas antes. */
-export function lockedText(room: { opensWithWeek: number | null; missingPrerequisites: string[] }): string {
+/** Por que a sala está trancada: a sessão dela ainda não foi feita (Fase 111), a semana ainda não chegou ou faltam salas antes. */
+export function lockedText(room: { opensWithWeek: number | null; opensWithSession?: number | null; missingPrerequisites: string[] }): string {
+  if (room.opensWithSession != null) return `Abre quando você concluir a sessão do Dia ${room.opensWithSession}`;
   if (room.opensWithWeek !== null) return `Abre com a Semana ${room.opensWithWeek}`;
   return `Abre depois de ${room.missingPrerequisites.join(' e ')}`;
 }

@@ -21,6 +21,8 @@ export interface RoomSummary {
   missingPrerequisites: string[];
   /** Sala da semana ainda trancada: abre quando o aluno chegar nesta semana. */
   opensWithWeek: number | null;
+  /** Fase 111: sala da sessão (curso em sessões) ainda trancada - número do dia da sessão que a abre. */
+  opensWithSession?: number | null;
   averageScore: number | null;
 }
 
@@ -63,6 +65,8 @@ export interface RoomState {
   locked: boolean;
   missingPrerequisites: string[];
   opensWithWeek: number | null;
+  /** Fase 111: sala da sessão (curso em sessões) ainda trancada - número do dia da sessão que a abre. */
+  opensWithSession?: number | null;
   machineOn: boolean;
   startedAt: string | null;
   tasks: RoomTask[];

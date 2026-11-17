@@ -27,12 +27,14 @@ public class StartOrResumeDailyUseCase
     private readonly IWeeklyRepository _weeklyRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
+    private readonly StudyContextResolver _study;
 
-    public StartOrResumeDailyUseCase(IWeeklyRepository weeklyRepository, IUnitOfWork unitOfWork, IClock clock)
+    public StartOrResumeDailyUseCase(IWeeklyRepository weeklyRepository, IUnitOfWork unitOfWork, IClock clock, StudyContextResolver study)
     {
         _weeklyRepository = weeklyRepository;
         _unitOfWork = unitOfWork;
         _clock = clock;
+        _study = study;
     }
 
     public async Task<DailyStateDto> ExecuteAsync(Guid userId, Guid dailyId, CancellationToken cancellationToken = default)
@@ -65,10 +67,12 @@ public class StartOrResumeDailyUseCase
         var today = _clock.Today();
         var isNext = DailySequencing.IsNext(siblingWeeklies, dailyId);
         var otherWeekliesDailies = DailySequencing.DailiesOfOtherWeeklies(siblingWeeklies, weekly);
-        var daily = weekly.StartOrResumeDaily(dailyId, today, isNext, otherWeekliesDailies);
+        // Fase 111: curso em sessoes troca "1 por dia" pela cota de sessoes e pela sala da sessao anterior.
+        var study = await _study.ResolveAsync(userId, siblingWeeklies, weekly.Dailies.First(d => d.Id == dailyId), cancellationToken);
+        var daily = weekly.StartOrResumeDaily(dailyId, today, isNext, otherWeekliesDailies, study);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var accessMode = weekly.EvaluateDailyAccess(dailyId, today, isNext, otherWeekliesDailies);
-        return DailyStateMapper.ToDto(daily, accessMode);
+        var accessMode = weekly.EvaluateDailyAccess(dailyId, today, isNext, otherWeekliesDailies, study);
+        return DailyStateMapper.ToDto(daily, accessMode) with { Session = SessionStudy.ToInfo(study, siblingWeeklies, today) };
     }
 }

@@ -20,6 +20,7 @@ public class ApiExceptionHandler : IExceptionHandler
         ["daily_bloqueada"] = StatusCodes.Status400BadRequest,
         ["daily_em_andamento"] = StatusCodes.Status409Conflict,
         ["daily_limite_diario_atingido"] = StatusCodes.Status409Conflict,
+        ["sala_da_sessao_pendente"] = StatusCodes.Status409Conflict,
         ["daily_somente_leitura"] = StatusCodes.Status409Conflict,
         ["daily_ja_concluida"] = StatusCodes.Status409Conflict,
         ["daily_nao_iniciada"] = StatusCodes.Status409Conflict,

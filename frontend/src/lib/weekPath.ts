@@ -1,5 +1,5 @@
 import { DailyStatus, type CourseDetailDto, type WeeklyOverviewDto } from '../api/types';
-import { isWeekDailiesDone, pendingReinforcementOf, primaryDays } from './focadaMapLines';
+import { courseQuotaReachedToday, isWeekDailiesDone, pendingReinforcementOf, primaryDays } from './focadaMapLines';
 
 /** Variante do Nó de dia no Figma (`12:638`). */
 export type DayNodeState =
@@ -40,9 +40,9 @@ export function isDone(state: DayNodeState): boolean {
   return state === 'feito' || state === 'feito-reforco';
 }
 
-/** Algum Dia deste curso foi feito hoje: a cota é de um Dia por dia e por curso, o próximo abre amanhã. */
+/** A cota de hoje deste curso foi gasta (1 Dia; no curso em sessões, as N sessões, Fase 111): o próximo abre amanhã. */
 export function courseDoneToday(course: CourseDetailDto): boolean {
-  return course.monthlies.some((m) => m.weeklies.some((w) => primaryDays(w).some((d) => d.completedToday)));
+  return courseQuotaReachedToday(course);
 }
 
 /** Total de Dias do curso (sem reforço), pra "Dia 3 de 72". */

@@ -391,9 +391,14 @@ public class Weekly : Entity
     /// Dailies inteiras (relatado ao vivo: concluir a Daily 1 num dia so liberou calendarmente a
     /// Daily 4, deixando 2 e 3 presas em Locked pra sempre, sem nunca virar "a vez delas"). Agora
     /// a barreira e sempre sequencial (isNextInSequence), nunca mais calendario.
+    ///
+    /// Fase 111: <paramref name="study"/> diz o formato do curso. Null ou <see cref="StudyContext.Daily"/> = a regra
+    /// (c) de sempre, 1 por dia. Em <see cref="Courses.StudyFormat.Sessions"/>, (c) e trocada pelas
+    /// <see cref="SessionRules"/>: cota de N sessoes por dia e a sala da sessao anterior feita.
     /// </summary>
     public DailyAccessMode EvaluateDailyAccess(
-        Guid dailyId, DateOnly today, bool isNextInSequence, IEnumerable<Daily>? otherWeekliesDailies = null)
+        Guid dailyId, DateOnly today, bool isNextInSequence, IEnumerable<Daily>? otherWeekliesDailies = null,
+        StudyContext? study = null)
     {
         var target = _dailies.FirstOrDefault(d => d.Id == dailyId)
             ?? throw new DomainException("Daily nao encontrada nesta Weekly.", "daily_nao_encontrada");
@@ -439,7 +444,11 @@ public class Weekly : Entity
 
         // Reforco fica de fora da cota diaria nos dois sentidos (Fase 54: nao e barrado por ela;
         // Fase 55: a conclusao dele tambem nao a consome) - ver o comentario do metodo.
-        if (!target.IsReinforcement)
+        if (!target.IsReinforcement && study?.Format == Courses.StudyFormat.Sessions)
+        {
+            SessionRules.EnsureCanStart(enrollmentDailies, today, study);
+        }
+        else if (!target.IsReinforcement)
         {
             // CompletedAt e gravado em UTC (Daily.Complete), mas "today" chega em hora local (mesma
             // convencao de IClock.Today - ver SystemClock) - sem ToLocalTime aqui, a comparacao falha
@@ -461,9 +470,10 @@ public class Weekly : Entity
 
     /// <summary>Inicia, retoma ou reabre (replay) uma Daily desta Weekly, respeitando EvaluateDailyAccess.</summary>
     public Daily StartOrResumeDaily(
-        Guid dailyId, DateOnly today, bool isNextInSequence, IEnumerable<Daily>? otherWeekliesDailies = null)
+        Guid dailyId, DateOnly today, bool isNextInSequence, IEnumerable<Daily>? otherWeekliesDailies = null,
+        StudyContext? study = null)
     {
-        var mode = EvaluateDailyAccess(dailyId, today, isNextInSequence, otherWeekliesDailies);
+        var mode = EvaluateDailyAccess(dailyId, today, isNextInSequence, otherWeekliesDailies, study);
         var daily = _dailies.First(d => d.Id == dailyId);
 
         switch (mode)

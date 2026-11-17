@@ -300,6 +300,8 @@ if (args.Contains("importar"))
     var report = await importScope.ServiceProvider.GetRequiredService<ImportCuratedDaysUseCase>().ExecuteAsync(courseSlug, options);
 
     Console.WriteLine($"Importar '{report.CourseName}'{(report.DryRun ? " (dry-run: nada foi gravado)" : "")}{(report.CourseCreated ? " - curso novo" : "")}");
+    if (report.StudyFormatChange is { } studyFormatChange)
+        Console.WriteLine($"  curso: {studyFormatChange}{(report.DryRun ? " (mudaria)" : "")}");
     foreach (var day in report.Days)
     {
         Console.WriteLine($"  Dia {day.DayNumber}: {day.Status} - {day.Detail}");

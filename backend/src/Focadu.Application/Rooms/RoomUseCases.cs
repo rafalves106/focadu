@@ -19,37 +19,51 @@ public class RoomAccess
     private readonly IRoomProgressRepository _progresses;
     private readonly IEnrollmentRepository _enrollments;
     private readonly IWeeklyRepository _weeklies;
+    private readonly ICourseRepository _courses;
 
-    public RoomAccess(IRoomRepository rooms, IRoomProgressRepository progresses, IEnrollmentRepository enrollments, IWeeklyRepository weeklies)
+    public RoomAccess(
+        IRoomRepository rooms, IRoomProgressRepository progresses, IEnrollmentRepository enrollments, IWeeklyRepository weeklies,
+        ICourseRepository courses)
     {
         _rooms = rooms;
         _progresses = progresses;
         _enrollments = enrollments;
         _weeklies = weeklies;
+        _courses = courses;
     }
 
-    /// <summary>Confere a matrícula e devolve as semanas que o aluno já alcançou no curso (abrem as salas da semana).</summary>
-    public async Task<IReadOnlySet<int>> EnsureEnrolledAsync(Guid userId, Guid courseId, CancellationToken cancellationToken)
+    /// <summary>
+    /// Confere a matrícula e devolve o que abre as salas: as semanas que o aluno já alcançou (salas da semana) e, em
+    /// curso em sessões (Fase 111), a sessão de origem de cada sala de sessão.
+    /// </summary>
+    public async Task<RoomUnlocks> EnsureEnrolledAsync(Guid userId, Guid courseId, CancellationToken cancellationToken)
     {
         var enrollment = await _enrollments.GetByUserAndCourseAsync(userId, courseId, cancellationToken)
             ?? throw new NotFoundException("matricula_nao_encontrada", "Usuario nao esta matriculado neste curso.");
-        return RoomMapper.ReachedWeeks(await _weeklies.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken));
+        var weeklies = await _weeklies.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken);
+        var reached = RoomMapper.ReachedWeeks(weeklies);
+        var course = await _courses.GetByIdAsync(courseId, cancellationToken);
+        return course?.StudyFormat == Domain.Courses.StudyFormat.Sessions
+            ? new RoomUnlocks(reached, RoomMapper.SessionRooms(weeklies))
+            : RoomUnlocks.ByWeek(reached);
     }
 
     public async Task<RoomContext> LoadAsync(Guid userId, Guid roomId, CancellationToken cancellationToken)
     {
         var room = await _rooms.GetByIdAsync(roomId, cancellationToken)
             ?? throw new NotFoundException("sala_nao_encontrada", "Sala nao encontrada.");
-        var reachedWeeks = await EnsureEnrolledAsync(userId, room.CourseId, cancellationToken);
+        var unlocks = await EnsureEnrolledAsync(userId, room.CourseId, cancellationToken);
 
         var courseRooms = await _rooms.ListByCourseAsync(room.CourseId, cancellationToken);
         var progresses = await _progresses.ListByUserAsync(userId, courseRooms.Select(r => r.Id).ToList(), cancellationToken);
-        return new RoomContext(room, progresses.FirstOrDefault(p => p.RoomId == room.Id), RoomMapper.LockOf(room, courseRooms, progresses, reachedWeeks));
+        return new RoomContext(room, progresses.FirstOrDefault(p => p.RoomId == room.Id), RoomMapper.LockOf(room, courseRooms, progresses, unlocks));
     }
 
     /// <summary>Progresso pra escrever: recusa sala trancada e cria o progresso na primeira ação.</summary>
     public async Task<RoomProgress> StartOrGetAsync(Guid userId, RoomContext context, CancellationToken cancellationToken)
     {
+        if (context.Lock.OpensWithSession is { } session)
+            throw new DomainException($"Essa sala abre quando você concluir a sessão do Dia {session}.", "sala_trancada");
         if (context.Lock.OpensWithWeek is { } week)
             throw new DomainException($"Essa sala abre quando você chegar na Semana {week}.", "sala_trancada");
         if (context.Lock.MissingPrerequisites.Count > 0)
@@ -82,11 +96,11 @@ public class ListRoomsUseCase
 
     public async Task<IReadOnlyList<RoomSummaryDto>> ExecuteAsync(Guid userId, Guid courseId, CancellationToken cancellationToken = default)
     {
-        var reachedWeeks = await _access.EnsureEnrolledAsync(userId, courseId, cancellationToken);
+        var unlocks = await _access.EnsureEnrolledAsync(userId, courseId, cancellationToken);
         var rooms = await _rooms.ListByCourseAsync(courseId, cancellationToken);
         var progresses = await _progresses.ListByUserAsync(userId, rooms.Select(r => r.Id).ToList(), cancellationToken);
         return rooms
-            .Select(r => RoomMapper.ToSummary(r, progresses.FirstOrDefault(p => p.RoomId == r.Id), RoomMapper.LockOf(r, rooms, progresses, reachedWeeks)))
+            .Select(r => RoomMapper.ToSummary(r, progresses.FirstOrDefault(p => p.RoomId == r.Id), RoomMapper.LockOf(r, rooms, progresses, unlocks)))
             .ToList();
     }
 }

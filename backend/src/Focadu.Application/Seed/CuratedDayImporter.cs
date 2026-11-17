@@ -68,6 +68,9 @@ public static class CuratedDayImporter
     }
 
     /// <summary>Le so o cabecalho do dia (numero e molde), sem aplicar nada.</summary>
+    /// <summary>Fase 111: "salaDaSessao" do dia-N.json (molde D), ou nulo.</summary>
+    public static string? PeekSessionRoom(string json) => Parse(json).SalaDaSessao;
+
     public static (int DayNumber, string? MoldeVersion) Peek(string json)
     {
         var day = Parse(json);
@@ -112,6 +115,7 @@ public static class CuratedDayImporter
 
         dailyTemplate.SetCurationInfo(day.MoldeVersion, ComputeHash(json), day.Targets?.Select(x => new LearningTarget(x.Id, x.Text)));
         dailyTemplate.SetBridgeMark(day.Ponte);
+        dailyTemplate.SetSessionRoom(day.SalaDaSessao);
 
         var declaredTargets = day.Targets?.Select(x => x.Id).ToHashSet();
         for (var i = 0; i < day.Activities.Count; i++)
@@ -320,7 +324,7 @@ public static class CuratedDayImporter
 
     private record CuratedDayJson(
         int DayNumber, List<CuratedContentJson> CuratedContents, List<ActivityJson> Activities, LabJson? Lab = null,
-        string? MoldeVersion = null, List<TargetJson>? Targets = null, bool Ponte = false);
+        string? MoldeVersion = null, List<TargetJson>? Targets = null, bool Ponte = false, string? SalaDaSessao = null);
 
     private record TargetJson(string Id, string Text);
 

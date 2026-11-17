@@ -16,7 +16,10 @@ public record CourseDetailDto(
     CourseProgressDto Progress,
     IReadOnlyCollection<MonthlyOverviewDto> Monthlies,
     IReadOnlyCollection<DailyReinforcementSummaryDto> DailyReinforcements,
-    IReadOnlyCollection<WeeklyReinforcementSummaryDto> WeeklyReinforcements);
+    IReadOnlyCollection<WeeklyReinforcementSummaryDto> WeeklyReinforcements,
+    /// <summary>Fase 111: formato de estudo e sessoes por dia - a trilha so diz "por hoje acabou" quando a cota do curso foi gasta.</summary>
+    Domain.Courses.StudyFormat StudyFormat = Domain.Courses.StudyFormat.Daily,
+    int SessionsPerDay = 1);
 
 /// <summary>"Conclusao" do curso: quantas Dailies existem, quantas ja foram concluidas, quantas sao de reforco.</summary>
 public record CourseProgressDto(

@@ -168,6 +168,10 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
       { title: 'Feedback do dia', text: 'Depois de fechar o Dia, você dá uma nota de clareza de 1 a 5 e diz onde travou. Só a nota é obrigatória, e dá pra pular. Isso ajuda a melhorar o curso.' },
       { title: 'Teclado', text: 'Teclas 1 a N escolhem, Enter confirma.' },
       { title: 'Mais de um curso?', text: 'O Hoje pergunta qual curso estudar antes de abrir. Cada curso tem o seu Dia.' },
+      {
+        title: 'Curso em sessões',
+        text: 'Alguns cursos (como o WSTG) têm até 3 sessões por dia, cada uma seguida da sua sala prática. O topo mostra qual sessão de hoje é esta. A próxima sessão só abre com a sala da anterior feita: o Hoje avisa e leva direto pra sala.',
+      },
       { title: 'Tudo em dia', text: 'Se você fez todos os dias que o curso tem até agora, o Hoje mostra o resumo do que conquistou. Os próximos dias aparecem no Início quando saírem.' },
     ],
   },
@@ -211,6 +215,7 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
       { title: 'Tarefas e flags', text: 'Cada tarefa tem uma pergunta cuja resposta só aparece no alvo. Errar a flag não custa nada, e as dicas estão liberadas desde o começo, sem desconto.' },
       { title: 'Sua voz em cada entrega', text: 'Com a flag certa, grave de 30 a 90 s contando o que fez, o que viu e por que funcionou. A próxima tarefa só abre depois desse áudio; nota baixa deixa seguir. No fim, um áudio curto de como você corrigiria as falhas.' },
       { title: 'Sala-desafio', text: 'Sem passo a passo: cada elo da cadeia (reconhecimento, falha, acesso, escalada) tem a sua flag e o seu áudio. Abre depois das salas que ela usa.' },
+      { title: 'Sala da sessão', text: 'Em curso em sessões, cada sessão tem a sua sala: ela abre quando você conclui a sessão, e a sessão seguinte espera a sala ficar pronta.' },
     ],
   },
   loja: {
@@ -321,7 +326,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   { q: 'O que são gems e como eu ganho?', a: '+1 por Dia novo, +5 por semana perfeita, +30 por mês perfeito e +2 por reforço todo aprovado. Até 70 por mês. Não expiram e servem pra Loja.' },
   { q: 'Por que caí num reforço?', a: 'Porque errou 3 vezes no mesmo Dia antes de terminar. O reforço tem só o que você errou e não gasta o Dia novo de hoje.' },
-  { q: 'Posso fazer mais de um Dia por dia?', a: 'Não. Um Dia novo por dia, por curso. Rever um Dia já feito é livre e não mexe em nota.' },
+  { q: 'Posso fazer mais de um Dia por dia?', a: 'Não. Um Dia novo por dia, por curso. No curso em sessões, até 3 sessões por dia, com a sala entre elas. Rever um Dia já feito é livre e não mexe em nota.' },
   {
     q: 'O laboratório de código roda no servidor?',
     a: 'Não: roda no seu navegador, só no computador (no celular você lê o enunciado). Na primeira vez baixa de 10 a 25 MB, conforme o curso, e depois fica guardado. Só o código e a saída que você envia vão pra Focada conferir.',

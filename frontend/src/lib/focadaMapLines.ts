@@ -1,4 +1,4 @@
-import { DailyStatus, WeeklyProjectStatus, type CourseDetailDto, type DailyStatusSummaryDto, type WeeklyDetailDto, type WeeklyOverviewDto } from '../api/types';
+import { DailyStatus, StudyFormat, WeeklyProjectStatus, type CourseDetailDto, type DailyStatusSummaryDto, type WeeklyDetailDto, type WeeklyOverviewDto } from '../api/types';
 import type { FocadaLine } from './focadaLines';
 
 /**
@@ -47,6 +47,16 @@ export const PRACTICE_ONLY_MAP_LINES: Partial<Record<FocadaMapLineKey, string>> 
 };
 
 /** Dias "de verdade" da semana (sem os de reforco, que nao tem ponto no mapa), em ordem. */
+/**
+ * Fase 111: a cota de hoje do curso foi gasta - 1 Dia no formato Daily, `sessionsPerDay` sessões no formato Sessions.
+ * Antes disso, num curso em sessões, a trilha não diz "por hoje acabou".
+ */
+export function courseQuotaReachedToday(course: CourseDetailDto): boolean {
+  const done = course.monthlies.flatMap((m) => m.weeklies).flatMap((w) => primaryDays(w)).filter((d) => d.completedToday).length;
+  const perDay = course.studyFormat === StudyFormat.Sessions ? (course.sessionsPerDay ?? 1) : 1;
+  return done >= perDay;
+}
+
 export function primaryDays(week: WeeklyOverviewDto): DailyStatusSummaryDto[] {
   return week.days.filter((d) => !d.isReinforcement).sort((a, b) => a.dayNumber - b.dayNumber);
 }
@@ -142,7 +152,7 @@ export function buildFocadaMapLine(
   const inProgress = allDays.find(({ day }) => day.status === DailyStatus.InProgress);
   if (inProgress) return line('dailyEmAndamento', { dia: inProgress.day.dayNumber });
 
-  const doneToday = allDays.find(({ day }) => day.completedToday);
+  const doneToday = courseQuotaReachedToday(course) ? allDays.filter(({ day }) => day.completedToday).at(-1) : undefined;
   if (doneToday) return line('diaFeitoHoje', { dia: doneToday.day.dayNumber }, 'comemorando');
 
   if (!allDays.some(({ day }) => day.status === DailyStatus.Completed)) return line('primeiraVez');

@@ -47,4 +47,10 @@ public enum DailyAccessMode
     /// StartOrResumeDaily recusa com 409 "linguagem_nao_escolhida".
     /// </summary>
     NeedsProjectLanguage = 6,
+
+    /// <summary>
+    /// Fase 111 (curso em sessoes): a proxima sessao so comeca com a sala da sessao anterior feita. So vem do atalho
+    /// "/hoje" - o cliente mostra o aviso com o link pra sala. StartOrResumeDaily recusa com 409 "sala_da_sessao_pendente".
+    /// </summary>
+    SessionRoomPending = 7,
 }

@@ -44,6 +44,15 @@ public class DailyTemplate : Entity
 
     public IReadOnlyList<LearningTarget> Targets => LearningTarget.Parse(TargetsJson);
 
+    /// <summary>
+    /// Fase 111: slug da sala da sessao (dia-N.json "salaDaSessao", molde D). So tem efeito em curso
+    /// <see cref="Courses.StudyFormat.Sessions"/>: a sala abre quando esta sessao e concluida e a sessao seguinte so
+    /// comeca com ela feita (<see cref="Weeklies.SessionRules"/>). Nulo = sem sala (todo dia dos moldes A, B e C).
+    /// </summary>
+    public string? SessionRoomSlug { get; private set; }
+
+    public void SetSessionRoom(string? slug) => SessionRoomSlug = string.IsNullOrWhiteSpace(slug) ? null : slug.Trim();
+
     private readonly List<DailyActivity> _activities = new();
     public IReadOnlyCollection<DailyActivity> Activities => _activities.AsReadOnly();
 

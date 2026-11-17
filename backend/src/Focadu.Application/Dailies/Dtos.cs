@@ -27,7 +27,16 @@ public record DailyStateDto(
     IReadOnlyCollection<DailyActivityDto> Activities,
     Guid? PendingReinforcementDailyId = null,
     string? CodeRepositoryUrl = null,
-    LabConfigDto? Lab = null);
+    LabConfigDto? Lab = null,
+    SessionInfoDto? Session = null);
+
+/// <summary>
+/// Fase 111: curso em sessoes (StudyFormat.Sessions). Sessoes nao-reforco concluidas hoje, o limite do curso e a sala da
+/// sessao anterior que ainda falta (a tela mostra o aviso com o link). Nulo em curso Daily.
+/// </summary>
+public record SessionInfoDto(int CompletedToday, int PerDay, SessionRoomDto? PendingRoom);
+
+public record SessionRoomDto(Guid Id, string Slug, string Title);
 
 /// <summary>
 /// Fase 86: laboratorio de codigo do dia (nulo = dia sem laboratorio). FileContentIds sao os File do

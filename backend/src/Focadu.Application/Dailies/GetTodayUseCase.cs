@@ -28,12 +28,14 @@ public class GetTodayUseCase
     private readonly IEnrollmentRepository _enrollmentRepository;
     private readonly IWeeklyRepository _weeklyRepository;
     private readonly IClock _clock;
+    private readonly StudyContextResolver _study;
 
-    public GetTodayUseCase(IEnrollmentRepository enrollmentRepository, IWeeklyRepository weeklyRepository, IClock clock)
+    public GetTodayUseCase(IEnrollmentRepository enrollmentRepository, IWeeklyRepository weeklyRepository, IClock clock, StudyContextResolver study)
     {
         _enrollmentRepository = enrollmentRepository;
         _weeklyRepository = weeklyRepository;
         _clock = clock;
+        _study = study;
     }
 
     /// <param name="courseId">
@@ -103,12 +105,19 @@ public class GetTodayUseCase
                 with { PendingReinforcementDailyId = pendingReinforcementId };
         }
 
+        var study = await _study.ResolveAsync(userId, allWeeklies, target, cancellationToken);
         DailyAccessMode accessMode;
         try
         {
             accessMode = weekly.EvaluateDailyAccess(
                 target.Id, today, DailySequencing.IsNext(allWeeklies, target.Id),
-                DailySequencing.DailiesOfOtherWeeklies(allWeeklies, weekly));
+                DailySequencing.DailiesOfOtherWeeklies(allWeeklies, weekly), study);
+        }
+        catch (DomainException ex) when (ex.Code == "sala_da_sessao_pendente")
+        {
+            // Fase 111: curso em sessoes, a sala da sessao anterior falta. Estado pra descrever (o cliente mostra o
+            // link pra sala), como o limite diario logo abaixo.
+            accessMode = DailyAccessMode.SessionRoomPending;
         }
         catch (DomainException ex) when (ex.Code == "daily_limite_diario_atingido")
         {
@@ -127,7 +136,11 @@ public class GetTodayUseCase
             accessMode = DailyAccessMode.NeedsProjectLanguage;
         }
 
-        var dto = DailyStateMapper.ToDto(target, accessMode) with { PendingReinforcementDailyId = pendingReinforcementId };
+        var dto = DailyStateMapper.ToDto(target, accessMode) with
+        {
+            PendingReinforcementDailyId = pendingReinforcementId,
+            Session = SessionStudy.ToInfo(study, allWeeklies, today),
+        };
 
         // Fase 69: sem a linguagem escolhida, a Daily ainda aponta pra variante padrao da ponte -
         // as atividades dela nao sao as que o aluno vai fazer, entao nao vao na resposta.
