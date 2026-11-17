@@ -267,6 +267,14 @@ public class GetRoomEnvironmentUseCase
                 if (relative.EndsWith(".sh", StringComparison.Ordinal))
                     entry.ExternalAttributes = Convert.ToInt32("100755", 8) << 16;
             }
+
+            // Windows: o iniciar.sh nao roda no PowerShell; a sala leva o iniciar.ps1 padrao quando nao traz um proprio.
+            if (!File.Exists(Path.Combine(folder, WindowsStartScript.FileName)))
+            {
+                var entry = zip.CreateEntry($"{root}/{WindowsStartScript.FileName}", CompressionLevel.Optimal);
+                using var stream = entry.Open();
+                stream.Write(WindowsStartScript.Bytes());
+            }
         }
         return ($"{root}.zip", buffer.ToArray());
     }

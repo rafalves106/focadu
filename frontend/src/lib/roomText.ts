@@ -57,7 +57,30 @@ export function clock(seconds: number): string {
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-/** Comandos pra subir a sala depois de baixar o zip. */
-export function startCommands(room: Pick<RoomState, 'environmentFolder'>): string[] {
-  return [`unzip ${room.environmentFolder}.zip`, `cd ${room.environmentFolder}`, './iniciar.sh'];
+export type StartSystem = 'unix' | 'windows';
+
+/** Sistema do aluno, pra mostrar os comandos certos da sala (o aluno ainda pode trocar na tela). */
+export function detectStartSystem(): StartSystem {
+  if (typeof navigator === 'undefined') return 'unix';
+  const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+  const platform = nav.userAgentData?.platform ?? nav.platform ?? '';
+  return /win/i.test(platform) || /windows/i.test(nav.userAgent) ? 'windows' : 'unix';
+}
+
+/**
+ * Comandos pra subir a sala depois de baixar o zip. No Windows (PowerShell): o zip vai pra pasta Downloads, o
+ * Expand-Archive descompacta e o iniciar.ps1 roda com -ExecutionPolicy Bypass (o padrão do Windows bloqueia script
+ * baixado da internet).
+ */
+export function startCommands(room: Pick<RoomState, 'environmentFolder'>, system: StartSystem = 'unix'): string[] {
+  const folder = room.environmentFolder;
+  if (system === 'windows') {
+    return [
+      'cd $HOME\\Downloads',
+      `Expand-Archive ${folder}.zip -DestinationPath . -Force`,
+      `cd ${folder}`,
+      'powershell -ExecutionPolicy Bypass -File .\\iniciar.ps1',
+    ];
+  }
+  return [`unzip ${folder}.zip`, `cd ${folder}`, './iniciar.sh'];
 }
