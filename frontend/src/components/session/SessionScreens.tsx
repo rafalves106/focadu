@@ -3,7 +3,8 @@ import { Navigate } from 'react-router-dom';
 import { api, ApiError } from '../../api/client';
 import { PROJECT_LANGUAGE_NAMES, ProjectLanguageStep, WeeklyProjectStatus, type ProjectLanguage } from '../../api/types';
 import type { ApiFailure } from '../../lib/apiError';
-import { BLOCKED_TODAY, SESSION_DONE_LINE } from '../../lib/focadaSessionLines';
+import { BLOCKED_TODAY, BLOCKED_TODAY_SESSIONS, SESSION_DONE_LINE, SESSION_ROOM_PENDING } from '../../lib/focadaSessionLines';
+import { sessionCountLabel } from '../../lib/sessionCount';
 import { useSession } from '../../lib/sessionContext';
 import { useSessionKeys } from '../../lib/useSessionKeys';
 import { PendingReinforcementCard } from '../PendingReinforcementCard';
@@ -63,9 +64,11 @@ export function SessionDoneScreen({ onComplete, completing, onReview }: { onComp
 export function BlockedTodayScreen() {
   const { daily, weekly } = useSession();
   const countdown = useCountdownToMidnight();
+  // Fase 111: curso em sessões mostra a contagem ("3 de 3 sessões hoje") no lugar de "1 por dia".
+  const session = daily.session;
   return (
-    <SessionLayout label="Sessão de hoje" sub="1 por dia" showGauge={false} centered>
-      <FocadaLine>{BLOCKED_TODAY}</FocadaLine>
+    <SessionLayout label="Sessão de hoje" sub={session ? sessionCountLabel(session, 'feitas') : '1 por dia'} showGauge={false} centered>
+      <FocadaLine>{session ? BLOCKED_TODAY_SESSIONS.replace('{n}', String(session.perDay)) : BLOCKED_TODAY}</FocadaLine>
       <div className="flex w-fit items-center gap-3 border-2 border-stroke px-4 py-2.5">
         <span className="font-pixel-label text-[9px] text-secondary">Próxima sessão em</span>
         <span className="font-pixel text-3xl leading-none text-accent tabular-nums">{countdown}</span>
@@ -79,6 +82,31 @@ export function BlockedTodayScreen() {
           <ButtonLink to={`/start?course=${weekly.courseId}`}>Voltar pro mapa</ButtonLink>
         </SessionFooter>
       )}
+    </SessionLayout>
+  );
+}
+
+/**
+ * `DailyAccessMode.SessionRoomPending` (Fase 111): curso em sessões, a próxima sessão só abre com a sala da sessão
+ * anterior feita. Mesma casca e mesmos elementos da tela da cota (fala da Focada + rodapé com botões), sem elemento
+ * novo: o botão principal leva à sala.
+ */
+export function SessionRoomPendingScreen() {
+  const { daily, weekly } = useSession();
+  const session = daily.session;
+  const room = session?.pendingRoom;
+  return (
+    <SessionLayout label="Sala da sessão" sub={session ? sessionCountLabel(session, 'feitas') : ''} showGauge={false} centered>
+      <FocadaLine>{SESSION_ROOM_PENDING.replace('{sala}', room?.title ?? 'da sessão anterior')}</FocadaLine>
+      {daily.pendingReinforcementDailyId && <PendingReinforcementCard dailyId={daily.pendingReinforcementDailyId} />}
+      <SessionFooter>
+        {weekly && (
+          <ButtonLink kind="secundario" to={`/start?course=${weekly.courseId}`}>
+            Voltar pro mapa
+          </ButtonLink>
+        )}
+        <ButtonLink to={room ? `/salas/${room.id}` : '/salas'}>Ir para a sala</ButtonLink>
+      </SessionFooter>
     </SessionLayout>
   );
 }
@@ -246,7 +274,8 @@ export function BridgeLanguageScreen({ onChosen }: { onChosen: () => void }) {
 
 /** Textos (com acento) das recusas ao abrir uma Daily - o backend manda sem acento, fica de fallback. */
 const DAILY_REFUSAL_COPY: Record<string, string> = {
-  daily_limite_diario_atingido: 'Você já fez uma sessão hoje — o limite é 1 por dia. Amanhã tem mais, agente.',
+  daily_limite_diario_atingido: 'Você já fez as sessões de hoje — o limite é por dia. Amanhã tem mais, agente.',
+  sala_da_sessao_pendente: 'Falta a sala da sessão anterior. Faz ela em Salas e a próxima sessão abre.',
   daily_em_andamento: 'Você já tem uma sessão em andamento. Termina (ou retoma) aquela antes de começar outra.',
   projeto_semana_anterior_pendente: 'O projeto de uma semana anterior ainda não foi concluído. Entrega ele e espera a avaliação pra liberar esta semana.',
   modulo_bloqueado_por_publicacao: 'Uma semana anterior precisa de uma publicação validada antes de começar esta.',

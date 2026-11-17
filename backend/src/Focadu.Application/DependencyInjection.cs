@@ -58,6 +58,7 @@ public static class DependencyInjection
         services.AddScoped<GetPublicationStatusUseCase>();
         services.AddScoped<GetDailyStateUseCase>();
         services.AddScoped<GetTodayUseCase>();
+        services.AddScoped<StudyContextResolver>();
         services.AddScoped<StartOrResumeDailyUseCase>();
         services.AddScoped<SubmitActivityResponseUseCase>();
         services.AddScoped<SubmitVoiceSummaryResponseUseCase>();

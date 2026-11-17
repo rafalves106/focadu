@@ -26,6 +26,8 @@ public class DailyTemplateConfiguration : IEntityTypeConfiguration<DailyTemplate
         // Plano de curadoria (02/10/2026): molde, hash do arquivo curado e alvos de aprendizagem do dia.
         builder.Property(d => d.MoldeVersion).HasMaxLength(10);
         builder.Property(d => d.ContentHash).HasMaxLength(64);
+        // Fase 111: sala da sessao (dia.json "salaDaSessao", molde D).
+        builder.Property(d => d.SessionRoomSlug).HasMaxLength(100);
         builder.Property(d => d.TargetsJson);
         builder.Ignore(d => d.Targets);
 

@@ -1,7 +1,8 @@
 import { useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { ActivityStatus, ActivityType, type DailyActivityDto, type DailyStateDto } from '../api/types';
+import { ActivityStatus, ActivityType, DailyStatus, type DailyActivityDto, type DailyStateDto } from '../api/types';
+import { sessionCountLabel } from '../lib/sessionCount';
 import { SessionFooterContext, useSession } from '../lib/sessionContext';
 import { ACTIVITY_TITLE, sessionStages, sortedActivities, stepInfo, type StepInfo } from '../lib/sessionSteps';
 import { setStudyAssistantCodeBridge, setStudyAssistantContext, setStudyAssistantCourse } from '../lib/studyAssistantContext';
@@ -151,7 +152,9 @@ export function SessionLayout({
   const stageCount = sessionStages(daily).length;
   const stepCrumb = info ? `Etapa ${info.stageIndex + 1} de ${stageCount}` : null;
   const dayTitle = weekly?.dailies.find((d) => d.id === daily.id)?.title ?? null;
-  const dayCrumb = daily.isReinforcement ? `Reforço do Dia ${daily.dayNumber}` : `Dia ${daily.dayNumber}`;
+  // Fase 111: curso em sessões diz qual sessão de hoje é esta ("Dia 2 · Sessão 2 de 3 hoje"), só enquanto ela não foi concluída.
+  const sessionCrumb = daily.session && !daily.isReinforcement && daily.status !== DailyStatus.Completed ? ` · ${sessionCountLabel(daily.session, 'atual')}` : '';
+  const dayCrumb = daily.isReinforcement ? `Reforço do Dia ${daily.dayNumber}` : `Dia ${daily.dayNumber}${sessionCrumb}`;
   const title = heading?.title ?? (daily.isReinforcement ? `Reforço do Dia ${daily.dayNumber}` : (dayTitle ?? `Dia ${daily.dayNumber}`));
   const meta = heading ? (heading.meta ?? null) : info ? stageMeta(daily, info) : null;
   const eyebrow = sub ?? info?.sub ?? '';

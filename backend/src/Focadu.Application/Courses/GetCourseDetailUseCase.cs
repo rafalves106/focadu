@@ -127,6 +127,6 @@ public class GetCourseDetailUseCase
 
         return new CourseDetailDto(
             course.Id, course.Name, course.Status, progress,
-            monthlyDtos, dailyReinforcements, weeklyReinforcements);
+            monthlyDtos, dailyReinforcements, weeklyReinforcements, course.StudyFormat, course.SessionsPerDay);
     }
 }

@@ -99,5 +99,13 @@ export function completionLine(passedCount: number, total: number): string {
   return 'Dia no bolso! O que escapou hoje volta no reforço — é assim que fixa. Amanhã tem mais.';
 }
 
+/** Fase 111: curso em sessões, as N de hoje feitas. */
+export const BLOCKED_TODAY_SESSIONS =
+  'Por hoje acabou, agente: as {n} sessões de hoje estão feitas. O cérebro consolida dormindo. As de amanhã abrem à meia-noite.';
+
+/** Fase 111: curso em sessões, a próxima sessão espera a sala da anterior. */
+export const SESSION_ROOM_PENDING =
+  'Antes da próxima sessão, a prática: faz a sala "{sala}" no laboratório. Ela fecha o que a sessão anterior ensinou e destrava a próxima.';
+
 export const BLOCKED_TODAY =
   'Por hoje acabou, agente. Uma sessão por dia é de propósito: o cérebro consolida dormindo. A de amanhã abre à meia-noite.';

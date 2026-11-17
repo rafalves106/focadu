@@ -73,6 +73,14 @@ Weekly - uma Weekly sozinha nunca enxerga as irmas), retorna um `DailyAccessMode
   **Reforco fica de fora da cota diaria nos dois sentidos** (Fase 55): nao e barrado por ela e a
   conclusao dele tambem nao a consome - so conclusoes de Dailies originais (nao-reforco) contam
   pra "uma por dia". "Uma em andamento por vez" continua valendo pra ele.
+- **Fase 111 - curso em sessoes**: `Course.StudyFormat` (`Daily` padrao | `Sessions`, do curso.json
+  `"formato": "sessoes"`) e `Course.SessionsPerDay` (so em `Sessions`; wstg = 3). Quem chama passa um
+  `StudyContext` (montado por `StudyContextResolver`); so com `Sessions` a regra de "uma por dia" e trocada pelas
+  `SessionRules`: (1) a sala da sessao anterior (`DailyTemplate.SessionRoomSlug`, dia.json `"salaDaSessao"`) precisa
+  estar concluida, senao `sala_da_sessao_pendente` (409; "/hoje" traduz em `SessionRoomPending`), sala nao importada
+  nao trava; (2) cota de `SessionsPerDay` sessoes nao-reforco concluidas hoje, mesmo codigo
+  `daily_limite_diario_atingido`. Reforco e "uma em andamento" iguais. A sala da sessao abre quando a sessao de
+  origem e concluida (`RoomLock.OpensWithSession`), nao com a semana. Curso `Daily` nao muda.
 - **Fase 69 - ponte sem linguagem**: Daily original com variante de linguagem (a ponte) e projeto
   ainda sem linguagem -> `DomainException` `linguagem_nao_escolhida` (409), checado antes da cota
   diaria (escolher a linguagem nao gasta a cota). "/hoje" traduz em `NeedsProjectLanguage`.

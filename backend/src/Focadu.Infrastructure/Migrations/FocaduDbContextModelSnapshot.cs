@@ -620,6 +620,11 @@ namespace Focadu.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text[]");
 
+                    b.Property<int>("SessionsPerDay")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -627,6 +632,13 @@ namespace Focadu.Infrastructure.Migrations
 
                     b.Property<DateTime?>("StatusSetByAdminAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("StudyFormat")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Daily");
 
                     b.HasKey("Id");
 
@@ -712,6 +724,10 @@ namespace Focadu.Infrastructure.Migrations
                     b.Property<string>("MoldeVersion")
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
+
+                    b.Property<string>("SessionRoomSlug")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("TargetsJson")
                         .HasColumnType("text");

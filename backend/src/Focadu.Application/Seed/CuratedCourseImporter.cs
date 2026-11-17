@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Focadu.Domain.Courses;
 using Focadu.Domain.Dailies;
 using Focadu.Domain.Weeklies;
@@ -26,8 +27,23 @@ public static class CuratedCourseImporter
     {
         var course = new Course(manifest.Name);
         course.SetCatalogInfo(manifest.Description);
+        ApplyStudyFormat(course, manifest);
         return course;
     }
+
+    /// <summary>
+    /// Fase 111: formato de estudo do curso.json ("formato": "sessoes" e "sessoesPorDia"). Sem "formato" = Daily, o de
+    /// sempre. Reaplicado a cada passada do seed e do importador (o painel so mostra). Devolve true se mudou.
+    /// </summary>
+    public static bool ApplyStudyFormat(Course course, CourseManifest manifest) =>
+        course.SetStudyFormat(ParseStudyFormat(manifest.Formato), manifest.SessoesPorDia);
+
+    public static StudyFormat ParseStudyFormat(string? formato) => formato?.Trim().ToLowerInvariant() switch
+    {
+        null or "" or "daily" => StudyFormat.Daily,
+        "sessoes" => StudyFormat.Sessions,
+        _ => throw new InvalidOperationException($"curso.json: formato \"{formato}\" desconhecido (use \"sessoes\" ou deixe sem)."),
+    };
 
     /// <summary>
     /// Acrescenta ao curso os modulos, semanas e dias do manifesto que ainda nao estao nele. Um dia so
@@ -68,6 +84,7 @@ public static class CuratedCourseImporter
 
         if (manifest.Published && course.CanAutoPublish)
             course.Activate();
+        ApplyStudyFormat(course, manifest);
 
         return created;
     }
@@ -79,8 +96,12 @@ public record CreatedDay(WeeklyTemplate Week, DailyTemplate Day);
 /// <summary>Fase 81: secret/conteudo/&lt;slug&gt;/curso.json.</summary>
 /// <param name="Published">Falso enquanto a curadoria nao terminar: o curso fica fora do catalogo (Draft).</param>
 /// <param name="PracticeLanguage">Linguagem dos passos de codigo das pontes ("Bash", "Python").</param>
+/// <param name="Formato">Fase 111: "sessoes" (molde D: sessoes com a sala entre elas) ou ausente (Daily, 1 por dia).</param>
+/// <param name="SessoesPorDia">Fase 111: so com "formato": "sessoes" (wstg = 3).</param>
 public record CourseManifest(
-    string Name, string Description, string PracticeLanguage, bool Published, List<ModuleManifest> Modules);
+    string Name, string Description, string PracticeLanguage, bool Published, List<ModuleManifest> Modules,
+    [property: JsonPropertyName("formato")] string? Formato = null,
+    [property: JsonPropertyName("sessoesPorDia")] int? SessoesPorDia = null);
 
 public record ModuleManifest(int Number, string Title, List<WeekManifest> Weeks);
 

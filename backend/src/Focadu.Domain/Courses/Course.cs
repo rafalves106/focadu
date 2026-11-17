@@ -74,6 +74,31 @@ public class Course : Entity
     /// <summary>Usado por seed e importador: so publica sozinho se o admin nunca decidiu o status.</summary>
     public bool CanAutoPublish => Status == CourseStatus.Draft && StatusSetByAdminAt is null;
 
+    /// <summary>Fase 111: formato de estudo (curso.json "formato"). Daily = 1 por dia (padrao); Sessions = sessoes com a sala entre elas.</summary>
+    public StudyFormat StudyFormat { get; private set; } = StudyFormat.Daily;
+
+    /// <summary>Fase 111: sessoes por dia (curso.json "sessoesPorDia"). So vale em <see cref="StudyFormat.Sessions"/>; no formato Daily e sempre 1.</summary>
+    public int SessionsPerDay { get; private set; } = 1;
+
+    public const int MaxSessionsPerDay = 6;
+
+    /// <summary>
+    /// Fase 111: aplica o formato de estudo do curso.json (seed e importador, a cada passada). Sessions exige de 1 a
+    /// <see cref="MaxSessionsPerDay"/> sessoes por dia; Daily ignora o numero e fica em 1. Devolve true se mudou algo.
+    /// </summary>
+    public bool SetStudyFormat(StudyFormat format, int? sessionsPerDay)
+    {
+        var perDay = format == StudyFormat.Sessions
+            ? sessionsPerDay is >= 1 and <= MaxSessionsPerDay
+                ? sessionsPerDay.Value
+                : throw new DomainException($"Curso em sessoes precisa de 1 a {MaxSessionsPerDay} sessoes por dia.", "sessoes_por_dia_invalido")
+            : 1;
+        if (StudyFormat == format && SessionsPerDay == perDay) return false;
+        StudyFormat = format;
+        SessionsPerDay = perDay;
+        return true;
+    }
+
     private readonly List<Monthly> _monthlies = new();
     public IReadOnlyCollection<Monthly> Monthlies => _monthlies.AsReadOnly();
 

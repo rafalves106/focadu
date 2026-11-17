@@ -19,7 +19,8 @@ export type ActivityType = (typeof ActivityType)[keyof typeof ActivityType];
 
 // WeekPendingClosure (Fase 54): todas as Dailies da Weekly concluidas, falta o projeto (ou a publicacao) pra liberar a proxima - "/hoje" devolve a ultima Daily dessa Weekly com este modo.
 // NeedsProjectLanguage (Fase 69): a Daily de hoje e a ponte pro projeto (uma versao por linguagem) e a linguagem do projeto ainda nao foi escolhida - vem sem atividades.
-export const DailyAccessMode = { Start: 0, Resume: 1, Replay: 2, ReadOnly: 3, Blocked: 4, WeekPendingClosure: 5, NeedsProjectLanguage: 6 } as const;
+// SessionRoomPending (Fase 111): curso em sessoes, a proxima sessao so abre com a sala da sessao anterior feita - `session.pendingRoom` traz a sala.
+export const DailyAccessMode = { Start: 0, Resume: 1, Replay: 2, ReadOnly: 3, Blocked: 4, WeekPendingClosure: 5, NeedsProjectLanguage: 6, SessionRoomPending: 7 } as const;
 export type DailyAccessMode = (typeof DailyAccessMode)[keyof typeof DailyAccessMode];
 
 export const ActivityStatus = { Pending: 0, Completed: 1 } as const;
@@ -35,6 +36,10 @@ export const DailyStatus = { Locked: 0, Available: 1, InProgress: 2, Completed: 
 export type DailyStatus = (typeof DailyStatus)[keyof typeof DailyStatus];
 
 export const CourseStatus = { Draft: 0, Active: 1, Archived: 2 } as const;
+
+/** Fase 111: Daily = 1 por dia (padrao); Sessions = ate `sessionsPerDay` sessoes por dia, com a sala entre elas (molde D). */
+export const StudyFormat = { Daily: 0, Sessions: 1 } as const;
+export type StudyFormat = (typeof StudyFormat)[keyof typeof StudyFormat];
 export type CourseStatus = (typeof CourseStatus)[keyof typeof CourseStatus];
 export type CuratedContentType = 0 | 1 | 2; // Reading, Video, File (Fase 79: arquivo pra baixar, ex. ponte.pcap)
 
@@ -317,6 +322,20 @@ export interface DailyStateDto {
   codeRepositoryUrl?: string | null;
   /** Fase 86: laboratorio de codigo do dia - nulo/ausente = dia sem laboratorio. */
   lab?: LabConfigDto | null;
+  /** Fase 111: curso em sessoes - concluidas hoje, limite do curso e a sala da sessao anterior que falta. Nulo em curso Daily. */
+  session?: SessionInfoDto | null;
+}
+
+export interface SessionInfoDto {
+  completedToday: number;
+  perDay: number;
+  pendingRoom: SessionRoomDto | null;
+}
+
+export interface SessionRoomDto {
+  id: string;
+  slug: string;
+  title: string;
 }
 
 export interface SubmitActivityResponseResult {
@@ -458,6 +477,9 @@ export interface CourseDetailDto {
   monthlies: MonthlyOverviewDto[];
   dailyReinforcements: DailyReinforcementSummaryDto[];
   weeklyReinforcements: WeeklyReinforcementSummaryDto[];
+  /** Fase 111: ausente em resposta antiga = Daily. */
+  studyFormat?: StudyFormat;
+  sessionsPerDay?: number;
 }
 
 export interface DailyOverviewDto {

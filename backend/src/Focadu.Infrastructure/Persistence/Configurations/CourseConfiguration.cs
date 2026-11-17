@@ -22,6 +22,9 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
         // Fase 97: marca de edicao do catalogo pelo Painel (nula = vale o curso.json).
         builder.Property(c => c.CatalogEditedAt);
         builder.Property(c => c.StatusSetByAdminAt);
+        // Fase 111: formato de estudo (curso.json). Default no banco = o de sempre: Daily, 1 por dia.
+        builder.Property(c => c.StudyFormat).HasConversion<string>().HasMaxLength(20).IsRequired().HasDefaultValue(Focadu.Domain.Courses.StudyFormat.Daily);
+        builder.Property(c => c.SessionsPerDay).IsRequired().HasDefaultValue(1);
         builder.Ignore(c => c.CanAutoPublish);
         builder.Ignore(c => c.CatalogEditedByAdmin);
 

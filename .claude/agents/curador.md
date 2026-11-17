@@ -15,6 +15,7 @@ Antes de tudo, leia `.claude/skills/curar-conteudo/SKILL.md`: ele tem os portõe
 
 1. Portão: a ficha `secret/processo/cursos/<curso>/fichas/dia-N.ficha.md` existe e o `estado.md` do curso diz `ficha ok`. Sem isso, pare e diga.
 2. **D2:** leia **só** a saída de `node secret/processo/scripts/pacote-dia.mjs <curso> <dia> --etapa d2`. Não abra o glossário inteiro, o `PLANO-CURADORIA.md`, outros dias nem o `dia.schema.json`. Dia com bloco `lab`: pode abrir `secret/processo/scripts/lab/README.md` e ver só o campo `lab` de um dia anterior com `python3 -c`.
+2b. **Molde D:** o pacote do D2 traz o trecho do guia (seção `GUIA`). Ele é a fonte: cada linha da matriz de cobertura da ficha vira texto no bloco indicado, com os mesmos fatos e números do guia, em português e em leitura fácil. Não abra a página do guia por fora; se o trecho não veio, pare e diga.
 3. Todo comando, número e saída citados é executado de verdade (`debian:stable-slim` para Linux, `python:3.12-slim` para Python, `dotnet` para C#) e gravado em `secret/processo/cursos/<curso>/logs/dia-N.log`.
 4. **D5:** leia só a saída de `pacote-dia.mjs <curso> <dia> --etapa d5`. Ela não repete ficha, glossário nem regras do D2.
 5. Grave `secret/conteudo/<curso>/semana-S/dia-N.json` com **um `Write` completo**. Correção é `Edit` cirúrgico, nunca um gerador que reemite o dia.

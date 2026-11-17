@@ -25,6 +25,7 @@ import { DayFeedbackScreen } from '../components/session/DayFeedbackScreen';
 import { CompletionSummary } from '../components/CompletionSummary';
 import {
   BlockedTodayScreen,
+  SessionRoomPendingScreen,
   BridgeLanguageScreen,
   DailyRefusedScreen,
   SessionDoneScreen,
@@ -61,7 +62,12 @@ function resolveStep(daily: DailyStateDto, replayBaseline: ReplayBaseline): Step
 
 /** Modos em que "/hoje" nao tem sessao pra rodar - so um aviso (ver os dois avisos acima). */
 function isSessionBlockedMode(mode: DailyAccessMode) {
-  return mode === DailyAccessMode.Blocked || mode === DailyAccessMode.WeekPendingClosure || mode === DailyAccessMode.NeedsProjectLanguage;
+  return (
+    mode === DailyAccessMode.Blocked ||
+    mode === DailyAccessMode.WeekPendingClosure ||
+    mode === DailyAccessMode.NeedsProjectLanguage ||
+    mode === DailyAccessMode.SessionRoomPending
+  );
 }
 
 /**
@@ -251,6 +257,7 @@ export function TodayPage() {
   };
 
   if (daily.accessMode === DailyAccessMode.Blocked) return provide(<BlockedTodayScreen />);
+  if (daily.accessMode === DailyAccessMode.SessionRoomPending) return provide(<SessionRoomPendingScreen />);
   if (daily.accessMode === DailyAccessMode.WeekPendingClosure) return provide(<WeekClosureScreen />);
   if (daily.accessMode === DailyAccessMode.NeedsProjectLanguage) return provide(<BridgeLanguageScreen onChosen={() => setAttempt((n) => n + 1)} />);
   if (!step) return null;
