@@ -52,7 +52,13 @@ public class GroqContentEvaluationService : IContentEvaluationService
         "aluno já deixou clara antes - nesse caso o termo isolado quase certamente é ruído de " +
         "transcrição, mesmo sendo uma palavra tecnicamente válida, e deve ser corrigido para " +
         "manter a coerência com o resto da resposta. Não corrija quando a mesma confusão aparecer " +
-        "de forma consistente ao longo do texto (aí é erro real do aluno, não toque). Responda " +
+        "de forma consistente ao longo do texto (aí é erro real do aluno, não toque). " +
+        "Regras que valem acima de tudo: (1) NUNCA altere números, códigos, siglas de item, portas, versões ou " +
+        "identificadores (ex.: P3, T2, 8080, -sV) - se o aluno disse P3, fica P3, mesmo que a referência fale de outro " +
+        "item; (2) NUNCA troque uma palavra que faz sentido em português por outro termo só porque é o termo usado na " +
+        "referência (ex.: 'lista' não vira 'framework', 'segura' não vira 'insegura') - isso muda o que o aluno disse; " +
+        "(3) só corrija palavra que, como está, não faz sentido na frase e soa parecida com o termo certo (ex.: " +
+        "'discos reais' -> 'riscos reais', 'Wasp' -> 'OWASP'); (4) na dúvida, deixe como está. Responda " +
         "SEMPRE em JSON estrito, exatamente neste formato: {\"correctedTranscript\": " +
         "\"<transcrição revisada, ou idêntica à original se nada precisava de correção>\"}. Não " +
         "inclua nenhum texto fora desse JSON.";
@@ -217,7 +223,20 @@ public class GroqContentEvaluationService : IContentEvaluationService
     internal static string BuildDebriefUserPrompt(ContentEvaluationRequest request, string correctedTranscript) =>
         $"Pergunta feita ao aluno:\n{request.ContextText}\n\n" +
         $"Resposta correta de referência:\n\"\"\"\n{request.ExpectedAnswer}\n\"\"\"\n\n" +
-        $"Resposta do aluno (já transcrita e revisada):\n\"\"\"\n{correctedTranscript}\n\"\"\"";
+        $"Resposta do aluno (já transcrita e revisada):\n\"\"\"\n{correctedTranscript}\n\"\"\"" +
+        RawTranscriptNote(request.UserAnswer, correctedTranscript);
+
+    /// <summary>
+    /// A revisao da transcricao pode errar (em 17/11/2026 trocou o "P3" do aluno por "P1" e a nota cobrou o P1). Quando
+    /// ela mudou algo, a nota tambem ve a transcricao bruta e nunca cobra o aluno pelo que so aparece na revisao.
+    /// </summary>
+    internal static string RawTranscriptNote(string rawTranscript, string correctedTranscript) =>
+        string.Equals(rawTranscript.Trim(), correctedTranscript.Trim(), StringComparison.Ordinal)
+            ? string.Empty
+            : $"\n\nTranscrição bruta, antes da revisão automática:\n\"\"\"\n{rawTranscript}\n\"\"\"\n" +
+              "A revisão automática só deveria corrigir erro de reconhecimento de fala. Se ela mudou um número, código, " +
+              "item ou termo em relação à transcrição bruta, considere o que está na transcrição bruta: nunca cobre o aluno " +
+              "por algo que só aparece na versão revisada.";
 
     private static string BuildGradingUserPrompt(ContentEvaluationRequest request, string correctedTranscript)
     {
@@ -242,7 +261,8 @@ public class GroqContentEvaluationService : IContentEvaluationService
 
         return
             $"Conteúdo de referência que o aluno deveria ter estudado:\n\"\"\"\n{request.ExpectedAnswer}\n\"\"\"\n\n" +
-            $"Resumo falado pelo aluno (já transcrito e revisado):\n\"\"\"\n{correctedTranscript}\n\"\"\"\n\n" +
+            $"Resumo falado pelo aluno (já transcrito e revisado):\n\"\"\"\n{correctedTranscript}\n\"\"\"" +
+            RawTranscriptNote(request.UserAnswer, correctedTranscript) + "\n\n" +
             instruction +
             personalizationBlock +
             $"Avalie considerando: (1) se o conteúdo do resumo está correto e completo em relação " +
