@@ -16,7 +16,7 @@ import { EmptyStateStartPage } from './EmptyStateStartPage';
 import { primaryDays } from '../lib/focadaMapLines';
 import { buildStartState, startFocadaLine, studiedToday } from '../lib/startScreen';
 import { pickCourse, rememberCourse } from '../lib/courseChoice';
-import { courseDoneToday } from '../lib/weekPath';
+import { courseDoneToday, sessionsPathOptions } from '../lib/weekPath';
 
 interface HubData {
   /** Todos os cursos matriculados, com o detalhe (progresso, semanas, dias). */
@@ -83,8 +83,18 @@ export function StartDashboard() {
   const week = state?.week ?? null;
   const weekDays = week ? primaryDays(week) : [];
   // Último segmento do fio: o Dia de hoje, ou "Dia 3 feito" quando o Destaque já é a pendência seguinte.
+  // Fase 112: no curso em sessões, "Sessão 2" (a sessão do Destaque, ou a que espera a sala).
+  const unit = state?.sessions ? 'Sessão' : 'Dia';
   const dayCrumb =
-    state?.highlight.kind === 'dia' ? `Dia ${state.highlight.daily.dayNumber}` : state?.doneToday ? `Dia ${state.doneToday.dayNumber} feito` : null;
+    state?.highlight.kind === 'dia'
+      ? `${unit} ${state.highlight.daily.dayNumber}`
+      : state?.highlight.kind === 'sala'
+        ? state.highlight.next
+          ? `Sessão ${state.highlight.next.dayNumber}`
+          : null
+        : state?.doneToday
+          ? `${unit} ${state.doneToday.dayNumber} feit${state.sessions ? 'a' : 'o'}`
+          : null;
 
   function selectCourse(courseId: string) {
     rememberCourse(courseId);
@@ -114,7 +124,13 @@ export function StartDashboard() {
         ) : (
           <>
             <HighlightCard course={selectedCourse} state={state} streak={gamification.currentStreak} studied={studied} />
-            {week && <WeekPathCard week={week} courseId={selectedCourse.id} state={state} doneToday={courseDoneToday(selectedCourse)} />}
+            {week && <WeekPathCard
+                week={week}
+                courseId={selectedCourse.id}
+                state={state}
+                doneToday={courseDoneToday(selectedCourse)}
+                sessionsOptions={sessionsPathOptions(selectedCourse)}
+              />}
           </>
         )}
       </div>

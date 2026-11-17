@@ -31,6 +31,9 @@ export function MachinePanel({
 }) {
   const [copied, setCopied] = useState(false);
   const [system, setSystem] = useState<StartSystem>(detectStartSystem);
+  // Fase 112: com a máquina ligada os comandos recolhem, pro painel caber sem rolar junto do Progresso.
+  const [showCommands, setShowCommands] = useState(false);
+  const commandsOpen = !room.machineOn || showCommands;
   const commands = startCommands(room, system);
   const prompt = system === 'windows' ? '>' : '$';
   const copy = () => {
@@ -51,23 +54,27 @@ export function MachinePanel({
           1. Baixar a sala (.zip)
         </button>
       )}
-      <div className="flex items-start justify-between gap-4 border-2 border-stroke-strong bg-surface-alt px-4 py-2">
-        <div className="flex min-w-0 flex-col text-codigo text-primary">
-          {commands.map((line) => (
-            <code key={line} className="break-words">{prompt} {line}</code>
-          ))}
+      {commandsOpen && (
+        <>
+        <div className="flex items-start justify-between gap-4 border-2 border-stroke-strong bg-surface-alt px-4 py-2">
+          <div className="flex min-w-0 flex-col text-codigo text-primary">
+            {commands.map((line) => (
+              <code key={line} className="break-words">{prompt} {line}</code>
+            ))}
+          </div>
+          <button type="button" onClick={copy} className={`shrink-0 ${linkStyle}`}>
+            {copied ? 'Copiado' : 'Copiar'}
+          </button>
         </div>
-        <button type="button" onClick={copy} className={`shrink-0 ${linkStyle}`}>
-          {copied ? 'Copiado' : 'Copiar'}
+        <button
+          type="button"
+          onClick={() => setSystem(system === 'windows' ? 'unix' : 'windows')}
+          className={`self-start ${linkStyle}`}
+        >
+          {system === 'windows' ? 'Está no macOS ou Linux? Ver os comandos do terminal' : 'Está no Windows? Ver os comandos do PowerShell'}
         </button>
-      </div>
-      <button
-        type="button"
-        onClick={() => setSystem(system === 'windows' ? 'unix' : 'windows')}
-        className={`self-start ${linkStyle}`}
-      >
-        {system === 'windows' ? 'Está no macOS ou Linux? Ver os comandos do terminal' : 'Está no Windows? Ver os comandos do PowerShell'}
-      </button>
+        </>
+      )}
       {room.machineOn ? (
         <>
           <p className="text-pequeno text-secondary">Kali e alvo no ar na sua máquina.</p>
@@ -85,6 +92,11 @@ export function MachinePanel({
             <button type="button" disabled={busy} onClick={() => onToggle(false)} className={`self-start ${linkStyle}`}>
               A máquina caiu? Desmarcar
             </button>
+            {!showCommands && (
+              <button type="button" onClick={() => setShowCommands(true)} className={`self-start ${linkStyle}`}>
+                Ver os comandos de novo
+              </button>
+            )}
           </div>
         </>
       ) : (

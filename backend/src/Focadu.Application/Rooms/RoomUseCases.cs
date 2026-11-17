@@ -63,7 +63,7 @@ public class RoomAccess
     public async Task<RoomProgress> StartOrGetAsync(Guid userId, RoomContext context, CancellationToken cancellationToken)
     {
         if (context.Lock.OpensWithSession is { } session)
-            throw new DomainException($"Essa sala abre quando você concluir a sessão do Dia {session}.", "sala_trancada");
+            throw new DomainException($"Essa sala abre quando você concluir a Sessão {session}.", "sala_trancada");
         if (context.Lock.OpensWithWeek is { } week)
             throw new DomainException($"Essa sala abre quando você chegar na Semana {week}.", "sala_trancada");
         if (context.Lock.MissingPrerequisites.Count > 0)

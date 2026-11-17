@@ -23,6 +23,8 @@ export interface RoomSummary {
   opensWithWeek: number | null;
   /** Fase 111: sala da sessão (curso em sessões) ainda trancada - número do dia da sessão que a abre. */
   opensWithSession?: number | null;
+  /** Fase 112: sessao de origem da sala de sessao, trancada ou nao ("S2", "Sala da Sessão 2"). */
+  sessionNumber?: number | null;
   averageScore: number | null;
 }
 
@@ -67,6 +69,8 @@ export interface RoomState {
   opensWithWeek: number | null;
   /** Fase 111: sala da sessão (curso em sessões) ainda trancada - número do dia da sessão que a abre. */
   opensWithSession?: number | null;
+  /** Fase 112: sessao de origem da sala de sessao, trancada ou nao ("S2", "Sala da Sessão 2"). */
+  sessionNumber?: number | null;
   machineOn: boolean;
   startedAt: string | null;
   tasks: RoomTask[];

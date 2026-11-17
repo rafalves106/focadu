@@ -8,6 +8,7 @@ import {
   WeeklyProjectStatus,
   type CourseDetailDto,
   type DailyOverviewDto,
+  type DailySessionRoomDto,
   type WeeklyDetailDto,
   type WeeklyOverviewDto,
 } from '../api/types';
@@ -21,7 +22,8 @@ import { Card } from '../components/ui/Card';
 import { Chip } from '../components/ui/Chip';
 import { FocadaLine } from '../components/ui/FocadaLine';
 import { buildFocadaWeekLine, pendingReinforcementOf, primaryDays } from '../lib/focadaMapLines';
-import { courseDoneToday, projectLink, type DayNodeState, type PathNode } from '../lib/weekPath';
+import { isSessionsCourse } from '../lib/sessionCount';
+import { completedTodayCount, courseDoneToday, pendingSessionRoom, projectLink, type DayNodeState, type PathNode } from '../lib/weekPath';
 
 /**
  * Visão da semana (Fase 8; pixel art na Fase 74; redesign v1 na Fase 109, molde Lista, Figma `28:1242`,
@@ -48,16 +50,30 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
   const overview = index >= 0 ? allWeeks[index] : null;
   const hasNext = !course || index < allWeeks.length - 1;
   const cid = courseId ?? weekly.courseId;
-  const rows = dayRows(weekly, overview, course);
+  const sessions = isSessionsCourse(course);
+  // Fase 112: em sessões, a sala da sessão anterior (se faltar) é o Primário, na linha da sessão dona da sala.
+  const roomPending = course ? pendingSessionRoom(course) : null;
+  const rows = dayRows(weekly, overview, course, sessions, roomPending !== null);
   const project = weekly.isPracticeOnly ? null : projectRow(weekly, cid);
-  const current = rows.find((r) => r.node.state === 'atual') ?? null;
+  const roomRow = roomPending ? (rows.find((r) => r.day.id === roomPending.day.id) ?? null) : null;
+  const current = roomRow ?? rows.find((r) => r.node.state === 'atual') ?? null;
+  const unit = sessions ? 'Sessão' : 'Dia';
   // O único Primário: o Dia de agora, senão o projeto aberto. Publicar mora no cartão âmbar.
-  const primary: { label: string; to: string } | null = current
-    ? { label: `${current.day.status === DailyStatus.InProgress ? 'Continuar' : 'Começar'} · Dia ${current.day.dayNumber}`, to: `/hoje?daily=${current.day.id}` }
-    : project?.open && !weekly.requiresPublicationToUnlock
-      ? { label: 'Abrir o projeto', to: projectLink(cid, weekly.id) }
-      : null;
-  const focada = buildFocadaWeekLine(weekly, overview, hasNext);
+  const primary: { label: string; to: string; after?: string } | null = roomRow && roomPending
+    ? { label: 'Ir para a sala', to: `/salas/${roomPending.room.id}`, after: `Depois: Sessão ${roomPending.next.dayNumber}` }
+    : current
+      ? { label: `${current.day.status === DailyStatus.InProgress ? 'Continuar' : 'Começar'} · ${unit} ${current.day.dayNumber}`, to: `/hoje?daily=${current.day.id}` }
+      : project?.open && !weekly.requiresPublicationToUnlock
+        ? { label: 'Abrir o projeto', to: projectLink(cid, weekly.id) }
+        : null;
+  const focada =
+    roomRow && roomPending && course
+      ? {
+          text: `A sala da Sessão ${roomPending.day.dayNumber} está aberta. Feita ela, a Sessão ${roomPending.next.dayNumber} abre${
+            completedTodayCount(course) < (course.sessionsPerDay ?? 1) ? ', e hoje ainda cabe' : ''
+          }.`,
+        }
+      : buildFocadaWeekLine(weekly, overview, hasNext);
   const publish = weekly.requiresPublicationToUnlock ? <PublishCard week={weekly.number} onPublish={() => setShowPublicationModal(true)} /> : null;
   const theme = weekly.theme ?? weekly.title;
 
@@ -72,7 +88,9 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
               {theme}
             </h1>
             <p className="hidden text-pequeno text-muted md:block">
-              {rows.length} dias {weekly.isPracticeOnly ? 'e o code comigo fecha a semana' : 'e o Projeto da semana'}
+              {sessions
+                ? `${rows.length} sessões, cada uma com a sua sala · até ${course?.sessionsPerDay ?? 1} por dia`
+                : `${rows.length} dias ${weekly.isPracticeOnly ? 'e o code comigo fecha a semana' : 'e o Projeto da semana'}`}
             </p>
           </div>
         </div>
@@ -81,23 +99,24 @@ export function WeeklyDetailPage({ weeklyId, courseId }: { weeklyId: string; cou
 
         <ol className="flex min-h-0 flex-col gap-2 overflow-y-auto md:gap-4 lg:short:gap-2">
           {rows.map((row) => (
-            <DayRow key={row.day.id} row={row} primary={row === current ? primary : null} />
+            <DayRow key={row.day.id} row={row} primary={row === current ? primary : null} sessions={sessions} />
           ))}
           {project && <ProjectRow row={project} primary={!current ? primary : null} />}
         </ol>
 
         {primary && (
-          <div className="shrink-0 lg:hidden">
+          <div className="flex shrink-0 flex-col gap-2 lg:hidden">
             <ButtonLink to={primary.to} className="w-full md:w-auto">
               {primary.label}
             </ButtonLink>
+            {primary.after && <span className="text-pequeno text-muted">{primary.after}</span>}
           </div>
         )}
       </div>
 
       <aside aria-label="Resumo da semana" className="hidden w-[400px] shrink-0 flex-col gap-6 xl:flex lg:short:gap-4">
         <FocadaLine size="devolutiva">{focada.text}</FocadaLine>
-        <WeekSummary weekly={weekly} rows={rows} />
+        <WeekSummary weekly={weekly} rows={rows} course={sessions ? course : null} roomPending={roomRow ? roomPending : null} />
         {publish}
         {project && <ProjectCard weekly={weekly} />}
       </aside>
@@ -126,9 +145,17 @@ interface DayRowData {
   bridge: boolean;
   language: string | null;
   previous: number | null;
+  /** Fase 112: sala da sessão (curso em sessões). */
+  room: DailySessionRoomDto | null;
 }
 
-function dayRows(weekly: WeeklyDetailDto, overview: WeeklyOverviewDto | null, course: CourseDetailDto | null): DayRowData[] {
+function dayRows(
+  weekly: WeeklyDetailDto,
+  overview: WeeklyOverviewDto | null,
+  course: CourseDetailDto | null,
+  sessions = false,
+  roomPending = false,
+): DayRowData[] {
   const days = weekly.dailies.filter((d) => !d.isReinforcement).sort((a, b) => a.dayNumber - b.dayNumber);
   const doneToday = course ? courseDoneToday(course) : false;
   const locked = overview?.isLocked ?? false;
@@ -139,16 +166,18 @@ function dayRows(weekly: WeeklyDetailDto, overview: WeeklyOverviewDto | null, co
     let state: DayNodeState;
     if (day.status === DailyStatus.Completed) state = reinforcement ? 'feito-reforco' : 'feito';
     else if (day.status === DailyStatus.InProgress) state = 'atual';
-    else if (day.isNext && !locked) state = doneToday ? 'disponivel' : 'atual';
+    // Fase 112: em sessões, a próxima espera a sala ou a cota de amanhã no estado Trancado (como na trilha).
+    else if (day.isNext && !locked) state = sessions && (roomPending || doneToday) ? 'trancado' : doneToday ? 'disponivel' : 'atual';
     else state = day.isBridge ? 'code' : 'trancado';
     return {
       day,
+      room: sessions ? (summary?.sessionRoom ?? null) : null,
       node: {
         key: day.id,
         state,
-        label: `D${day.dayNumber}`,
+        label: `${sessions ? 'S' : 'D'}${day.dayNumber}`,
         dayNumber: day.dayNumber,
-        title: `Dia ${day.dayNumber}`,
+        title: `${sessions ? 'Sessão' : 'Dia'} ${day.dayNumber}`,
         to: state === 'feito' || state === 'feito-reforco' || state === 'atual' ? `/hoje?daily=${day.id}` : null,
       },
       reinforcementId: reinforcement?.id ?? null,
@@ -159,8 +188,9 @@ function dayRows(weekly: WeeklyDetailDto, overview: WeeklyOverviewDto | null, co
   });
 }
 
-function DayRow({ row, primary }: { row: DayRowData; primary: { label: string; to: string } | null }) {
+function DayRow({ row, primary, sessions }: { row: DayRowData; primary: { label: string; to: string; after?: string } | null; sessions: boolean }) {
   const { day, node } = row;
+  const unit = sessions ? 'Sessão' : 'Dia';
   const done = node.state === 'feito' || node.state === 'feito-reforco';
   const current = node.state === 'atual';
   const step = Math.min(day.completedActivities + 1, day.totalActivities);
@@ -173,9 +203,11 @@ function DayRow({ row, primary }: { row: DayRowData; primary: { label: string; t
       : node.state === 'disponivel'
         ? 'Abre amanhã'
         : row.previous !== null && !row.bridge
-          ? `Abre depois do Dia ${row.previous}`
+          ? sessions
+            ? `Abre depois da sala da Sessão ${row.previous}`
+            : `Abre depois do Dia ${row.previous}`
           : null;
-  const title = day.title ?? `Dia ${day.dayNumber}`;
+  const title = day.title ?? `${unit} ${day.dayNumber}`;
 
   let side: ReactNode = null;
   if (row.reinforcementId) {
@@ -186,12 +218,15 @@ function DayRow({ row, primary }: { row: DayRowData; primary: { label: string; t
     );
   } else if (primary) {
     side = (
-      <ButtonLink to={primary.to} className="w-full">
-        {primary.label}
-      </ButtonLink>
+      <span className="flex flex-col gap-2">
+        <ButtonLink to={primary.to} className="w-full">
+          {primary.label}
+        </ButtonLink>
+        {primary.after && <span className="text-pequeno text-muted">{primary.after}</span>}
+      </span>
     );
   } else if (done) {
-    side = <TextLink to={`/hoje?daily=${day.id}`}>Rever o dia</TextLink>;
+    side = <TextLink to={`/hoje?daily=${day.id}`}>{sessions ? 'Rever a sessão' : 'Rever o dia'}</TextLink>;
   }
 
   return (
@@ -211,6 +246,8 @@ function DayRow({ row, primary }: { row: DayRowData; primary: { label: string; t
         )}
         {meta && <span className="text-rotulo-sm text-muted md:text-pequeno md:normal-case md:tracking-normal">{meta}</span>}
         {node.state === 'feito-reforco' && <Chip tone="ambar">Reforço pendente</Chip>}
+        {row.room?.status === 'Completed' && <Chip tone="verde">Sala feita</Chip>}
+        {(row.room?.status === 'Available' || row.room?.status === 'InProgress') && <Chip tone="ambar">Sala pendente</Chip>}
       </span>
     </Row>
   );
@@ -292,7 +329,36 @@ function TextLink({ to, children }: { to: string; children: ReactNode }) {
   );
 }
 
-function WeekSummary({ weekly, rows }: { weekly: WeeklyDetailDto; rows: DayRowData[] }) {
+function WeekSummary({
+  weekly,
+  rows,
+  course,
+  roomPending,
+}: {
+  weekly: WeeklyDetailDto;
+  rows: DayRowData[];
+  /** Fase 112: só no curso em sessões. */
+  course: CourseDetailDto | null;
+  roomPending: { day: { dayNumber: number } } | null;
+}) {
+  if (course) {
+    const done = rows.filter((r) => r.day.status === DailyStatus.Completed).length;
+    const rooms = rows.filter((r) => r.room);
+    const perDay = course.sessionsPerDay ?? 1;
+    return (
+      <Card kind="padrao" eyebrow="Resumo da semana" className="shrink-0">
+        <dl className="flex gap-8">
+          <Stat value={`${done}/${rows.length}`} label="Sessões" tone="text-primary" />
+          <Stat value={`${rooms.filter((r) => r.room?.status === 'Completed').length}/${rooms.length}`} label="Salas" tone="text-project" />
+          <Stat value={`${completedTodayCount(course)}/${perDay}`} label="Hoje" tone="text-primary" />
+        </dl>
+        <p className="text-pequeno text-secondary">
+          {perDay} {perDay === 1 ? 'sessão' : 'sessões'} por dia, com a sala entre elas.
+          {roomPending ? ` Falta a sala da Sessão ${roomPending.day.dayNumber}.` : ''}
+        </p>
+      </Card>
+    );
+  }
   const done = rows.filter((r) => r.day.status === DailyStatus.Completed).length;
   // Aprovação só sobre o que já foi respondido: Dia ainda não feito não derruba a conta.
   const answered = rows.reduce((sum, r) => sum + r.day.completedActivities, 0);

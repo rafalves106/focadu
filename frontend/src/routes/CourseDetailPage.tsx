@@ -5,21 +5,26 @@ import { useApiResource } from '../api/useApiResource';
 import { DailyStatus, WeeklyProjectStatus, type CourseDetailDto, type WeeklyOverviewDto } from '../api/types';
 import { Centered } from '../components/Layout';
 import { ApiErrorScreen } from '../components/errors/ApiErrorScreen';
-import { WeekPath, WeekSegments } from '../components/trail/WeekPath';
+import { RoomMarkBox, WeekPath, WeekSegments } from '../components/trail/WeekPath';
 import { Breadcrumb } from '../components/ui/Breadcrumb';
 import { ButtonLink } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { FocadaLine } from '../components/ui/FocadaLine';
 import { PixelIcon } from '../components/ui/PixelIcon';
 import { buildFocadaMapLine, currentStop, isWeekClosurePending, pendingReinforcementOf, primaryDays, type CourseStop } from '../lib/focadaMapLines';
+import { isSessionsCourse } from '../lib/sessionCount';
 import { hasFinishedADay } from '../lib/startScreen';
 import {
+  completedTodayCount,
   courseDayCount,
+  courseDays,
   courseDoneDayCount,
   courseDoneToday,
   courseSizeText,
   isWeekReached,
+  pendingSessionRoom,
   projectLink,
+  sessionsPathOptions,
   weekLink,
   weekPathNodes,
   type PathNode,
@@ -50,9 +55,10 @@ function Trail({ course }: { course: CourseDetailDto }) {
   const weeks = [...(module?.weeklies ?? [])].sort((a, b) => a.number - b.number);
   const allWeeks = course.monthlies.flatMap((m) => m.weeklies);
   const practiceOnly = allWeeks.length > 0 && allWeeks.every((w) => w.isPracticeOnly);
-  const focada = buildFocadaMapLine(course, new Map(course.monthlies.map((m) => [m.number, m.title])));
+  const sessions = isSessionsCourse(course);
+  const focada = sessions ? sessionsFocadaLine(course, doneToday) : buildFocadaMapLine(course, new Map(course.monthlies.map((m) => [m.number, m.title])));
   const action = stop ? stopAction(course, stop, doneToday) : null;
-  const here = stop?.day ? ` · você está no dia ${stop.day.dayNumber}` : '';
+  const here = stop?.day ? ` · você está ${sessions ? 'na sessão' : 'no dia'} ${stop.day.dayNumber}` : '';
 
   return (
     <div className="tela-cheia flex gap-6 p-4 md:p-6 wide:p-8">
@@ -99,12 +105,13 @@ function Trail({ course }: { course: CourseDetailDto }) {
           ))}
         </ol>
 
-        <Legend practiceOnly={practiceOnly} />
+        <Legend practiceOnly={practiceOnly} sessions={sessions} />
         {action?.primary && (
-          <div className="shrink-0 lg:hidden">
+          <div className="flex shrink-0 flex-col gap-2 lg:hidden">
             <ButtonLink to={action.primary.to} className="w-full md:w-auto">
               {action.primary.label}
             </ButtonLink>
+            {action.after && <span className="text-pequeno text-muted">{action.after}</span>}
           </div>
         )}
       </div>
@@ -120,6 +127,8 @@ function Trail({ course }: { course: CourseDetailDto }) {
 
 interface StopAction {
   primary: { label: string; to: string } | null;
+  /** Fase 112: o "Depois:" embaixo do Primário (curso em sessões). */
+  after?: string | null;
   /** Sem Primário: um texto ("Dia 4 abre amanhã") ou um link discreto. */
   note: string | null;
   link: { label: string; to: string } | null;
@@ -128,6 +137,13 @@ interface StopAction {
 /** O que a semana em andamento oferece agora: continuar o Dia, abrir o projeto ou publicar. */
 function stopAction(course: CourseDetailDto, stop: CourseStop, doneToday: boolean): StopAction {
   const { week, day } = stop;
+  if (day && isSessionsCourse(course)) {
+    // Fase 112: a sala da sessão anterior vem antes da cota (é o que dá pra fazer agora, mesma ordem do servidor).
+    const pending = day.status === DailyStatus.InProgress ? null : pendingSessionRoom(course);
+    if (pending) return { primary: { label: 'Ir para a sala', to: `/salas/${pending.room.id}` }, after: `Depois: Sessão ${day.dayNumber}`, note: null, link: null };
+    if (day.status !== DailyStatus.InProgress && doneToday) return { primary: null, note: `A S${day.dayNumber} abre amanhã, à meia-noite.`, link: null };
+    return { primary: { label: `Continuar · Sessão ${day.dayNumber}`, to: `/hoje?daily=${day.id}` }, note: null, link: null };
+  }
   if (day) {
     if (day.status !== DailyStatus.InProgress && doneToday) return { primary: null, note: `Dia ${day.dayNumber} abre amanhã`, link: null };
     return { primary: { label: `Continuar · Dia ${day.dayNumber}`, to: `/hoje?daily=${day.id}` }, note: null, link: null };
@@ -162,22 +178,36 @@ function WeekRow({
   const done = days.filter((d) => d.status === DailyStatus.Completed).length;
   const pending = days.find((d) => pendingReinforcementOf(week, d));
   const closed = isWeekDone(week);
-  const nodes: PathNode[] = weekPathNodes(week, course.id, doneToday);
+  const sessions = isSessionsCourse(course);
+  const nodes: PathNode[] = weekPathNodes(week, course.id, doneToday, sessionsPathOptions(course));
   const label = `Semana ${String(week.number).padStart(2, '0')}`;
+  const roomPending = sessions ? pendingSessionRoom(course) : null;
   const meta = current
-    ? [`${done} de ${days.length} dias`, pending && `reforço do Dia ${pending.dayNumber} pendente`].filter(Boolean).join(' · ')
+    ? sessions
+      ? [
+          `${done} de ${days.length} sessões`,
+          `${completedTodayCount(course)} de ${course.sessionsPerDay ?? 1} hoje`,
+          roomPending ? `falta a sala da S${roomPending.day.dayNumber}` : doneToday ? 'por hoje acabou' : null,
+          pending && `reforço da Sessão ${pending.dayNumber} pendente`,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : [`${done} de ${days.length} dias`, pending && `reforço do Dia ${pending.dayNumber} pendente`].filter(Boolean).join(' · ')
     : closed
       ? 'Semana fechada'
       : pending
-        ? `Reforço do Dia ${pending.dayNumber} pendente`
+        ? `Reforço ${sessions ? 'da Sessão' : 'do Dia'} ${pending.dayNumber} pendente`
         : null;
 
   let side: ReactNode;
   if (current && action) {
     side = action.primary ? (
-      <ButtonLink to={action.primary.to} className="w-full">
-        {action.primary.label}
-      </ButtonLink>
+      <span className="flex flex-col gap-2">
+        <ButtonLink to={action.primary.to} className="w-full">
+          {action.primary.label}
+        </ButtonLink>
+        {action.after && <span className="text-pequeno text-muted">{action.after}</span>}
+      </span>
     ) : (
       <span className="flex flex-col gap-1">
         {action.note && <span className="text-pequeno text-muted">{action.note}</span>}
@@ -209,10 +239,10 @@ function WeekRow({
           {meta && <span className="hidden text-pequeno text-muted md:block">{meta}</span>}
         </Link>
         <div className="hidden md:block">
-          <WeekPath nodes={nodes} label={`Dias da ${label}`} />
+          <WeekPath nodes={nodes} label={`${sessions ? 'Sessões' : 'Dias'} da ${label}`} />
         </div>
         <div className="md:hidden">
-          <WeekSegments nodes={nodes} label={`Dias da ${label}`} />
+          <WeekSegments nodes={nodes} label={`${sessions ? 'Sessões' : 'Dias'} da ${label}`} />
         </div>
         <div className="hidden lg:block">{side}</div>
       </Card>
@@ -229,13 +259,13 @@ function TextLink({ to, children }: { to: string; children: ReactNode }) {
 }
 
 /** Legenda dos Nós de dia (Figma `18:1613`), só onde sobra altura. */
-function Legend({ practiceOnly }: { practiceOnly: boolean }) {
+function Legend({ practiceOnly, sessions }: { practiceOnly: boolean; sessions: boolean }) {
   const sample = (state: PathNode['state'], dayNumber: number | null = 1): PathNode => ({ key: state, state, label: '', dayNumber, title: '', to: null });
   const items: { node: PathNode | null; text: string }[] = [
     { node: sample('feito'), text: 'Feito' },
-    { node: sample('atual'), text: 'Hoje' },
+    { node: sample('atual'), text: sessions ? 'Atual' : 'Hoje' },
     { node: sample('trancado'), text: 'Trancado' },
-    { node: sample('code'), text: 'Code comigo (6º dia)' },
+    { node: sample('code'), text: sessions ? 'Code comigo (6ª sessão)' : 'Code comigo (6º dia)' },
     ...(practiceOnly ? [] : [{ node: sample('castelo-trancado', null), text: 'Projeto da semana' }]),
     { node: null, text: 'Reforço pendente' },
   ];
@@ -247,6 +277,14 @@ function Legend({ practiceOnly }: { practiceOnly: boolean }) {
           {text}
         </li>
       ))}
+      {sessions && (
+        <li className="flex items-center gap-2 text-rotulo-sm text-secondary">
+          <RoomMarkBox mark="feita" />
+          <RoomMarkBox mark="pendente" />
+          <RoomMarkBox mark="trancada" />
+          Sala da sessão: feita, pendente, trancada
+        </li>
+      )}
     </ul>
   );
 }
@@ -279,7 +317,11 @@ function CourseSummary({ course, stop, practiceOnly }: { course: CourseDetailDto
   const closedWeeks = weeks.filter((w) => w.isClosed).length;
   const reinforcements = weeks.reduce((sum, w) => sum + primaryDays(w).filter((d) => pendingReinforcementOf(w, d)).length, 0);
   const remaining = stop ? primaryDays(stop.week).filter((d) => d.status !== DailyStatus.Completed).length : 0;
-  const next = !stop
+  const sessions = isSessionsCourse(course);
+  const rooms = sessions ? courseDays(course).flatMap(({ day }) => (day.sessionRoom ? [day.sessionRoom] : [])) : [];
+  const next = sessions && stop && remaining > 0
+    ? `Faltam ${remaining} ${remaining === 1 ? 'sessão' : 'sessões'} pro castelo da Semana ${stop.week.number}.`
+    : !stop
     ? null
     : remaining === 0
       ? `O Projeto da Semana ${stop.week.number} está aberto.`
@@ -290,13 +332,20 @@ function CourseSummary({ course, stop, practiceOnly }: { course: CourseDetailDto
   return (
     <Card kind="padrao" eyebrow="Resumo do curso" className="shrink-0">
       <dl className="flex gap-8">
-        <Stat value={`${done}/${total}`} label="Dias" tone="text-primary" />
-        {practiceOnly ? (
+        <Stat value={`${done}/${total}`} label={sessions ? 'Sessões' : 'Dias'} tone="text-primary" />
+        {sessions ? (
+          <>
+            <Stat value={`${completedTodayCount(course)}/${course.sessionsPerDay ?? 1}`} label="Hoje" tone="text-primary" />
+            <Stat value={`${rooms.filter((r) => r.status === 'Completed').length}/${rooms.length}`} label="Salas" tone="text-project" />
+          </>
+        ) : practiceOnly ? (
           <Stat value={`${closedWeeks}/${weeks.length}`} label="Semanas" tone="text-project" />
         ) : (
           <Stat value={`${projectsDone}/${projects.length}`} label="Projetos" tone="text-project" />
         )}
-        <Stat value={`${reinforcements}`} label={reinforcements === 1 ? 'Reforço' : 'Reforços'} tone={reinforcements > 0 ? 'text-project' : 'text-primary'} />
+        {!sessions && (
+          <Stat value={`${reinforcements}`} label={reinforcements === 1 ? 'Reforço' : 'Reforços'} tone={reinforcements > 0 ? 'text-project' : 'text-primary'} />
+        )}
       </dl>
       <div className="h-1.5 bg-stroke" role="progressbar" aria-label="Progresso do curso" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
         <div className="h-full bg-accent" style={{ width: `${pct}%` }} />
@@ -349,3 +398,20 @@ function CourseShortcuts({ course, practiceOnly }: { course: CourseDetailDto; pr
   );
 }
 
+
+/**
+ * Fase 112: fala da Focada na trilha do curso em sessões (Figma `97-1857`/`97-2004`): a sala pendente, o limite do dia
+ * ou, sem nenhum dos dois, a fala de sempre da trilha.
+ */
+function sessionsFocadaLine(course: CourseDetailDto, doneToday: boolean): { text: string } | null {
+  const pending = pendingSessionRoom(course);
+  if (pending) {
+    return { text: `Cada sessão termina numa sala. A sala da S${pending.day.dayNumber} está aberta: feita ela, a S${pending.next.dayNumber} abre.` };
+  }
+  const next = courseDays(course).find(({ day }) => day.isNext)?.day;
+  if (doneToday) {
+    const n = completedTodayCount(course);
+    return { text: `Por hoje acabou: ${n} ${n === 1 ? 'sessão' : 'sessões'} e ${n} ${n === 1 ? 'sala' : 'salas'}.${next ? ` A S${next.dayNumber} abre à meia-noite.` : ''}` };
+  }
+  return buildFocadaMapLine(course, new Map(course.monthlies.map((m) => [m.number, m.title])));
+}

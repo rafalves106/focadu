@@ -5,7 +5,7 @@ using Focadu.Domain.Exceptions;
 namespace Focadu.Domain.Weeklies;
 
 /// <summary>Fase 111: sala da sessao anterior que o aluno ainda nao concluiu (a Application resolve; o dominio nao ve salas).</summary>
-public record PendingSessionRoom(Guid RoomId, string Slug, string Title);
+public record PendingSessionRoom(Guid RoomId, string Slug, string Title, int EstimatedMinutes = 0, string MachineLabel = "");
 
 /// <summary>
 /// Fase 111: o que <see cref="Weekly.EvaluateDailyAccess"/> precisa saber do curso pra decidir a entrada numa Daily.

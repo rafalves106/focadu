@@ -61,7 +61,7 @@ export function RoomPage() {
       <div className="tela-cheia flex flex-col gap-4 p-4 md:p-6 wide:p-8">
         <Breadcrumb parts={[courseName, { label: 'Salas', to: roomsLink }, room.title]} />
         <h1 className="text-lead text-primary md:text-titulo">{room.title}</h1>
-        <Card kind="ambar" eyebrow="Sala trancada">
+        <Card kind="ambar" eyebrow="Sala trancada" className="w-full max-w-[952px]">
           <p className="text-corpo text-primary">{lockedText(room)}.</p>
           <ButtonLink to={roomsLink} kind="secundario" className="self-start">
             Voltar pras salas
@@ -134,9 +134,12 @@ export function RoomPage() {
         ) : (
           <>
             <MachinePanel room={room} busy={machineBusy} onToggle={(on) => void toggleMachine(on)} onDownload={download} />
-            <ProgressCard done={done} total={total}>
-              {progressText}
-            </ProgressCard>
+            {/* Fase 112 (Figma 93-1552): desligada, o painel com os comandos ocupa a coluna; o progresso já está na lista. */}
+            {room.machineOn && (
+              <ProgressCard done={done} total={total}>
+                {progressText}
+              </ProgressCard>
+            )}
           </>
         )}
       </aside>

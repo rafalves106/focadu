@@ -1,4 +1,4 @@
-import { isDone, type PathNode } from '../../lib/weekPath';
+import { isDone, type PathNode, type RoomMark } from '../../lib/weekPath';
 import { PixelIcon } from '../ui/PixelIcon';
 import { DayNode } from './DayNode';
 
@@ -18,14 +18,30 @@ export function WeekPath({ nodes, label, fill = false }: { nodes: PathNode[]; la
             {!last && (
               <span
                 aria-hidden="true"
-                className={`mt-[19px] h-0.5 ${fill ? 'min-w-2 flex-1' : 'min-w-1 flex-1 lg:w-5 lg:flex-none'} ${isDone(node.state) ? 'bg-accent' : 'bg-stroke'}`}
-              />
+                className={`relative mt-[19px] h-0.5 ${fill ? 'min-w-2 flex-1' : 'min-w-1 flex-1 lg:w-5 lg:flex-none'} ${node.room ? 'min-w-4' : ''} ${isDone(node.state) ? 'bg-accent' : 'bg-stroke'}`}
+              >
+                {node.room && <RoomMarkBox mark={node.room} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />}
+              </span>
             )}
           </li>
         );
       })}
     </ol>
   );
+}
+
+const MARK: Record<RoomMark, string> = {
+  feita: 'border-accent bg-accent',
+  pendente: 'border-project bg-project',
+  trancada: 'border-stroke bg-surface',
+};
+
+/**
+ * Marca de sala (Fase 112; Figma `97-9586`): quadrado de 12 px no traço que sai de cada sessão. Verde feita, âmbar
+ * pendente, contorno trancada. Some no curso Daily (nó sem `room`).
+ */
+export function RoomMarkBox({ mark, small = false, className = '' }: { mark: RoomMark; small?: boolean; className?: string }) {
+  return <span aria-hidden="true" className={`block shrink-0 border-2 ${small ? 'size-2' : 'size-3'} ${MARK[mark]} ${className}`} />;
 }
 
 /**
@@ -39,7 +55,10 @@ export function WeekSegments({ nodes, label }: { nodes: PathNode[]; label: strin
     <div className="flex items-center gap-2" role="img" aria-label={`${label}: ${nodes.map((n) => n.title).join('; ')}`}>
       <span className="flex flex-1 gap-1">
         {days.map((n) => (
-          <span key={n.key} className={`h-1.5 flex-1 ${isDone(n.state) ? 'bg-accent' : n.state === 'atual' ? 'bg-accent-hover' : 'bg-stroke'}`} />
+          <span key={n.key} className="flex flex-1 items-center gap-1">
+            <span className={`h-1.5 flex-1 ${isDone(n.state) ? 'bg-accent' : n.state === 'atual' ? 'bg-accent-hover' : 'bg-stroke'}`} />
+            {n.room && <RoomMarkBox mark={n.room} small />}
+          </span>
         ))}
       </span>
       {castle && <PixelIcon name="castle" scale={2} className={castle.state === 'castelo-aberto' ? 'text-project' : 'text-muted'} />}

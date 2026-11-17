@@ -6,6 +6,7 @@ import { currentStop } from '../../lib/focadaMapLines';
 import { courseDayCount, courseDoneDayCount, courseSizeText } from '../../lib/weekPath';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
+import { isSessionsCourse } from '../../lib/sessionCount';
 import { Modal } from '../ui/Modal';
 
 /**
@@ -82,8 +83,9 @@ export function CoursesCard({
   );
 }
 
-/** "Semana 1 · 2 de 72 dias". */
+/** "Semana 1 · 2 de 72 dias" (em sessões, "Semana 1 · 2 de 90 sessões"). */
 function whereabouts(course: CourseDetailDto): string {
   const week = currentStop(course)?.week.number;
-  return [week ? `Semana ${week}` : null, `${courseDoneDayCount(course)} de ${courseDayCount(course)} dias`].filter(Boolean).join(' · ');
+  const unit = isSessionsCourse(course) ? 'sessões' : 'dias';
+  return [week ? `Semana ${week}` : null, `${courseDoneDayCount(course)} de ${courseDayCount(course)} ${unit}`].filter(Boolean).join(' · ');
 }

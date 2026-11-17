@@ -2,19 +2,25 @@ import type { RoomState, RoomSummary, RoomTask } from '../api/rooms';
 
 // Fase 110: textos e contas das telas de Sala (Figma "Salas práticas (proposta)", página 68:2).
 
-export function kindMeta(room: Pick<RoomSummary, 'kind' | 'weekNumber' | 'difficulty' | 'estimatedMinutes'>): string {
-  const kind = room.kind === 'Week' ? `Semana ${room.weekNumber}` : room.kind === 'Tool' ? 'Ferramenta' : 'Desafio';
+export function kindMeta(room: Pick<RoomSummary, 'kind' | 'weekNumber' | 'difficulty' | 'estimatedMinutes' | 'sessionNumber'>): string {
+  const kind =
+    room.sessionNumber != null
+      ? `Sala da Sessão ${room.sessionNumber}`
+      : room.kind === 'Week' ? `Semana ${room.weekNumber}` : room.kind === 'Tool' ? 'Ferramenta' : 'Desafio';
   return `${kind} · ${room.difficulty} · ${duration(room.estimatedMinutes)}`;
 }
 
 export function roomSubtitle(room: RoomState): string {
-  const kind = room.kind === 'Week' ? `Sala da semana ${room.weekNumber}` : room.kind === 'Tool' ? 'Sala de ferramenta' : 'Sala-desafio';
+  const kind =
+    room.sessionNumber != null
+      ? `Sala da Sessão ${room.sessionNumber}`
+      : room.kind === 'Week' ? `Sala da semana ${room.weekNumber}` : room.kind === 'Tool' ? 'Sala de ferramenta' : 'Sala-desafio';
   return `${kind} · ${room.difficulty} · ${duration(room.estimatedMinutes)}`;
 }
 
 /** Por que a sala está trancada: a sessão dela ainda não foi feita (Fase 111), a semana ainda não chegou ou faltam salas antes. */
 export function lockedText(room: { opensWithWeek: number | null; opensWithSession?: number | null; missingPrerequisites: string[] }): string {
-  if (room.opensWithSession != null) return `Abre quando você concluir a sessão do Dia ${room.opensWithSession}`;
+  if (room.opensWithSession != null) return `Abre quando você concluir a Sessão ${room.opensWithSession}`;
   if (room.opensWithWeek !== null) return `Abre com a Semana ${room.opensWithWeek}`;
   return `Abre depois de ${room.missingPrerequisites.join(' e ')}`;
 }

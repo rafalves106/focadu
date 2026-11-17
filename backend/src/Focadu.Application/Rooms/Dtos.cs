@@ -7,7 +7,7 @@ namespace Focadu.Application.Rooms;
 public record RoomSummaryDto(
     Guid Id, string Slug, string Title, string Kind, int? WeekNumber, string Difficulty, int EstimatedMinutes, string Summary,
     int TaskCount, int TasksDone, string Status, IReadOnlyList<string> MissingPrerequisites, int? OpensWithWeek, int? AverageScore,
-    int? OpensWithSession = null);
+    int? OpensWithSession = null, int? SessionNumber = null);
 
 /// <summary>Áudio avaliado (de uma entrega ou do fechamento). <c>CorrectAnswer</c> é a resposta curada, nunca a da IA.</summary>
 public record RoomVoiceResultDto(int Score, string Transcript, string? ImprovementPoints, string CorrectAnswer, DateTime At);
@@ -26,7 +26,7 @@ public record RoomStateDto(
     Guid Id, Guid CourseId, string Slug, string Title, string Kind, int? WeekNumber, string Difficulty, int EstimatedMinutes,
     string Summary, string Scenario, string MachineLabel, string EnvironmentFolder, bool Locked, IReadOnlyList<string> MissingPrerequisites,
     int? OpensWithWeek, bool MachineOn, DateTime? StartedAt, IReadOnlyList<RoomTaskDto> Tasks, RoomFinalDto Final,
-    int? OpensWithSession = null);
+    int? OpensWithSession = null, int? SessionNumber = null);
 
 public record SubmitRoomFlagResult(bool Correct, RoomStateDto Room);
 
@@ -34,9 +34,10 @@ public record SubmitRoomFlagResult(bool Correct, RoomStateDto Room);
 /// Por que a sala está trancada (Fase 110): pré-requisitos ainda não concluídos e, na sala da semana, a semana que o
 /// aluno ainda não alcançou (decisão do dono, 16/11/2026: a sala da semana abre quando a semana é liberada).
 /// Fase 111: em curso <c>StudyFormat.Sessions</c>, a sala apontada por um <c>salaDaSessao</c> abre quando a sessão de
-/// origem é concluída (<c>OpensWithSession</c> = número do dia dela) e não mais com a semana.
+/// origem é concluída (<c>OpensWithSession</c> = número do dia dela) e não mais com a semana. Fase 112:
+/// <c>SessionNumber</c> é a sessão de origem da sala de sessão, trancada ou não (rótulo "S2" e "Sala da Sessão 2").
 /// </summary>
-public record RoomLock(IReadOnlyList<string> MissingPrerequisites, int? OpensWithWeek, int? OpensWithSession = null)
+public record RoomLock(IReadOnlyList<string> MissingPrerequisites, int? OpensWithWeek, int? OpensWithSession = null, int? SessionNumber = null)
 {
     public bool Locked => MissingPrerequisites.Count > 0 || OpensWithWeek is not null || OpensWithSession is not null;
 }
@@ -86,22 +87,26 @@ internal static class RoomMapper
         return new RoomStateDto(
             room.Id, room.CourseId, room.Slug, room.Title, room.Kind.ToString(), room.WeekNumber, room.Difficulty, room.EstimatedMinutes,
             room.Summary, room.Scenario, room.MachineLabel, EnvironmentFolder(room), locked, roomLock.MissingPrerequisites,
-            roomLock.OpensWithWeek, progress?.MachineOn ?? false, progress?.StartedAt, tasks, final, roomLock.OpensWithSession);
+            roomLock.OpensWithWeek, progress?.MachineOn ?? false, progress?.StartedAt, tasks, final, roomLock.OpensWithSession, roomLock.SessionNumber);
     }
 
     internal static RoomSummaryDto ToSummary(Room room, RoomProgress? progress, RoomLock roomLock)
     {
         var done = progress is null ? 0 : room.Tasks.Count(t => progress.ResultFor(t.Id)?.VoiceAt is not null);
-        var status = roomLock.Locked ? "Locked"
-            : progress?.Completed == true ? "Completed"
-            : progress is not null ? "InProgress"
-            : "Available";
+        var status = StatusOf(progress, roomLock);
         var scores = progress?.Results.Where(r => r.VoiceScore is not null).Select(r => r.VoiceScore!.Value).ToList() ?? [];
         return new RoomSummaryDto(
             room.Id, room.Slug, room.Title, room.Kind.ToString(), room.WeekNumber, room.Difficulty, room.EstimatedMinutes, room.Summary,
             room.Tasks.Count, done, status, roomLock.MissingPrerequisites, roomLock.OpensWithWeek, scores.Count > 0 ? (int)Math.Round(scores.Average()) : null,
-            roomLock.OpensWithSession);
+            roomLock.OpensWithSession, roomLock.SessionNumber);
     }
+
+    /// <summary>Locked (falta pré-requisito, a semana ou a sessão), Available, InProgress ou Completed.</summary>
+    internal static string StatusOf(RoomProgress? progress, RoomLock roomLock) =>
+        roomLock.Locked ? "Locked"
+        : progress?.Completed == true ? "Completed"
+        : progress is not null ? "InProgress"
+        : "Available";
 
     /// <summary>
     /// Semanas que o aluno já alcançou: mesma regra da trilha (isWeekReached no front, Fase 109b) - a semana não está
@@ -136,7 +141,7 @@ internal static class RoomMapper
         var missing = MissingPrerequisites(room, courseRooms, progresses);
         // Sala da sessão: abre com a sessão de origem concluída, não com a semana.
         if (unlocks.SessionRooms.TryGetValue(room.Slug, out var origin))
-            return new RoomLock(missing, null, origin.Completed ? null : origin.DayNumber);
+            return new RoomLock(missing, null, origin.Completed ? null : origin.DayNumber, origin.DayNumber);
         return new RoomLock(missing,
             room.Kind == RoomKind.Week && room.WeekNumber is { } week && !unlocks.ReachedWeeks.Contains(week) ? week : null);
     }

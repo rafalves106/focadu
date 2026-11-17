@@ -36,7 +36,8 @@ public record DailyStateDto(
 /// </summary>
 public record SessionInfoDto(int CompletedToday, int PerDay, SessionRoomDto? PendingRoom);
 
-public record SessionRoomDto(Guid Id, string Slug, string Title);
+/// <summary>Fase 112: tempo e máquina pro destaque do Início ("Sala da Sessão 1 · 40 min · Kali + Vitrine").</summary>
+public record SessionRoomDto(Guid Id, string Slug, string Title, int EstimatedMinutes = 0, string MachineLabel = "");
 
 /// <summary>
 /// Fase 86: laboratorio de codigo do dia (nulo = dia sem laboratorio). FileContentIds sao os File do

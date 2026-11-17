@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useCountdownToMidnight } from '../../lib/useCountdownToMidnight';
 import { Navigate } from 'react-router-dom';
 import { api, ApiError } from '../../api/client';
 import { PROJECT_LANGUAGE_NAMES, ProjectLanguageStep, WeeklyProjectStatus, type ProjectLanguage } from '../../api/types';
@@ -17,19 +18,6 @@ import { Button, ButtonLink } from '../ui/Button';
 /** Carregando dentro da casca global (sem `min-h-screen`, que empurraria a pagina). */
 export function SessionLoading() {
   return <div className="flex flex-1 items-center justify-center p-6 font-pixel text-2xl text-secondary">Carregando...</div>;
-}
-
-function useCountdownToMidnight() {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-  const midnight = new Date(now);
-  midnight.setHours(24, 0, 0, 0);
-  const left = Math.max(0, Math.floor((midnight.getTime() - now.getTime()) / 1000));
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(Math.floor(left / 3600))}:${pad(Math.floor((left % 3600) / 60))}:${pad(left % 60)}`;
 }
 
 /** Todas as etapas respondidas, falta so concluir (Enter tambem conclui). */
@@ -64,14 +52,21 @@ export function SessionDoneScreen({ onComplete, completing, onReview }: { onComp
 export function BlockedTodayScreen() {
   const { daily, weekly } = useSession();
   const countdown = useCountdownToMidnight();
-  // Fase 111: curso em sessões mostra a contagem ("3 de 3 sessões hoje") no lugar de "1 por dia".
+  // Fase 111: curso em sessões mostra a contagem ("3 de 3 sessões hoje") no lugar de "1 por dia". Fase 112: o fio diz
+  // "Por hoje acabou" e embaixo dos botões vem a sessão de amanhã.
   const session = daily.session;
+  const title = weekly?.dailies.find((d) => d.id === daily.id)?.title ?? null;
   return (
-    <SessionLayout label="Sessão de hoje" sub={session ? sessionCountLabel(session, 'feitas') : '1 por dia'} showGauge={false} centered>
+    <SessionLayout
+      label={session ? 'Por hoje acabou' : 'Sessão de hoje'}
+      sub={session ? sessionCountLabel(session) : '1 por dia'}
+      showGauge={false}
+      centered
+    >
       <FocadaLine>{session ? BLOCKED_TODAY_SESSIONS.replace('{n}', String(session.perDay)) : BLOCKED_TODAY}</FocadaLine>
-      <div className="flex w-fit items-center gap-3 border-2 border-stroke px-4 py-2.5">
-        <span className="font-pixel-label text-[9px] text-secondary">Próxima sessão em</span>
-        <span className="font-pixel text-3xl leading-none text-accent tabular-nums">{countdown}</span>
+      <div className="flex flex-col gap-1">
+        <span className="text-rotulo-sm text-secondary">Próxima sessão em</span>
+        <span className="text-titulo text-accent tabular-nums">{countdown}</span>
       </div>
       {daily.pendingReinforcementDailyId && <PendingReinforcementCard dailyId={daily.pendingReinforcementDailyId} />}
       {weekly && (
@@ -82,6 +77,7 @@ export function BlockedTodayScreen() {
           <ButtonLink to={`/start?course=${weekly.courseId}`}>Voltar pro mapa</ButtonLink>
         </SessionFooter>
       )}
+      {session && <p className="text-pequeno text-muted">Amanhã: Sessão {daily.dayNumber}{title ? ` · ${title}` : ''}</p>}
     </SessionLayout>
   );
 }
@@ -95,9 +91,10 @@ export function SessionRoomPendingScreen() {
   const { daily, weekly } = useSession();
   const session = daily.session;
   const room = session?.pendingRoom;
+  const title = weekly?.dailies.find((d) => d.id === daily.id)?.title ?? null;
   return (
-    <SessionLayout label="Sala da sessão" sub={session ? sessionCountLabel(session, 'feitas') : ''} showGauge={false} centered>
-      <FocadaLine>{SESSION_ROOM_PENDING.replace('{sala}', room?.title ?? 'da sessão anterior')}</FocadaLine>
+    <SessionLayout label="Sala da sessão" sub={session ? sessionCountLabel(session) : ''} showGauge={false} centered>
+      <FocadaLine>{SESSION_ROOM_PENDING.replace('{sala}', room?.title ?? 'da sessão anterior').replace('{n}', String(daily.dayNumber))}</FocadaLine>
       {daily.pendingReinforcementDailyId && <PendingReinforcementCard dailyId={daily.pendingReinforcementDailyId} />}
       <SessionFooter>
         {weekly && (
@@ -107,6 +104,10 @@ export function SessionRoomPendingScreen() {
         )}
         <ButtonLink to={room ? `/salas/${room.id}` : '/salas'}>Ir para a sala</ButtonLink>
       </SessionFooter>
+      <p className="text-pequeno text-muted">
+        Depois: Sessão {daily.dayNumber}
+        {title ? ` · ${title}` : ''}
+      </p>
     </SessionLayout>
   );
 }

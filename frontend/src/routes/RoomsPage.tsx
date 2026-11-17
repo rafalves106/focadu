@@ -57,8 +57,28 @@ export function RoomsPage() {
           </p>
         </div>
         {rooms.length === 0 && <p className="text-corpo text-secondary">As salas deste curso ainda estão sendo preparadas.</p>}
+        {/* Fase 112: salas das sessões agrupadas por semana, nó "S" + número da sessão de origem. */}
+        {[...new Set(rooms.filter((r) => r.sessionNumber != null).map((r) => r.weekNumber))].map((week) => (
+          <section key={`sessoes-${week}`} className="flex flex-col gap-3">
+            <h2 className="text-rotulo-sm text-secondary">Salas das sessões{week != null ? ` · semana ${week}` : ''}</h2>
+            <ul className="flex flex-col gap-3">
+              {rooms
+                .filter((r) => r.sessionNumber != null && r.weekNumber === week)
+                .sort((x, y) => x.sessionNumber! - y.sessionNumber!)
+                .map((room) => (
+                  <RoomRow
+                    key={room.id}
+                    room={room}
+                    label={`S${room.sessionNumber}`}
+                    number={room.sessionNumber!}
+                    highlight={room.id === current?.id}
+                  />
+                ))}
+            </ul>
+          </section>
+        ))}
         {GROUPS.map((group) => {
-          const items = rooms.filter((r) => r.kind === group.kind);
+          const items = rooms.filter((r) => r.kind === group.kind && r.sessionNumber == null);
           if (items.length === 0) return null;
           return (
             <section key={group.kind} className="flex flex-col gap-3">

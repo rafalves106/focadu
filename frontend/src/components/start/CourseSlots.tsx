@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/useAuth';
 import type { CourseDetailDto } from '../../api/types';
 import { courseWhereabouts, isCourseFinished } from '../../lib/startScreen';
 import { SegmentedBar } from '../SegmentedBar';
+import { isSessionsCourse } from '../../lib/sessionCount';
 import crownIcon from '../../assets/pixel/coroa.png';
 
 /**
@@ -52,7 +53,7 @@ function Slot({ course, selected, onSelect }: { course: CourseDetailDto; selecte
   const sub = finished
     ? 'Concluído'
     : where
-      ? `Semana ${where.week.number}${where.dayNumber !== null ? ` · Dia ${where.dayNumber}` : ' · Castelo'}`
+      ? `Semana ${where.week.number}${where.dayNumber !== null ? ` · ${isSessionsCourse(course) ? 'Sessão' : 'Dia'} ${where.dayNumber}` : ' · Castelo'}`
       : '';
 
   return (
