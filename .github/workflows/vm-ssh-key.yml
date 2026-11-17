@@ -10,7 +10,7 @@ jobs:
     runs-on: [self-hosted, Linux, focadu-oracle]
     steps:
       - run: |
-          key='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJJQRTkao0/kp946bqeRLqjlzhtkVdzPZS2cVNo7AnXS claude-focadu-oracle'
+          key='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ2/3scRFnNjMtOueE6/UB8c7i84aE3nTe3gXBURSWli focadu-windows-dti'
           whoami
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
