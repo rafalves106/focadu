@@ -1,5 +1,6 @@
-import { DailyStatus, type CourseDetailDto, type WeeklyOverviewDto } from '../api/types';
+import { DailyStatus, type CourseDetailDto, type DailySessionRoomDto, type DailyStatusSummaryDto, type WeeklyOverviewDto } from '../api/types';
 import { courseQuotaReachedToday, isWeekDailiesDone, pendingReinforcementOf, primaryDays } from './focadaMapLines';
+import { isSessionsCourse, unitName, unitShort } from './sessionCount';
 
 /** Variante do Nó de dia no Figma (`12:638`). */
 export type DayNodeState =
@@ -23,6 +24,16 @@ export interface PathNode {
   title: string;
   /** Pra onde o clique leva; null = nó sem clique (trancado, abre amanhã). */
   to: string | null;
+  /** Fase 112: Marca de sala no traço depois do nó (curso em sessões, Figma `97-9586`). */
+  room?: RoomMark | null;
+}
+
+/** Variante da Marca de sala: feita (verde), pendente (âmbar), trancada (contorno). */
+export type RoomMark = 'feita' | 'pendente' | 'trancada';
+
+export function roomMarkOf(room: DailySessionRoomDto | null | undefined): RoomMark | null {
+  if (!room) return null;
+  return room.status === 'Completed' ? 'feita' : room.status === 'Locked' ? 'trancada' : 'pendente';
 }
 
 const STATE_TEXT: Record<DayNodeState, string> = {
@@ -36,6 +47,11 @@ const STATE_TEXT: Record<DayNodeState, string> = {
   'castelo-aberto': 'aberto',
 };
 
+/** Fase 112: o 4º argumento de weekPathNodes pro curso (nulo em curso Daily). */
+export function sessionsPathOptions(course: CourseDetailDto): { roomPending: boolean } | null {
+  return isSessionsCourse(course) ? { roomPending: pendingSessionRoom(course) !== null } : null;
+}
+
 export function isDone(state: DayNodeState): boolean {
   return state === 'feito' || state === 'feito-reforco';
 }
@@ -43,6 +59,34 @@ export function isDone(state: DayNodeState): boolean {
 /** A cota de hoje deste curso foi gasta (1 Dia; no curso em sessões, as N sessões, Fase 111): o próximo abre amanhã. */
 export function courseDoneToday(course: CourseDetailDto): boolean {
   return courseQuotaReachedToday(course);
+}
+
+/** Fase 112: todos os Dias (sem reforço) do curso, em ordem, com a semana. */
+export function courseDays(course: CourseDetailDto): { week: WeeklyOverviewDto; day: DailyStatusSummaryDto }[] {
+  return course.monthlies
+    .flatMap((m) => m.weeklies)
+    .sort((a, b) => a.number - b.number)
+    .flatMap((week) => primaryDays(week).map((day) => ({ week, day })));
+}
+
+/** Sessões (sem reforço) concluídas hoje neste curso. */
+export function completedTodayCount(course: CourseDetailDto): number {
+  return courseDays(course).filter(({ day }) => day.completedToday).length;
+}
+
+/**
+ * Fase 112: a sala da sessão anterior à próxima, quando ainda falta fazê-la (a próxima sessão espera por ela, mesma
+ * regra do servidor em SessionStudy). Nulo em curso Daily, sem próxima sessão ou com a sala feita.
+ */
+export function pendingSessionRoom(course: CourseDetailDto): { day: DailyStatusSummaryDto; week: WeeklyOverviewDto; room: DailySessionRoomDto; next: DailyStatusSummaryDto } | null {
+  if (!isSessionsCourse(course)) return null;
+  const days = courseDays(course);
+  const i = days.findIndex(({ day }) => day.isNext && day.status !== DailyStatus.InProgress && day.status !== DailyStatus.Completed);
+  if (i <= 0) return null;
+  const { day, week } = days[i - 1];
+  const room = day.sessionRoom;
+  if (!room || room.status === 'Completed' || room.status === 'Locked') return null;
+  return { day, week, room, next: days[i].day };
 }
 
 /** Total de Dias do curso (sem reforço), pra "Dia 3 de 72". */
@@ -58,9 +102,12 @@ export function courseDoneDayCount(course: CourseDetailDto): number {
   );
 }
 
-/** "12 semanas · 72 dias · 12 projetos" (sem projetos no curso de pré-requisito). */
+/** "12 semanas · 72 dias · 12 projetos" (sem projetos no curso de pré-requisito); em sessões, "15 semanas · 90 sessões · até 3 por dia, cada uma com a sua sala". */
 export function courseSizeText(course: CourseDetailDto): string {
   const weeks = course.monthlies.flatMap((m) => m.weeklies);
+  if (isSessionsCourse(course)) {
+    return `${weeks.length} ${weeks.length === 1 ? 'semana' : 'semanas'} · ${courseDayCount(course)} sessões · até ${course.sessionsPerDay ?? 1} por dia, cada uma com a sua sala`;
+  }
   const projects = weeks.filter((w) => !w.isPracticeOnly).length;
   return [
     `${weeks.length} ${weeks.length === 1 ? 'semana' : 'semanas'}`,
@@ -95,22 +142,30 @@ export function isWeekReached(week: WeeklyOverviewDto): boolean {
  * próximo fica "Disponível" (abre amanhã). O code comigo mostra a borda âmbar até chegar a vez dele, só
  * na semana já alcançada: em semana futura é cadeado, como os outros Dias (Figma `18:1613`).
  */
-export function weekPathNodes(week: WeeklyOverviewDto, courseId: string, doneToday: boolean): PathNode[] {
+export function weekPathNodes(
+  week: WeeklyOverviewDto,
+  courseId: string,
+  doneToday: boolean,
+  sessions: { roomPending: boolean } | null = null,
+): PathNode[] {
   const reached = isWeekReached(week);
   const nodes: PathNode[] = primaryDays(week).map((day) => {
     let state: DayNodeState;
     if (day.status === DailyStatus.Completed) state = pendingReinforcementOf(week, day) ? 'feito-reforco' : 'feito';
     else if (day.status === DailyStatus.InProgress) state = 'atual';
-    else if (day.isNext && !week.isLocked) state = doneToday ? 'disponivel' : 'atual';
+    // Fase 112: em sessões, a próxima espera a sala da anterior ou a cota de amanhã no estado Trancado (sem "abre amanhã").
+    else if (day.isNext && !week.isLocked) state = sessions && (sessions.roomPending || doneToday) ? 'trancado' : doneToday ? 'disponivel' : 'atual';
     else state = day.isBridge && reached ? 'code' : 'trancado';
     const open = isDone(state) || state === 'atual';
+    const room = sessions ? roomMarkOf(day.sessionRoom) : null;
     return {
       key: day.id,
       state,
-      label: `D${day.dayNumber}`,
+      label: unitShort(!!sessions, day.dayNumber),
       dayNumber: day.dayNumber,
-      title: `Dia ${day.dayNumber}${day.title ? `, ${day.title}` : ''}: ${STATE_TEXT[state]}`,
+      title: `${unitName(!!sessions, day.dayNumber)}${day.title ? `, ${day.title}` : ''}: ${STATE_TEXT[state]}${room ? `; sala ${room}` : ''}`,
       to: open ? `/hoje?daily=${day.id}` : null,
+      room,
     };
   });
   if (!week.isPracticeOnly) {

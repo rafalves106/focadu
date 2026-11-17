@@ -70,7 +70,7 @@ internal static class SessionStudy
         var room = courseRooms.FirstOrDefault(r => r.Slug == slug);
         if (room is null || progresses.FirstOrDefault(p => p.RoomId == room.Id)?.Completed == true)
             return null;
-        return new PendingSessionRoom(room.Id, room.Slug, room.Title);
+        return new PendingSessionRoom(room.Id, room.Slug, room.Title, room.EstimatedMinutes, room.MachineLabel);
     }
 
     /// <summary>Contagem da tela ("sessao 2 de 3 hoje"). Nulo em curso Daily.</summary>
@@ -80,5 +80,5 @@ internal static class SessionStudy
             : new SessionInfoDto(
                 SessionRules.CompletedToday(enrollmentWeeklies.SelectMany(w => w.Dailies), today),
                 study.SessionsPerDay,
-                study.PendingRoom is { } room ? new SessionRoomDto(room.RoomId, room.Slug, room.Title) : null);
+                study.PendingRoom is { } room ? new SessionRoomDto(room.RoomId, room.Slug, room.Title, room.EstimatedMinutes, room.MachineLabel) : null);
 }

@@ -245,6 +245,24 @@ public class SessionRulesTests
     }
 
     [Fact]
+    public void SessionRoom_KeepsItsSessionNumber_LockedOrOpen()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var first = NewSession(weekly, 1, "sessao-1");
+        var room = SessionRoom("sessao-1");
+        var reached = new HashSet<int> { 1 };
+        RoomLock LockNow() => RoomMapper.LockOf(room, [room], [], new RoomUnlocks(reached, RoomMapper.SessionRooms([weekly])));
+
+        Assert.Equal(1, LockNow().SessionNumber);
+        Assert.Equal("Locked", RoomMapper.StatusOf(null, LockNow()));
+
+        first.Start();
+        first.Complete();
+        Assert.Equal(1, LockNow().SessionNumber);
+        Assert.Equal("Available", RoomMapper.StatusOf(null, LockNow()));
+    }
+
+    [Fact]
     public void DailyCourse_RoomStillOpensWithTheWeek()
     {
         var weekly = DailyFixtures.NewWeekly();
@@ -255,5 +273,6 @@ public class SessionRulesTests
         var roomLock = RoomMapper.LockOf(room, [room], [], RoomUnlocks.ByWeek(new HashSet<int> { 1 }));
         Assert.False(roomLock.Locked);
         Assert.Null(roomLock.OpensWithSession);
+        Assert.Null(roomLock.SessionNumber);
     }
 }

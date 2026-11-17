@@ -336,6 +336,16 @@ export interface SessionRoomDto {
   id: string;
   slug: string;
   title: string;
+  /** Fase 112: pro Destaque do Início ("40 min · Kali + Vitrine"). Ausente em resposta antiga. */
+  estimatedMinutes?: number;
+  machineLabel?: string;
+}
+
+/** Fase 112: a sala de uma sessão na trilha (Marca de sala, Chip da Visão da semana). */
+export interface DailySessionRoomDto {
+  id: string;
+  title: string;
+  status: 'Locked' | 'Available' | 'InProgress' | 'Completed';
 }
 
 export interface SubmitActivityResponseResult {
@@ -435,6 +445,8 @@ export interface DailyStatusSummaryDto {
   completedToday: boolean;
   /** Molde v1: dia de ponte (DailyTemplate.IsBridge) - a trilha marca a ponte por aqui, nao pela posicao do dia. */
   isBridge?: boolean;
+  /** Fase 112: sala da sessao (curso em sessoes). Nulo/ausente em curso Daily ou dia sem sala. */
+  sessionRoom?: DailySessionRoomDto | null;
 }
 
 export interface MonthlyOverviewDto {

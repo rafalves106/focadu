@@ -85,4 +85,9 @@ public record DailyStatusSummaryDto(
     /// <summary>Fase 65: concluida hoje (hora local, mesma conversao de Weekly.EvaluateDailyAccess) - o mapa usa pra fala "por hoje acabou" quando a cota diaria ja foi gasta.</summary>
     bool CompletedToday,
     /// <summary>Molde v1: dia de ponte (DailyTemplate.IsBridge - variante por linguagem ou dia "code comigo"). A trilha (CourseTrail) marca a ponte por este campo, nao mais adivinhando pela posicao (6o dia).</summary>
-    bool IsBridge = false);
+    bool IsBridge = false,
+    /// <summary>Fase 112: sala da sessão (dia.json "salaDaSessao") em curso em sessões - a Marca de sala da trilha e o Chip da Visão da semana. Nulo em curso Daily, em dia sem sala ou com a sala ainda não importada.</summary>
+    DailySessionRoomDto? SessionRoom = null);
+
+/// <summary>Fase 112: a sala de uma sessão na trilha. Status como RoomSummaryDto: Locked, Available, InProgress, Completed.</summary>
+public record DailySessionRoomDto(Guid Id, string Title, string Status);

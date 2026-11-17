@@ -8,8 +8,11 @@ import {
   type DailyActivityDto,
   type DailyStateDto,
   type DailyStatusSummaryDto,
+  type SessionRoomDto,
   type WeeklyOverviewDto,
 } from '../api/types';
+import { isSessionsCourse } from './sessionCount';
+import { completedTodayCount } from './weekPath';
 import { currentStop, DEFAULT_MAP_LINES, isWeekClosurePending, pendingReinforcementOf, primaryDays } from './focadaMapLines';
 
 /**
@@ -54,6 +57,8 @@ export interface PendingReinforcement {
 /** O que o cartão Destaque do Início mostra (sistema.md §6). */
 export type StartHighlight =
   | { kind: 'dia'; daily: DailyStateDto; title: string | null }
+  /** Fase 112: curso em sessões, a sala da sessão anterior falta (`DailyAccessMode.SessionRoomPending`). */
+  | { kind: 'sala'; room: SessionRoomDto; sessionNumber: number; next: DailyStatusSummaryDto | null }
   | { kind: 'reforco'; reinforcement: PendingReinforcement }
   | { kind: 'projeto'; week: WeeklyOverviewDto; submitted: boolean }
   | { kind: 'publicacao'; week: WeeklyOverviewDto }
@@ -71,6 +76,8 @@ export interface StartState {
   reinforcement: PendingReinforcement | null;
   /** 1º dia: nenhum Dia fechado ainda neste curso. */
   firstDay: boolean;
+  /** Fase 112: curso em sessões, sessões feitas hoje e o limite do dia. Nulo em curso Daily. */
+  sessions: { done: number; perDay: number } | null;
 }
 
 const DAY_MODES: readonly DailyAccessMode[] = [DailyAccessMode.Start, DailyAccessMode.Resume, DailyAccessMode.Replay, DailyAccessMode.NeedsProjectLanguage];
@@ -87,9 +94,20 @@ export function buildStartState(course: CourseDetailDto, daily: DailyStateDto | 
   const reinforcement = findReinforcement(course, weeks, daily);
   const week = (daily && weeks.find((w) => w.id === daily.weeklyId)) ?? currentStop(course)?.week ?? weeks[weeks.length - 1] ?? null;
   const next = days.find(({ day }) => day.isNext && day.status !== DailyStatus.InProgress)?.day ?? null;
-  const base = { week, doneToday, reinforcement, firstDay: !hasFinishedADay(course) };
+  const sessions = isSessionsCourse(course) ? { done: completedTodayCount(course), perDay: course.sessionsPerDay ?? 1 } : null;
+  const base = { week, doneToday, reinforcement, firstDay: !hasFinishedADay(course), sessions };
 
   if (!daily) return { ...base, highlight: { kind: 'concluido' }, tomorrow: null };
+  // Fase 112: a sala pendente é o que dá pra fazer agora (vem antes da próxima sessão e da prévia de amanhã).
+  if (daily.accessMode === DailyAccessMode.SessionRoomPending && daily.session?.pendingRoom) {
+    const nextDay = days.find(({ day }) => day.id === daily.id)?.day ?? null;
+    const previous = days.filter(({ day }) => day.dayNumber < daily.dayNumber).at(-1)?.day;
+    return {
+      ...base,
+      highlight: { kind: 'sala', room: daily.session.pendingRoom, sessionNumber: previous?.dayNumber ?? daily.dayNumber - 1, next: nextDay },
+      tomorrow: null,
+    };
+  }
   if (DAY_MODES.includes(daily.accessMode)) {
     const title = days.find(({ day }) => day.id === daily.id)?.day.title ?? null;
     return { ...base, highlight: { kind: 'dia', daily, title }, tomorrow: null };
@@ -160,7 +178,14 @@ export function startFocadaLine(state: StartState, streak: number, studied: bool
   switch (h.kind) {
     case 'concluido':
       return DEFAULT_MAP_LINES.cursoConcluido;
+    case 'sala':
+      return `${state.sessions?.done === 1 ? 'Primeira sessão' : 'Sessão'} no bolso. Agora a prática: a sala destrava a próxima.`;
     case 'dia': {
+      if (state.sessions && !state.firstDay && h.daily.status !== DailyStatus.InProgress) {
+        const left = state.sessions.perDay - state.sessions.done;
+        if (state.sessions.done === 0) return `A Sessão ${h.daily.dayNumber} está aberta, agente. Cada sessão termina numa sala.`;
+        return `Sala feita, agente. A Sessão ${h.daily.dayNumber} já está aberta: hoje ainda ${left === 1 ? 'cabe uma' : `cabem ${NUMBER_WORDS[left] ?? left}`}.`;
+      }
       if (state.firstDay) return 'Eu sou a Focada. Aqui ninguém responde por você: você lê, pratica e explica em voz alta. Eu aponto o caminho.';
       if (h.daily.status === DailyStatus.InProgress) return fill(DEFAULT_MAP_LINES.dailyEmAndamento, { dia: h.daily.dayNumber });
       if (streak >= 2 && !studied) return `${streak} dias seguidos, agente. Hoje é o Dia ${h.daily.dayNumber}${h.title ? `: ${h.title}` : ''}.`;
@@ -175,11 +200,17 @@ export function startFocadaLine(state: StartState, streak: number, studied: bool
     case 'publicacao':
       return fill(DEFAULT_MAP_LINES.publicacaoPendente, { proxima: h.week.number + 1 });
     case 'amanha':
+      if (state.sessions && state.doneToday) {
+        const n = state.sessions.done;
+        return `Por hoje acabou, agente: ${n} ${n === 1 ? 'sessão' : 'sessões'} e ${n} ${n === 1 ? 'sala' : 'salas'}. O cérebro consolida dormindo.`;
+      }
       return state.doneToday
         ? fill(DEFAULT_MAP_LINES.diaFeitoHoje, { dia: state.doneToday.dayNumber })
         : `Por hoje é só, agente. ${state.tomorrow ? `O Dia ${state.tomorrow.dayNumber} abre amanhã.` : 'Volte amanhã.'}`;
   }
 }
+
+const NUMBER_WORDS: Record<number, string> = { 2: 'duas', 3: 'três', 4: 'quatro', 5: 'cinco' };
 
 function fill(text: string, values: Record<string, string | number>): string {
   return text.replace(/\{(\w+)\}/g, (match, key: string) => (key in values ? String(values[key]) : match));

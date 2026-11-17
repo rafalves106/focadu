@@ -120,6 +120,10 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
       },
       { title: 'Você', text: 'Sequência, gems e os dias da semana em que você estudou. Aparece depois do primeiro Dia.' },
       { title: 'Seus cursos', text: 'Onde você está no curso. Com mais de um curso, "Trocar curso" muda a tela inteira.' },
+      {
+        title: 'Curso em sessões',
+        text: 'No curso em sessões (como o WSTG), o cartão verde mostra quantas sessões você fez hoje, e a sala da sessão anterior vem antes da próxima sessão. No caminho, o quadradinho no traço depois de cada sessão é a sala: verde feita, âmbar pendente, contorno trancada.',
+      },
     ],
   },
   trilha: {
@@ -132,6 +136,10 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
         text: 'Verde com check é feito, o de play é hoje e o cadeado é trancado. A borda âmbar é o code comigo (6º dia). O castelo é o Projeto da semana, só em curso que tem projeto. Clique num quadrado pra abrir o Dia, ou no nome da semana pra ver a semana.',
       },
       { title: 'Reforço pendente', text: 'O ponto âmbar no canto do Dia. Ele não gasta o Dia de amanhã.' },
+      {
+        title: 'Curso em sessões',
+        text: 'Os quadrados viram sessões (S1, S2...) e o quadradinho no traço depois de cada uma é a sala dela. Sala pendente trava a sessão seguinte; com as sessões de hoje feitas, a próxima abre à meia-noite.',
+      },
       { title: 'Resumo e atalhos', text: 'Números do curso e os caminhos pro Caderninho, Certificações e Ranking.' },
       { title: 'Mais de um curso?', text: 'Troque no Início, em "Seus cursos".' },
     ],
@@ -146,6 +154,10 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
       { title: 'Projeto da semana', text: 'A semana seguinte só abre com ele avaliado. No curso sem projeto, a semana fecha junto com o code comigo.' },
       { title: 'Falta publicar', text: 'Quando o cartão âmbar aparece, falta publicar a semana no LinkedIn pra próxima abrir.' },
       { title: 'Resumo da semana', text: 'Dias feitos, atividades aprovadas, reforços pendentes e o objetivo do projeto.' },
+      {
+        title: 'Curso em sessões',
+        text: 'Uma linha por sessão, com a sala dela: "Sala feita" em verde, "Sala pendente" em âmbar. Com a sala pendente, o botão leva pra ela; feita, a sessão seguinte abre.',
+      },
     ],
   },
   sessao: {
@@ -170,7 +182,7 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
       { title: 'Mais de um curso?', text: 'O Hoje pergunta qual curso estudar antes de abrir. Cada curso tem o seu Dia.' },
       {
         title: 'Curso em sessões',
-        text: 'Alguns cursos (como o WSTG) têm até 3 sessões por dia, cada uma seguida da sua sala prática. O topo mostra qual sessão de hoje é esta. A próxima sessão só abre com a sala da anterior feita: o Hoje avisa e leva direto pra sala.',
+        text: 'Alguns cursos (como o WSTG) têm até 3 sessões por dia, cada uma seguida da sua sala prática. O topo mostra a sessão (Sessão 2) e a tela da sala pendente e a do fim do dia mostram quantas você fez hoje. A próxima sessão só abre com a sala da anterior feita: o Hoje avisa e leva direto pra sala.',
       },
       { title: 'Tudo em dia', text: 'Se você fez todos os dias que o curso tem até agora, o Hoje mostra o resumo do que conquistou. Os próximos dias aparecem no Início quando saírem.' },
     ],

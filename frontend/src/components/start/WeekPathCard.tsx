@@ -16,30 +16,37 @@ export function WeekPathCard({
   courseId,
   state,
   doneToday,
+  sessionsOptions = null,
 }: {
   week: WeeklyOverviewDto;
   courseId: string;
   state: StartState;
   doneToday: boolean;
+  /** Fase 112: curso em sessões (`sessionsPathOptions`); nulo no curso Daily. */
+  sessionsOptions?: { roomPending: boolean } | null;
 }) {
   const days = primaryDays(week);
   const remaining = days.filter((d) => d.status !== DailyStatus.Completed).length;
-  const nodes = weekPathNodes(week, courseId, doneToday);
-  const label = `Dias da Semana ${week.number}`;
+  const nodes = weekPathNodes(week, courseId, doneToday, sessionsOptions);
+  const sessions = sessionsOptions !== null;
+  const unit = (n: number) => (sessions ? (n === 1 ? 'sessão' : 'sessões') : n === 1 ? 'dia' : 'dias');
+  const label = `${sessions ? 'Sessões' : 'Dias'} da Semana ${week.number}`;
   const bridge = days.find((d) => d.isBridge && d.status !== DailyStatus.Completed);
   const showChip = state.reinforcement && state.highlight.kind !== 'reforco';
 
   const title = week.isPracticeOnly
     ? remaining > 0
-      ? `Faltam ${remaining} ${remaining === 1 ? 'dia' : 'dias'} para fechar a semana`
+      ? `Faltam ${remaining} ${unit(remaining)} para fechar a semana`
       : 'Semana fechada'
     : remaining > 0
-      ? `Faltam ${remaining} ${remaining === 1 ? 'dia' : 'dias'} para o Projeto da semana`
+      ? `Faltam ${remaining} ${unit(remaining)} para o Projeto da semana`
       : week.projectStatus === WeeklyProjectStatus.Evaluated
         ? 'Projeto da semana avaliado'
         : 'Projeto da semana aberto';
 
-  const note = state.firstDay
+  const note = sessions
+    ? 'Cada sessão termina numa sala. A sala feita abre a sessão seguinte; a 6ª é o code comigo.'
+    : state.firstDay
     ? `${days.length} dias e, no fim, ${week.isPracticeOnly ? 'o code comigo fecha a semana' : 'o Projeto da semana'}. Um dia por vez.`
     : [
         // Na prévia de amanhã o Destaque já diz isso.

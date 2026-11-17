@@ -1,8 +1,8 @@
 import { useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { ActivityStatus, ActivityType, DailyStatus, type DailyActivityDto, type DailyStateDto } from '../api/types';
-import { sessionCountLabel } from '../lib/sessionCount';
+import { ActivityStatus, ActivityType, type DailyActivityDto, type DailyStateDto } from '../api/types';
+import { unitName } from '../lib/sessionCount';
 import { SessionFooterContext, useSession } from '../lib/sessionContext';
 import { ACTIVITY_TITLE, sessionStages, sortedActivities, stepInfo, type StepInfo } from '../lib/sessionSteps';
 import { setStudyAssistantCodeBridge, setStudyAssistantContext, setStudyAssistantCourse } from '../lib/studyAssistantContext';
@@ -152,10 +152,10 @@ export function SessionLayout({
   const stageCount = sessionStages(daily).length;
   const stepCrumb = info ? `Etapa ${info.stageIndex + 1} de ${stageCount}` : null;
   const dayTitle = weekly?.dailies.find((d) => d.id === daily.id)?.title ?? null;
-  // Fase 111: curso em sessões diz qual sessão de hoje é esta ("Dia 2 · Sessão 2 de 3 hoje"), só enquanto ela não foi concluída.
-  const sessionCrumb = daily.session && !daily.isReinforcement && daily.status !== DailyStatus.Completed ? ` · ${sessionCountLabel(daily.session, 'atual')}` : '';
-  const dayCrumb = daily.isReinforcement ? `Reforço do Dia ${daily.dayNumber}` : `Dia ${daily.dayNumber}${sessionCrumb}`;
-  const title = heading?.title ?? (daily.isReinforcement ? `Reforço do Dia ${daily.dayNumber}` : (dayTitle ?? `Dia ${daily.dayNumber}`));
+  // Fase 112: no curso em sessões (daily.session presente) a unidade é "Sessão N"; a contagem do dia fica no rótulo das telas.
+  const unit = unitName(!!daily.session, daily.dayNumber);
+  const dayCrumb = daily.isReinforcement ? `Reforço ${daily.session ? 'da' : 'do'} ${unit}` : unit;
+  const title = heading?.title ?? (daily.isReinforcement ? dayCrumb : (dayTitle ?? unit));
   const meta = heading ? (heading.meta ?? null) : info ? stageMeta(daily, info) : null;
   const eyebrow = sub ?? info?.sub ?? '';
   const lastCrumb = label ?? stepCrumb;
@@ -308,7 +308,8 @@ export function SessionLayout({
             <SessionFooterContext.Provider value={footerEl}>
               <ScrollArea className="min-h-0 flex-1" contentClassName={`flex flex-col gap-4 ${centered ? 'min-h-full justify-center' : ''}`}>
                 {shownOpening}
-                {eyebrow && <p className="hidden text-rotulo-sm text-secondary md:block">{eyebrow}</p>}
+                {/* Sem barra de etapas (cota, sala pendente) o rótulo também aparece no celular: é a contagem do dia (Fase 112). */}
+                {eyebrow && <p className={`text-rotulo-sm text-secondary ${chainMode === 'none' ? '' : 'hidden md:block'}`}>{eyebrow}</p>}
                 {children}
               </ScrollArea>
             </SessionFooterContext.Provider>

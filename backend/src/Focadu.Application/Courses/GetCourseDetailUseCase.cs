@@ -1,9 +1,11 @@
 using Focadu.Application.Dailies;
 using Focadu.Application.Exceptions;
 using Focadu.Application.Ports;
+using Focadu.Application.Rooms;
 using Focadu.Application.Shared;
 using Focadu.Domain.Dailies;
 using Focadu.Domain.Enums;
+using Focadu.Domain.Courses;
 using Focadu.Domain.Repositories;
 
 namespace Focadu.Application.Courses;
@@ -20,15 +22,19 @@ public class GetCourseDetailUseCase
     private readonly ICourseRepository _courseRepository;
     private readonly IEnrollmentRepository _enrollmentRepository;
     private readonly IWeeklyRepository _weeklyRepository;
+    private readonly IRoomRepository _roomRepository;
+    private readonly IRoomProgressRepository _roomProgressRepository;
     private readonly IClock _clock;
 
     public GetCourseDetailUseCase(
         ICourseRepository courseRepository, IEnrollmentRepository enrollmentRepository, IWeeklyRepository weeklyRepository,
-        IClock clock)
+        IRoomRepository roomRepository, IRoomProgressRepository roomProgressRepository, IClock clock)
     {
         _courseRepository = courseRepository;
         _enrollmentRepository = enrollmentRepository;
         _weeklyRepository = weeklyRepository;
+        _roomRepository = roomRepository;
+        _roomProgressRepository = roomProgressRepository;
         _clock = clock;
     }
 
@@ -44,6 +50,7 @@ public class GetCourseDetailUseCase
         var weeklyByTemplateId = instanceWeeklies.ToDictionary(w => w.WeeklyTemplateId);
         var nextDailyId = DailySequencing.FindNext(instanceWeeklies)?.Id;
         var today = _clock.Today();
+        var sessionRoomOf = await LoadSessionRoomsAsync(userId, course, instanceWeeklies, cancellationToken);
 
         var monthlyDtos = new List<MonthlyOverviewDto>();
         var dailyReinforcements = new List<DailyReinforcementSummaryDto>();
@@ -93,7 +100,8 @@ public class GetCourseDetailUseCase
                         d.ReinforcementDailyId,
                         // CompletedAt e UTC; "today" e hora local (IClock) - mesma conversao de Weekly.EvaluateDailyAccess.
                         d.CompletedAt.HasValue && DateOnly.FromDateTime(d.CompletedAt.Value.ToLocalTime()) == today,
-                        d.Template.IsBridge))
+                        d.Template.IsBridge,
+                        d.IsReinforcement ? null : sessionRoomOf(d)))
                     .ToList();
 
                 weeklyDtos.Add(new WeeklyOverviewDto(
@@ -128,5 +136,27 @@ public class GetCourseDetailUseCase
         return new CourseDetailDto(
             course.Id, course.Name, course.Status, progress,
             monthlyDtos, dailyReinforcements, weeklyReinforcements, course.StudyFormat, course.SessionsPerDay);
+    }
+
+    /// <summary>
+    /// Fase 112: a sala de cada sessão, com o mesmo status da lista de salas (RoomMapper). Curso Daily não lê sala
+    /// nenhuma e devolve sempre nulo.
+    /// </summary>
+    private async Task<Func<Daily, DailySessionRoomDto?>> LoadSessionRoomsAsync(
+        Guid userId, Course course, IReadOnlyCollection<Domain.Weeklies.Weekly> weeklies, CancellationToken cancellationToken)
+    {
+        if (course.StudyFormat != StudyFormat.Sessions)
+            return _ => null;
+
+        var rooms = await _roomRepository.ListByCourseAsync(course.Id, cancellationToken);
+        if (rooms.Count == 0)
+            return _ => null;
+        var progresses = await _roomProgressRepository.ListByUserAsync(userId, rooms.Select(r => r.Id).ToList(), cancellationToken);
+        var unlocks = new RoomUnlocks(RoomMapper.ReachedWeeks(weeklies), RoomMapper.SessionRooms(weeklies));
+        var bySlug = rooms.ToDictionary(
+            r => r.Slug,
+            r => new DailySessionRoomDto(r.Id, r.Title,
+                RoomMapper.StatusOf(progresses.FirstOrDefault(p => p.RoomId == r.Id), RoomMapper.LockOf(r, rooms, progresses, unlocks))));
+        return d => d.Template.SessionRoomSlug is { } slug ? bySlug.GetValueOrDefault(slug) : null;
     }
 }

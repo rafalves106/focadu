@@ -7,7 +7,8 @@ import {
   stepProgress,
   type StartState,
 } from '../../lib/startScreen';
-import { courseDayCount, projectLink, weekLink } from '../../lib/weekPath';
+import { useCountdownToMidnight } from '../../lib/useCountdownToMidnight';
+import { courseDayCount, courseDays, projectLink, weekLink } from '../../lib/weekPath';
 import { ButtonLink } from '../ui/Button';
 import { Card } from '../ui/Card';
 
@@ -30,12 +31,77 @@ export function HighlightCard({
 }) {
   const h = state.highlight;
   const total = courseDayCount(course);
+  const countdown = useCountdownToMidnight();
+  // Fase 112: curso em sessões, a contagem do dia (barra de N segmentos) fica dentro do Destaque e só aqui.
+  const bar = state.sessions ? <SessionsBar done={state.sessions.done} perDay={state.sessions.perDay} /> : null;
   const tomorrow = state.tomorrow ? `Amanhã: Dia ${state.tomorrow.dayNumber}${state.tomorrow.title ? ` · ${state.tomorrow.title}` : ''}` : null;
   const doneEyebrow = state.doneToday
     ? `Dia ${state.doneToday.dayNumber} feito · +${DAY_GEMS} gem · ${streak} ${streak === 1 ? 'dia seguido' : 'dias seguidos'}`
     : null;
 
+  if (state.sessions) {
+    const titleOf = (id: string | undefined) => courseDays(course).find(({ day }) => day.id === id)?.day.title ?? null;
+    if (h.kind === 'sala') {
+      const next = h.next;
+      const nextTitle = next ? titleOf(next.id) : null;
+      const what = [h.room.machineLabel ? `${h.room.machineLabel}, no seu computador.` : 'No seu computador.', h.room.estimatedMinutes ? `Uns ${h.room.estimatedMinutes} minutos.` : null]
+        .filter(Boolean)
+        .join(' ');
+      return (
+        <Highlight
+          eyebrow={`Agora · sala da Sessão ${h.sessionNumber}`}
+          title={h.room.title}
+          text={`${what} Ela fecha o que a Sessão ${h.sessionNumber} ensinou${next ? ` e abre a Sessão ${next.dayNumber}` : ''}.`}
+          top={bar}
+          action={
+            <ButtonLink to={`/salas/${h.room.id}`} className="w-full md:w-auto">
+              Ir para a sala
+            </ButtonLink>
+          }
+          after={next ? `Depois: Sessão ${next.dayNumber}${nextTitle ? ` · ${nextTitle}` : ''}.` : null}
+        />
+      );
+    }
+    if (h.kind === 'dia' && !h.daily.isReinforcement) {
+      const { daily } = h;
+      const resuming = daily.status === DailyStatus.InProgress;
+      const replay = daily.accessMode === DailyAccessMode.Replay || daily.status === DailyStatus.Completed;
+      const room = courseDays(course).find(({ day }) => day.id === daily.id)?.day.sessionRoom;
+      const step = stepProgress(daily);
+      return (
+        <Highlight
+          eyebrow={`Agora · Sessão ${daily.dayNumber}`}
+          title={h.title ?? `Sessão ${daily.dayNumber}`}
+          text={describeActivities(daily.activities)}
+          top={bar}
+          action={
+            <ButtonLink to={`/hoje?daily=${daily.id}`} className="w-full md:w-auto">
+              {replay ? 'Rever a sessão' : resuming ? 'Continuar a sessão' : 'Começar a sessão'}
+            </ButtonLink>
+          }
+          after={resuming ? `Você parou na etapa ${step.at} de ${step.total}.` : !replay && room ? `Depois: a sala da S${daily.dayNumber}, no Kali.` : null}
+        />
+      );
+    }
+    if (h.kind === 'amanha' && state.doneToday) {
+      const n = state.sessions.done;
+      const next = state.tomorrow;
+      return (
+        <Highlight
+          eyebrow="Por hoje acabou"
+          title={next ? `Amanhã: Sessão ${next.dayNumber}${next.title ? ` · ${next.title}` : ''}` : 'Por hoje acabou'}
+          text={`${n === 1 ? 'A sessão e a sala' : `As ${n} sessões e as ${n} salas`} de hoje estão feitas.${next ? ` A Sessão ${next.dayNumber} abre à meia-noite.` : ''}`}
+          top={bar}
+          action={null}
+          after={`Próxima sessão em ${countdown}.`}
+        />
+      );
+    }
+  }
+
   switch (h.kind) {
+    case 'sala':
+      return null;
     case 'dia': {
       const { daily } = h;
       const resuming = daily.status === DailyStatus.InProgress;
@@ -155,10 +221,27 @@ export function HighlightCard({
   }
 }
 
+/** Fase 112 (Figma `97-2151`): "1 de 3 sessões hoje" com um segmento por sessão (Etapa/Segmento). */
+function SessionsBar({ done, perDay }: { done: number; perDay: number }) {
+  return (
+    <div className="flex items-center gap-3" role="img" aria-label={`${done} de ${perDay} sessões hoje`}>
+      <span className="flex flex-1 gap-1">
+        {Array.from({ length: perDay }, (_, i) => (
+          <span key={i} className={`h-1.5 flex-1 ${i < done ? 'bg-accent' : 'bg-stroke'}`} />
+        ))}
+      </span>
+      <span className="text-rotulo-sm whitespace-nowrap text-secondary">
+        {done} de {perDay} sessões hoje
+      </span>
+    </div>
+  );
+}
+
 function Highlight({
   eyebrow,
   title,
   text,
+  top = null,
   action,
   after,
   afterInline = false,
@@ -166,6 +249,8 @@ function Highlight({
   eyebrow: string;
   title: string;
   text: string;
+  /** Fase 112: a barra de sessões do dia, acima do texto. */
+  top?: ReactNode;
   action: ReactNode;
   after: string | null;
   /** Desktop: o "depois" ao lado do Primário (dia por fazer) em vez de embaixo. */
@@ -173,6 +258,7 @@ function Highlight({
 }) {
   return (
     <Card kind="destaque" eyebrow={eyebrow} title={title} pad="gap-4 p-4 md:p-6" className="shrink-0">
+      {top}
       <p className="text-corpo text-secondary">{text}</p>
       {(action || after) && (
         <div className={`flex flex-col gap-4 ${afterInline ? 'md:flex-row md:items-center' : ''}`}>
