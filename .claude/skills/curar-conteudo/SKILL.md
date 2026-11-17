@@ -23,12 +23,14 @@ Regras e decisões: `secret/produto/PLANO-CURADORIA.md` (aprovado em 02/10/2026)
 - Subagente (D4, D7, D7b) só recebe caminhos, nunca o texto colado.
 
 Slugs: `web-security`, `linux`, `python-websec`. Sem curso claro, pergunte. Molde A (conceito): web-security. Molde B (prática): linux, python-websec.
+Molde D (estudo massivo de um guia, sessão + sala): `wstg`, desde 17/11/2026; vem da linha `tipo de molde: D` da ficha.
 
 ## Portões antes de começar
 
 1. A ficha do dia existe e está `ficha ok` em `secret/processo/cursos/<curso>/estado.md`. Sem ela, pare e mande rodar `/ficha-do-dia`.
 2. O molde está congelado ou o pedido é um **piloto** autorizado pelo dono (plano, Fase 2). Nenhum dia novo fora disso.
 3. **Dia-âncora** (dia 1 do curso ou da semana): cure só ele e pare no D7; depois do D8 (em produção) o dono lê no app e aprova antes de qualquer outro dia da semana. Se reprovar, o ajuste vai para a **ficha**, não para o texto.
+4. **Molde D:** a ficha tem `guia-repo:`, linhas `guia:` e a matriz de cobertura do guia, e aponta a ficha da sala da sessão. Sem isso, volte ao `/ficha-do-dia`.
 
 ## Etapas
 
@@ -48,6 +50,7 @@ Estado visível no `estado.md`: `a fazer` → `ficha ok` → `validado` (após D
 ### D2 e D5: como escrever
 
 - **Molde A:** 3 blocos de 1 conceito, até 150 palavras cada; cada bloco é um `Reading` próprio em `curatedContents` seguido de um `VoiceSummary` que aponta para ele e para um alvo (`target`). Mais Quiz (3), Cloze (2), Ligar Palavras (1, 4 pares), Roleplay (1, termina em Ideal/Suboptimal/Poor) e a pergunta final por voz com 3 tópicos-pista. Vídeo só como demonstração opcional de até 5 min que o texto não mostra; confirme a URL com `WebSearch`/`--online`, nunca invente.
+- **Molde D** (`processo/molde/molde-d.md`): 1 bloco por parte do guia (seção do cap. 2 ou teste do cap. 4), cada um com a sua voz, mais a voz final. O D2 escreve **a partir do trecho do guia que o `pacote-dia.mjs` imprime** (linhas `guia:` da ficha), cobrindo cada linha da matriz de cobertura da ficha com os fatos, números e exemplos do guia; nada de memória. Bloco começa com `Guia: <seção> <nome oficial>` (+ ID no cap. 4); `source` com o link versionado (`/v42/`); seções fixas (`Objetivo / Como testar / O que é achado / Como corrigir` no cap. 4, `O que o guia diz / Na prática` no cap. 2); "Como testar" ensina o passo a passo do guia. 1 Quiz "No guia (seção X), …" por bloco. Sem Projeto Semanal: a prática é a **sala da sessão** (`curar-sala`, modo sessão), que sobe junto com o dia.
 - **Molde B:** segue `processo/molde/regras-molde-b.md` (Digite / O terminal responde em blocos separados, silêncio do terminal, "só olha" ou "muda", erro traduzido, ponte Windows com armadilha, até 4 comandos novos, cenário Loja Verde no Linux). Leitura em missões (cada comando: pergunta, nome, exemplo com saída real, o que a saída mostra), `TerminalMission` com 3 a 5 missões (`processo/molde/terminal-mission.md`), Quiz (3), Cloze (2), Ligar Palavras (1), Roleplay como missão. Sem vídeo e sem conversa por voz. Ponte (dia 6): `processo/molde/ponte.md` e `lab.md`.
 - Cada item de Quiz/Cloze/voz aponta para um alvo; cada alvo tem texto e pergunta; nenhuma pergunta cobra o que o texto não ensinou.
 - Conversa por voz: situação de 2 linhas e 1 pergunta; fala da Focada até 200 caracteres (`processo/guias/GUIA-DE-VOZ-FOCADA.md`); `referenceAnswer` com a resposta correta.

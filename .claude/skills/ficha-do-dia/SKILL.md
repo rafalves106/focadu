@@ -19,7 +19,7 @@ Pedido sem curso claro: pergunte. Slugs: `web-security`, `linux`, `python-websec
 
 1. A linha do dia em `secret/processo/cursos/<curso>/roteiro.md` (use `grep -n "Dia N\b"`; **não** leia o roteiro inteiro).
 2. `secret/processo/cursos/<curso>/glossario.md`. Se não existir, a etapa C2 não foi feita: avise e pare.
-3. `secret/processo/molde/molde-v1.md` (tipos A e B) e, se existir, `ficha-curso.md` e `assumidos.md` do curso (nível, o que não explicar).
+3. `secret/processo/molde/molde-v1.md` (tipos A e B) e, se a ficha do curso disser molde C, `secret/processo/molde/molde-c.md` e, se existir, `ficha-curso.md` e `assumidos.md` do curso (nível, o que não explicar).
 4. Se o dia for o 2 em diante: a ficha do dia anterior, para não repetir o que já foi ensinado.
 5. **Curso de faculdade (existe `secret/material/<curso>/`, hoje nenhum):** o material do professor daquele dia (o `plano-a1.md` do curso diz qual arquivo cobre cada dia; texto extraído em `/tmp/claude-501/bd/`, ou recriar com `pdftotext -layout` e unzip do XML do docx/pptx). A ficha segue a didática do professor: mesmos exemplos, mesmas listas, mesma ordem e mesmos nomes, porque é o que cai na prova. Termo que o professor usa e falta no glossário: pare e peça para acrescentar. Nas notas da ficha, cite os slides/tópicos usados e as questões do professor que viram atividade (decisão do dono, 12/10/2026).
 
@@ -27,7 +27,7 @@ Pedido sem curso claro: pergunte. Slugs: `web-security`, `linux`, `python-websec
 
 ```
 # Ficha — <curso>, dia N: <título>
-tipo de molde: A | B      nível: iniciante | intermediário | avançado      dia-âncora: sim | não
+tipo de molde: A | B | C      nível: iniciante | intermediário | avançado      dia-âncora: sim | não
 
 objetivo (1 frase): ...
 termos novos (até 3/4/5 conforme o nível; todos no glossário): ...
@@ -53,6 +53,17 @@ Regras:
 - **Sem analogia** em nenhum campo. Sem autor/ano/citação.
 - Molde B (prática): em vez de termos, liste os **comandos** do dia (3 a 5 missões) e marque a saída real a ser executada e registrada.
 - Vídeo só se mostrar o que o texto não mostra; no molde B é sempre `não`.
+- Molde C (tema completo, `molde-c.md`): em vez de 3 alvos, liste os **blocos** (t1 = abertura, depois 1 por parte, até t15),
+  cada parte com O que é / Exemplo / Como prevenir em 1 linha; "o que levar daqui" tem 1 frase por bloco; acrescente a linha
+  `minigames:` com a quantidade de Quiz, Cloze, Ligar Palavras e Roleplay. Termos novos = os da abertura + o nome de cada parte
+  (até 16), todos no glossário. A ficha pode passar de 1 página, mas cada linha continua curta.
+- Molde D (estudo massivo de um guia, `molde-d.md`; modelo pronto: `secret/processo/cursos/wstg/fichas/dia-1.ficha.md`):
+  linhas `guia-repo: <dono/repo>@<tag>` e `guia: <arquivo> | <título>; <título>` (o `pacote-dia.mjs` usa para imprimir o
+  trecho ao curador); tabela de **blocos** (1 por parte do guia: alvo, título, o que cobre, com os fatos e números do guia);
+  **matriz de cobertura do guia** (todo título das páginas da sessão → bloco ou `fora: <motivo>`); as **perguntas de guia**
+  (1 por bloco); até 12 termos novos do glossário. Leia o trecho do guia antes de escrever (rode o pacote ou baixe a
+  página). A ficha aponta a **ficha da sala da sessão** (`cursos/<curso>/salas/sessao-N/ficha.md`, skill `curar-sala`,
+  modo sessão), escrita junto e aprovada junto.
 - Dia 6 da semana é ponte: se o `roteiro.md` marca ponte, use a ficha da semana (abaixo) e liste os 6 passos de código em vez de alvos de conceito.
 
 Termine pedindo a aprovação do dono ("leia em 1 minuto; aprovo ou ajusto?"). **Não escreva o texto do dia** antes dessa aprovação. Se o dia for âncora (dia 1 do curso ou da semana), diga que o dono lê o dia pronto antes de o resto da semana ser curado.

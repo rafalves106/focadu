@@ -84,3 +84,9 @@ Depois: perguntas ao dono guardadas, dias pulados, fichas que faltam, e o próxi
 - Um dia por vez, em ordem. Falha em um dia para a semana (os seguintes costumam depender do vocabulário dele).
 - Se a conversa já tem muito trabalho anterior (contexto grande), avise o dono e sugira `/clear` antes de começar a semana.
 - Nunca edite `estado.md` além do estado e dos tokens; nunca SQL; nunca atribuição ao Claude em commits.
+
+## Molde D (curso `wstg`, desde 17/11/2026)
+
+Cada dia é uma **sessão** com a sua **sala** (`molde/molde-d.md`). Para cada dia, depois do D7 aprovado, rode a sala da
+sessão pela skill `curar-sala` (modo sessão: S2 a S5, `sala-cli.js --sessao`) antes de passar ao dia seguinte; dia e
+sala só contam como `revisado` juntos. Não há ponte nem Projeto Semanal. O portão do dia-âncora vale para o par dia + sala.
