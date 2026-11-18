@@ -115,11 +115,17 @@ public static class CuratedDayImporter
 
         dailyTemplate.SetCurationInfo(day.MoldeVersion, ComputeHash(json), day.Targets?.Select(x => new LearningTarget(x.Id, x.Text)));
         dailyTemplate.SetBridgeMark(day.Ponte);
+        dailyTemplate.SetBridgeFormat(day.FormatoPonte);
         dailyTemplate.SetSessionRoom(day.SalaDaSessao);
 
         var declaredTargets = day.Targets?.Select(x => x.Id).ToHashSet();
         for (var i = 0; i < day.Activities.Count; i++)
             AddActivity(dailyTemplate, day.Activities[i], i, contentByRef, declaredTargets);
+
+        // Fase 113: "refaz" substitui o trecho da atividade de codigo anterior - precisa existir uma.
+        var firstCode = day.Activities.FindIndex(a => a.Type is ActivityType.CodeStep or ActivityType.Parsons);
+        if (firstCode >= 0 && day.Activities[firstCode].Refaz == true)
+            throw new DomainException($"Activity #{firstCode}: \"refaz\" no primeiro passo de codigo do dia (nao ha trecho anterior pra refazer).", "refaz_invalido");
 
         // Fase 86: laboratorio de codigo do dia (depois das atividades: SetLab exige um CodeStep).
         if (day.Lab is not null)
@@ -282,6 +288,17 @@ public static class CuratedDayImporter
                 json.CodeSolution ?? "", json.CodeExpectedOutput ?? "", json.CodeRubric ?? "",
                 json.CodeStarter, labDisabled: json.Lab == false);
 
+        // Fase 113 (ponte intercalada): marcas do codigo inicial, conferencia e "refaz".
+        if (json.Type == ActivityType.CodeStep && (json.CodeMarks is { Count: > 0 } || json.CodeCheck is not null || json.Refaz == true))
+            activity.ConfigureBridgeStep(ToMarks(json, orderIndex), ToCheck(json, orderIndex), json.Refaz == true);
+        else if (json.Type != ActivityType.CodeStep && (json.CodeMarks is not null || json.CodeCheck is not null || json.Refaz is not null))
+            throw new DomainException($"Activity #{orderIndex}: codeMarks, codeCheck e refaz so valem em CodeStep.", "campo_de_codestep");
+
+        if (json.Type == ActivityType.Parsons)
+            activity.ConfigureParsons(json.ParsonsFixed, json.ParsonsLines);
+        else if (json.ParsonsLines is not null || json.ParsonsFixed is not null)
+            throw new DomainException($"Activity #{orderIndex}: parsonsLines e parsonsFixed so valem em Parsons.", "campo_de_parsons");
+
         if (json.Type == ActivityType.TerminalMission)
             activity.ConfigureTerminalMissions(ToMissions(json), commands: ToCommands(json));
 
@@ -293,6 +310,22 @@ public static class CuratedDayImporter
 
         if (json.RoleplayNodes is { Count: > 0 } nodes)
             AddRoleplayNodes(activity, nodes);
+    }
+
+    private static List<CodeMark> ToMarks(ActivityJson json, int orderIndex) =>
+        (json.CodeMarks ?? []).Select(m => new CodeMark(m.Linha, m.Tipo switch
+        {
+            "lacuna" => CodeMarkKind.Lacuna,
+            "erro" => CodeMarkKind.Erro,
+            _ => throw new DomainException($"Activity #{orderIndex}: codeMarks.tipo '{m.Tipo}' (use lacuna ou erro).", "marca_invalida"),
+        })).ToList();
+
+    private static CodeCheck? ToCheck(ActivityJson json, int orderIndex)
+    {
+        if (json.CodeCheck is null) return null;
+        if (json.CodeCheck.Troca is not { Count: 2 })
+            throw new DomainException($"Activity #{orderIndex}: codeCheck.troca precisa de 2 textos (de, para).", "conferencia_invalida");
+        return new CodeCheck(json.CodeCheck.Troca[0], json.CodeCheck.Troca[1], json.CodeCheck.SaidaEsperada ?? "");
     }
 
     private static void AddRoleplayNodes(DailyActivity activity, List<RoleplayNodeJson> nodes)
@@ -324,7 +357,9 @@ public static class CuratedDayImporter
 
     private record CuratedDayJson(
         int DayNumber, List<CuratedContentJson> CuratedContents, List<ActivityJson> Activities, LabJson? Lab = null,
-        string? MoldeVersion = null, List<TargetJson>? Targets = null, bool Ponte = false, string? SalaDaSessao = null);
+        string? MoldeVersion = null, List<TargetJson>? Targets = null, bool Ponte = false, string? SalaDaSessao = null,
+        /// <summary>Fase 113: "intercalada" = ponte intercalada com editor fixo (secret/processo/molde/ponte.md).</summary>
+        string? FormatoPonte = null);
 
     private record TargetJson(string Id, string Text);
 
@@ -348,7 +383,15 @@ public static class CuratedDayImporter
         /// <summary>So em TerminalMission (terminal v3): a cola "Comandos de hoje".</summary>
         List<CommandJson>? Commands = null,
         /// <summary>Molde v1: alvo de aprendizagem (t1 a t15) e dados da conversa por voz.</summary>
-        string? Target = null, string? Hint = null, string? ReferenceAnswer = null, bool? Final = null, List<string>? Topics = null);
+        string? Target = null, string? Hint = null, string? ReferenceAnswer = null, bool? Final = null, List<string>? Topics = null,
+        /// <summary>Fase 113, CodeStep da ponte intercalada: linhas marcadas do codeStarter, conferencia e "refaz".</summary>
+        List<CodeMarkJson>? CodeMarks = null, CodeCheckJson? CodeCheck = null, bool? Refaz = null,
+        /// <summary>Fase 113, Parsons: linhas fixas antes e as linhas na ordem certa.</summary>
+        List<string>? ParsonsFixed = null, List<string>? ParsonsLines = null);
+
+    private record CodeMarkJson(int Linha, string? Tipo);
+
+    private record CodeCheckJson(List<string>? Troca, string? SaidaEsperada);
 
     private record MissionJson(
         string Title, string Prompt, List<string>? Hints, string Note, MissionCheckJson? Check,

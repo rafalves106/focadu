@@ -32,7 +32,8 @@ public record SubmitCodeStepRequest(string? Code, string? Output, LabRunRequest?
 /// no Linux, o historico de comandos com a saida de cada um). Obrigatorio nos passos que rodam no
 /// laboratorio - ai <c>Output</c> do SubmitCodeStepRequest e ignorado.
 /// </summary>
-public record LabRunRequest(string? Output, int ExitCode, IReadOnlyList<LabCommandRequest>? Commands = null);
+/// <summary>Fase 113: CheckOutput e a saida da conferencia da Focada (o script rodado de novo com a troca do codeCheck).</summary>
+public record LabRunRequest(string? Output, int ExitCode, IReadOnlyList<LabCommandRequest>? Commands = null, string? CheckOutput = null);
 
 public record LabCommandRequest(string? Command, string? Output);
 

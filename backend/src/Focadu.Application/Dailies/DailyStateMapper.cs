@@ -26,7 +26,11 @@ internal static class DailyStateMapper
         return new DailyStateDto(
             daily.Id, daily.WeeklyId, daily.DayNumber, daily.Date,
             daily.Status, daily.IsReinforcement, daily.PenaltyPoints, EvaluationPolicy.DailyPenaltyThreshold,
-            accessMode, activities, CodeRepositoryUrl: daily.CodeRepositoryUrl, Lab: ToLabDto(daily.Template.Lab));
+            accessMode, activities, CodeRepositoryUrl: daily.CodeRepositoryUrl, Lab: ToLabDto(daily.Template.Lab),
+            BridgeFormat: daily.Template.InterleavedBridge ? DailyTemplate.InterleavedBridgeFormat : null,
+            BridgePreview: daily.Template.InterleavedBridge
+                ? daily.Activities.Where(a => a.Type == ActivityType.CodeStep).OrderBy(a => a.OrderIndex).LastOrDefault()?.CodeExpectedOutput
+                : null);
     }
 
     private static LabConfigDto? ToLabDto(LabConfig? lab) =>
@@ -88,10 +92,24 @@ internal static class DailyStateMapper
                     .Select(h => new CodeStepHintDto(h.Number, h.Right, h.Wrong, h.Improve, h.CreatedAt))
                     .ToList()
                 : null;
+            // Fase 113: o passo "refaz" sem codigo inicial proprio abre com o trecho que ele substitui.
+            var starter = activity.CodeStarter ?? daily.ReplacedCode(activity.Id);
+            var check = activity.CodeCheck;
             codeStep = new CodeStepDto(
                 daily.PriorCode(activity.Id), done, CodeStepProgress.MaxAttempts,
                 done ? activity.CodeSolution : null, done ? activity.CodeExpectedOutput : null,
-                usesLab, usesLab ? activity.CodeStarter : null, usesLab ? CodeStepProgress.MaxHints : 0, hints);
+                usesLab, usesLab ? starter : null, usesLab ? CodeStepProgress.MaxHints : 0, hints,
+                activity.CodeStarter is null ? null : activity.CodeMarks.Select(m => new CodeMarkDto(m.Line, m.Kind.ToString())).ToList(),
+                check is null ? null : new CodeCheckDto(check.From, check.To, check.ExpectedOutput),
+                activity.ReplacesPreviousCode);
+        }
+
+        ParsonsDto? parsons = null;
+        if (activity.Type == ActivityType.Parsons && activity.Parsons is { } puzzle)
+        {
+            var done = daily.IsCodeStepDone(activity.Id);
+            completed = done;
+            parsons = ToParsonsDto(puzzle, activity.Id, done, responses.LastOrDefault()?.Transcript, daily.PriorCode(activity.Id));
         }
 
         return new DailyActivityDto(
@@ -112,6 +130,15 @@ internal static class DailyStateMapper
             Hint: activity.Hint,
             IsFinalQuestion: activity.IsFinalQuestion,
             Topics: activity.IsFinalQuestion ? activity.Topics : null,
-            Target: activity.Target);
+            Target: activity.Target,
+            IsPrediction: daily.Template.IsPrediction(activity),
+            Parsons: parsons);
     }
+
+    /// <summary>Fase 113: ordenar linhas - embaralhado estavel, ordem certa so quando acaba, acerto por posicao da ultima conferencia.</summary>
+    internal static ParsonsDto ToParsonsDto(ParsonsPuzzle puzzle, Guid activityId, bool done, string? lastAnswer, string? priorCode) =>
+        new(puzzle.FixedLines, puzzle.Shuffled(activityId), done, CodeStepProgress.MaxAttempts,
+            done ? puzzle.Lines : null,
+            lastAnswer is null ? null : puzzle.Check(ParsonsPuzzle.SplitAnswer(lastAnswer)),
+            priorCode);
 }

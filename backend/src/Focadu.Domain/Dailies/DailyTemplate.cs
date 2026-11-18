@@ -70,7 +70,7 @@ public class DailyTemplate : Entity
     /// (Linux), cuja linguagem mora na semana (<c>WeeklyTemplate.PracticeLanguage</c>) e nao no dia. Ponte
     /// nao usa analogia de interesse (Fase 80).
     /// </summary>
-    public bool IsBridge => BridgeMark || Language is not null || _activities.Any(a => a.Type == ActivityType.CodeStep);
+    public bool IsBridge => BridgeMark || InterleavedBridge || Language is not null || _activities.Any(a => a.Type == ActivityType.CodeStep);
 
     /// <summary>
     /// Fase 98: o dia-N.json declara <c>"ponte": true</c>. Existe pra ponte que roda em missoes de terminal e nao
@@ -79,6 +79,29 @@ public class DailyTemplate : Entity
     public bool BridgeMark { get; private set; }
 
     public void SetBridgeMark(bool value) => BridgeMark = value;
+
+    /// <summary>
+    /// Fase 113: o dia-N.json declara <c>"formatoPonte": "intercalada"</c> (secret/processo/molde/ponte.md, "Ponte
+    /// intercalada"): abertura, 3 blocos (explicacao, Prever, Fazer...) e voz final, com o editor fixo na tela (molde
+    /// Foco dividido). Falso = a ponte "code comigo" (Fase 79) ou a antiga, que seguem como estao.
+    /// </summary>
+    public bool InterleavedBridge { get; private set; }
+
+    public const string InterleavedBridgeFormat = "intercalada";
+
+    /// <summary>Fase 113: liga o formato da ponte pelo valor de <c>formatoPonte</c> (nulo = formato anterior).</summary>
+    public void SetBridgeFormat(string? format)
+    {
+        if (format is not null && format != InterleavedBridgeFormat)
+            throw new DomainException($"formatoPonte desconhecido: '{format}' (o unico e '{InterleavedBridgeFormat}').", "formato_ponte_invalido");
+        InterleavedBridge = format is not null;
+    }
+
+    /// <summary>
+    /// Fase 113: na ponte intercalada todo Quiz e um Prever ("o que este trecho mostra?" antes de rodar). Errar o
+    /// Prever nao conta erro do dia, nao vai pro reforco e nao entra na nota (decisao do dono, 18/11/2026).
+    /// </summary>
+    public bool IsPrediction(DailyActivity activity) => InterleavedBridge && activity.Type == ActivityType.Quiz;
 
     private DailyTemplate()
     {

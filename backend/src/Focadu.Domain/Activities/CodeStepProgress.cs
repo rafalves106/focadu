@@ -1,3 +1,5 @@
+using Focadu.Domain.Enums;
+
 namespace Focadu.Domain.Activities;
 
 /// <summary>
@@ -22,10 +24,16 @@ public static class CodeStepProgress
         return list.Any(r => r.Passed) || list.Count >= MaxAttempts;
     }
 
-    /// <summary>Codigo que este passo entrega pro seguinte - nulo enquanto o passo nao acabou.</summary>
+    /// <summary>
+    /// Codigo que este passo entrega pro seguinte - nulo enquanto o passo nao acabou. Fase 113: o ordenar linhas
+    /// entrega as linhas fixas e a ordem certa (passou = o aluno montou a ordem certa; senao ela aparece).
+    /// </summary>
     public static string? CarriedCode(DailyActivity activity, IEnumerable<ActivityResponse> responses)
     {
         var list = responses.OrderBy(r => r.AttemptNumber).ToList();
+        if (activity.Type == ActivityType.Parsons)
+            return IsDone(list) ? activity.Parsons?.Code : null;
+
         var passed = list.FirstOrDefault(r => r.Passed);
         if (passed is not null) return passed.Transcript;
         return list.Count >= MaxAttempts ? activity.CodeSolution : null;

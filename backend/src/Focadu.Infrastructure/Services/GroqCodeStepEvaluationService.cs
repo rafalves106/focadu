@@ -123,7 +123,10 @@ public class GroqCodeStepEvaluationService : ICodeStepEvaluationService
         var labNote = request.Lab is null
             ? ""
             : "O passo roda no laboratório da plataforma, dentro do navegador do aluno: a saída abaixo é a que o laboratório gerou. " +
-              "Um código de saída diferente de zero ou um traceback quer dizer que o programa falhou - aponte o que denuncia isso, sem escrever a correção.\n";
+              "Um código de saída diferente de zero ou um traceback quer dizer que o programa falhou - aponte o que denuncia isso, sem escrever a correção.\n" +
+              // Fase 113: o Corrigir da ponte intercalada roda o script 2 vezes; a 2a (com outra entrada) denuncia o valor fixo.
+              "Se a saída trouxer \"# conferência da Focada\", o laboratório rodou o script de novo com outra entrada: o passo só passa " +
+              "se a saída dessa conferência bater com a saída esperada nessa conferência.\n";
 
         return
             $"Linguagem: {request.Language}\n" +

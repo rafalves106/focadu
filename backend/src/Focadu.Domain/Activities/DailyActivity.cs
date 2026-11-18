@@ -61,6 +61,35 @@ public class DailyActivity : Entity
     public bool LabDisabled { get; private set; }
 
     /// <summary>
+    /// CodeStep (Fase 113, ponte intercalada): linhas marcadas do <see cref="CodeStarter"/> - lacuna (o aluno
+    /// completa) e erro (o Corrigir). Em JSON; nao e segredo (o editor pinta as linhas).
+    /// </summary>
+    public string? CodeMarksJson { get; private set; }
+
+    public IReadOnlyList<CodeMark> CodeMarks => BridgeStepJson.ParseMarks(CodeMarksJson);
+
+    /// <summary>CodeStep (Fase 113): a conferencia da Focada (rodar de novo com outra entrada), em JSON. Nao e segredo.</summary>
+    public string? CodeCheckJson { get; private set; }
+
+    public CodeCheck? CodeCheck => BridgeStepJson.ParseCheck(CodeCheckJson);
+
+    /// <summary>
+    /// CodeStep (Fase 113, <c>"refaz": true</c>): o passo substitui o trecho que a atividade de codigo anterior
+    /// (CodeStep ou ordenar linhas) entregou, em vez de acrescentar ao fim do script. O Corrigir troca o bloco
+    /// pelo bloco com o erro; o Fazer do bloco 3 parte das linhas que o aluno ordenou. Ver
+    /// <see cref="Dailies.Daily.PriorCode"/>.
+    /// </summary>
+    public bool ReplacesPreviousCode { get; private set; }
+
+    /// <summary>Parsons (Fase 113): as linhas fixas e a ordem certa, em JSON. A ordem certa e o gabarito.</summary>
+    public string? ParsonsJson { get; private set; }
+
+    public ParsonsPuzzle? Parsons => ParsonsPuzzle.Parse(ParsonsJson);
+
+    /// <summary>Fase 113: atividade que entrega um trecho do script da ponte (passo de codigo ou ordenar linhas).</summary>
+    public bool ProducesCode => Type is ActivityType.CodeStep or ActivityType.Parsons;
+
+    /// <summary>
     /// TerminalMission: a lista de missoes (<see cref="TerminalMissions"/>) em JSON. Nao e segredo - o
     /// navegador do aluno precisa dos enunciados e das regras de conferencia pra rodar a missao.
     /// </summary>
@@ -179,6 +208,46 @@ public class DailyActivity : Entity
         CodeExpectedOutput = expectedOutput;
         CodeRubric = rubric;
         SetLabOptions(starter, labDisabled);
+    }
+
+    /// <summary>
+    /// CodeStep (Fase 113, ponte intercalada): marcas de lacuna/erro no codigo inicial, conferencia da Focada e
+    /// "refaz" (substitui o trecho anterior). Marca exige codigo inicial e aponta pra uma linha dele.
+    /// </summary>
+    public void ConfigureBridgeStep(IReadOnlyList<CodeMark>? marks, CodeCheck? check, bool replacesPreviousCode)
+    {
+        if (Type != ActivityType.CodeStep)
+            throw new DomainException("Marcas, conferencia e refaz so valem pra atividades do tipo CodeStep.");
+
+        var list = marks ?? [];
+        if (list.Count > 0)
+        {
+            if (string.IsNullOrWhiteSpace(CodeStarter))
+                throw new DomainException("Marca de lacuna ou erro precisa de codigo inicial (codeStarter).", "marca_invalida");
+            var starterLines = CodeStarter.TrimEnd('\n').Split('\n').Length;
+            if (list.Any(m => m.Line < 1 || m.Line > starterLines || !Enum.IsDefined(m.Kind)))
+                throw new DomainException($"Marca fora do codigo inicial (linhas 1 a {starterLines}).", "marca_invalida");
+            if (list.Select(m => m.Line).Distinct().Count() != list.Count)
+                throw new DomainException("Duas marcas na mesma linha do codigo inicial.", "marca_invalida");
+        }
+
+        if (check is not null
+            && (string.IsNullOrWhiteSpace(check.From) || string.IsNullOrWhiteSpace(check.To) || check.From == check.To
+                || string.IsNullOrWhiteSpace(check.ExpectedOutput)))
+            throw new DomainException("A conferencia precisa de troca (de, para, diferentes) e da saida esperada.", "conferencia_invalida");
+
+        CodeMarksJson = BridgeStepJson.SerializeMarks(list.OrderBy(m => m.Line).ToList());
+        CodeCheckJson = BridgeStepJson.SerializeCheck(check);
+        ReplacesPreviousCode = replacesPreviousCode;
+    }
+
+    /// <summary>Parsons (Fase 113): as linhas fixas e a ordem certa (validadas por <see cref="ParsonsPuzzle.Create"/>).</summary>
+    public void ConfigureParsons(IEnumerable<string>? fixedLines, IEnumerable<string>? lines)
+    {
+        if (Type != ActivityType.Parsons)
+            throw new DomainException("Linhas pra ordenar so valem pra atividades do tipo Parsons.");
+
+        ParsonsJson = ParsonsPuzzle.Create(fixedLines, lines).Serialize();
     }
 
     /// <summary>Missao no terminal: define as missoes do bloco (validadas por <see cref="TerminalMissions.Create"/>).</summary>

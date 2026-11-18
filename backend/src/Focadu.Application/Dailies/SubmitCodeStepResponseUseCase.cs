@@ -85,7 +85,7 @@ public class SubmitCodeStepResponseUseCase
             if (labRun is null)
                 throw new ValidationException("rodar_antes_de_enviar", "Rode o codigo no laboratorio antes de enviar o passo.");
             var normalized = labRun.Normalize(MaxLength);
-            evidence = normalized.Text;
+            evidence = WithCheck(normalized.Text, activity.CodeCheck, labRun.CheckOutput);
             lab = normalized.Run;
         }
         else
@@ -122,5 +122,16 @@ public class SubmitCodeStepResponseUseCase
         return await ActivityResponseRecorder.RecordAsync(
             weekly, daily, activityId, evaluation.Passed ? 100 : 0, transcript: code, correctedTranscript: null,
             justification: evidence, evaluation.Feedback, _clock, _unitOfWork, cancellationToken);
+    }
+
+    /// <summary>
+    /// Fase 113: num passo com conferencia (codeCheck), a saida da 2a execucao vai junto pra IA e pro historico, com a
+    /// troca feita e a saida que a conferencia devia mostrar - e ela que denuncia o numero fixo no Corrigir.
+    /// </summary>
+    internal static string WithCheck(string evidence, CodeCheck? check, string? checkOutput)
+    {
+        if (check is null || checkOutput is null) return evidence;
+        return $"{evidence}\n\n# conferência da Focada: o script rodou de novo trocando {check.From} por {check.To}\n{checkOutput.TrimEnd()}" +
+               $"\n# saída esperada nessa conferência\n{check.ExpectedOutput.TrimEnd()}";
     }
 }

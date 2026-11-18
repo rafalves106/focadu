@@ -35,6 +35,15 @@ public class DailyActivityConfiguration : IEntityTypeConfiguration<DailyActivity
         builder.Property(a => a.IsFinalQuestion).IsRequired().HasDefaultValue(false);
         builder.Property(a => a.TopicsJson);
         builder.Ignore(a => a.Topics);
+        // Fase 113 (ponte intercalada): marcas e conferencia do passo de codigo, "refaz" e ordenar linhas, em JSON (texto).
+        builder.Property(a => a.CodeMarksJson);
+        builder.Ignore(a => a.CodeMarks);
+        builder.Property(a => a.CodeCheckJson);
+        builder.Ignore(a => a.CodeCheck);
+        builder.Property(a => a.ReplacesPreviousCode).IsRequired().HasDefaultValue(false);
+        builder.Property(a => a.ParsonsJson);
+        builder.Ignore(a => a.Parsons);
+        builder.Ignore(a => a.ProducesCode);
         builder.Property(a => a.DailyTemplateId).IsRequired();
 
         builder.HasMany(a => a.QuizOptions)
