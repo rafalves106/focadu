@@ -20,6 +20,9 @@ import { ReadingActivity } from '../components/ReadingActivity';
 import { VideoActivity } from '../components/VideoActivity';
 import { CodeStepActivity } from '../components/CodeStepActivity';
 import { TerminalMissionActivity } from '../components/code/TerminalMissionActivity';
+import { BridgeCodeStep } from '../components/bridge/BridgeCodeStep';
+import { ParsonsActivity } from '../components/bridge/ParsonsActivity';
+import { isInterleavedBridge } from '../lib/bridgeSteps';
 import { WarmupScreen } from '../components/session/WarmupScreen';
 import { DayFeedbackScreen } from '../components/session/DayFeedbackScreen';
 import { CompletionSummary } from '../components/CompletionSummary';
@@ -301,7 +304,11 @@ export function TodayPage() {
   else if (activity.type === ActivityType.Cloze && activity.answerMode === AnswerMode.FreeText) content = <ClozeFreeTextActivity {...common} daily={daily} />;
   else if (activity.type === ActivityType.Roleplay) content = <RoleplayActivity {...common} daily={daily} />;
   else if (activity.type === ActivityType.VoiceSummary) content = <VoiceSummaryActivity {...common} daily={daily} />;
+  // Fase 113: na ponte intercalada o passo de codigo usa o editor fixo (molde Foco dividido).
+  else if (activity.type === ActivityType.CodeStep && isInterleavedBridge(daily) && activity.codeStep?.labEnabled)
+    content = <BridgeCodeStep {...common} daily={daily} />;
   else if (activity.type === ActivityType.CodeStep) content = <CodeStepActivity {...common} daily={daily} />;
+  else if (activity.type === ActivityType.Parsons) content = <ParsonsActivity {...common} daily={daily} />;
   else if (activity.type === ActivityType.TerminalMission) content = <TerminalMissionActivity {...common} daily={daily} />;
   // Quiz e Cloze/MultipleChoice: mesma mecanica de OptionsAnswer (ver QuizActivity).
   else content = <QuizActivity {...common} daily={daily} />;

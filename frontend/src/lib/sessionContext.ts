@@ -30,3 +30,9 @@ export function useSession(): SessionContextValue {
 
 /** Elemento do rodape fixo do cartao central - `SessionFooter` manda o conteudo pra la por portal. */
 export const SessionFooterContext = createContext<HTMLElement | null>(null);
+
+/**
+ * Fase 113: a coluna do código do molde Foco dividido (ponte intercalada) - o passo de código e o ordenar linhas mandam
+ * o editor e o terminal pra la por portal (`BridgeCodeColumn`); nas outras etapas a casca mostra o arquivo só leitura.
+ */
+export const BridgeCodeSlotContext = createContext<HTMLElement | null>(null);

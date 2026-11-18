@@ -3,7 +3,13 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { ActivityStatus, ActivityType, type DailyActivityDto, type DailyStateDto } from '../api/types';
 import { unitName } from '../lib/sessionCount';
-import { SessionFooterContext, useSession } from '../lib/sessionContext';
+import { BridgeCodeSlotContext, SessionFooterContext, useSession } from '../lib/sessionContext';
+import { bridgeCaption, bridgePosition, isCodeActivity, isInterleavedBridge } from '../lib/bridgeSteps';
+import { bridgeEyebrow, bridgeFala } from '../lib/bridgeText';
+import { useIsDesktop } from '../lib/useIsDesktop';
+import { splitPrompt } from './code/codeHelpers';
+import { BridgeFileView } from './bridge/BridgeFileView';
+import { BridgeStageBar } from './bridge/BridgeStageBar';
 import { ACTIVITY_TITLE, sessionStages, sortedActivities, stepInfo, type StepInfo } from '../lib/sessionSteps';
 import { setStudyAssistantCodeBridge, setStudyAssistantContext, setStudyAssistantCourse } from '../lib/studyAssistantContext';
 import { formatPomodoroTime, usePomodoroTimer } from '../lib/pomodoroTimer';
@@ -45,6 +51,15 @@ const TOOL_TITLE: Record<Tool, string> = { material: 'Material', pomodoro: 'Pomo
  */
 export function SessionFooter({ children }: { children: ReactNode }) {
   const el = useContext(SessionFooterContext);
+  return el ? createPortal(children, el) : null;
+}
+
+/**
+ * Fase 113: manda o editor e o terminal do passo pra coluna do código do molde Foco dividido (ponte intercalada). Fora
+ * dele (ou numa etapa sem código) não renderiza nada.
+ */
+export function BridgeCodeColumn({ children }: { children: ReactNode }) {
+  const el = useContext(BridgeCodeSlotContext);
   return el ? createPortal(children, el) : null;
 }
 
@@ -122,13 +137,25 @@ export function SessionLayout({
 
   // Guia das telas (Fase 75): a etapa em tela troca o 1o item da ajuda.
   const { setSessionDetail } = useGuide();
+  const interleaved = isInterleavedBridge(daily);
   const activityType = daily.activities.find((a) => a.id === activityId)?.type ?? null;
   useEffect(() => {
-    setSessionDetail({ activityType, isReinforcement: daily.isReinforcement, isBridge: !daily.isReinforcement && daily.dayNumber % 6 === 0 });
+    setSessionDetail({
+      activityType,
+      isReinforcement: daily.isReinforcement,
+      isBridge: !daily.isReinforcement && daily.dayNumber % 6 === 0,
+      isInterleavedBridge: !daily.isReinforcement && interleaved,
+    });
     return () => setSessionDetail(null);
-  }, [setSessionDetail, activityType, daily.isReinforcement, daily.dayNumber]);
+  }, [setSessionDetail, activityType, daily.isReinforcement, daily.dayNumber, interleaved]);
 
   const [footerEl, setFooterEl] = useState<HTMLDivElement | null>(null);
+  // Fase 113 (Foco dividido): coluna do código e, no celular, a aba Passo | Código. Fazer, Corrigir e Ordenar abrem
+  // na aba Código; Explicação, Prever e voz na aba Passo.
+  const isDesktop = useIsDesktop();
+  const [codeSlot, setCodeSlot] = useState<HTMLDivElement | null>(null);
+  const currentActivity = daily.activities.find((a) => a.id === activityId);
+  const [tab, setTab] = useState<'passo' | 'codigo'>(currentActivity && isCodeActivity(currentActivity) ? 'codigo' : 'passo');
   const [jumpTarget, setJumpTarget] = useState<{ activityId: string; message: string } | null>(null);
   const [tool, setTool] = useState<Tool | null>(null);
   const toolRef = useRef(tool);
@@ -260,6 +287,184 @@ export function SessionLayout({
   const gauge = showGauge ? <SessionGauge daily={daily} current={current} /> : null;
   const back = onBack && !hideBack ? onBack : undefined;
 
+  const overlays = (
+    <>
+  {(Object.keys(panels) as Tool[]).map((t) =>
+    panels[t] ? (
+      <ToolDrawer key={t} side={t === 'material' || t === 'pomodoro' ? 'left' : 'right'} title={TOOL_TITLE[t]} open={tool === t} onClose={closeTool}>
+        {panels[t]}
+      </ToolDrawer>
+    ) : null,
+  )}
+
+  {jumpTarget && (
+    <Modal label="Voltar pro material" eyebrow="Material" onClose={() => setJumpTarget(null)} width={480}>
+      <FocadaLine size="devolutiva">{jumpTarget.message}</FocadaLine>
+      <div className="flex flex-col gap-4 md:flex-row">
+        <Button
+          className="w-full md:w-auto"
+          onClick={() => {
+            if (goToActivity) goToActivity(jumpTarget.activityId);
+            setJumpTarget(null);
+          }}
+        >
+          Voltar pro material
+        </Button>
+        <Button kind="secundario" className="w-full md:w-auto" onClick={() => setJumpTarget(null)}>
+          Ficar aqui
+        </Button>
+      </div>
+    </Modal>
+  )}
+    </>
+  );
+
+  // Fase 113: ponte intercalada no molde Foco dividido (docs/design/sistema.md §5; Figma página `108:2`). O fim de
+  // sessão e os avisos seguem no molde Foco.
+  if (interleaved && !daily.isReinforcement && chainMode === 'step' && current) {
+    const position = bridgePosition(daily, activityId);
+    const fala = bridgeFala(position, current);
+    const bridgeEyebrowText = bridgeEyebrow(position, current);
+    const caption = bridgeCaption(position);
+    const codeColumn = isCodeActivity(current) ? <div ref={setCodeSlot} className="flex min-h-0 flex-1 flex-col gap-4" /> : (
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
+        <BridgeFileView />
+      </div>
+    );
+    const backLink = back && (
+      <button type="button" onClick={back} className="self-start text-rotulo-sm text-secondary hover:text-primary">
+        ← Etapa anterior
+      </button>
+    );
+    const footerRow = (
+      <div
+        ref={setFooterEl}
+        className="flex shrink-0 flex-col-reverse gap-3 empty:hidden lg:flex-row-reverse lg:flex-wrap lg:items-center lg:justify-end lg:gap-4 [&>button]:max-lg:w-full [&>a]:max-lg:w-full"
+      >
+        {footer}
+      </div>
+    );
+    const falaLine = fala && <FocadaLine>{fala}</FocadaLine>;
+
+    if (isDesktop) {
+      return (
+        <BridgeCodeSlotContext.Provider value={codeSlot}>
+          <div className="relative flex h-[calc(100dvh-64px-env(safe-area-inset-bottom))] overflow-hidden bg-base md:tela-cheia">
+            {/* Molde Foco dividido: os quatro itens no trilho da esquerda. */}
+            <nav aria-label="Ferramentas do dia" className="absolute top-8 left-8 z-10 flex flex-col gap-2 lg:short:top-6 lg:short:left-6">
+              {[...leftTools, ...rightTools].map((t) => (
+                <RailItem key={t.id} entry={t} active={tool === t.id} onClick={() => toggleTool(t.id)} />
+              ))}
+            </nav>
+            <div className="flex min-h-0 min-w-0 flex-1 gap-6 py-8 pr-8 pl-[120px] lg:short:py-6 lg:short:pr-6 lg:short:pl-[112px]">
+              <div className="flex min-h-0 w-[504px] shrink-0 flex-col gap-3">
+                <Breadcrumb parts={[courseName, weekly && `Semana ${weekly.number}`, 'Code comigo', position.crumb]} />
+                <h1 className="truncate text-titulo text-primary" title={title}>
+                  {title}
+                </h1>
+                <BridgeStageBar daily={daily} activityId={activityId} caption={caption} />
+                {falaLine}
+                <section className={`flex min-h-0 shrink flex-col gap-4 border-2 p-6 ${TONE_CARD[tone]}`}>
+                  <SessionFooterContext.Provider value={footerEl}>
+                    <div className="flex shrink-0 items-center justify-between gap-3">
+                      <p className="text-rotulo-sm text-secondary">{bridgeEyebrowText}</p>
+                      {gauge}
+                    </div>
+                    <ScrollArea className="min-h-0 flex-1" contentClassName="flex flex-col gap-4">
+                      {children}
+                    </ScrollArea>
+                  </SessionFooterContext.Provider>
+                  {footerRow}
+                  {backLink}
+                </section>
+              </div>
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">{codeColumn}</div>
+            </div>
+            {overlays}
+          </div>
+        </BridgeCodeSlotContext.Provider>
+      );
+    }
+
+    // Celular (quadros `114:2058` e seguintes): topo 56, abas fixas Passo | Código, conteúdo e a barra de ferramentas.
+    // Linha de cima da aba Código (quadro `115:2671`): a dica da Focada, senão a devolutiva da última tentativa, senão o pedido.
+    const lastHint = current.codeStep?.hints?.at(-1);
+    const lastTry = current.responses.at(-1);
+    const ask = lastHint
+      ? `Dica da Focada: ${lastHint.improve}`
+      : lastTry && !lastTry.passed && lastTry.aiFeedback
+        ? `Focada: ${lastTry.aiFeedback}`
+        : splitPrompt(current.prompt).title;
+    return (
+      <BridgeCodeSlotContext.Provider value={codeSlot}>
+        {/* Abaixo de lg (celular e tablet): abas. No tablet a nav global aparece, então o topo próprio some e a barra de
+            ferramentas continua embaixo (os trilhos não cabem ao lado das duas colunas). */}
+        <div className="relative flex h-[calc(100dvh-64px-env(safe-area-inset-bottom))] flex-col overflow-hidden bg-base md:h-[calc(100dvh-var(--nav-height)-64px)]">
+          <div className="flex h-14 shrink-0 items-center gap-3 border-b-2 border-stroke px-4 md:hidden">
+            <Link to={weekly ? `/start?curso=${weekly.courseId}` : '/start'} className="shrink-0 text-rotulo-sm text-secondary hover:text-primary">
+              ← Início
+            </Link>
+            <p className="truncate text-rotulo-sm">
+              <span className="text-secondary">Code comigo</span>
+              <span className="text-muted"> · </span>
+              <span className="text-accent">{position.crumb}</span>
+            </p>
+          </div>
+          <div className="grid h-12 shrink-0 grid-cols-2 border-b-2 border-stroke" role="tablist" aria-label="Passo ou código">
+            {(['passo', 'codigo'] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={tab === t}
+                onClick={() => setTab(t)}
+                className={`text-rotulo-sm ${tab === t ? 'border-b-4 border-accent text-accent' : 'text-secondary'}`}
+              >
+                {t === 'passo' ? 'Passo' : 'Código'}
+              </button>
+            ))}
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
+            {tab === 'passo' && (
+              <h1 className="truncate text-lead text-primary" title={title}>
+                {title}
+              </h1>
+            )}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <BridgeStageBar daily={daily} activityId={activityId} caption={caption} />
+              </div>
+              {gauge}
+            </div>
+            <SessionFooterContext.Provider value={footerEl}>
+              <div className={`flex min-h-0 flex-1 flex-col gap-3 ${tab === 'passo' ? '' : 'hidden'}`}>
+                {falaLine}
+                <ScrollArea className="min-h-0 flex-1" contentClassName="flex flex-col gap-4">
+                  {children}
+                </ScrollArea>
+              </div>
+            </SessionFooterContext.Provider>
+            <div className={`flex min-h-0 flex-1 flex-col gap-3 ${tab === 'codigo' ? '' : 'hidden'}`}>
+              {ask && <p className="line-clamp-2 text-pequeno text-secondary">{ask}</p>}
+              {codeColumn}
+            </div>
+            {footerRow}
+            {backLink}
+          </div>
+          <nav
+            aria-label="Ferramentas do dia"
+            className="fixed inset-x-0 bottom-0 z-30 grid h-[calc(64px+env(safe-area-inset-bottom))] grid-flow-col border-t-2 border-stroke bg-base pb-[env(safe-area-inset-bottom)]"
+          >
+            {[...leftTools, ...rightTools].map((t) => (
+              <RailItem key={t.id} entry={t} active={tool === t.id} onClick={() => toggleTool(t.id)} bar />
+            ))}
+          </nav>
+          {overlays}
+        </div>
+      </BridgeCodeSlotContext.Provider>
+    );
+  }
+
   return (
     <div className="relative flex h-[calc(100dvh-64px-env(safe-area-inset-bottom))] flex-col overflow-hidden bg-base md:tela-cheia">
       {/* Topo do celular (Figma `17:1697`): a nav global some no /hoje abaixo de md. */}
@@ -349,33 +554,7 @@ export function SessionLayout({
         ))}
       </nav>
 
-      {(Object.keys(panels) as Tool[]).map((t) =>
-        panels[t] ? (
-          <ToolDrawer key={t} side={t === 'material' || t === 'pomodoro' ? 'left' : 'right'} title={TOOL_TITLE[t]} open={tool === t} onClose={closeTool}>
-            {panels[t]}
-          </ToolDrawer>
-        ) : null,
-      )}
-
-      {jumpTarget && (
-        <Modal label="Voltar pro material" eyebrow="Material" onClose={() => setJumpTarget(null)} width={480}>
-          <FocadaLine size="devolutiva">{jumpTarget.message}</FocadaLine>
-          <div className="flex flex-col gap-4 md:flex-row">
-            <Button
-              className="w-full md:w-auto"
-              onClick={() => {
-                if (goToActivity) goToActivity(jumpTarget.activityId);
-                setJumpTarget(null);
-              }}
-            >
-              Voltar pro material
-            </Button>
-            <Button kind="secundario" className="w-full md:w-auto" onClick={() => setJumpTarget(null)}>
-              Ficar aqui
-            </Button>
-          </div>
-        </Modal>
-      )}
+      {overlays}
     </div>
   );
 }
@@ -392,6 +571,20 @@ function SessionGauge({ daily, current }: { daily: DailyStateDto; current: Daily
         total={current.codeStep.maxAttempts}
         tone={current.responses.some((r) => r.passed) ? 'feito' : 'tentativa'}
         title={`Na ${current.codeStep.maxAttempts}ª tentativa sem passar, a solução do passo aparece`}
+      />
+    );
+  }
+  // Fase 113: o ordenar linhas conta conferências como o passo de código conta tentativas.
+  if (current?.type === ActivityType.Parsons && current.parsons) {
+    const attempts = current.responses.length;
+    if (attempts === 0) return null;
+    return (
+      <DayGauge
+        label="Tentativas do passo"
+        value={attempts}
+        total={current.parsons.maxAttempts}
+        tone={current.responses.some((r) => r.passed) ? 'feito' : 'tentativa'}
+        title={`Na ${current.parsons.maxAttempts}ª conferência errada, a ordem certa aparece`}
       />
     );
   }

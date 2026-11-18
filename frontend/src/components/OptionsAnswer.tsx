@@ -99,7 +99,7 @@ export function OptionsAnswer({
       )}
 
       {answered && lastResponse && (
-        <FeedbackPanel passed={lastResponse.passed} score={lastResponse.score} seed={activity.id} onContinue={onContinue} />
+        <FeedbackPanel passed={lastResponse.passed} score={lastResponse.score} seed={activity.id} prediction={activity.isPrediction} onContinue={onContinue} />
       )}
     </>
   );

@@ -2,7 +2,8 @@
 Respostas fixas, pra que a saida do script seja a mesma pra todo mundo.
 HTTP na porta 8080 e HTTPS na porta 8443 (host "lab"). O certificado e a chave abaixo foram
 criados so pro laboratorio; o laboratorio instala esse certificado como confiavel, e a chave
-nao protege nada de verdade. Rota unica: / (200)."""
+nao protege nada de verdade. Rotas: / (200) e /vazia (204, sem corpo: o Corrigir da ponte
+intercalada usa essa pagina pra mostrar que um "200" escrito no print esconde o status de verdade)."""
 import os
 import ssl
 import threading
@@ -36,6 +37,10 @@ class Lab(BaseHTTPRequestHandler):
         return self.server_version
 
     def do_GET(self):
+        if self.path == "/vazia":
+            self.send_response(204)
+            self.end_headers()
+            return
         corpo = b"<h1>Loja Lab</h1>\n"
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")

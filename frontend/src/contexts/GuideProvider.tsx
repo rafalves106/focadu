@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
+import { ActivityType } from '../api/types';
 import { HelpModal } from '../components/shell/HelpModal';
 import {
   BRIDGE_ITEM,
+  INTERLEAVED_BRIDGE_ITEM,
+  INTERLEAVED_CODE_STEP_ITEM,
+  PREDICTION_ITEM,
   GUIDE_SCREENS,
   REINFORCEMENT_ITEM,
   SESSION_STEP_ITEMS,
@@ -73,8 +77,12 @@ export function GuideProvider({ children }: { children: ReactNode }) {
     if (screenKey !== 'sessao' || !sessionDetail) return screen.items;
     const extra: GuideItem[] = [];
     if (sessionDetail.isReinforcement) extra.push(REINFORCEMENT_ITEM);
+    else if (sessionDetail.isInterleavedBridge) extra.push(INTERLEAVED_BRIDGE_ITEM);
     else if (sessionDetail.isBridge) extra.push(BRIDGE_ITEM);
-    if (sessionDetail.activityType !== null) extra.push(SESSION_STEP_ITEMS[sessionDetail.activityType]);
+    const type = sessionDetail.activityType;
+    if (type !== null && sessionDetail.isInterleavedBridge && type === ActivityType.Quiz) extra.push(PREDICTION_ITEM);
+    else if (type !== null && sessionDetail.isInterleavedBridge && type === ActivityType.CodeStep) extra.push(INTERLEAVED_CODE_STEP_ITEM);
+    else if (type !== null) extra.push(SESSION_STEP_ITEMS[type]);
     return [...extra, ...screen.items];
   }, [screen, screenKey, sessionDetail]);
 

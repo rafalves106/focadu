@@ -315,6 +315,10 @@ export const SESSION_STEP_ITEMS: Record<ActivityType, GuideItem> = {
     title: 'Passo de código',
     text: 'Escreva o que o passo pede. Com laboratório, você roda o código aqui mesmo e só envia depois de rodar; sem ele, rode na sua máquina e cole a saída. A dica da Focada (3 por passo) não gasta tentativa. Ajustar não conta como erro; na 3ª tentativa a solução aparece.',
   },
+  [ActivityType.Parsons]: {
+    title: 'Ordenar linhas',
+    text: 'As linhas do trecho chegam embaralhadas no editor, já com o recuo certo. No computador, arraste ou selecione e mova com ↑ ↓; no celular, toque e mova com ↑ ↓. "Conferir a ordem" marca cada linha certa ou errada. Não conta erro do dia; na 3ª conferência errada a ordem certa aparece e o passo seguinte parte dela.',
+  },
   [ActivityType.TerminalMission]: {
     title: 'Missão no terminal',
     text: 'Um Linux de verdade roda aqui no navegador, já com você logado. Cada missão diz a situação, o que você vai ver quando der certo e os passos; ao lado, os comandos do Dia (clique copia pro terminal). O laboratório confere sozinho, sem nota nem tentativa. clear ou Ctrl+L limpa a tela. Só no computador.',
@@ -331,6 +335,25 @@ export const BRIDGE_ITEM: GuideItem = {
   text: 'O 6º dia leva a teoria da semana pro código do projeto: um exemplo explicado e passos de código com a Focada conferindo, até entregar um script parecido com o projeto. A linguagem escolhida vale pro code comigo e pro projeto, sem troca depois.',
 };
 
+/**
+ * Fase 113: a ponte intercalada (molde Foco dividido) troca o item do code comigo e o do Quiz (o Prever).
+ * Mudou a tela da ponte, atualize aqui.
+ */
+export const INTERLEAVED_BRIDGE_ITEM: GuideItem = {
+  title: 'Code comigo',
+  text: 'O arquivo do dia fica no editor, à direita (no celular, na aba Código), o tempo todo, e cresce bloco a bloco; o terminal fica embaixo dele. A coluna da esquerda (aba Passo) troca: abertura com a saída do script pronto, 3 blocos (explicação curta, Prever, Fazer, voz curta) e a voz final. A barra de cima mostra os blocos e, embaixo, as etapas do bloco atual. No editor, verde é o passo atual, âmbar "complete aqui" é a lacuna e vermelho "erro aqui" é a linha com erro. Blocos fechados recolhem numa linha: toque pra abrir. "Enviar o passo" libera depois de rodar.',
+};
+
+export const PREDICTION_ITEM: GuideItem = {
+  title: 'Prever',
+  text: 'Antes de rodar, aposte no que o trecho mostra. Errar o Prever não conta como erro do dia: a Focada só explica o porquê.',
+};
+
+export const INTERLEAVED_CODE_STEP_ITEM: GuideItem = {
+  title: 'Fazer e Corrigir',
+  text: 'A ajuda diminui a cada bloco: no 1º falta uma linha, no 2º só os comentários dizem o que vai em cada linha, no 3º você escreve sozinho. No Corrigir, a Focada roda o script de novo com outro endereço (a linha âmbar "conferência") e mostra em vermelho o que saiu diferente do esperado. A dica não gasta tentativa; na 3ª tentativa a solução aparece. Ajustar não conta erro do dia.',
+};
+
 export const FAQ: { q: string; a: string }[] = [
   {
     q: 'Como funciona a sequência?',
@@ -341,7 +364,7 @@ export const FAQ: { q: string; a: string }[] = [
   { q: 'Posso fazer mais de um Dia por dia?', a: 'Não. Um Dia novo por dia, por curso. No curso em sessões, até 3 sessões por dia, com a sala entre elas. Rever um Dia já feito é livre e não mexe em nota.' },
   {
     q: 'O laboratório de código roda no servidor?',
-    a: 'Não: roda no seu navegador, só no computador (no celular você lê o enunciado). Na primeira vez baixa de 10 a 25 MB, conforme o curso, e depois fica guardado. Só o código e a saída que você envia vão pra Focada conferir.',
+    a: 'Não: roda no seu navegador. Nos passos de código comuns, só no computador (no celular você lê o enunciado); no code comigo com editor fixo, também no celular, pela aba Código. Na primeira vez baixa de 10 a 25 MB, conforme o curso, e depois fica guardado. Só o código e a saída que você envia vão pra Focada conferir.',
   },
   { q: 'O que é o code comigo?', a: 'O 6º dia da semana: um dia prático que leva a teoria da semana pro código do projeto, na linguagem que você escolher.' },
   { q: 'Como o Projeto da semana é avaliado?', a: 'Você entrega e a IA lê o seu repositório contra o enunciado. A nota vai de 0 a 100 e vale 30% do Score da semana.' },

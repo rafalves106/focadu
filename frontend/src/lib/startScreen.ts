@@ -170,6 +170,7 @@ const ACTIVITY_PHRASE: Record<ActivityType, (n: number) => string> = {
   [ActivityType.VoiceSummary]: (n) => (n === 1 ? 'uma conversa por voz' : `${n} conversas por voz`),
   [ActivityType.CodeStep]: (n) => plural(n, 'passo de código', 'passos de código'),
   [ActivityType.TerminalMission]: (n) => (n === 1 ? 'uma missão no terminal' : `${n} missões no terminal`),
+  [ActivityType.Parsons]: (n) => (n === 1 ? 'ordenar linhas' : `${n} rodadas de ordenar linhas`),
 };
 
 /** A fala da Focada no Início: uma, até 2 linhas, no vocabulário que o aluno já viu. */
