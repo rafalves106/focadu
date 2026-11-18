@@ -780,3 +780,8 @@ coluna ao lado do video/texto (`w-[940px]` em vez de `w-[640px]`). Antes disso o
 proprio Caderninho que fica no sidebar - dava pra assistir o video OU anotar o que entendeu, nunca
 os dois ao mesmo tempo, reportado numa verificacao ao vivo. Sem os 2 props cai pro layout de 1
 coluna de antes (defensivo - nenhum call site atual deixa de passar os dois).
+**Ponte intercalada (Fase 113):** `ActivityType.Parsons` (ordenar linhas; `DailyActivity.ParsonsJson` -> `ParsonsPuzzle` com
+linhas fixas e a ordem certa). `CodeStep` ganha `CodeMarksJson` (lacuna/erro no `CodeStarter`), `CodeCheckJson` (conferencia:
+rodar de novo com uma troca) e `ReplacesPreviousCode` ("refaz"). `DailyTemplate.InterleavedBridge` vem de
+`"formatoPonte": "intercalada"`. Blocos e sub-passos nao sao persistidos: saem da ordem das atividades (front,
+`lib/bridgeSteps.ts`). Ver `docs/fases/fase-113/`.

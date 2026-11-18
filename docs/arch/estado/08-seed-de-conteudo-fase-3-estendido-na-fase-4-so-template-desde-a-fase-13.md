@@ -118,4 +118,7 @@ Security antes/junto do Web Security; decisoes do dono em 29/09/2026: **sem Proj
   mais "arquivo de captura de rede". Avaliacao do Projeto Semanal e rascunho do LinkedIn seguem com o texto
   do Web Security (so existem em curso com projeto).
 - **Legenda do arquivo da ponte:** o `bodyText` de um `CuratedContent` `File` vira a legenda no "Material
-  de hoje" (`MaterialSidebar`); sem ele, "Rode tudo contra este arquivo.".
+  de hoje" (`MaterialSidebar`); sem ele, "Rode tudo contra este arquivo.".- **Ponte intercalada (Fase 113):** o importador le `formatoPonte`, `codeMarks`, `codeCheck`, `refaz`, `parsonsFixed` e
+  `parsonsLines` (schema em `secret/processo/molde/dia.schema.json`; linter confere as quantidades e a ordem so quando o
+  dia declara o formato). `refaz` no 1o passo de codigo e recusado (`refaz_invalido`). O `SyncBridgeDaysUseCase` nao muda:
+  o dia-6 no molde v1 entra pelo `importar`, que troca o dia por hash.

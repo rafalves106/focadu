@@ -14,6 +14,9 @@
 - Página **Redesign v1 - Telas** (`24:2`): as telas que não são âncora (seção 8), uma linha por grupo:
   acesso (y=200), onboarding e curso (1400), semana e sessões (2800), projeto (4200), hubs (5600),
   listas (7000), menu e modais (8400), celular (9800). Nunca mexa na página `Atual - telas do aluno (2026-11-11)` (`5:2`).
+- Página **Ponte intercalada (17/11)** (`108:2`): o code comigo com editor fixo (molde Foco dividido, seção 5),
+  aprovado pelo dono em 18/11, e os componentes da ponte (seção 4). Desktop em y=1800 e y=7000, notebook em
+  y=3300, celular em y=4700 e y=8400.
 - Coleção de variáveis **Focadu tokens v2** (`VariableCollectionId:11:4`), 84 variáveis, 1 modo (Escuro).
 - Revisão final do diretor em 12/11/2026: seção 11. Tudo que está aqui foi conferido em lote contra as 46 telas.
 
@@ -105,6 +108,12 @@
 | Caixa de seleção | `23:277` | Estado Desmarcada/Marcada/Erro | aceite de termos e liga/desliga das Configurações; linha inteira clicável (44) | escolha entre várias opções (Escolha) |
 | Peça de visual | `47:99` | Estado Padrão/Hover/Selecionada/Desabilitada; props `Nome` (texto), `Legenda` (texto: Vestindo, Escolhida, Comum, Grátis, Faltam N), `Mostrar legenda` (bool), `Sprite` (troca de instância, variantes agente-* do Sprite, 64 = 2x) | peças do guarda-roupa (128 de largura), opções de cabelo do criar agente (112) e de pele (88); numa grade, dê a todas a mesma altura fixa (a legenda oculta encurta a peça) | vitrine da Loja (Cartão Padrão com preço em Secundário); escolha só de texto (Escolha) |
 | Ligar/Item | `54:140` | Estado Padrão/Hover/Selecionado/Ligado/Certo/Errado/Desabilitado; props `Tecla`, `Texto`, `Correção`, `Mostrar correção` | ligar palavras: um por termo (teclas 1 a 4) e por definição (A a D), dentro de dois Cartões Suave (desktop em colunas; celular empilhados, termos em grade 2x2). Ligado: a tecla da definição mostra o número do termo (a ligação é pela tecla, sem linhas). Certo/Errado só depois de Confirmar; no Errado ligue `Mostrar correção` ("Certo: 4 · Status"). Definição em `Pixel/Pequeno 16`, até uns 30 caracteres no celular | quiz (Opção de resposta); escolha de filtro (Escolha) |
+| Editor/Linha | `108:43` (página Ponte) | Estado Normal/Passo/Lacuna/Erro × Tom Código/Comentário; props `Número`, `Código`, `Marca`, `Mostrar marca` | linha do editor fixo da ponte: Passo = linhas do passo atual (fundo verde-suave + faixa verde); Lacuna = o que o aluno completa (âmbar, "complete aqui"); Erro = linha com bug ou que falhou (vermelho, "erro aqui"); Comentário para `#` e para a linha de bloco recolhido "▸ blocos 1 e 2 · linhas 1 a 10". Código/16, quebra suave no celular | código de leitura dentro do texto do passo (use um bloco Código/16 em `cor/fundo/elevado`) |
+| Terminal/Linha | `108:52` (página Ponte) | Tom Comando/Saída/Erro/Conferência; prop `Texto` | linhas do terminal da ponte: Comando apagado, Saída em texto primário (verde não), Erro em vermelho, Conferência em âmbar (a Focada roda o script de novo com outro endereço) | saída de exemplo no texto do passo (bloco Código/16 em `cor/fundo/base`) |
+| Parsons/Linha | `108:93` (página Ponte) | Estado Padrão/Selecionada/Certa/Errada; prop `Código` | ordenar linhas embaralhadas (1 por dia, no bloco 3 da ponte), dentro do editor; alça de 6x10, alvo 40; desktop arrasta ou seleciona e move com ↑ ↓; celular toca e move com ↑ ↓; recuo já vem certo; Certa/Errada só depois de Conferir | qualquer lista que não seja código |
+| Ponte/Editor | `108:94` (página Ponte) | — (16 `Editor/Linha` + zona Parsons oculta + aviso de arquivo vazio oculto; sobrescreva por instância) | coluna do código da ponte, sempre visível; cabeçalho com a aba do arquivo e o status ("Python · 9 linhas") | sessão comum, projeto (lá o código fica em gaveta) |
+| Ponte/Terminal | `108:245` (página Ponte) | — (cabeçalho com `python3 inspetor.py` e Rodar, Botão Secundário; 14 `Terminal/Linha`) | embaixo do editor da ponte; altura fixa (292 desktop, 220 notebook); quando a saída passa da altura, alinha embaixo e rola por dentro | — |
+| Sala/Gravador de voz | `68:88` (página Salas práticas) | Estado Pronto/Gravando/Gravado × Tamanho Padrão (640, FILL no cartão) / Compacto (358: texto e tempo em cima, botões em largura cheia, sem o ícone do microfone; o Pronto esconde o 00:00) | voz curta e voz final da ponte, áudios das salas; o Gravar é o Primário da tela; Compacto em todo celular | conversa por voz da sessão comum |
 | Amostra de pele | `47:110` | Estado Padrão/Selecionada × Tom 1..5 (fill ligado a `cor/pele/N`) | linha de 5 tons no guarda-roupa, gap 8; alvo 44 | qualquer outra amostra de cor; criar agente usa Peça de visual com o agente inteiro |
 
 Instância com conteúdo próprio (Cartão, Gaveta, Modal, Estado vazio): o slot `Conteúdo` não aceita
@@ -121,6 +130,29 @@ Todos: nav 64 no topo (celular: topo 56 + barra inferior 64), margens `espaco/xl
 - **Foco** (sessão, reforço, code comigo, projeto, onboarding): coluna de 720 (`tamanho/coluna-foco`)
   centrada, trilhos de 64 nas margens, gavetas por cima. Dentro da coluna: fio + Erros do dia, título do
   dia + meta, barra de etapas, cartão de conteúdo, Primário no fim do cartão. No celular a coluna é a tela.
+- **Foco dividido** (só a ponte, o code comigo; aprovado pelo dono em 18/11): o arquivo do dia fica visível a
+  ponte inteira e cresce de bloco em bloco; a coluna do passo troca, a do código fica.
+  - Desktop 1440x900: margem 32 | trilho 64 (Material, Pomodoro, Notas, Dúvida, todos à esquerda) | vão 24 |
+    coluna do passo 504 | vão 24 | coluna do código em FILL = `Ponte/Editor` (FILL) + vão 16 + `Ponte/Terminal` de 292.
+  - Notebook 1366x768: margem 24, coluna do passo 506, terminal 220; o resto igual.
+  - Coluna do passo: fio, título do dia (Título 32), barra de etapas em dois níveis, Fala (uma por tela) e um
+    Cartão Padrão com o passo e o Primário no fim; vãos de 12. Barra: `Etapa/Nó` para Abertura, Bloco 1, 2, 3
+    e Voz final (os nós mostram A, 1, 2, 3, V) e, embaixo, `Etapa/Segmento` com rótulo para os sub-passos do bloco
+    atual (bloco 1: Explicação, Prever, Fazer, Voz; bloco 2: Explicação, Prever, Fazer, Corrigir, Voz; bloco 3:
+    Explicação, Prever, Ordenar, Fazer). "Tentativas do passo" fica dentro do cartão, ao lado do eyebrow, porque
+    o fio inteiro e o contador não cabem juntos em 504.
+  - Editor: linhas do passo atual em `Editor/Linha` Passo; lacuna em Lacuna; bug ou linha que falhou em Erro.
+    Blocos fechados recolhem numa linha "▸ blocos 1 e 2 · linhas 1 a 10" quando o arquivo passa da altura do
+    editor; um toque abre (aí o editor rola por dentro). Terminal: Rodar é Secundário e fica no cabeçalho dele; a
+    saída passa da altura → mostra o fim e rola por dentro. Primário do passo ("Enviar o passo") desabilitado até
+    rodar uma vez, com o motivo ao lado.
+  - Celular 390x844: topo 56 (← Início + fio "Code comigo · Bloco · Sub-passo") + abas fixas **Passo | Código**
+    (`Nav/Item`, 48) + conteúdo (padding 16, vão 12; sobram 674) + barra de ferramentas 64. A aba Passo tem o título
+    do dia, 5 `Etapa/Segmento` (um por bloco) + "Bloco 1 · Prever · 2 de 4" e o passo; a aba Código tem a mesma
+    linha de segmentos, o pedido do passo em uma linha (`Pequeno 16`), o editor (FILL, quebra suave, rola por
+    dentro), o terminal (120 a 212, sem o texto do comando) e o Primário em largura cheia. Explicação, Prever e voz
+    abrem na aba Passo; Fazer, Corrigir e Ordenar na aba Código. No Ordenar o terminal some (não há o que rodar
+    antes de conferir). Gravador sempre `Tamanho=Compacto`.
 - **Lista** (trilha, visão da semana, caderninho, ranking, certificações): lista em FILL + resumo fixo 400.
   Abas no topo com `Nav/Item`; linha = Cartão Padrão horizontal com info 240 | miolo FILL | ação 200.
 
@@ -140,7 +172,9 @@ Todos: nav 64 no topo (celular: topo 56 + barra inferior 64), margens `espaco/xl
 
 ## 7. Nunca faça
 
-- Rolagem de página. Painel fixo aberto na sessão. Pomodoro visível sem o aluno pedir.
+- Rolagem de página. Painel fixo aberto na sessão (exceção única: o editor e o terminal da ponte, molde Foco
+  dividido, decisão do dono de 18/11; em nenhuma outra sessão, nem no reforço, nem no projeto). Pomodoro visível
+  sem o aluno pedir.
 - Botão "?" flutuante, balão "Primeira vez aqui", tour. A ajuda é item do menu do agente e reaproveita
   os textos de `frontend/src/lib/guiaTelas.ts` (regra: mudou a tela, atualize a ajuda dela).
 - Moldura dupla cinza, sombra suave, gradiente, canto redondo, linha curva, ícone rotacionado.
@@ -166,7 +200,7 @@ Todos: nav 64 no topo (celular: topo 56 + barra inferior 64), margens `espaco/xl
 | Visão da semana | Lista (Trilha) | Uma linha por dia: Nó de dia, título, "k/n aprovadas" em texto, Chip Âmbar "reforço pendente" quando houver. Última linha: castelo. Resumo à direita com números e a Fala. Sem "9 erros" em vermelho. |
 | Ligar palavras | Foco (Sessão quiz) | Quadros: desktop escolhendo `55:1857`, par feito `55:1908`, erro na hora `55:1959`, tudo certo `55:2010`; celular `55:2061`, `55:2095`, `55:2129`, `55:2163`. Fala Abertura no topo enquanto liga; depois de Confirmar, Devolutiva (Erro/Acerto) abaixo das colunas e a Abertura some. Confirmar desabilitado até os 4 pares, com o motivo ao lado (celular: no eyebrow "Termos · 2 de 4 ligados"). A correção vem no Confirmar, como no quiz (o front de hoje também corrige no fim). Celular depois de Confirmar: os Termos viram uma legenda numa linha para caber a correção e a Devolutiva sem rolar. Erros do dia só aparece no erro. |
 | Reforço | Foco (Sessão) | Fio "Reforço do Dia 1 · Etapa k de n". Fala Abertura: "Só o que escapou". Erros do dia não aparece. Fim: Fala Acerto + Primário "Voltar pro Início". |
-| Code comigo (6º dia) | Foco (Sessão) | Barra de etapas: Exemplo, Passo 1..6, Voz. Conteúdo: enunciado, editor (Código/16, fundo elevado, 8 linhas), terminal (4 linhas), devolutiva. "Tentativas do passo" usa o componente Erros do dia com rótulo trocado. Material à esquerda com o arquivo do dia. |
+| Code comigo (6º dia) | Foco dividido (seção 5), página Ponte intercalada `108:2` | Ponte intercalada (aprovada em 18/11): abertura curta com a saída final no terminal e o arquivo vazio; 3 blocos, 1 por alvo, cada um com explicação (até 80 palavras + exemplo de 3 linhas de outra pergunta), Prever (quiz de saída; **errar o Prever não conta como erro do dia**: só Devolutiva, sem contador), Fazer com a ajuda diminuindo (bloco 1 com código inicial e lacuna; bloco 2 só com a estrutura em comentários + Corrigir o erro com o `200` fixo, saída errada mostrada pela linha de Conferência com `http://lab:8080/vazia`, que responde 204; bloco 3 sem código inicial, depois do Ordenar linhas) e voz curta nos blocos 1 e 2; a voz do bloco 3 é a voz final ("o que seu script achou e por que importa"). "Tentativas do passo" usa Erros do dia com o rótulo trocado, dentro do cartão. Quadros desktop: abertura `109:8`; bloco 1 explicação `110:154`, prever `110:603`, fazer com lacuna `110:937`, rodou certo `110:1271`; bloco 2 explicação `119:2599`, prever errado `119:2978`, fazer só estrutura `119:3363`, corrigir `111:701`, voz curta `111:1172`; bloco 3 explicação `119:3730`, prever certo `119:4095`, ordenar `111:1540`, fazer 2ª tentativa `112:1338`; voz final `112:1796`. Notebook: `112:2169` (o caso mais alto). Celular: `114:2058`, `114:2121`, `114:2185`, `114:2252`, `120:3545`, `120:3603`, `120:3686`, `114:2537`, `115:2322`, `120:3980`, `120:4038`, `115:2395`, `115:2671`, `115:2938` (mesma ordem, sem o "fazer com lacuna" aberto). O quadro antigo `28:876` fica como histórico. Fim de sessão segue a seção 6. |
 | Projeto da semana | Foco com trilhos | Cartão Âmbar com fio "Semana 1 · Projeto", título, objetivo e entregável resumidos (o README abre em gaveta), Primário "Entregar". Repositório, token e chat em gavetas pelos trilhos. Bloqueado: só castelo trancado + "Abre quando o code comigo fechar" + o que falta + Primário "Continuar · Dia N" (leva ao dia atual), sem erro, sem trilhos. |
 | Perfil | Hub | Esquerda: cartão Destaque "Você" com o agente grande + Secundários "Trocar visual" e "Guarda-roupa" (Modal). Direita: Fala, cartão com 3 números, cartão "Últimos 14 dias" (quadrados 20), cartão Suave "Troféus" (ícones + "ver todos" abre Modal). Sem "Região". Sem Primário. Guarda-roupa (Modal 800, quadro `39:2402`): prévia 4x, abas por parte do corpo (`Nav/Item`), peças em grade de `Peça de visual` 128 (Selecionada = vestindo), 5 `Amostra de pele`, "Pronto" Secundário. |
 | Squad | Hub | Esquerda: cartão Destaque com escalação (avatares + Ícone check ou pendente; nome sempre na cor normal, "você" em verde) e meta da semana; Primário "Convidar". Direita: Fala, feed em Cartão Padrão com 5 itens e "ver mais" (abre gaveta), ranking do squad em cartão Suave, com o mesmo ícone (check/pendente) antes do nome; ninguém fica em cinza (decisão do dono, 12/11). Sem squad: Estado vazio + dois Cartões (criar, entrar com código). |
@@ -263,7 +297,7 @@ do criar agente.
 **Índice dos quadros da página Telas** (para a fase de código): Login `25:2`, criar conta `25:47`,
 confirmar e-mail `25:131`, esqueci `25:165`, redefinir `25:197`, aceite `25:229`; Onboarding 1 `26:110`,
 2 `26:167`; Selecionar curso `26:293`, ficha `26:387`; Visão da semana `28:1242`; Reforço quiz `28:282`,
-fim `28:569`; Code comigo `28:876`; Projeto aberto `29:821`, gaveta Código `29:1089`, bloqueado `29:1382`;
+fim `28:569`; Code comigo `28:876` (histórico; o atual é a ponte intercalada da página `108:2`, seção 8); Projeto aberto `29:821`, gaveta Código `29:1089`, bloqueado `29:1382`;
 Perfil `31:996`, guarda-roupa `39:2402`; Squad `31:1418`, sem squad `31:1870`; Loja `31:2245`, provador
 `39:2547`, criar agente `40:2493` e `40:2631`; Ranking `32:1184`; Certificações `32:2320`, vazio `41:2582`;
 Caderninho `32:3442`; Ligar palavras `55:1857`, `55:1908`, `55:1959`, `55:2010`; Menu do agente `33:1317`; Configurações `33:1454`; Ajuda da tela `33:1655`.
