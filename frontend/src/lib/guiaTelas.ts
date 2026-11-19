@@ -165,7 +165,7 @@ export const GUIDE_SCREENS: Record<GuideScreenKey, GuideScreen> = {
     focada: 'Uma etapa por vez, agente. Eu apresento cada bloco e comento quando você erra. Na conversa por voz é você explicando, não a IA.',
     items: [
       { title: 'Etapas', text: 'Onde você está e quanto falta: o fio no topo diz a etapa, e a barra mostra até 8 etapas em volta da atual (o "+N" conta as outras). No celular, a barra vira segmentos. Dá pra voltar pra etapa anterior sem refazer.' },
-      { title: 'Erros do dia', text: 'Aparece no topo depois do 1º erro. Cada erro antes de terminar o Dia soma 1. No 3º, nasce um reforço só com o que você errou.' },
+      { title: 'Erros do dia', text: 'Aparece no topo depois do 1º erro. Cada erro antes de terminar o Dia soma 1. No 3º, nasce um reforço só com o que você errou. No curso em sessões, ele abre no dia seguinte, antes da sessão nova, e a aposta antes da leitura não conta erro.' },
       { title: 'Material e Pomodoro', text: 'O conteúdo de hoje pra consultar e o timer, se você usa. Ficam no trilho da esquerda: clique e abre a gaveta. O Pomodoro só aparece quando você abre.' },
       {
         title: 'Anotação e dúvida rápida',
@@ -360,7 +360,7 @@ export const FAQ: { q: string; a: string }[] = [
     a: 'Conta os dias seguidos com o Dia feito. A cada 7 dias você tem 1 folga, gasta sozinha quando você falta. Com o Projeto da semana aberto, a sequência pausa até a semana fechar (no máximo 14 dias).',
   },
   { q: 'O que são gems e como eu ganho?', a: '+1 por Dia novo, +5 por semana perfeita, +30 por mês perfeito e +2 por reforço todo aprovado. Até 70 por mês. Não expiram e servem pra Loja.' },
-  { q: 'Por que caí num reforço?', a: 'Porque errou 3 vezes no mesmo Dia antes de terminar. O reforço tem só o que você errou e não gasta o Dia novo de hoje.' },
+  { q: 'Por que caí num reforço?', a: 'Porque errou 3 vezes no mesmo Dia antes de terminar. O reforço tem só o que você errou e não gasta o Dia novo de hoje. No curso em sessões ele abre no dia seguinte e vem antes da sessão nova: lembrar depois de um tempo é o que fixa.' },
   { q: 'Posso fazer mais de um Dia por dia?', a: 'Não. Um Dia novo por dia, por curso. No curso em sessões, até 3 sessões por dia, com a sala entre elas. Rever um Dia já feito é livre e não mexe em nota.' },
   {
     q: 'O laboratório de código roda no servidor?',

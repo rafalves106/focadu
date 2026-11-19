@@ -86,6 +86,14 @@ Weekly - uma Weekly sozinha nunca enxerga as irmas), retorna um `DailyAccessMode
   (Fase 79), `Parsons` (ordenar linhas) e o **Prever** - todo `Quiz` de um dia com `DailyTemplate.InterleavedBridge`
   (`DailyTemplate.IsPrediction`). `Parsons` segue o `CodeStepProgress` (3 conferencias; acabou = a ordem certa entra no
   script) e o `PriorCode` conta os passos "refaz" (`DailyActivity.ReplacesPreviousCode`), que substituem o trecho anterior.
+- **Fase 115 - molde D2 (curso em sessoes)**: o reforco de uma sessao nasce com `Daily.Date` = o dia em que disparou e
+  so abre no dia seguinte (`SessionRules.IsReinforcementOpen`; antes disso `reforco_abre_amanha`, e ele some de
+  "/hoje", do detalhe do curso e da tela de conclusao). Aberto, vem antes da sessao nova: `EnsureCanStart` recusa com
+  `reforco_pendente` e "/hoje" ja abre nele (`SessionRules.OpenPendingReinforcement`). Curso `Daily` nao muda. O Quiz
+  de **aposta** (`DailyActivity.IsBet`, dia.json `"aposta": true`) segue a regra do Prever (`DailyTemplate.IsPrediction`):
+  nao conta erro, nao vai pro reforco, nao entra na nota. VoiceSummary pode vir sem `ContentId` (voz de recuperacao,
+  `"retomaSessao"` no dia.json, so o linter le); o importador exige `referenceAnswer` nesse caso. O reforco de voz
+  copia `ReferenceAnswer`/`Hint`. Pergunta final com 2 ou 3 topicos.
 - **Fase 69 - ponte sem linguagem**: Daily original com variante de linguagem (a ponte) e projeto
   ainda sem linguagem -> `DomainException` `linguagem_nao_escolhida` (409), checado antes da cota
   diaria (escolher a linguagem nao gasta a cota). "/hoje" traduz em `NeedsProjectLanguage`.

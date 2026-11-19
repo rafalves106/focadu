@@ -3,6 +3,7 @@ using Focadu.Application.Gamification;
 using Focadu.Application.Ports;
 using Focadu.Domain.Gamification;
 using Focadu.Domain.Repositories;
+using Focadu.Domain.Weeklies;
 
 namespace Focadu.Application.Dailies;
 
@@ -34,6 +35,7 @@ public class CompleteDailyUseCase
     private readonly StreakPauseWindows _streakPauseWindows;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
+    private readonly StudyContextResolver _study;
 
     public CompleteDailyUseCase(
         IWeeklyRepository weeklyRepository,
@@ -41,8 +43,10 @@ public class CompleteDailyUseCase
         GamificationCreditor gamificationCreditor,
         StreakPauseWindows streakPauseWindows,
         IUnitOfWork unitOfWork,
-        IClock clock)
+        IClock clock,
+        StudyContextResolver study)
     {
+        _study = study;
         _streakPauseWindows = streakPauseWindows;
         _weeklyRepository = weeklyRepository;
         _streakRepository = streakRepository;
@@ -106,10 +110,19 @@ public class CompleteDailyUseCase
         var weeklyReinforcement = weekly.Reinforcements.FirstOrDefault(r => r.WeakDailyIds.Contains(daily.Id));
         var streakAfterCompletion = streak?.CurrentStreakAsOf(today, streakPauses) ?? 0;
 
+        // Fase 115: curso em sessoes, o reforco nascido hoje abre so amanha - a tela de conclusao nao oferece o link.
+        var reinforcementDailyId = daily.ReinforcementDailyId;
+        if (reinforcementDailyId is { } rid && weekly.Dailies.FirstOrDefault(d => d.Id == rid) is { } reinforcement
+            && !SessionRules.IsReinforcementOpen(reinforcement, today)
+            && await _study.IsSessionsEnrollmentAsync(userId, weekly.EnrollmentId, cancellationToken))
+        {
+            reinforcementDailyId = null;
+        }
+
         return new CompleteDailyResult(
             dailyDto,
             daily.ReinforcementTriggered,
-            daily.ReinforcementDailyId,
+            reinforcementDailyId,
             weeklyReinforcement is not null,
             weeklyReinforcement?.Id,
             gemsEarned,

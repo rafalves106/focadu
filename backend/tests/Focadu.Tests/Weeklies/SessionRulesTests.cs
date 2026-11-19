@@ -139,7 +139,8 @@ public class SessionRulesTests
         var weekly = DailyFixtures.NewWeekly();
         CompletedToday(weekly, 1);
         var weak = DailyFixtures.NewWeakDaily(weekly, 2, Today);
-        var reinforcement = weekly.CreateDailyReinforcement(weak.Id, Today);
+        // Fase 115: o reforço nasce com a data de ontem para já estar aberto hoje.
+        var reinforcement = weekly.CreateDailyReinforcement(weak.Id, Today.AddDays(-1));
         weak.Complete();
         var study = StudyContext.ForSessions(2, null);
 
@@ -274,5 +275,76 @@ public class SessionRulesTests
         Assert.False(roomLock.Locked);
         Assert.Null(roomLock.OpensWithSession);
         Assert.Null(roomLock.SessionNumber);
+    }
+
+    // --- Fase 115: reforço no dia seguinte ---
+
+    /// <summary>Sessão 1 com 3 erros (reforço disparado) e o reforço criado com a data de <paramref name="createdOn"/>.</summary>
+    private static (Daily Source, Daily Reinforcement) WeakSessionWithReinforcement(Weekly weekly, DateOnly createdOn)
+    {
+        var source = DailyFixtures.NewWeakDaily(weekly, 1, createdOn);
+        var reinforcement = weekly.CreateDailyReinforcement(source.Id, createdOn);
+        source.Complete();
+        return (source, reinforcement);
+    }
+
+    [Fact]
+    public void Sessions_ReinforcementCreatedToday_OpensOnlyTomorrow()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var (_, reinforcement) = WeakSessionWithReinforcement(weekly, Today);
+        var study = StudyContext.ForSessions(3, null);
+
+        var ex = Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(reinforcement.Id, Today, false, null, study));
+        Assert.Equal("reforco_abre_amanha", ex.Code);
+        Assert.Equal(DailyAccessMode.Start, weekly.EvaluateDailyAccess(reinforcement.Id, Today.AddDays(1), false, null, study));
+    }
+
+    [Fact]
+    public void DailyCourse_ReinforcementStillOpensRightAway()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var (_, reinforcement) = WeakSessionWithReinforcement(weekly, Today);
+
+        Assert.Equal(DailyAccessMode.Start, weekly.EvaluateDailyAccess(reinforcement.Id, Today, false, null, StudyContext.Daily));
+    }
+
+    [Fact]
+    public void Sessions_OpenReinforcement_ComesBeforeTheNextSession()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var (_, reinforcement) = WeakSessionWithReinforcement(weekly, Today.AddDays(-1));
+        var next = NewSession(weekly, 2);
+        var study = StudyContext.ForSessions(3, null);
+
+        var ex = Assert.Throws<DomainException>(() => weekly.EvaluateDailyAccess(next.Id, Today, true, null, study));
+        Assert.Equal("reforco_pendente", ex.Code);
+        Assert.Same(reinforcement, SessionRules.OpenPendingReinforcement(weekly.Dailies, Today));
+
+        reinforcement.Start();
+        reinforcement.Complete();
+        Assert.Null(SessionRules.OpenPendingReinforcement(weekly.Dailies, Today));
+        Assert.Equal(DailyAccessMode.Start, weekly.EvaluateDailyAccess(next.Id, Today, true, null, study));
+    }
+
+    [Fact]
+    public void Sessions_ReinforcementOfToday_DoesNotBlockTheNextSession()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        WeakSessionWithReinforcement(weekly, Today);
+        var next = NewSession(weekly, 2);
+
+        Assert.Equal(DailyAccessMode.Start, weekly.EvaluateDailyAccess(next.Id, Today, true, null, StudyContext.ForSessions(3, null)));
+    }
+
+    [Fact]
+    public void FindPendingReinforcement_WithOpenOn_SkipsTheOneThatOpensTomorrow()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var (_, reinforcement) = WeakSessionWithReinforcement(weekly, Today);
+
+        Assert.Same(reinforcement, DailySequencing.FindPendingReinforcement([weekly]));
+        Assert.Null(DailySequencing.FindPendingReinforcement([weekly], Today));
+        Assert.Same(reinforcement, DailySequencing.FindPendingReinforcement([weekly], Today.AddDays(1)));
     }
 }

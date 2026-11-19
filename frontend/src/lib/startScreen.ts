@@ -108,6 +108,10 @@ export function buildStartState(course: CourseDetailDto, daily: DailyStateDto | 
       tomorrow: null,
     };
   }
+  // Fase 115: curso em sessões, "/hoje" já abre no reforço de ontem (vem antes da sessão nova) - o Destaque é ele.
+  if (daily.isReinforcement && reinforcement && DAY_MODES.includes(daily.accessMode)) {
+    return { ...base, highlight: { kind: 'reforco', reinforcement }, tomorrow: next };
+  }
   if (DAY_MODES.includes(daily.accessMode)) {
     const title = days.find(({ day }) => day.id === daily.id)?.day.title ?? null;
     return { ...base, highlight: { kind: 'dia', daily, title }, tomorrow: null };

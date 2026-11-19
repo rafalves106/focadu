@@ -114,6 +114,19 @@ public class DailyActivity : Entity
     /// </summary>
     public string? ReferenceAnswer { get; private set; }
 
+    /// <summary>
+    /// Quiz de aposta (Fase 115, molde D2): feito antes da leitura ("o que voce acha que o guia diz?"). Como o Prever da
+    /// ponte intercalada, errar nao conta erro do dia, nao vai pro reforco e nao entra na nota (ver DailyTemplate.IsPrediction).
+    /// </summary>
+    public bool IsBet { get; private set; }
+
+    public void MarkAsBet()
+    {
+        if (Type != ActivityType.Quiz)
+            throw new DomainException("So Quiz pode ser aposta.", "aposta_invalida");
+        IsBet = true;
+    }
+
     /// <summary>VoiceSummary no molde v1: e a pergunta final ("explique o dia com as suas palavras").</summary>
     public bool IsFinalQuestion { get; private set; }
 
@@ -149,7 +162,9 @@ public class DailyActivity : Entity
     {
         if (orderIndex < 0)
             throw new DomainException("OrderIndex não pode ser negativo.");
-        var requiresContent = type is ActivityType.VoiceSummary or ActivityType.Reading or ActivityType.Video;
+        // Fase 115 (molde D2): a voz de recuperacao da abertura cobra uma sessao anterior e nao tem leitura na frente,
+        // entao VoiceSummary pode vir sem conteudo - o importador exige a resposta de referencia nesse caso.
+        var requiresContent = type is ActivityType.Reading or ActivityType.Video;
         if (requiresContent && contentId is null)
         {
             throw new DomainException(
@@ -190,6 +205,10 @@ public class DailyActivity : Entity
 
         clone.TerminalMissionsJson = TerminalMissionsJson;
         clone.Target = Target;
+        // Fase 115: a voz reforcada continua avaliada contra a resposta de referencia curada (a da abertura do molde D2
+        // nao tem leitura pra cair de volta). A pergunta final volta como pergunta comum, sem topicos.
+        clone.ReferenceAnswer = ReferenceAnswer;
+        clone.Hint = Hint;
         return clone;
     }
 
@@ -284,8 +303,9 @@ public class DailyActivity : Entity
     {
         if (Type != ActivityType.VoiceSummary)
             throw new DomainException("Resposta de referencia e pista so valem pra VoiceSummary.");
-        if (isFinal && topics is not { Count: 3 })
-            throw new DomainException("A pergunta final precisa de exatamente 3 topicos-pista.", "topicos_invalidos");
+        // Fase 115: o molde D2 (1 ideia por sessao) usa 2 pistas; os moldes anteriores, 3.
+        if (isFinal && topics is not { Count: 2 or 3 })
+            throw new DomainException("A pergunta final precisa de 2 ou 3 topicos-pista.", "topicos_invalidos");
         if (!isFinal && topics is { Count: > 0 })
             throw new DomainException("So a pergunta final tem topicos-pista.", "topicos_invalidos");
 

@@ -278,7 +278,14 @@ public static class CuratedDayImporter
             contentId = resolved;
         }
 
+        // Fase 115 (molde D2): a voz de recuperacao da abertura ("retomaSessao") nao tem leitura na frente; sem conteudo,
+        // a resposta de referencia e o unico gabarito.
+        if (json.Type == ActivityType.VoiceSummary && contentId is null && string.IsNullOrWhiteSpace(json.ReferenceAnswer))
+            throw new DomainException($"Activity #{orderIndex}: VoiceSummary sem contentRef precisa de referenceAnswer.", "voz_sem_referencia");
+
         var activity = dailyTemplate.AddActivity(json.Type, orderIndex, json.AnswerMode, json.Prompt, contentId, json.ExpectedAnswer);
+        if (json.Aposta == true)
+            activity.MarkAsBet();
         activity.SetTarget(json.Target);
         if (json.Type == ActivityType.VoiceSummary && (json.ReferenceAnswer is not null || json.Hint is not null || json.Final == true))
             activity.ConfigureVoiceQuestion(json.ReferenceAnswer, json.Hint, json.Final == true, json.Topics);
@@ -387,7 +394,9 @@ public static class CuratedDayImporter
         /// <summary>Fase 113, CodeStep da ponte intercalada: linhas marcadas do codeStarter, conferencia e "refaz".</summary>
         List<CodeMarkJson>? CodeMarks = null, CodeCheckJson? CodeCheck = null, bool? Refaz = null,
         /// <summary>Fase 113, Parsons: linhas fixas antes e as linhas na ordem certa.</summary>
-        List<string>? ParsonsFixed = null, List<string>? ParsonsLines = null);
+        List<string>? ParsonsFixed = null, List<string>? ParsonsLines = null,
+        /// <summary>Fase 115, molde D2: Quiz de aposta antes da leitura (nao conta erro). "retomaSessao" so o linter le.</summary>
+        bool? Aposta = null);
 
     private record CodeMarkJson(int Linha, string? Tipo);
 

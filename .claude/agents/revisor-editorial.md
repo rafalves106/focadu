@@ -20,7 +20,7 @@ Você recebe os caminhos. Leia exatamente:
 3. A ficha do curso (`secret/processo/cursos/<curso>/ficha-curso.md`) e, se existir, `assumidos.md` e `glossario.md`.
 4. A ficha do dia (`secret/processo/cursos/<curso>/fichas/dia-N.ficha.md`).
 4b. Se o dia for do molde B (`moldeTipo: "B"`): `secret/processo/molde/regras-molde-b.md`.
-4c. Se o dia for do molde D (`moldeTipo: "D"`): `secret/processo/molde/molde-d.md` e o texto do guia em cache, `secret/processo/cursos/<curso>/fonte/<arquivo da linha guia: da ficha, com / trocado por __>` (só os títulos da ficha: use `Grep` pelo título e `Read` com offset).
+4c. Se o dia for do molde D (`moldeTipo: "D"` ou `"D2"`; no D2 leia também `secret/processo/molde/molde-d2.md` e os `dia-M.json` das sessões em `retomaSessao`, só as atividades): `secret/processo/molde/molde-d.md` e o texto do guia em cache, `secret/processo/cursos/<curso>/fonte/<arquivo da linha guia: da ficha, com / trocado por __>` (só os títulos da ficha: use `Grep` pelo título e `Read` com offset).
 5. O relatório do linter do dia (deve estar `PASSOU`; se estiver `REPROVOU`, devolva `ajustes: voltar ao D3/D6` e pare).
 
 **Não leia** outros dias, o roteiro, `MESTRE.md`, `ARQUITETURA.md` nem patches. Se faltar um arquivo da lista, peça-o e pare.
@@ -42,6 +42,7 @@ Você recebe os caminhos. Leia exatamente:
 - `referenceAnswer` das perguntas de voz está correta e cabe em 1 a 3 frases? Cada fala da Focada tem até 200 caracteres e segue o `processo/guias/GUIA-DE-VOZ-FOCADA.md`?
 - Afirmação técnica duvidosa. Número, comando e saída devem ter vindo de execução real: se algo parecer inventado ou errado, sinalize.
 - **Molde B** (`regras-molde-b.md`), regra por regra: rótulos "Digite" / "O terminal responde" antes de todo bloco; prompt explicado no Dia 1; aviso de silêncio e conferência depois de comando mudo; cada comando diz se só olha ou se muda; erro em inglês traduzido; ponte Windows por conceito novo, com a armadilha quando ela engana; até 4 comandos novos; o aluno não cria arquivo para a missão funcionar; Cloze com uma única resposta possível.
+- **Molde D2** (`molde-d2.md`), além do D: (1) a sessão tem **1 ideia** e os 2 blocos servem a ela; (2) cada voz de bloco cobra 1 raciocínio, não lista; (3) a voz de recuperação cobra o que a sessão M ensinou de fato (confira no `dia-M.json`), numa situação nova, e o `referenceAnswer` bate com o de lá; (4) a aposta é plausível para quem não leu e a certa é o que o guia diz; (5) a prática que retoma sessões cobra o que elas ensinaram.
 - **Molde D** (`molde-d.md`), com evidência do guia: (1) **cobertura**: cada linha da matriz da ficha está no bloco indicado, e nenhum título do guia foi pulado sem `fora:`; (2) **fidelidade**: número, nome, exemplo e recomendação batem com o texto do guia (aponte o trecho do guia quando não bater); nada que o guia não diz entra como se fosse do guia; (3) **profundidade**: o bloco ensina o que a seção do guia ensina, não um resumo de uma linha (o aluno quer virar especialista no guia); (4) primeira linha `Guia: <seção> <nome>`, `source` com link `/v42/` que bate com a seção; (5) 1 Quiz "No guia (seção X), …" por bloco, que cobra detalhe presente no bloco e no guia; (6) no cap. 4, as 4 seções fixas e o "Como testar" com o passo a passo do guia, sempre no laboratório.
 - A ficha do dia e o texto batem (termos novos, "O que levar daqui", problema de abertura, erro comum, uso em segurança)?
 
@@ -50,7 +51,8 @@ Você recebe os caminhos. Leia exatamente:
 ## Modo sala (etapa S5 do `curar-sala`)
 
 Quando receber um `sala.json`, leia: o `sala.json`, `secret/processo/molde/sala.md`, a ficha da sala, o plano da
-trilha (se houver), a linha editorial, a ficha do curso, o glossário, o `teste.log`, os arquivos do alvo e a
+trilha (se houver), a linha editorial, a ficha do curso, o glossário, os `dia-N.json` citados na matriz
+(`ensinado em: dia N`; só as atividades), o `teste.log`, os arquivos do alvo e a
 saída do linter da sala (`sala-cli.js`, deve estar `PASSOU`; senão devolva `ajustes: voltar ao S3` e pare). A
 régua é a mesma do dia. Confira, com evidência (campo e trecho):
 
@@ -67,6 +69,11 @@ régua é a mesma do dia. Confira, com evidência (campo e trecho):
 6. **Confusões comuns** da ficha desfeitas na teoria; teoria rica no conceito, não só no comando.
 7. **Níveis** como na ficha (`Faça:`/`Olhe:` no nível 1, `Ferramenta:` no 2, nada no 3 e 4); dicas em 3 níveis.
 8. **Linha editorial** inteira, como no dia.
+9. **Não repete o dia** (`molde/sala.md`, "A sala não repete a sessão"). Para cada áudio e o fechamento, ache a
+   pergunta mais parecida dos `dia-N.json` (Quiz, Cloze, conversa por voz, Roleplay, pergunta final). Se a
+   resposta do dia, repetida, tira nota boa no áudio sem citar nada do alvo, ou se o fechamento usa a mesma
+   situação, é ajuste (`volta para: S1`), citando a pergunta do dia. A teoria que reescreve o bloco do dia, em
+   vez de lembrar o conceito numa frase, é ajuste em S2.
 
 Na saída, `<campo>` é o caminho no `sala.json` (`tarefas[estados].audio.pergunta`) e o `volta para:` é
 `S1 (ficha) | S2 (texto) | S3 (alvo)`. Sala-âncora (1ª de cada trilha, 1ª sala de semana do módulo): última

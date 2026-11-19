@@ -29,6 +29,17 @@ public class StudyContextResolver
         _progresses = progresses;
     }
 
+    /// <summary>Fase 115: o curso desta matricula e em sessoes (o reforco abre so no dia seguinte).</summary>
+    public async Task<bool> IsSessionsCourseAsync(Guid courseId, CancellationToken cancellationToken) =>
+        (await _courses.GetByIdAsync(courseId, cancellationToken))?.StudyFormat == StudyFormat.Sessions;
+
+    /// <summary>Fase 115: idem, pela matricula de uma Weekly (<see cref="Weekly.EnrollmentId"/>).</summary>
+    public async Task<bool> IsSessionsEnrollmentAsync(Guid userId, Guid enrollmentId, CancellationToken cancellationToken)
+    {
+        var enrollment = (await _enrollments.GetByUserIdAsync(userId, cancellationToken)).FirstOrDefault(e => e.Id == enrollmentId);
+        return enrollment is not null && await IsSessionsCourseAsync(enrollment.CourseId, cancellationToken);
+    }
+
     public async Task<StudyContext> ResolveAsync(
         Guid userId, IReadOnlyCollection<Weekly> enrollmentWeeklies, Daily target, CancellationToken cancellationToken)
     {

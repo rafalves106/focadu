@@ -101,7 +101,9 @@ public class DailyTemplate : Entity
     /// Fase 113: na ponte intercalada todo Quiz e um Prever ("o que este trecho mostra?" antes de rodar). Errar o
     /// Prever nao conta erro do dia, nao vai pro reforco e nao entra na nota (decisao do dono, 18/11/2026).
     /// </summary>
-    public bool IsPrediction(DailyActivity activity) => InterleavedBridge && activity.Type == ActivityType.Quiz;
+    /// Fase 115: o Quiz de aposta do molde D2 (<see cref="DailyActivity.IsBet"/>) segue a mesma regra.
+    public bool IsPrediction(DailyActivity activity) =>
+        (InterleavedBridge && activity.Type == ActivityType.Quiz) || activity.IsBet;
 
     private DailyTemplate()
     {

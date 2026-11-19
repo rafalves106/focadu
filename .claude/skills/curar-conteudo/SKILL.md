@@ -24,6 +24,7 @@ Regras e decisões: `secret/produto/PLANO-CURADORIA.md` (aprovado em 02/10/2026)
 
 Slugs: `web-security`, `linux`, `python-websec`. Sem curso claro, pergunte. Molde A (conceito): web-security. Molde B (prática): linux, python-websec.
 Molde D (estudo massivo de um guia, sessão + sala): `wstg`, desde 17/11/2026; vem da linha `tipo de molde: D` da ficha.
+**Molde D2** (desde 19/11/2026, `tipo de molde: D2` na ficha, `"moldeTipo": "D2"` no dia): tudo do D, e o `processo/molde/molde-d2.md` manda no que muda: 1 ideia e 2 blocos por sessão, vozes de recuperação na abertura (`retomaSessao`, sem `contentRef`), 1 aposta antes da leitura (`"aposta": true`), 1/3 da prática retomando sessões anteriores, pergunta final com 2 tópicos, leitura de 350 a 600 palavras.
 
 ## Portões antes de começar
 

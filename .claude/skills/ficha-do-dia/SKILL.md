@@ -57,6 +57,7 @@ Regras:
   cada parte com O que é / Exemplo / Como prevenir em 1 linha; "o que levar daqui" tem 1 frase por bloco; acrescente a linha
   `minigames:` com a quantidade de Quiz, Cloze, Ligar Palavras e Roleplay. Termos novos = os da abertura + o nome de cada parte
   (até 16), todos no glossário. A ficha pode passar de 1 página, mas cada linha continua curta.
+- **Molde D2** (desde 19/11/2026, `tipo de molde: D2` na ficha, `"moldeTipo": "D2"` no dia): tudo do D, e o `processo/molde/molde-d2.md` manda no que muda: 1 ideia e 2 blocos por sessão, vozes de recuperação na abertura (`retomaSessao`, sem `contentRef`), 1 aposta antes da leitura (`"aposta": true`), 1/3 da prática retomando sessões anteriores, pergunta final com 2 tópicos, leitura de 350 a 600 palavras. A ficha do D2 diz a **ideia central** (1 frase), os 2 blocos, as sessões que a abertura retoma (`retoma: M e K`, com a pergunta de cada uma) e a aposta (a pergunta e por que as erradas são plausíveis).
 - Molde D (estudo massivo de um guia, `molde-d.md`; modelo pronto: `secret/processo/cursos/wstg/fichas/dia-1.ficha.md`):
   linhas `guia-repo: <dono/repo>@<tag>` e `guia: <arquivo> | <título>; <título>` (o `pacote-dia.mjs` usa para imprimir o
   trecho ao curador); tabela de **blocos** (1 por parte do guia: alvo, título, o que cobre, com os fatos e números do guia);

@@ -277,6 +277,8 @@ export function BridgeLanguageScreen({ onChosen }: { onChosen: () => void }) {
 const DAILY_REFUSAL_COPY: Record<string, string> = {
   daily_limite_diario_atingido: 'Você já fez as sessões de hoje — o limite é por dia. Amanhã tem mais, agente.',
   sala_da_sessao_pendente: 'Falta a sala da sessão anterior. Faz ela em Salas e a próxima sessão abre.',
+  reforco_pendente: 'Antes da sessão nova, o reforço de ontem. É curtinho e é ele que fixa o que escapou.',
+  reforco_abre_amanha: 'Esse reforço abre amanhã: lembrar depois de um tempo é o que fixa. Hoje, segue nas sessões.',
   daily_em_andamento: 'Você já tem uma sessão em andamento. Termina (ou retoma) aquela antes de começar outra.',
   projeto_semana_anterior_pendente: 'O projeto de uma semana anterior ainda não foi concluído. Entrega ele e espera a avaliação pra liberar esta semana.',
   modulo_bloqueado_por_publicacao: 'Uma semana anterior precisa de uma publicação validada antes de começar esta.',
