@@ -256,7 +256,7 @@ UserDto WithSignup(UserDto user) => user with { EmailVerificationPending = signu
 LabRunInput? ToLabRun(LabRunRequest? run) =>
     run is null
         ? null
-        : new LabRunInput(run.Output, run.ExitCode, run.Commands?.Select(c => new LabCommandInput(c.Command, c.Output)).ToList());
+        : new LabRunInput(run.Output, run.ExitCode, run.Commands?.Select(c => new LabCommandInput(c.Command, c.Output)).ToList(), run.CheckOutput);
 
 // Fase 16: scope ausente/vazio vira "course" (recorte mais completo) - so string invalida vira erro.
 RankingScope ParseRankingScope(string? scope)

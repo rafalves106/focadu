@@ -160,7 +160,10 @@ export function FlagField({
   );
 }
 
-/** Sala/Gravador de voz (68:88): Pronto, Gravando e Enviando. */
+/**
+ * Sala/Gravador de voz (68:88): Pronto, Gravando e Enviando. `compact` é o Tamanho=Compacto (celular; Fase 113, voz da
+ * ponte): texto e tempo em cima, botão em largura cheia, sem o ícone do microfone; no Pronto o 00:00 some.
+ */
 export function Recorder({
   phase,
   seconds,
@@ -168,6 +171,7 @@ export function Recorder({
   onStart,
   onStop,
   hint,
+  compact = false,
 }: {
   phase: RecorderPhase;
   seconds: number;
@@ -175,8 +179,36 @@ export function Recorder({
   onStart: () => void;
   onStop: () => void;
   hint: string;
+  compact?: boolean;
 }) {
   const recording = phase === 'gravando';
+  if (compact) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3 border-2 border-stroke bg-base p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-col gap-1">
+              <p className={`text-rotulo-sm ${recording ? 'text-alert' : 'text-primary'}`}>
+                {phase === 'enviando' ? 'Avaliando seu áudio' : recording ? 'Gravando' : 'Pronto pra gravar'}
+              </p>
+              <p className="text-pequeno text-muted">{hint}</p>
+            </div>
+            {phase !== 'pronto' && <span className="text-pequeno text-muted tabular-nums">{clock(seconds)}</span>}
+          </div>
+          {recording ? (
+            <Button kind="perigo" className="w-full" onClick={onStop}>
+              Parar e enviar
+            </Button>
+          ) : (
+            <Button className="w-full" loading={phase === 'enviando'} onClick={onStart}>
+              Gravar
+            </Button>
+          )}
+        </div>
+        {error && <p className="text-pequeno text-alert">{error}</p>}
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-4 border-2 border-stroke bg-base p-4">

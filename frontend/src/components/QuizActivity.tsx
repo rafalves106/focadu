@@ -1,5 +1,7 @@
 import { ActivityType, type DailyActivityDto, type DailyStateDto } from '../api/types';
 import { ClozeSentence } from './activities/ClozeSentence';
+import { MarkdownBlock } from './activities/MarkdownBlock';
+import { splitPrompt } from './code/codeHelpers';
 import { OptionsAnswer } from './OptionsAnswer';
 import { SessionLayout } from './SessionShell';
 
@@ -23,7 +25,13 @@ export function QuizActivity({
 
   return (
     <SessionLayout>
-      {activity.type === ActivityType.Quiz ? (
+      {activity.isPrediction ? (
+        // Fase 113: o Prever traz o exemplo de código no enunciado ("O que este trecho mostra?" + bloco de código).
+        <>
+          <p className="text-lead text-primary">{splitPrompt(activity.prompt).title}</p>
+          {splitPrompt(activity.prompt).detail && <MarkdownBlock text={splitPrompt(activity.prompt).detail} />}
+        </>
+      ) : activity.type === ActivityType.Quiz ? (
         <p className="text-lead text-primary">{activity.prompt}</p>
       ) : (
         <ClozeSentence text={activity.prompt ?? ''} />

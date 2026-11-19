@@ -8,6 +8,9 @@ import { SessionFooter, SessionLayout } from './SessionShell';
 import { DailyNotesModal } from './notebook/DailyNotesModal';
 import { PixelMic } from './session/PixelMic';
 import { Button } from './ui/Button';
+import { Recorder } from './rooms/RoomParts';
+import { isInterleavedBridge } from '../lib/bridgeSteps';
+import { useIsDesktop } from '../lib/useIsDesktop';
 
 type RecorderState = 'idle' | 'recording' | 'submitting' | 'answered' | 'permission_denied';
 
@@ -127,6 +130,7 @@ export function VoiceSummaryActivity({
   onContinue: () => void;
 }) {
   const { weekly } = useSession();
+  const isDesktop = useIsDesktop();
   const [state, setState] = useState<RecorderState>(activity.responses.length > 0 ? 'answered' : 'idle');
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -227,6 +231,8 @@ export function VoiceSummaryActivity({
       ? `Bloco ${blockIndex + 1} de ${voiceBlocks.length}`
       : null;
   const busy = recording || state === 'submitting';
+  // Fase 113: na ponte intercalada a voz usa o Sala/Gravador de voz (68:88), Compacto no celular.
+  const bridgeRecorder = isInterleavedBridge(daily) && !daily.isReinforcement;
   // Molde v1: na tela aparecem o titulo do bloco e a pista, nao o texto.
   const blockTitle = !activity.isFinalQuestion && activity.contentId
     ? weekly?.curatedContents.find((c) => c.id === activity.contentId)?.title ?? null
@@ -258,45 +264,59 @@ export function VoiceSummaryActivity({
               </ol>
             </div>
           )}
-          <p className="text-pequeno text-muted">Só por voz, até {Math.round(maxRecordingSeconds / 60)} min. Vale 2× no score.</p>
+          {bridgeRecorder ? (
+            <Recorder
+              phase={state === 'submitting' ? 'enviando' : recording ? 'gravando' : 'pronto'}
+              seconds={seconds}
+              error={null}
+              onStart={() => void handleStart()}
+              onStop={handleStop}
+              hint={`Até ${Math.round(maxRecordingSeconds / 60)} min, com as suas palavras. Não precisa ler o código em voz alta.`}
+              compact={!isDesktop}
+            />
+          ) : (
+            <>
+            <p className="text-pequeno text-muted">Só por voz, até {Math.round(maxRecordingSeconds / 60)} min. Vale 2× no score.</p>
 
-          <button
-            type="button"
-            onClick={recording ? handleStop : handleStart}
-            disabled={state === 'submitting'}
-            aria-label={recording ? 'Parar e enviar' : 'Começar a gravar'}
-            className={`flex min-h-[120px] flex-col items-center justify-center gap-3 border-2 bg-base px-6 py-4 lg:short:min-h-[96px] lg:short:gap-2 lg:short:py-3 ${
-              recording ? 'border-accent' : 'border-stroke hover:border-stroke-strong'
-            }`}
-          >
-            <PixelMic recording={recording} className="size-16" />
-            {recording && (
-              <span className="flex h-9 items-end gap-1" aria-hidden="true">
-                {Array.from({ length: 16 }, (_, i) => (
-                  <span
-                    key={i}
-                    className="w-2 animate-pulse bg-accent"
-                    style={{ height: `${8 + ((i * 7) % 26)}px`, animationDelay: `${(i % 5) * 120}ms` }}
-                  />
-                ))}
-              </span>
-            )}
-            {state === 'submitting' ? (
-              <span className="text-corpo text-secondary">Transcrevendo e avaliando...</span>
-            ) : recording ? (
-              <span className="text-lead text-accent">
-                ● Gravando {clock(seconds)} / {clock(maxRecordingSeconds)}
-              </span>
-            ) : (
-              <>
-                <span className="text-rotulo-sm text-secondary">
-                  {state === 'permission_denied' ? 'Toque pra tentar de novo' : 'Aperte gravar quando estiver pronto'}
+            <button
+              type="button"
+              onClick={recording ? handleStop : handleStart}
+              disabled={state === 'submitting'}
+              aria-label={recording ? 'Parar e enviar' : 'Começar a gravar'}
+              className={`flex min-h-[120px] flex-col items-center justify-center gap-3 border-2 bg-base px-6 py-4 lg:short:min-h-[96px] lg:short:gap-2 lg:short:py-3 ${
+                recording ? 'border-accent' : 'border-stroke hover:border-stroke-strong'
+              }`}
+            >
+              <PixelMic recording={recording} className="size-16" />
+              {recording && (
+                <span className="flex h-9 items-end gap-1" aria-hidden="true">
+                  {Array.from({ length: 16 }, (_, i) => (
+                    <span
+                      key={i}
+                      className="w-2 animate-pulse bg-accent"
+                      style={{ height: `${8 + ((i * 7) % 26)}px`, animationDelay: `${(i % 5) * 120}ms` }}
+                    />
+                  ))}
                 </span>
-                <span className="text-corpo text-muted">00:00 / {clock(maxRecordingSeconds)}</span>
-              </>
-            )}
-            {recording && <span className="text-pequeno text-secondary">As anotações ficam travadas até você parar — vale o que você lembra.</span>}
-          </button>
+              )}
+              {state === 'submitting' ? (
+                <span className="text-corpo text-secondary">Transcrevendo e avaliando...</span>
+              ) : recording ? (
+                <span className="text-lead text-accent">
+                  ● Gravando {clock(seconds)} / {clock(maxRecordingSeconds)}
+                </span>
+              ) : (
+                <>
+                  <span className="text-rotulo-sm text-secondary">
+                    {state === 'permission_denied' ? 'Toque pra tentar de novo' : 'Aperte gravar quando estiver pronto'}
+                  </span>
+                  <span className="text-corpo text-muted">00:00 / {clock(maxRecordingSeconds)}</span>
+                </>
+              )}
+              {recording && <span className="text-pequeno text-secondary">As anotações ficam travadas até você parar — vale o que você lembra.</span>}
+            </button>
+            </>
+          )}
 
           {state === 'permission_denied' && (
             <p className="text-pequeno text-alert">Não conseguimos acessar o microfone - verifique a permissão do navegador pra este site e tente de novo.</p>
@@ -309,7 +329,7 @@ export function VoiceSummaryActivity({
                 {daily.isReinforcement ? 'Reler anotações do dia base' : 'Reler minhas anotações'}
               </Button>
             )}
-            {state !== 'submitting' && (
+            {state !== 'submitting' && !bridgeRecorder && (
               <Button onClick={recording ? handleStop : handleStart}>
                 {recording ? 'Parar e enviar' : 'Gravar'}
               </Button>

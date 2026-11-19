@@ -81,6 +81,11 @@ Weekly - uma Weekly sozinha nunca enxerga as irmas), retorna um `DailyAccessMode
   nao trava; (2) cota de `SessionsPerDay` sessoes nao-reforco concluidas hoje, mesmo codigo
   `daily_limite_diario_atingido`. Reforco e "uma em andamento" iguais. A sala da sessao abre quando a sessao de
   origem e concluida (`RoomLock.OpensWithSession`), nao com a semana. Curso `Daily` nao muda.
+- **Fase 113 - ponte intercalada**: `Daily.CountsAsMistake(activity)` e a regra unica de quem conta erro do dia
+  (`PenaltyPoints`), vai pro reforco (`GetFailedActivities`) e entra na nota (`CalculateScore`). Fica de fora: `CodeStep`
+  (Fase 79), `Parsons` (ordenar linhas) e o **Prever** - todo `Quiz` de um dia com `DailyTemplate.InterleavedBridge`
+  (`DailyTemplate.IsPrediction`). `Parsons` segue o `CodeStepProgress` (3 conferencias; acabou = a ordem certa entra no
+  script) e o `PriorCode` conta os passos "refaz" (`DailyActivity.ReplacesPreviousCode`), que substituem o trecho anterior.
 - **Fase 69 - ponte sem linguagem**: Daily original com variante de linguagem (a ponte) e projeto
   ainda sem linguagem -> `DomainException` `linguagem_nao_escolhida` (409), checado antes da cota
   diaria (escolher a linguagem nao gasta a cota). "/hoje" traduz em `NeedsProjectLanguage`.

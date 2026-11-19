@@ -31,6 +31,7 @@ export function FeedbackPanel({
   roleplayQuality,
   seed,
   focadaInContent = false,
+  prediction = false,
   onContinue,
 }: {
   passed: boolean;
@@ -48,12 +49,14 @@ export function FeedbackPanel({
   /** Escolhe a variante da fala padrao (id da atividade: mesma fala a cada render). */
   seed: string;
   focadaInContent?: boolean;
+  /** Fase 113: Prever da ponte intercalada - errar não conta erro do dia (sem contador, sem aviso de reforço). */
+  prediction?: boolean;
   onContinue?: () => void;
 }) {
   const { daily } = useSession();
   const reinforcementNow =
-    !passed && !daily.isReinforcement && daily.penaltyThreshold > 0 && daily.penaltyPoints === daily.penaltyThreshold;
-  const errorLabel = !passed && !daily.isReinforcement && daily.penaltyPoints > 0 ? ` · ${Math.min(daily.penaltyPoints, daily.penaltyThreshold)}º erro do dia` : '';
+    !prediction && !passed && !daily.isReinforcement && daily.penaltyThreshold > 0 && daily.penaltyPoints === daily.penaltyThreshold;
+  const errorLabel = !prediction && !passed && !daily.isReinforcement && daily.penaltyPoints > 0 ? ` · ${Math.min(daily.penaltyPoints, daily.penaltyThreshold)}º erro do dia` : '';
 
   useSessionKeys((key) => {
     if (key === 'Enter' && onContinue) onContinue();
@@ -69,7 +72,7 @@ export function FeedbackPanel({
           {improvementPoints && (
             <span className="flex flex-col">
               <span className="text-rotulo-sm text-project">Pontos a melhorar</span>
-              <span>{improvementPoints}</span>
+              <span className="whitespace-pre-line">{improvementPoints}</span>
             </span>
           )}
         </span>
@@ -114,7 +117,10 @@ export function FeedbackPanel({
         </Card>
       )}
 
-      <SessionFooter>{onContinue && <Button onClick={onContinue}>Continuar</Button>}</SessionFooter>
+      <SessionFooter>
+        {prediction && !passed && <p className="text-pequeno text-muted">Errar o Prever não conta como erro do dia</p>}
+        {onContinue && <Button onClick={onContinue}>Continuar</Button>}
+      </SessionFooter>
     </>
   );
 }

@@ -832,6 +832,21 @@ pro projeto. Linguagem vem de `weekly.project.language`. Celular funciona (sem r
 desenho proprio fica pra depois. Mock: `/__mock/reset?at=codigo&passo=N` (Semana 1 em Python, avaliacao
 falsa: passa quando a saida colada tem as linhas esperadas; `passo=8` = tudo feito).
 
+### Ponte intercalada, molde Foco dividido (Fase 113)
+
+Figma pagina "Ponte intercalada (17/11)" (`108:2`), `docs/design/sistema.md` §5. Quando `daily.bridgeFormat ===
+'intercalada'` (fora do reforco), `SessionLayout` troca o molde: a partir de `lg`, trilho de 64 a esquerda com os 4 itens,
+coluna do passo de 504 (fio `... · Code comigo · Bloco N · Sub-passo`, titulo, `BridgeStageBar` em 2 niveis, Fala de
+`lib/bridgeText.ts`, cartao com eyebrow e "Tentativas do passo") e a coluna do codigo fixa; abaixo de `lg`, abas **Passo |
+Codigo** (Fazer/Corrigir/Ordenar abrem em Codigo) e a barra de ferramentas. O passo de codigo (`BridgeCodeStep`) e o
+`ParsonsActivity` mandam `BridgeEditor` + `BridgeTerminal` pra coluna por portal (`BridgeCodeColumn`,
+`BridgeCodeSlotContext`); nas outras etapas a casca mostra `BridgeFileView` (arquivo so leitura; na Abertura, vazio e a
+Previa). O terminal vive em `lib/bridgeTerminal.ts` (store por Daily, sobrevive a troca de etapa) e roda por
+`lib/useBridgeRunner.ts`/`lab/bridgeRun.ts` (no Linux grava o arquivo e roda `lab.command`), com a conferencia do
+`codeCheck` em ambar e as linhas diferentes em vermelho ("esperado: ..."). Prever: enunciado com bloco de codigo e
+`FeedbackPanel prediction` (sem erro do dia). Voz: `Recorder` das salas, `compact` abaixo de `lg`. O laboratorio sobe tambem
+no celular so nesta ponte.
+
 ### Codigo formatado no chat rapido (Fase 80)
 
 `ChatMessageText` (components/assistant) renderiza as mensagens do "Tira duvidas": bloco cercado vira quadro

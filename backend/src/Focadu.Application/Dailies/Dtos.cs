@@ -28,7 +28,14 @@ public record DailyStateDto(
     Guid? PendingReinforcementDailyId = null,
     string? CodeRepositoryUrl = null,
     LabConfigDto? Lab = null,
-    SessionInfoDto? Session = null);
+    SessionInfoDto? Session = null,
+    /// <summary>Fase 113: "intercalada" na ponte intercalada (o front usa o molde Foco dividido); nulo nos outros dias.</summary>
+    string? BridgeFormat = null,
+    /// <summary>
+    /// Fase 113: a saida do script pronto (a saida esperada do ultimo passo de codigo), que o terminal da Abertura mostra
+    /// como previa. O molde da ponte intercalada manda mostrar a saida final antes do 1o passo. Nulo fora dela.
+    /// </summary>
+    string? BridgePreview = null);
 
 /// <summary>
 /// Fase 111: curso em sessoes (StudyFormat.Sessions). Sessoes nao-reforco concluidas hoje, o limite do curso e a sala da
@@ -83,7 +90,27 @@ public record DailyActivityDto(
     /// <summary>Pergunta final: os 3 topicos-pista.</summary>
     IReadOnlyCollection<string>? Topics = null,
     /// <summary>Molde v1: alvo de aprendizagem (t1 a t15) que a atividade cobra.</summary>
-    string? Target = null);
+    string? Target = null,
+    /// <summary>Fase 113: Quiz que e um Prever da ponte intercalada - errar nao conta erro do dia.</summary>
+    bool IsPrediction = false,
+    /// <summary>Fase 113: so em atividade do tipo Parsons (ordenar linhas).</summary>
+    ParsonsDto? Parsons = null);
+
+/// <summary>
+/// Fase 113: ordenar linhas. <see cref="Lines"/> vem embaralhada (estavel por atividade). <see cref="Solution"/> (a ordem
+/// certa) so aparece quando o passo acaba - passou ou gastou <see cref="MaxAttempts"/> - mesma regra de gabarito do
+/// CodeStep. <see cref="LastCheck"/> diz, por posicao, se a linha da ultima conferencia estava no lugar certo.
+/// <see cref="PriorCode"/> e o script ate antes deste passo (nulo enquanto o passo anterior nao acabou).
+/// </summary>
+public record ParsonsDto(
+    IReadOnlyCollection<string> FixedLines, IReadOnlyCollection<string> Lines, bool Done, int MaxAttempts,
+    IReadOnlyCollection<string>? Solution, IReadOnlyCollection<bool>? LastCheck, string? PriorCode);
+
+/// <summary>Fase 113: linha marcada do codigo inicial (1 = 1a linha do codeStarter); Kind e "Lacuna" ou "Erro".</summary>
+public record CodeMarkDto(int Line, string Kind);
+
+/// <summary>Fase 113: conferencia da Focada (rodar o script de novo trocando From por To e comparar com ExpectedOutput).</summary>
+public record CodeCheckDto(string From, string To, string ExpectedOutput);
 
 /// <summary>Missao no terminal (ActivityType.TerminalMission): o navegador do aluno confere pelo <see cref="TerminalMissionCheckDto"/>; nada aqui e segredo.</summary>
 public record TerminalMissionDto(
@@ -104,10 +131,14 @@ public record TerminalMissionCheckDto(string? Command, string? Output, string? P
 /// Fase 86: LabEnabled diz se este passo roda no laboratorio do dia (o dia tem lab e o passo nao saiu
 /// dele); CodeStarter e o codigo inicial do editor (nulo = vazio, ou o acumulado nas pontes); Hints sao
 /// as dicas da Focada ja dadas no passo (limite MaxHints, nao contam como tentativa).
+/// Fase 113 (ponte intercalada): Marks sao as linhas de lacuna/erro do CodeStarter; Check e a conferencia da Focada;
+/// Replaces = o passo "refaz" o trecho anterior - sem codigo inicial proprio, CodeStarter vem com o trecho que ele
+/// substitui (e PriorCode ja nao o tem).
 /// </remarks>
 public record CodeStepDto(
     string? PriorCode, bool Done, int MaxAttempts, string? Solution, string? ExpectedOutput,
-    bool LabEnabled = false, string? CodeStarter = null, int MaxHints = 0, IReadOnlyCollection<CodeStepHintDto>? Hints = null);
+    bool LabEnabled = false, string? CodeStarter = null, int MaxHints = 0, IReadOnlyCollection<CodeStepHintDto>? Hints = null,
+    IReadOnlyCollection<CodeMarkDto>? Marks = null, CodeCheckDto? Check = null, bool Replaces = false);
 
 /// <summary>
 /// IsCorrect vem nulo enquanto a atividade não tem nenhuma ActivityResponse registrada - o

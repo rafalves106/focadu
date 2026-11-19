@@ -160,15 +160,22 @@ public class Daily : Entity
         _responses.Add(response);
 
         // Fase 79: ajustar um passo de codigo nao e erro da sessao - tentar de novo faz parte do
-        // passo (ver CodeStepProgress), entao nunca soma penalidade nem gera reforco.
-        var isCodeStep = Activities.First(a => a.Id == activityId).Type == ActivityType.CodeStep;
-        if (!HasEverCompleted && !response.Passed && !isCodeStep)
+        // passo (ver CodeStepProgress), entao nunca soma penalidade nem gera reforco. Fase 113: o ordenar
+        // linhas e o Prever da ponte intercalada tambem nao.
+        if (!HasEverCompleted && !response.Passed && CountsAsMistake(Activities.First(a => a.Id == activityId)))
         {
             PenaltyPoints++;
         }
 
         return response;
     }
+
+    /// <summary>
+    /// Errar esta atividade conta erro do dia (PenaltyPoints), vai pro reforco e entra na nota. Nunca para os passos
+    /// da ponte (CodeStep, Fase 79; ordenar linhas, Fase 113) nem para o Prever da ponte intercalada (Fase 113).
+    /// </summary>
+    public bool CountsAsMistake(DailyActivity activity) =>
+        activity.Type is not (ActivityType.CodeStep or ActivityType.Parsons) && !Template.IsPrediction(activity);
 
     /// <summary>True quando, ainda na primeira rodada, a Daily atingiu o limiar de penalidade e ainda não disparou reforço.</summary>
     public bool ShouldTriggerDailyReinforcement() =>
@@ -183,7 +190,7 @@ public class Daily : Entity
     /// <summary>Atividades do Template com ao menos uma resposta reprovada nesta Daily — usadas para montar a Daily de reforço.</summary>
     public IReadOnlyCollection<DailyActivity> GetFailedActivities() =>
         Activities
-            .Where(a => a.Type != ActivityType.CodeStep && _responses.Any(r => r.ActivityId == a.Id && !r.Passed))
+            .Where(a => CountsAsMistake(a) && _responses.Any(r => r.ActivityId == a.Id && !r.Passed))
             .OrderBy(a => a.OrderIndex)
             .ToList();
 
@@ -215,7 +222,7 @@ public class Daily : Entity
         if (IsReinforcement) return null;
 
         var scored = Activities
-            .Where(a => a.Type is not (ActivityType.Reading or ActivityType.Video or ActivityType.CodeStep or ActivityType.TerminalMission))
+            .Where(a => a.Type is not (ActivityType.Reading or ActivityType.Video or ActivityType.TerminalMission) && CountsAsMistake(a))
             .Select(a => _responses.Where(r => r.ActivityId == a.Id).OrderBy(r => r.AttemptNumber).LastOrDefault() is { } latest
                 ? (Weight: EvaluationPolicy.ActivityScoreWeight(a.Type), Score: latest.Score)
                 : ((double Weight, int Score)?)null)
@@ -229,7 +236,10 @@ public class Daily : Entity
         return scored.Sum(x => x.Weight * x.Score) / totalWeight;
     }
 
-    /// <summary>Fase 79: o passo de codigo acabou (passou, ou gastou as tentativas e a solucao apareceu).</summary>
+    /// <summary>
+    /// Fase 79: o passo de codigo acabou (passou, ou gastou as tentativas e a solucao apareceu). Fase 113: vale
+    /// tambem pro ordenar linhas (a ordem certa aparece).
+    /// </summary>
     public bool IsCodeStepDone(Guid activityId) =>
         CodeStepProgress.IsDone(_responses.Where(r => r.ActivityId == activityId));
 
@@ -238,18 +248,46 @@ public class Daily : Entity
     /// entregou (a tentativa aprovada ou a solucao), na ordem. Nulo quando algum passo anterior
     /// ainda nao acabou: o passo de codigo so abre depois do anterior.
     /// </summary>
+    /// <remarks>
+    /// Fase 113: o ordenar linhas tambem entrega um trecho, e um passo com <see cref="DailyActivity.ReplacesPreviousCode"/>
+    /// tira o trecho da atividade de codigo anterior e poe o dele no lugar - por isso o script anterior de um passo
+    /// "refaz" nao tem o trecho que ele vai refazer (esse vem em <see cref="ReplacedCode"/>).
+    /// </remarks>
     public string? PriorCode(Guid activityId)
     {
         var target = Activities.First(a => a.Id == activityId);
+        var parts = CarriedParts(target);
+        if (parts is null) return null;
+        if (target.ReplacesPreviousCode && parts.Count > 0) parts.RemoveAt(parts.Count - 1);
+        return string.Join("\n\n", parts);
+    }
+
+    /// <summary>
+    /// Fase 113: o trecho que um passo "refaz" substitui (o que a atividade de codigo anterior entregou) - e com ele
+    /// que o editor abre quando o passo nao tem codigo inicial (o Fazer do bloco 3 parte das linhas ordenadas). Nulo
+    /// fora de passo "refaz" ou enquanto a atividade anterior nao acabou.
+    /// </summary>
+    public string? ReplacedCode(Guid activityId)
+    {
+        var target = Activities.First(a => a.Id == activityId);
+        if (!target.ReplacesPreviousCode) return null;
+        var parts = CarriedParts(target);
+        return parts is { Count: > 0 } ? parts[^1] : null;
+    }
+
+    /// <summary>O que cada atividade de codigo antes de <paramref name="target"/> entregou, ja com as trocas dos passos "refaz".</summary>
+    private List<string>? CarriedParts(DailyActivity target)
+    {
         var parts = new List<string>();
-        foreach (var previous in Activities.Where(a => a.Type == ActivityType.CodeStep && a.OrderIndex < target.OrderIndex).OrderBy(a => a.OrderIndex))
+        foreach (var previous in Activities.Where(a => a.ProducesCode && a.OrderIndex < target.OrderIndex).OrderBy(a => a.OrderIndex))
         {
             var carried = CodeStepProgress.CarriedCode(previous, _responses.Where(r => r.ActivityId == previous.Id));
             if (carried is null) return null;
+            if (previous.ReplacesPreviousCode && parts.Count > 0) parts.RemoveAt(parts.Count - 1);
             parts.Add(carried.TrimEnd());
         }
 
-        return string.Join("\n\n", parts);
+        return parts;
     }
 
     /// <summary>

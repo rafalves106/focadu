@@ -14,6 +14,8 @@ export const ActivityType = {
   CodeStep: 7,
   // Missao no terminal (dias normais do Linux): o proprio navegador confere a saida, sem IA e sem tentativa.
   TerminalMission: 8,
+  // Fase 113: ordenar linhas (Parsons) da ponte intercalada - nota no servidor, ordem certa so no fim.
+  Parsons: 9,
 } as const;
 export type ActivityType = (typeof ActivityType)[keyof typeof ActivityType];
 
@@ -90,6 +92,7 @@ export const ACTIVITY_TYPE_LABEL: Record<ActivityType, string> = {
   [ActivityType.Video]: 'Vídeo',
   [ActivityType.CodeStep]: 'Passo de código',
   [ActivityType.TerminalMission]: 'Missão no terminal',
+  [ActivityType.Parsons]: 'Ordenar linhas',
 };
 
 // IsCorrect vem nulo ate a atividade ter uma ActivityResponse - gabarito escondido antes de
@@ -173,6 +176,37 @@ export interface DailyActivityDto {
   topics?: string[] | null;
   /** Molde v1: alvo de aprendizagem (t1 a t15) que a atividade cobra. */
   target?: string | null;
+  /** Fase 113: Quiz que e um Prever da ponte intercalada - errar nao conta erro do dia. */
+  isPrediction?: boolean;
+  /** Fase 113: so em Parsons (ordenar linhas). */
+  parsons?: ParsonsDto | null;
+}
+
+/**
+ * Fase 113: ordenar linhas. `lines` vem embaralhada (estavel por atividade); `solution` (a ordem certa) so quando o passo
+ * acaba (`done`: passou ou gastou `maxAttempts`); `lastCheck` diz, por posicao, se a linha da ultima conferencia estava certa.
+ */
+export interface ParsonsDto {
+  fixedLines: string[];
+  lines: string[];
+  done: boolean;
+  maxAttempts: number;
+  solution: string[] | null;
+  lastCheck: boolean[] | null;
+  priorCode: string | null;
+}
+
+/** Fase 113: linha marcada do codigo inicial (1 = 1a linha do `codeStarter`). */
+export interface CodeMarkDto {
+  line: number;
+  kind: 'Lacuna' | 'Erro';
+}
+
+/** Fase 113: conferencia da Focada - roda o script de novo trocando `from` por `to` e compara com `expectedOutput`. */
+export interface CodeCheckDto {
+  from: string;
+  to: string;
+  expectedOutput: string;
 }
 
 /** Aquecimento (molde v1): pergunta de dia anterior que o aluno ja respondeu; o gabarito ja foi revelado antes. */
@@ -254,6 +288,12 @@ export interface CodeStepDto {
   maxHints?: number;
   /** Fase 86: as dicas ja dadas neste passo, da 1a pra ultima. */
   hints?: CodeStepHintDto[] | null;
+  /** Fase 113 (ponte intercalada): linhas de lacuna/erro do `codeStarter`. */
+  marks?: CodeMarkDto[] | null;
+  /** Fase 113: conferencia da Focada (rodar de novo com outra entrada). */
+  check?: CodeCheckDto | null;
+  /** Fase 113: o passo "refaz" o trecho anterior - `codeStarter` ja vem com ele quando o passo nao tem codigo inicial proprio. */
+  replaces?: boolean;
 }
 
 /** Fase 86: uma dica da Focada num passo com laboratorio - tres blocos curtos. */
@@ -296,6 +336,8 @@ export interface LabRunPayload {
   exitCode: number;
   /** Linux: historico de comandos digitados, com a saida de cada um. */
   commands?: { command: string; output: string }[];
+  /** Fase 113: saida da conferencia da Focada (o script rodado de novo com a troca do `codeCheck`). */
+  checkOutput?: string;
 }
 
 export interface CodeStepHintResponse {
@@ -324,6 +366,10 @@ export interface DailyStateDto {
   lab?: LabConfigDto | null;
   /** Fase 111: curso em sessoes - concluidas hoje, limite do curso e a sala da sessao anterior que falta. Nulo em curso Daily. */
   session?: SessionInfoDto | null;
+  /** Fase 113: 'intercalada' = ponte intercalada com editor fixo (molde Foco dividido); nulo nos outros dias. */
+  bridgeFormat?: 'intercalada' | null;
+  /** Fase 113: saida do script pronto, a previa do terminal na Abertura. */
+  bridgePreview?: string | null;
 }
 
 export interface SessionInfoDto {

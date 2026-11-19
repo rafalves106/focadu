@@ -72,3 +72,6 @@ drop`/gerar a migration (o `DbContext` precisa ser instanciado pra isso). Corrig
 `builder.Ignore(w => w.Number)` (e os outros 4) em `WeeklyConfiguration`/`DailyConfiguration`.
 **Toda propriedade computada que so faz `=> OutraEntidade.Campo` (sem field proprio) precisa de
 `Ignore` explicito** - o EF nunca deveria tentar mapear isso como coluna/navegacao sozinho.
+**Fase 113 (`Fase113PonteIntercalada`):** `DailyTemplates.InterleavedBridge` (bool, default false) e, em `DailyActivities`,
+`CodeMarksJson`, `CodeCheckJson`, `ParsonsJson` (texto) e `ReplacesPreviousCode` (bool, default false). `CodeMarks`,
+`CodeCheck`, `Parsons` e `ProducesCode` sao computados e tem `Ignore` explicito.

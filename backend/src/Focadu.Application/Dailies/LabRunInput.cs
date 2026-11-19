@@ -13,7 +13,9 @@ public record LabCommandInput(string? Command, string? Output);
 /// e entrega pra IA. <see cref="Output"/> e a saida da ultima execucao (vazia e valida); no Linux
 /// <see cref="Commands"/> traz o historico de comandos digitados, com a saida de cada um.
 /// </summary>
-public record LabRunInput(string? Output, int ExitCode, IReadOnlyList<LabCommandInput>? Commands = null)
+/// <remarks>Fase 113: <see cref="CheckOutput"/> e a saida da conferencia da Focada (o script rodado de novo com a troca do
+/// codeCheck do passo); nula fora dos passos com conferencia.</remarks>
+public record LabRunInput(string? Output, int ExitCode, IReadOnlyList<LabCommandInput>? Commands = null, string? CheckOutput = null)
 {
     public const int MaxCommands = 50;
     public const int MaxCommandLength = 2_000;
@@ -32,7 +34,7 @@ public record LabRunInput(string? Output, int ExitCode, IReadOnlyList<LabCommand
         if (commands.Any(c => c.Command.Length > MaxCommandLength))
             throw new ValidationException("laboratorio_historico_grande", $"Cada comando tem limite de {MaxCommandLength} caracteres.");
 
-        var total = output.Length + commands.Sum(c => c.Command.Length + c.Output.Length);
+        var total = output.Length + (CheckOutput?.Length ?? 0) + commands.Sum(c => c.Command.Length + c.Output.Length);
         if (total > maxLength)
             throw new ValidationException("codigo_muito_grande", $"Codigo e saida tem limite de {maxLength} caracteres cada.");
 

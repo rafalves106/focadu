@@ -36,7 +36,7 @@ So `POST /api/auth/register`/`login`/`logout`/`forgot-password`/`reset-password`
 | GET | `/api/features` | `PersonalizationOptions` (Fase 92) | 200 `{ personalizedAnalogies }` |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses` | `SubmitActivityResponseUseCase` | 201 (cria uma nova `ActivityResponse`) |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/audio` | `SubmitVoiceSummaryResponseUseCase` (Fase 5) | 201, `multipart/form-data`, so pra `VoiceSummary` |
-| 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/code` | `SubmitCodeStepResponseUseCase` (Fase 79; Fase 86: `labRun`) | 201 (`SubmitActivityResponseResult`), so pra `CodeStep`: `{ code, output, labRun? }`, avaliado por IA; passo com laboratorio exige `labRun` (400 `rodar_antes_de_enviar`) e ignora `output`; 409 `passo_concluido`/`passo_anterior_pendente` |
+| 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/responses/code` | `SubmitCodeStepResponseUseCase` (Fase 79; Fase 86: `labRun`) | 201 (`SubmitActivityResponseResult`), so pra `CodeStep`: `{ code, output, labRun? }`, avaliado por IA; passo com laboratorio exige `labRun` (400 `rodar_antes_de_enviar`) e ignora `output`; 409 `passo_concluido`/`passo_anterior_pendente`. Fase 113: `labRun.checkOutput` (a conferencia do `codeCheck`) vai junto pra IA |
 | 🔒 POST | `/api/dailies/{dailyId}/activities/{activityId}/code-hint` | `RequestCodeStepHintUseCase` (Fase 86) | 200 (`CodeStepHintResponse`: `hint` com `right`/`wrong`/`improve`, `hintsUsed`, `hintsLeft`), `{ code, labRun? }`; nao e tentativa, 3 por passo; 400 `dicas_esgotadas`/`passo_sem_laboratorio`/`codigo_obrigatorio`/`passo_anterior_pendente`/`passo_concluido`; 502 se a IA falhar |
 | 🔒 PUT | `/api/dailies/{dailyId}/code-repository` | `LinkDailyCodeRepositoryUseCase` (Fase 79) | 200 (`DailyStateDto`), `{ url }` http(s) ou vazio pra tirar; so ponte "code comigo" ja concluida |
 | 🔒 POST | `/api/dailies/{dailyId}/complete` | `CompleteDailyUseCase` | 200 (`CompleteDailyResult`, ver abaixo - Fase 14: ganhou `GemsEarned`/`StreakAfterCompletion`; Fase 15: ganhou `WasReinforcementBonus`) |
@@ -186,6 +186,7 @@ atividade e sempre calculado no servidor, nunca aceito pronto do cliente:
 | `WordMatch` (Fase 23) | `WordMatchMatches` (`Dictionary<Guid,Guid>`, TermId -> DefinitionId escolhido - TODOS os pares da atividade de uma vez, nao 1 por request) | Percentual de pares certos (`WordMatchPair.DefinitionId` bate com o escolhido), arredondado - pontuacao PARCIAL, nao tudo-ou-nada (ver `ScoreFromWordMatchMatches`) |
 | `Roleplay` | `SelectedRoleplayNodeId` | A partir do `TerminalQuality` do node terminal alcancado (ver tabela abaixo) - o node precisa ter `IsTerminal = true` |
 | `VoiceSummary` | Arquivo de audio (`POST .../responses/audio`, endpoint separado - ver "Resumo falado por voz" abaixo) | Resultado de `IContentEvaluationService.EvaluateAsync` (Groq, Fase 5) |
+| `Parsons` (Fase 113) | `Transcript` (as linhas na ordem do aluno, uma por linha) | 100 so com a ordem toda certa (`ParsonsPuzzle.Score`), senao 0; 400 `ordem_invalida` se nao for permutacao das linhas; 409 `passo_concluido`/`passo_anterior_pendente` como o `CodeStep` |
 | `Reading` / `Video` (Fase 7) | Nenhum (corpo vazio) | Sempre 100 - sem avaliacao, concluir a etapa e o proprio "acerto" (nunca reprova, nunca soma `PenaltyPoints`) |
 
 Os 5 primeiros tipos sao resolvidos sincronamente em
@@ -432,3 +433,11 @@ nginx do frontend faz proxy same-origin de `/api`.
   `Referrer-Policy`, `Permissions-Policy` (microfone so da propria origem) e uma CSP so com `frame-ancestors`, `base-uri`,
   `object-src` e `form-action`. **Sem `script-src` de proposito**: uma CSP completa precisa ser conferida no navegador. O
   bloco `/lab/` repete os headers porque `add_header` de um `location` substitui os do nivel de cima.
+### Ponte intercalada no `DailyStateDto` (Fase 113)
+
+- `DailyStateDto.BridgeFormat` (`"intercalada"` ou nulo) e `BridgePreview` (a saida esperada do ultimo `CodeStep`, a Previa
+  do terminal na Abertura - o molde manda mostrar a saida final antes do 1o passo).
+- `DailyActivityDto.IsPrediction` (Quiz que e Prever) e `Parsons` (`ParsonsDto`: `FixedLines`, `Lines` embaralhadas e
+  estaveis por atividade, `Done`, `MaxAttempts`, `Solution` so quando acaba, `LastCheck` por posicao, `PriorCode`).
+- `CodeStepDto.Marks` (`{line, kind: Lacuna|Erro}`, relativas ao `CodeStarter`), `Check` (`{from, to, expectedOutput}`) e
+  `Replaces`; passo "refaz" sem codigo inicial proprio recebe em `CodeStarter` o trecho que substitui.

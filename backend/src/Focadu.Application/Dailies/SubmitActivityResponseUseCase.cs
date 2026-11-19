@@ -48,6 +48,16 @@ public class SubmitActivityResponseUseCase
         var activity = daily.Activities.FirstOrDefault(a => a.Id == activityId)
             ?? throw new DomainException("Atividade não encontrada nesta Daily.", "atividade_nao_encontrada");
 
+        // Fase 113: o ordenar linhas segue as regras do passo de codigo - abre depois do passo anterior e, numa Daily
+        // ainda nao concluida, nao aceita conferencia depois de acabar (passou ou a ordem certa apareceu).
+        if (activity.Type == ActivityType.Parsons)
+        {
+            if (!daily.HasEverCompleted && daily.IsCodeStepDone(activityId))
+                throw new DomainException("Este passo ja foi concluido.", "passo_concluido");
+            if (daily.PriorCode(activityId) is null)
+                throw new DomainException("Conclua o passo anterior antes deste.", "passo_anterior_pendente");
+        }
+
         var resolvedScore = ResolveScore(activity, selectedOptionId, selectedRoleplayNodeId, transcript, wordMatchMatches);
 
         return await ActivityResponseRecorder.RecordAsync(
@@ -80,11 +90,29 @@ public class SubmitActivityResponseUseCase
             // Score fixo 100 (sempre Passed) so pra marcar a atividade como feita via o mesmo
             // pipeline de ActivityResponse/PenaltyPoints dos outros tipos, nunca penalizando.
             ActivityType.Reading or ActivityType.Video or ActivityType.TerminalMission => 100,
+            ActivityType.Parsons => ScoreFromParsonsOrder(activity, transcript),
             // CodeStep (Fase 79): avaliado por IA, com codigo + saida - endpoint proprio.
             ActivityType.CodeStep => throw new ValidationException(
                 "tipo_atividade_invalido", "Passos de codigo usam POST .../responses/code."),
             _ => throw new DomainException($"Tipo de atividade '{activity.Type}' nao tem calculo de Score definido."),
         };
+    }
+
+    /// <summary>
+    /// Ordenar linhas (Fase 113): o cliente manda as linhas na ordem que o aluno montou, uma por linha em
+    /// <c>transcript</c>. Precisa ser uma permutacao das linhas da atividade; 100 so com a ordem toda certa.
+    /// </summary>
+    private static int ScoreFromParsonsOrder(DailyActivity activity, string? transcript)
+    {
+        var puzzle = activity.Parsons ?? throw new DomainException("Esta atividade de ordenar linhas nao tem linhas configuradas.");
+        var submitted = ParsonsPuzzle.SplitAnswer(transcript);
+        if (!puzzle.IsPermutation(submitted))
+        {
+            throw new ValidationException(
+                "ordem_invalida", "Mande todas as linhas do ordenar, cada uma uma vez, na ordem que voce montou.");
+        }
+
+        return puzzle.Score(submitted);
     }
 
     private static int ScoreFromSelectedOption(DailyActivity activity, Guid? selectedOptionId)

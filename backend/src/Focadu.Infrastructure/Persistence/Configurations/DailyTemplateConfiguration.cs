@@ -28,6 +28,8 @@ public class DailyTemplateConfiguration : IEntityTypeConfiguration<DailyTemplate
         builder.Property(d => d.ContentHash).HasMaxLength(64);
         // Fase 111: sala da sessao (dia.json "salaDaSessao", molde D).
         builder.Property(d => d.SessionRoomSlug).HasMaxLength(100);
+        // Fase 113: ponte intercalada (dia.json "formatoPonte": "intercalada").
+        builder.Property(d => d.InterleavedBridge).IsRequired().HasDefaultValue(false);
         builder.Property(d => d.TargetsJson);
         builder.Ignore(d => d.Targets);
 

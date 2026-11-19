@@ -42,5 +42,14 @@ public enum ActivityType
     /// proprio navegador confere a saida. Sem IA, sem nota e sem tentativa gasta - concluir registra
     /// uma ActivityResponse fixa (Score 100, como a Leitura). Nao marca o dia como ponte.
     /// </summary>
-    TerminalMission = 8
+    TerminalMission = 8,
+
+    /// <summary>
+    /// Ordenar linhas (Parsons, Fase 113, ponte intercalada): as linhas de um trecho (o <c>for</c> e o que vai
+    /// dentro) chegam embaralhadas no editor e o aluno ordena e confere (<see cref="Activities.ParsonsPuzzle"/>).
+    /// Nota no servidor, ordem certa so depois que o passo acaba. Como o CodeStep: ate
+    /// <see cref="Activities.CodeStepProgress.MaxAttempts"/> conferencias, nunca conta erro do dia nem entra na nota,
+    /// e a ordem certa entra no script do dia (o passo seguinte parte dela).
+    /// </summary>
+    Parsons = 9
 }

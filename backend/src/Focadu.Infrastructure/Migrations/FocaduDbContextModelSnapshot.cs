@@ -118,7 +118,13 @@ namespace Focadu.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<string>("CodeCheckJson")
+                        .HasColumnType("text");
+
                     b.Property<string>("CodeExpectedOutput")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CodeMarksJson")
                         .HasColumnType("text");
 
                     b.Property<string>("CodeRubric")
@@ -156,11 +162,19 @@ namespace Focadu.Infrastructure.Migrations
                     b.Property<int>("OrderIndex")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ParsonsJson")
+                        .HasColumnType("text");
+
                     b.Property<string>("Prompt")
                         .HasColumnType("text");
 
                     b.Property<string>("ReferenceAnswer")
                         .HasColumnType("text");
+
+                    b.Property<bool>("ReplacesPreviousCode")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Target")
                         .HasMaxLength(3)
@@ -712,6 +726,11 @@ namespace Focadu.Infrastructure.Migrations
 
                     b.Property<int>("DayNumber")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("InterleavedBridge")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Lab")
                         .HasColumnType("text")

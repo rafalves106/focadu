@@ -27,8 +27,8 @@ public record ContentEvaluationRequest(
     string? CourseName = null,
     /// <summary>
     /// Conversa por voz (molde v1): <c>ExpectedAnswer</c> e a resposta correta curada e <c>ContextText</c> a pergunta. A IA
-    /// devolve a nota e so os pontos a melhorar no conteudo (ignora vicios de linguagem); a resposta correta nao e
-    /// gerada, vem da curadoria.
+    /// devolve a nota (85% conteudo, 15% comunicacao desde a Fase 114) e os pontos a melhorar no conteudo e na fala; a
+    /// resposta correta nao e gerada, vem da curadoria.
     /// </summary>
     bool Debrief = false,
     /// <summary>Texto de apoio so para corrigir termos mal reconhecidos na transcricao (ex.: o texto do bloco). Nulo = usa o ExpectedAnswer.</summary>

@@ -8,6 +8,8 @@ export interface GuideSessionDetail {
   activityType: ActivityType | null;
   isReinforcement: boolean;
   isBridge: boolean;
+  /** Fase 113: a ponte intercalada (editor fixo) troca os itens do code comigo, do Quiz (Prever) e do passo de código. */
+  isInterleavedBridge?: boolean;
 }
 
 export interface GuideContextValue {

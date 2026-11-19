@@ -23,6 +23,7 @@ export const STAGE_LABEL: Record<ActivityType, string> = {
   [ActivityType.Video]: 'Vídeo',
   [ActivityType.CodeStep]: 'Passo',
   [ActivityType.TerminalMission]: 'Missão',
+  [ActivityType.Parsons]: 'Ordenar',
 };
 
 /** Nome da etapa no cabecalho do cartao ("ETAPA 5 DE 18 — QUIZ"). */
@@ -36,6 +37,7 @@ export const ACTIVITY_TITLE: Record<ActivityType, string> = {
   [ActivityType.Video]: 'Vídeo',
   [ActivityType.CodeStep]: 'Passo de código',
   [ActivityType.TerminalMission]: 'Missão no terminal',
+  [ActivityType.Parsons]: 'Ordenar linhas',
 };
 
 /** Unidade do contador fino dentro de um bloco com mais de 1 atividade ("QUESTÃO 2 DE 6"). */

@@ -41,8 +41,9 @@ public class ActivityResponse : Entity
     public string? CorrectAnswer { get; private set; }
 
     /// <summary>
-    /// Conversa por voz (molde v1): pontos a melhorar no CONTEUDO (o que faltou ou ficou impreciso), gerados pela IA.
-    /// Segunda parte da devolutiva; vicios de linguagem ficam de fora. Nulo nas demais atividades.
+    /// Conversa por voz (molde v1): pontos a melhorar no CONTEUDO (o que faltou ou ficou impreciso), gerados pela IA,
+    /// e desde a Fase 114 uma linha "Na fala:" sobre vicios de linguagem e hesitacoes. Segunda parte da devolutiva.
+    /// Nulo nas demais atividades.
     /// </summary>
     public string? ImprovementPoints { get; private set; }
     public DateTime CreatedAt { get; private set; }
