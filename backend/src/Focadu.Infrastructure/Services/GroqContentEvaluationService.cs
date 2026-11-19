@@ -58,7 +58,9 @@ public class GroqContentEvaluationService : IContentEvaluationService
         "item; (2) NUNCA troque uma palavra que faz sentido em português por outro termo só porque é o termo usado na " +
         "referência (ex.: 'lista' não vira 'framework', 'segura' não vira 'insegura') - isso muda o que o aluno disse; " +
         "(3) só corrija palavra que, como está, não faz sentido na frase e soa parecida com o termo certo (ex.: " +
-        "'discos reais' -> 'riscos reais', 'Wasp' -> 'OWASP'); (4) na dúvida, deixe como está. Responda " +
+        "'discos reais' -> 'riscos reais', 'Wasp' -> 'OWASP'); (4) na dúvida, deixe como está; (5) NUNCA tire vícios " +
+        "de linguagem, hesitações, repetições ou frases cortadas ('né', 'tipo', 'é...', 'então, então') - eles fazem parte " +
+        "de como o aluno falou e são avaliados depois. Responda " +
         "SEMPRE em JSON estrito, exatamente neste formato: {\"correctedTranscript\": " +
         "\"<transcrição revisada, ou idêntica à original se nada precisava de correção>\"}. Não " +
         "inclua nenhum texto fora desse JSON.";
@@ -66,21 +68,40 @@ public class GroqContentEvaluationService : IContentEvaluationService
     private const string GradingSystemPromptTemplate =
         "Você é um avaliador pedagógico {plataforma}. Avalie " +
         "se o resumo falado pelo aluno (já transcrito e revisado) demonstra compreensão correta " +
-        "do conteúdo de referência, e a clareza com que foi comunicado. Responda SEMPRE em JSON " +
+        "do conteúdo de referência, e a clareza com que foi comunicado. A referência é um gabarito de IDEIAS, não de " +
+        "frases: a mesma ideia dita com outras palavras, com um exemplo ou com uma consequência equivalente conta como " +
+        "acerto, e você nunca diz que 'faltou mencionar' algo que o aluno disse de outro jeito. Responda SEMPRE em JSON " +
         "estrito, exatamente neste formato: {\"score\": <inteiro de 0 a 100>, \"feedback\": " +
         "\"<até 2 frases em português, direto ao aluno, apontando o que acertou e o que pode " +
         "melhorar>\"}. Não inclua nenhum texto fora desse JSON.";
 
-    // Conversa por voz (molde v1): a IA so mede o CONTEUDO da resposta curta e aponta o que faltou ou ficou impreciso.
-    // A resposta correta nao e gerada aqui - vem da curadoria (referenceAnswer).
+    // Conversa por voz (molde v1, revisto na Fase 114): a IA da duas notas separadas - conteudo e comunicacao - e o
+    // servidor combina (VoiceScore). A resposta correta nao e gerada aqui - vem da curadoria (referenceAnswer).
+    // Fase 114 (bug real, 19/11/2026): o aluno disse com outras palavras as duas ideias da referencia e levou 70 com
+    // "faltou mencionar" as duas; e a referencia tinha uma 2a frase (o remedio) que a pergunta nem pedia. Por isso:
+    // gabarito de ideias, completude medida contra a PERGUNTA, e "faltou" so para ideia ausente de verdade.
     private const string DebriefSystemPromptTemplate =
         "Você é um avaliador pedagógico {plataforma}. O aluno respondeu em voz a uma pergunta curta. " +
-        "Você recebe a pergunta, a resposta correta de referência e a resposta do aluno (já transcrita e revisada). " +
-        "Avalie SÓ o conteúdo: se o aluno acertou o essencial da resposta de referência, o que faltou e o que ficou " +
-        "impreciso. Ignore vícios de linguagem, hesitações, repetições e o estilo da fala. Não cobre nada que a pergunta " +
-        "não pediu. Responda SEMPRE em português e em JSON estrito, exatamente neste formato: {\"score\": <inteiro de 0 a " +
-        "100>, \"improvementPoints\": \"<até 3 frases curtas, diretas ao aluno, só sobre o conteúdo: o que faltou ou ficou " +
-        "impreciso; se o conteúdo estiver completo e correto, diga isso em uma frase>\"}. Não inclua nenhum texto fora desse JSON.";
+        "Você recebe a pergunta, a resposta correta de referência e a resposta do aluno (já transcrita). " +
+        "Dê duas notas de 0 a 100, separadas. " +
+        "CONTEÚDO: o aluno respondeu certo ao que a PERGUNTA pede? Antes de avaliar, separe da referência só as ideias " +
+        "que respondem à pergunta: se a pergunta pede o porquê, a solução ou o que fazer depois NÃO entra; se pede o que " +
+        "fazer, o porquê NÃO entra. O que ficou de fora não pesa na nota e não aparece no texto. A referência é um " +
+        "gabarito de IDEIAS, não de frases: a mesma ideia com outras palavras, com um exemplo ou pelo efeito que ela " +
+        "causa (por exemplo, 'as pessoas deixam de confiar' para 'a mensagem perde força') conta como acerto. Faixas: 90-100 o essencial está certo e completo; 80-89 certo, com uma " +
+        "imprecisão pequena; 50-79 parte do essencial falta ou está confusa; 0-49 errado ou fora da pergunta. " +
+        "COMUNICAÇÃO: a fala foi clara e organizada? Olhe vícios de linguagem ('né', 'tipo', 'aí', 'então' repetidos), " +
+        "hesitações, repetições, frases cortadas e a ordem das ideias, na transcrição bruta. Faixas: 90-100 clara e " +
+        "direta; 70-89 alguns vícios ou repetições, sem atrapalhar; 40-69 vícios ou idas e voltas que atrapalham o " +
+        "entendimento; 0-39 não dá pra seguir a ideia. A comunicação nunca muda a nota de conteúdo, e o conteúdo nunca " +
+        "muda a de comunicação. " +
+        "Nos textos, fale direto com o aluno, em frases curtas. 'improvementPoints' é só sobre o conteúdo: o que faltou " +
+        "ou ficou impreciso EM RELAÇÃO À PERGUNTA; nunca diga que faltou algo que o aluno disse de outro jeito; se o " +
+        "conteúdo estiver certo e completo, diga isso em uma frase. 'communicationPoints' é só sobre a fala: cite o " +
+        "vício ou a hesitação que mais apareceu, com a palavra exata, e uma dica; se a fala estiver clara, diga isso em " +
+        "uma frase. Escreva tudo em português, sem palavras em inglês. Responda SEMPRE em JSON estrito, exatamente neste formato: {\"contentScore\": " +
+        "<inteiro de 0 a 100>, \"communicationScore\": <inteiro de 0 a 100>, \"improvementPoints\": \"<até 2 frases>\", " +
+        "\"communicationPoints\": \"<1 frase>\"}. Não inclua nenhum texto fora desse JSON.";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -224,7 +245,10 @@ public class GroqContentEvaluationService : IContentEvaluationService
         $"Pergunta feita ao aluno:\n{request.ContextText}\n\n" +
         $"Resposta correta de referência:\n\"\"\"\n{request.ExpectedAnswer}\n\"\"\"\n\n" +
         $"Resposta do aluno (já transcrita e revisada):\n\"\"\"\n{correctedTranscript}\n\"\"\"" +
-        RawTranscriptNote(request.UserAnswer, correctedTranscript);
+        RawTranscriptNote(request.UserAnswer, correctedTranscript) +
+        (string.Equals(request.UserAnswer.Trim(), correctedTranscript.Trim(), StringComparison.Ordinal)
+            ? string.Empty
+            : "\n\nPara a nota de comunicação, use a transcrição bruta: é ela que mostra os vícios e as hesitações.");
 
     /// <summary>
     /// A revisao da transcricao pode errar (em 17/11/2026 trocou o "P3" do aluno por "P1" e a nota cobrou o P1). Quando
@@ -266,7 +290,8 @@ public class GroqContentEvaluationService : IContentEvaluationService
             instruction +
             personalizationBlock +
             $"Avalie considerando: (1) se o conteúdo do resumo está correto e completo em relação " +
-            $"{completenessTarget}; (2) a clareza da explicação (organização, precisão de linguagem). " +
+            $"{completenessTarget}; (2) a clareza da explicação (organização, precisão de linguagem e, quando for fala, " +
+            "vícios de linguagem e hesitações que atrapalham o entendimento). " +
             "Combine os dois aspectos numa única nota de 0 a 100. No feedback (nunca na nota), " +
             "conecte sua explicação a um interesse do aluno quando isso ajudar a fixar o conceito.";
     }
@@ -333,7 +358,10 @@ public class GroqContentEvaluationService : IContentEvaluationService
         return (parsed.Score.Value, parsed.Feedback);
     }
 
-    /// <summary>Conversa por voz: nunca inventa nota nem devolutiva se a IA sair do formato (mesmo criterio do ParseGrading).</summary>
+    /// <summary>
+    /// Conversa por voz: nunca inventa nota nem devolutiva se a IA sair do formato (mesmo criterio do ParseGrading).
+    /// A nota final e calculada aqui (VoiceScore) a partir das duas notas da IA; a devolutiva junta conteudo e fala.
+    /// </summary>
     internal static (int Score, string ImprovementPoints) ParseDebrief(string? rawContent)
     {
         if (string.IsNullOrWhiteSpace(rawContent))
@@ -349,17 +377,26 @@ public class GroqContentEvaluationService : IContentEvaluationService
             throw new ExternalServiceException("avaliacao_ia_formato_invalido", "O servico de avaliacao retornou um formato inesperado (JSON invalido).");
         }
 
-        if (parsed?.Score is null || string.IsNullOrWhiteSpace(parsed.ImprovementPoints) || parsed.Score is < 0 or > 100)
+        if (parsed?.ContentScore is null or < 0 or > 100 || parsed.CommunicationScore is null or < 0 or > 100
+            || string.IsNullOrWhiteSpace(parsed.ImprovementPoints) || string.IsNullOrWhiteSpace(parsed.CommunicationPoints))
         {
             throw new ExternalServiceException(
                 "avaliacao_ia_formato_invalido",
-                "O servico de avaliacao retornou um formato inesperado (campos ausentes ou score fora de 0-100).");
+                "O servico de avaliacao retornou um formato inesperado (campos ausentes ou nota fora de 0-100).");
         }
 
-        return (parsed.Score.Value, parsed.ImprovementPoints);
+        var points = $"{parsed.ImprovementPoints.Trim()}\nNa fala: {parsed.CommunicationPoints.Trim()}";
+        return (VoiceScore(parsed.ContentScore.Value, parsed.CommunicationScore.Value), points);
     }
 
-    private record GroqDebriefPayload(int? Score, string? ImprovementPoints);
+    /// <summary>
+    /// Fase 114 (decisao do dono): a comunicacao pesa um pouco na nota da conversa por voz - 85% conteudo, 15% fala.
+    /// Conteudo certo e completo (90+) passa do minimo de 80 mesmo com a fala ruim (40); conteudo parcial nao passa.
+    /// </summary>
+    internal static int VoiceScore(int contentScore, int communicationScore) =>
+        (int)Math.Round(contentScore * 0.85 + communicationScore * 0.15, MidpointRounding.AwayFromZero);
+
+    private record GroqDebriefPayload(int? ContentScore, int? CommunicationScore, string? ImprovementPoints, string? CommunicationPoints);
 
     private record GroqCorrectionPayload(string? CorrectedTranscript);
 

@@ -54,31 +54,55 @@ public class VoiceDebriefTests
     }
 
     [Fact]
-    public void ParseDebrief_ReadsScoreAndPoints_AndNeverInventsOne()
+    public void ParseDebrief_CombinesBothScores_JoinsBothPoints_AndNeverInventsOne()
     {
-        var (score, points) = GroqContentEvaluationService.ParseDebrief("""{"score": 80, "improvementPoints": "Faltou citar o servidor."}""");
-        Assert.Equal(80, score);
-        Assert.Equal("Faltou citar o servidor.", points);
+        var (score, points) = GroqContentEvaluationService.ParseDebrief(
+            """{"contentScore": 100, "communicationScore": 60, "improvementPoints": "Faltou citar o servidor.", "communicationPoints": "Muito 'né'."}""");
+        Assert.Equal(94, score);
+        Assert.Equal("Faltou citar o servidor.\nNa fala: Muito 'né'.", points);
 
-        Assert.Throws<ExternalServiceException>(() => GroqContentEvaluationService.ParseDebrief("""{"score": 80}"""));
-        Assert.Throws<ExternalServiceException>(() => GroqContentEvaluationService.ParseDebrief("""{"score": 180, "improvementPoints": "x"}"""));
+        Assert.Throws<ExternalServiceException>(() => GroqContentEvaluationService.ParseDebrief("""{"score": 80, "improvementPoints": "x"}"""));
+        Assert.Throws<ExternalServiceException>(() => GroqContentEvaluationService.ParseDebrief(
+            """{"contentScore": 80, "communicationScore": 70, "improvementPoints": "x"}"""));
+        Assert.Throws<ExternalServiceException>(() => GroqContentEvaluationService.ParseDebrief(
+            """{"contentScore": 180, "communicationScore": 70, "improvementPoints": "x", "communicationPoints": "y"}"""));
+        Assert.Throws<ExternalServiceException>(() => GroqContentEvaluationService.ParseDebrief(
+            """{"contentScore": 80, "communicationScore": -1, "improvementPoints": "x", "communicationPoints": "y"}"""));
         Assert.Throws<ExternalServiceException>(() => GroqContentEvaluationService.ParseDebrief("nao e json"));
         Assert.Throws<ExternalServiceException>(() => GroqContentEvaluationService.ParseDebrief(null));
     }
 
+    [Theory]
+    [InlineData(90, 40, 83)] // conteudo certo e completo passa do minimo mesmo com a fala ruim
+    [InlineData(85, 40, 78)] // conteudo com imprecisao e fala ruim nao passa
+    [InlineData(70, 100, 75)] // fala perfeita nao salva conteudo parcial
+    [InlineData(100, 100, 100)]
+    [InlineData(0, 0, 0)]
+    public void VoiceScore_WeighsContent85AndCommunication15(int content, int communication, int expected) =>
+        Assert.Equal(expected, GroqContentEvaluationService.VoiceScore(content, communication));
+
     [Fact]
-    public void DebriefPrompts_AskOnlyForContent_InPortuguese_AndNameTheCourse()
+    public void DebriefPrompts_GradeIdeasNotWording_AskForTheQuestionOnly_AndKeepCommunication()
     {
         var system = GroqContentEvaluationService.DebriefSystemPrompt("Linux");
         Assert.Contains("da Focadu (curso Linux)", system);
         Assert.Contains("em português", system);
         Assert.Contains("vícios de linguagem", system);
+        Assert.Contains("gabarito de IDEIAS", system);
+        Assert.Contains("separe da referência só as ideias que respondem à pergunta", system);
+        Assert.Contains("\"communicationScore\"", system);
         Assert.DoesNotContain("{plataforma}", system);
 
         var user = GroqContentEvaluationService.BuildDebriefUserPrompt(
-            new ContentEvaluationRequest("RESPOSTA-CERTA", "x", "PERGUNTA-FEITA", Debrief: true), "RESPOSTA-DO-ALUNO");
+            new ContentEvaluationRequest("RESPOSTA-CERTA", "RESPOSTA-DO-ALUNO", "PERGUNTA-FEITA", Debrief: true), "RESPOSTA-DO-ALUNO");
         Assert.Contains("PERGUNTA-FEITA", user);
         Assert.Contains("RESPOSTA-CERTA", user);
         Assert.Contains("RESPOSTA-DO-ALUNO", user);
+        Assert.DoesNotContain("transcrição bruta", user);
+
+        var revised = GroqContentEvaluationService.BuildDebriefUserPrompt(
+            new ContentEvaluationRequest("R", "é, tipo, o P3", "P", Debrief: true), "o P3");
+        Assert.Contains("é, tipo, o P3", revised);
+        Assert.Contains("Para a nota de comunicação, use a transcrição bruta", revised);
     }
 }

@@ -72,7 +72,7 @@ export function FeedbackPanel({
           {improvementPoints && (
             <span className="flex flex-col">
               <span className="text-rotulo-sm text-project">Pontos a melhorar</span>
-              <span>{improvementPoints}</span>
+              <span className="whitespace-pre-line">{improvementPoints}</span>
             </span>
           )}
         </span>

@@ -84,6 +84,9 @@ public class GroqAudioTranscriptionService : IAudioTranscriptionService
         // Todo curso e falado em portugues. Sem isso o Whisper detecta o idioma sozinho e, num audio quase mudo,
         // "ouve" ingles: em 17/11/2026 uma gravacao de 15 s virou so "you" e levou nota 0.
         content.Add(new StringContent("pt"), "language");
+        // Fase 114: a nota da conversa por voz pesa a comunicacao, mas o Whisper tende a limpar "né", "tipo" e "é...".
+        // Um prompt escrito com esses vicios faz ele transcrever a fala como foi dita.
+        content.Add(new StringContent(VerbatimPrompt), "prompt");
 
         var response = await _httpClient.PostAsync("audio/transcriptions", content, cancellationToken);
         await HttpRetry.EnsureSuccessAsync(response, cancellationToken);
@@ -112,6 +115,8 @@ public class GroqAudioTranscriptionService : IAudioTranscriptionService
 
         return new AudioTranscript(text, result?.Duration ?? 0);
     }
+
+    internal const string VerbatimPrompt = "Então, é... tipo, eu acho que, né, hum... a ideia é essa, aí depois, é, vem o resto.";
 
     /// <summary>Frases que o Whisper costuma inventar em audio mudo, comparadas com o texto inteiro (sem pontuacao).</summary>
     private static readonly HashSet<string> HallucinatedPhrases = new(StringComparer.OrdinalIgnoreCase)
