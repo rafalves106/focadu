@@ -149,6 +149,11 @@ namespace Focadu.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<bool>("IsBet")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<bool>("IsFinalQuestion")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")

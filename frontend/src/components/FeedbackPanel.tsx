@@ -112,13 +112,16 @@ export function FeedbackPanel({
       {reinforcementNow && (
         <Card kind="ambar" pad="gap-1 px-4 py-3" eyebrow={`Reforço do Dia ${daily.dayNumber} criado`}>
           <p className="text-pequeno text-secondary">
-            As etapas que você errou viram uma sessão curta. Ela fica na Trilha e no Início até você fazer, e não gasta o Dia de hoje.
+            {daily.session
+              ? 'As etapas que você errou viram uma sessão curta. Ela abre amanhã, antes da próxima sessão: lembrar depois de um tempo é o que fixa.'
+              : 'As etapas que você errou viram uma sessão curta. Ela fica na Trilha e no Início até você fazer, e não gasta o Dia de hoje.'}
           </p>
         </Card>
       )}
 
       <SessionFooter>
-        {prediction && !passed && <p className="text-pequeno text-muted">Errar o Prever não conta como erro do dia</p>}
+        {/* Fase 115: no curso em sessões o palpite é a aposta antes da leitura (molde D2); na ponte, o Prever. */}
+        {prediction && !passed && <p className="text-pequeno text-muted">Errar {daily.session ? 'a aposta' : 'o Prever'} não conta como erro do dia</p>}
         {onContinue && <Button onClick={onContinue}>Continuar</Button>}
       </SessionFooter>
     </>

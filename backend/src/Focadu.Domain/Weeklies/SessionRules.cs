@@ -1,5 +1,6 @@
 using Focadu.Domain.Courses;
 using Focadu.Domain.Dailies;
+using Focadu.Domain.Enums;
 using Focadu.Domain.Exceptions;
 
 namespace Focadu.Domain.Weeklies;
@@ -28,6 +29,10 @@ public sealed record StudyContext(StudyFormat Format, int SessionsPerDay, Pendin
 ///    antes da cota porque e o que o aluno pode fazer agora (a sala nao gasta cota).
 /// 2. Cota: ate <see cref="StudyContext.SessionsPerDay"/> sessoes nao-reforco concluidas hoje (mesma conversao de
 ///    CompletedAt pra hora local da regra de 1 por dia): "daily_limite_diario_atingido", o mesmo codigo do formato Daily.
+///
+/// Fase 115 (molde D2, decisao do dono, 19/11/2026): o reforco de uma sessao abre so no dia seguinte (lembrar depois de
+/// um tempo e o que fixa; no mesmo dia ele media memoria de curto prazo) e, aberto, vem antes da proxima sessao:
+/// "reforco_pendente" e a 1a regra.
 /// </summary>
 public static class SessionRules
 {
@@ -36,8 +41,25 @@ public static class SessionRules
         enrollmentDailies.Count(d =>
             !d.IsReinforcement && d.CompletedAt.HasValue && DateOnly.FromDateTime(d.CompletedAt.Value.ToLocalTime()) == today);
 
+    /// <summary>Fase 115: o reforco nasce com Date = o dia em que a sessao de origem disparou (ver Weekly.CreateDailyReinforcement) e abre no dia seguinte.</summary>
+    public static bool IsReinforcementOpen(Daily reinforcement, DateOnly today) => reinforcement.Date < today;
+
+    /// <summary>Fase 115: o reforco ja aberto e ainda nao concluido, o mais antigo primeiro.</summary>
+    public static Daily? OpenPendingReinforcement(IEnumerable<Daily> enrollmentDailies, DateOnly today) =>
+        enrollmentDailies
+            .Where(d => d.IsReinforcement && d.Status != DailyStatus.Completed && IsReinforcementOpen(d, today))
+            .OrderBy(d => d.Date).ThenBy(d => d.DayNumber)
+            .FirstOrDefault();
+
     public static void EnsureCanStart(IEnumerable<Daily> enrollmentDailies, DateOnly today, StudyContext study)
     {
+        if (OpenPendingReinforcement(enrollmentDailies, today) is not null)
+        {
+            throw new DomainException(
+                "Faca o reforco das sessoes de ontem antes de comecar uma sessao nova.",
+                "reforco_pendente");
+        }
+
         if (study.PendingRoom is { } room)
         {
             throw new DomainException(

@@ -39,10 +39,14 @@ internal static class DailySequencing
     /// Available, InProgress). A que esta em andamento vem primeiro (e a que "/hoje" retoma); depois
     /// a da Weekly mais antiga, e nela a de menor DayNumber.
     /// </summary>
-    public static Daily? FindPendingReinforcement(IEnumerable<Weekly> weeklies) =>
+    /// Fase 115: <paramref name="openOn"/> (curso em sessoes) deixa de fora o reforco que ainda nao abriu (nasceu hoje,
+    /// abre amanha - SessionRules.IsReinforcementOpen), salvo o que ja esta em andamento.
+    public static Daily? FindPendingReinforcement(IEnumerable<Weekly> weeklies, DateOnly? openOn = null) =>
         weeklies
             .OrderBy(w => w.Number)
-            .SelectMany(w => w.Dailies.Where(d => d.IsReinforcement && d.Status != DailyStatus.Completed).OrderBy(d => d.DayNumber))
+            .SelectMany(w => w.Dailies.Where(d => d.IsReinforcement && d.Status != DailyStatus.Completed
+                && (openOn is not { } day || d.Status == DailyStatus.InProgress || SessionRules.IsReinforcementOpen(d, day)))
+                .OrderBy(d => d.DayNumber))
             .OrderBy(d => d.Status == DailyStatus.InProgress ? 0 : 1) // OrderBy do LINQ e estavel: preserva a ordem por Weekly/DayNumber acima
             .FirstOrDefault();
 

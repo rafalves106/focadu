@@ -9,13 +9,14 @@ namespace Focadu.Tests.Dailies;
 public class DailyTests
 {
     [Fact]
-    public void AddActivity_VoiceSummary_WithoutContentId_Throws()
+    public void AddActivity_Reading_WithoutContentId_Throws()
     {
         var weekly = DailyFixtures.NewWeekly();
         var template = weekly.Template.AddDailyTemplate(1);
 
+        // Fase 115: VoiceSummary pode vir sem conteúdo (voz de recuperação do molde D2); Reading e Video, nunca.
         Assert.Throws<DomainException>(
-            () => template.AddActivity(ActivityType.VoiceSummary, 0, AnswerMode.FreeText, prompt: "Resuma o texto."));
+            () => template.AddActivity(ActivityType.Reading, 0, AnswerMode.FreeText, prompt: "Leia."));
     }
 
     [Fact]
@@ -369,5 +370,69 @@ public class DailyTests
         Assert.Equal(0, daily.PenaltyPoints);
         Assert.Equal(2, DailyFixtures.ResponsesFor(daily, activity.Id).Count());
         Assert.False(daily.ShouldTriggerDailyReinforcement());
+    }
+
+    // --- Fase 115 (molde D2) ---
+
+    [Fact]
+    public void BetQuiz_WrongAnswer_DoesNotCountAsMistake()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var template = weekly.Template.AddDailyTemplate(1);
+        var daily = weekly.AddDaily(template, DailyFixtures.Today);
+        var bet = template.AddActivity(ActivityType.Quiz, 0, AnswerMode.MultipleChoice);
+        bet.MarkAsBet();
+        var quiz = template.AddActivity(ActivityType.Quiz, 1, AnswerMode.MultipleChoice);
+        daily.Start();
+
+        daily.SubmitActivityResponse(bet.Id, 0);
+        Assert.Equal(0, daily.PenaltyPoints);
+        Assert.True(template.IsPrediction(bet));
+        Assert.False(template.IsPrediction(quiz));
+        Assert.False(daily.CountsAsMistake(bet));
+    }
+
+    [Fact]
+    public void MarkAsBet_OnlyOnQuiz()
+    {
+        var template = DailyFixtures.NewWeekly().Template.AddDailyTemplate(1);
+        var cloze = template.AddActivity(ActivityType.Cloze, 0, AnswerMode.FreeText);
+        Assert.Equal("aposta_invalida", Assert.Throws<DomainException>(() => cloze.MarkAsBet()).Code);
+    }
+
+    [Fact]
+    public void RetrievalVoice_WithoutContent_IsAllowed_AndReinforcementKeepsTheReferenceAnswer()
+    {
+        var weekly = DailyFixtures.NewWeekly();
+        var template = weekly.Template.AddDailyTemplate(1);
+        var daily = weekly.AddDaily(template, DailyFixtures.Today);
+        var voices = Enumerable.Range(0, 3).Select(i =>
+        {
+            var voice = template.AddActivity(ActivityType.VoiceSummary, i, AnswerMode.FreeText, "O que a sessão 1 ensinou?");
+            voice.ConfigureVoiceQuestion("O guia é um framework, não um checklist.", null, false, null);
+            return voice;
+        }).ToList();
+        daily.Start();
+        foreach (var voice in voices)
+            daily.SubmitActivityResponse(voice.Id, 30);
+
+        var reinforcement = weekly.CreateDailyReinforcement(daily.Id, DailyFixtures.Today);
+
+        Assert.Null(voices[0].ContentId);
+        Assert.Equal(3, reinforcement.Activities.Count);
+        Assert.All(reinforcement.Activities, a => Assert.Equal("O guia é um framework, não um checklist.", a.ReferenceAnswer));
+    }
+
+    [Fact]
+    public void FinalQuestion_AcceptsTwoOrThreeTopics()
+    {
+        var template = DailyFixtures.NewWeekly().Template.AddDailyTemplate(1);
+        var content = Guid.NewGuid();
+        var two = template.AddActivity(ActivityType.VoiceSummary, 0, AnswerMode.FreeText, "p", content);
+        two.ConfigureVoiceQuestion("r", null, true, ["a", "b"]);
+        Assert.Equal(2, two.Topics.Count);
+
+        var one = template.AddActivity(ActivityType.VoiceSummary, 1, AnswerMode.FreeText, "p", content);
+        Assert.Equal("topicos_invalidos", Assert.Throws<DomainException>(() => one.ConfigureVoiceQuestion("r", null, true, ["a"])).Code);
     }
 }

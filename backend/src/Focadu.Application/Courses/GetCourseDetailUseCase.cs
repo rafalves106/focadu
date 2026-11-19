@@ -6,6 +6,7 @@ using Focadu.Application.Shared;
 using Focadu.Domain.Dailies;
 using Focadu.Domain.Enums;
 using Focadu.Domain.Courses;
+using Focadu.Domain.Weeklies;
 using Focadu.Domain.Repositories;
 
 namespace Focadu.Application.Courses;
@@ -52,6 +53,14 @@ public class GetCourseDetailUseCase
         var today = _clock.Today();
         var sessionRoomOf = await LoadSessionRoomsAsync(userId, course, instanceWeeklies, cancellationToken);
 
+        // Fase 115: curso em sessoes, o reforco nascido hoje so aparece amanha (SessionRules.IsReinforcementOpen).
+        var dailyById = instanceWeeklies.SelectMany(w => w.Dailies).ToDictionary(d => d.Id);
+        bool Visible(Daily reinforcement) =>
+            course.StudyFormat != StudyFormat.Sessions || reinforcement.Status is not (DailyStatus.Locked or DailyStatus.Available)
+            || SessionRules.IsReinforcementOpen(reinforcement, today);
+        Guid? VisibleReinforcementOf(Daily daily) =>
+            daily.ReinforcementDailyId is { } id && dailyById.TryGetValue(id, out var r) && !Visible(r) ? null : daily.ReinforcementDailyId;
+
         var monthlyDtos = new List<MonthlyOverviewDto>();
         var dailyReinforcements = new List<DailyReinforcementSummaryDto>();
         var weeklyReinforcements = new List<WeeklyReinforcementSummaryDto>();
@@ -97,7 +106,7 @@ public class GetCourseDetailUseCase
                         d.Activities.Count, d.Activities.Count(a => d.Responses.Any(r => r.ActivityId == a.Id)),
                         ResolveDailyTitle(d),
                         d.Id == nextDailyId,
-                        d.ReinforcementDailyId,
+                        VisibleReinforcementOf(d),
                         // CompletedAt e UTC; "today" e hora local (IClock) - mesma conversao de Weekly.EvaluateDailyAccess.
                         d.CompletedAt.HasValue && DateOnly.FromDateTime(d.CompletedAt.Value.ToLocalTime()) == today,
                         d.Template.IsBridge,
@@ -116,7 +125,7 @@ public class GetCourseDetailUseCase
                 reinforcementDailies += weekly.Dailies.Count(d => d.IsReinforcement);
 
                 dailyReinforcements.AddRange(weekly.Dailies
-                    .Where(d => d.IsReinforcement)
+                    .Where(d => d.IsReinforcement && Visible(d))
                     .Select(d => new DailyReinforcementSummaryDto(d.Id, weekly.Id, d.DayNumber, d.Date, d.Activities.Count)));
 
                 weeklyReinforcements.AddRange(weekly.Reinforcements

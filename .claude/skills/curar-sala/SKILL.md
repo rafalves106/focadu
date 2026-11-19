@@ -28,6 +28,8 @@ logo depois de cada etapa: um corte nunca pode apagar progresso.
 
 ## Modo sessão (molde D, `molde/molde-d.md`)
 
+**Sessão do molde D2** (ficha do dia com `tipo de molde: D2`): vale a seção "A sala no molde D2: como montar" do `molde/molde-d2.md`, acima do resto: a Vitrine de verdade como alvo, documentos do projeto em `ambiente/kali/projeto/` no desktop do Kali, flag que sai de conferir/contar/cruzar/calcular (nunca de ler uma linha), 3 a 4 tarefas encadeadas, nível 1 só na sala 1, nível 2 nas salas 2 a 5, nível 3 da 6 em diante, áudio sobre o achado e como foi provado.
+
 Sala da sessão N de um curso no molde D (hoje `wstg`): slug `sessao-N`, `tipo: "semana"`, `ordem` = N, **3 a 5
 tarefas, 25 a 35 minutos**, linter com `--sessao`. A ficha da sala é escrita junto com a ficha do dia e a matriz de
 cobertura usa `ensinado em: dia N, bloco tK` além da teoria. O alvo é o **alvo único do curso**
@@ -80,8 +82,13 @@ Todo fato que um áudio ou o fechamento vai cobrar, e onde o aluno o recebe ante
 ## Confusões comuns
 O que costuma ser confundido nesse tema e em que teoria a sala desfaz (ou "nenhuma").
 
+## Perguntas dos dias (não repetir)
+Toda pergunta dos dias citados na matriz (`ensinado em: dia N`): Quiz, Cloze, conversa por voz, Roleplay e
+pergunta final, com a resposta em poucas palavras. Sala sem dia citado: "nenhuma".
+| dia | tipo | pergunta | resposta curta |
+
 ## Áudios
-| chave | pergunta (uma só, até 220 caracteres) | o que o gabarito diz (1 a 3 frases) |
+| chave | pergunta (uma só, até 220 caracteres) | o que o gabarito diz (1 a 3 frases) | pergunta do dia mais parecida → ângulo novo (interpretar / decidir / consequência / corrigir) e o que da tela ela usa |
 
 ## Fechamento
 Uma situação de trabalho e uma decisão que junta 2 ou 3 ideias da sala (nunca "resuma a sala"), e o que o
@@ -92,7 +99,9 @@ O que pode não funcionar no Docker (permissão, arquitetura arm64/amd64, respos
 ```
 
 A matriz é a parte que mais importa: se um fato não tem linha "ensinado em", ele sai do gabarito ou entra
-numa teoria. Marque `ficha escrita` no `estado.md` e **pare**: o dono aprova acrescentando a linha
+numa teoria. Logo depois dela vem a regra "A sala não repete a sessão" (`molde/sala.md`): um áudio que se
+responde repetindo a resposta de uma pergunta do dia, sem nada do alvo, é refeito na ficha; o fechamento não
+usa a situação de uma conversa por voz nem do Roleplay do dia. Marque `ficha escrita` no `estado.md` e **pare**: o dono aprova acrescentando a linha
 `Aprovada pelo dono em <data>` na ficha. O orquestrador nunca escreve nem aprova ficha.
 
 ## S2 a S4. Construir (exige ficha com "Aprovada pelo dono")
@@ -125,7 +134,7 @@ do dono.
 
 Chame o agente `revisor-editorial` (nunca um agente genérico, nunca quem escreveu) no **modo sala**, passando:
 `sala.json`, a ficha da sala, o plano da trilha (se houver), `molde/sala.md`, a linha editorial, a ficha do curso
-e o glossário, o `teste.log`, os arquivos do alvo e a saída do `sala-cli.js` (precisa estar `PASSOU`). Ele grava
+e o glossário, os `dia-N.json` citados na matriz (`ensinado em: dia N`), o `teste.log`, os arquivos do alvo e a saída do `sala-cli.js` (precisa estar `PASSOU`). Ele grava
 `revisao.md` com `aprovado` ou `ajustes`. `aprovado` → `revisada` no `estado.md`.
 
 ## S5b. Leitura por persona (igual ao D7b, só sala-âncora)
@@ -155,6 +164,9 @@ Cada uma passou pelo linter e pela revisão e só apareceu quando o dono fez a s
 - **Duas lições que se cruzam na tela**: a 3306 sai `filtered mysql`; o dono leu "mysql" como fato e concluiu que
   sabia o banco (fechamento, nota 60). Quando a saída junta dois conceitos da sala, a teoria diz numa frase como
   ler os dois juntos.
+- **Áudio que é a pergunta do dia com outro nome**: na `sessao-1` do WSTG os três áudios e o fechamento
+  repetiam o Dia 1 ("parecia segura", "só o código", "citar a versão", "na véspera do lançamento"); dava para
+  responder sem abrir o alvo. O áudio parte do que a tarefa mostrou (`molde/sala.md`, "A sala não repete a sessão").
 - **`minutos` de chute**: nmap-1 estimava 50 e levou 16. O tempo vem da leitura por persona ou do teste do dono.
 - **Comando que "não funciona" para quem nunca usou**: na nmap-1 o dono achou que o `grep` não funcionou. O `grep`
   devolve a linha inteira (no `.gnmap` o host todo é uma linha, então parece que nada foi filtrado) e diferencia

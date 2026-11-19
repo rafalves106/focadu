@@ -431,6 +431,14 @@ public class Weekly : Entity
                 "linguagem_nao_escolhida");
         }
 
+        // Fase 115: curso em sessoes, o reforco abre so no dia seguinte ao da sessao de origem (SessionRules).
+        if (target.IsReinforcement && study?.Format == Courses.StudyFormat.Sessions && !SessionRules.IsReinforcementOpen(target, today))
+        {
+            throw new DomainException(
+                "O reforco desta sessao abre amanha: lembrar depois de um tempo e o que fixa o conteudo.",
+                "reforco_abre_amanha");
+        }
+
         // Matricula inteira (Fase 54), nao so esta Weekly - ver o comentario do metodo.
         var enrollmentDailies = otherWeekliesDailies is null ? _dailies : _dailies.Concat(otherWeekliesDailies).ToList();
 

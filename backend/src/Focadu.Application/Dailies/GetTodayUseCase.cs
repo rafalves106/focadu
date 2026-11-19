@@ -3,6 +3,7 @@ using Focadu.Application.Ports;
 using Focadu.Domain.Enums;
 using Focadu.Domain.Exceptions;
 using Focadu.Domain.Repositories;
+using Focadu.Domain.Weeklies;
 
 namespace Focadu.Application.Dailies;
 
@@ -69,7 +70,15 @@ public class GetTodayUseCase
 
         var allWeeklies = await _weeklyRepository.GetByEnrollmentIdAsync(enrollment.Id, cancellationToken);
 
-        var target = DailySequencing.FindInProgress(allWeeklies) ?? DailySequencing.FindNext(allWeeklies);
+        var today = _clock.Today();
+
+        // Fase 115: curso em sessoes, o reforco aberto (de ontem para tras) vem antes da proxima sessao - "/hoje" ja
+        // abre nele. O de hoje ainda nao aparece: abre amanha (SessionRules.IsReinforcementOpen).
+        var sessions = await _study.IsSessionsCourseAsync(enrollment.CourseId, cancellationToken);
+        DateOnly? reinforcementOpenOn = sessions ? today : null;
+        var target = DailySequencing.FindInProgress(allWeeklies)
+            ?? (sessions ? SessionRules.OpenPendingReinforcement(allWeeklies.SelectMany(w => w.Dailies), today) : null)
+            ?? DailySequencing.FindNext(allWeeklies);
         if (target is null)
         {
             // Acabaram as Dailies, mas a ultima semana ainda tem projeto (ou publicacao) por fechar: "hoje" e o
@@ -79,17 +88,16 @@ public class GetTodayUseCase
             var lastDaily = openWeekly?.Dailies.Where(d => !d.IsReinforcement).MaxBy(d => d.DayNumber);
             if (lastDaily is not null)
                 return DailyStateMapper.ToDto(lastDaily, DailyAccessMode.WeekPendingClosure)
-                    with { PendingReinforcementDailyId = DailySequencing.FindPendingReinforcement(allWeeklies)?.Id };
+                    with { PendingReinforcementDailyId = DailySequencing.FindPendingReinforcement(allWeeklies, reinforcementOpenOn)?.Id };
 
             throw new NotFoundException("daily_hoje_nao_encontrada", "Nenhuma Daily pendente encontrada.");
         }
 
         var weekly = allWeeklies.First(w => w.Id == target.WeeklyId);
-        var today = _clock.Today();
 
         // Fase 56: vai em toda resposta deste atalho, seja qual for o modo de acesso - o botao de
         // reforco precisa aparecer tambem quando "Hoje" esta Blocked / WeekPendingClosure.
-        var pendingReinforcementId = DailySequencing.FindPendingReinforcement(allWeeklies)?.Id;
+        var pendingReinforcementId = DailySequencing.FindPendingReinforcement(allWeeklies, reinforcementOpenOn)?.Id;
 
         // Fase 54 (bug real, 21/09/2026): terminar a ultima Daily da Semana 1 fazia "/hoje" cair
         // direto na 1a Daily da Semana 2, sem o projeto da Semana 1 - que e o que vem depois. Se a

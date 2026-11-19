@@ -87,6 +87,8 @@ Depois: perguntas ao dono guardadas, dias pulados, fichas que faltam, e o próxi
 
 ## Molde D (curso `wstg`, desde 17/11/2026)
 
+**Molde D2** (desde 19/11/2026, `tipo de molde: D2` na ficha, `"moldeTipo": "D2"` no dia): tudo do D, e o `processo/molde/molde-d2.md` manda no que muda: 1 ideia e 2 blocos por sessão, vozes de recuperação na abertura (`retomaSessao`, sem `contentRef`), 1 aposta antes da leitura (`"aposta": true`), 1/3 da prática retomando sessões anteriores, pergunta final com 2 tópicos, leitura de 350 a 600 palavras. As vozes de recuperação e a prática intercalada leem os `dia-M.json` das sessões retomadas (o `referenceAnswer` delas é o gabarito).
+
 Cada dia é uma **sessão** com a sua **sala** (`molde/molde-d.md`). Para cada dia, depois do D7 aprovado, rode a sala da
 sessão pela skill `curar-sala` (modo sessão: S2 a S5, `sala-cli.js --sessao`) antes de passar ao dia seguinte; dia e
 sala só contam como `revisado` juntos. Não há ponte nem Projeto Semanal. O portão do dia-âncora vale para o par dia + sala.

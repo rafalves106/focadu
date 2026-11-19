@@ -41,6 +41,7 @@ public class DailyActivityConfiguration : IEntityTypeConfiguration<DailyActivity
         builder.Property(a => a.CodeCheckJson);
         builder.Ignore(a => a.CodeCheck);
         builder.Property(a => a.ReplacesPreviousCode).IsRequired().HasDefaultValue(false);
+        builder.Property(a => a.IsBet).IsRequired().HasDefaultValue(false);
         builder.Property(a => a.ParsonsJson);
         builder.Ignore(a => a.Parsons);
         builder.Ignore(a => a.ProducesCode);
