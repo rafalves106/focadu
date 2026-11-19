@@ -56,9 +56,9 @@ public class LearningTargetIdTests
     }
 
     [Theory]
-    [InlineData(2)]
+    [InlineData(1)]
     [InlineData(16)]
-    public void SetCurationInfo_RejectsOutsideThreeToFifteen(int count)
+    public void SetCurationInfo_RejectsOutsideTwoToFifteen(int count)
     {
         var template = DailyFixtures.NewWeekly().Template.AddDailyTemplate(1);
         var ex = Assert.Throws<DomainException>(() => template.SetCurationInfo("v1", "hash", Targets(count)));
