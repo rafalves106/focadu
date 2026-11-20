@@ -57,7 +57,10 @@ concluido), o Claude Code deve, sem que o Falves precise pedir de novo:
    faz `reset --hard` em `secret/` e apaga commit local nao empurrado) e, se a fase implementou um
    rascunho, marca-lo como implementado com o numero da fase. Decidido em 23/09/2026, depois de uma
    reconciliacao que achou o MESTRE parado na Fase 29 com o projeto na 66.
-5. Commitar todas as mudancas da fase (`git add` + `git commit`), com uma mensagem descritiva
+5. Refazer o mapa do vault do Obsidian: `python3 secret/notas/mapa/gerar.py` (na raiz do repo).
+   Gera as notas-hub do grafo a partir dos docs; as mudancas caem no repo `focadu-secret`, que
+   recebe commit proprio junto com o do passo 4 (ou sozinho, se a fase nao mexeu no MESTRE).
+6. Commitar todas as mudancas da fase (`git add` + `git commit`), com uma mensagem descritiva
    que identifique a fase e resuma o que foi feito - inclusive os passos acima, que fazem
    parte do mesmo commit de fechamento. Sem esse passo, uma fase pode ficar "concluida" no chat
    mas ausente do historico do Git, que e o unico registro persistente entre sessoes.

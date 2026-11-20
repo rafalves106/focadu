@@ -23,7 +23,8 @@ Ao final de **toda fase de implementação**:
    "Estado atual" deste arquivo (abaixo) com a fase/data mais recente.
 4. Se a fase mudou **escopo de produto**, atualizar `secret/MESTRE.md` (commit + push próprios no
    `focadu-secret`) e marcar como implementado o rascunho que a originou, se houver.
-5. Commitar tudo isso (código + os dois/três docs acima) num único commit descritivo — sem pedir
+5. Refazer o mapa do Obsidian: `python3 secret/notas/mapa/gerar.py` (commit no `focadu-secret`).
+6. Commitar tudo isso (código + os dois/três docs acima) num único commit descritivo — sem pedir
    confirmação separada, isso faz parte do fechamento da fase, não é uma ação avulsa.
 
 ## Economia de tokens — quem faz o quê (modelo, agentes, contexto)

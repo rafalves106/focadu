@@ -34,3 +34,6 @@ backups/
 # Prints do redesign (locais; so o INDICE.md e versionado)
 docs/design/prints/**/*.png
 tools/capturar-telas/node_modules/
+
+# Configuração local do Obsidian (vault na raiz do repo)
+.obsidian/
