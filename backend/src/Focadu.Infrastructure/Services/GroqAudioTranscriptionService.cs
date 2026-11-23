@@ -46,11 +46,19 @@ public class GroqAudioTranscriptionService : IAudioTranscriptionService
 
         try
         {
-            return await HttpRetry.RunAsync(
-                () => TranscribeOnceAsync(audioBytes, cancellationToken),
-                ex => HttpRetry.IsTransientFailure(ex, cancellationToken)
-                    || ex is ExternalServiceException { Code: "transcricao_vazia" },
-                cancellationToken);
+            // 23/11/2026: um audio de 40 s de fala virou so " ... ..." e levou nota 0. O prompt de fala verbatim (Fase 114) e
+            // cheio de reticencias e o Whisper as vezes copia o estilo dele em vez de transcrever. Transcricao quebrada tenta
+            // de novo sem o prompt; se ainda vier quebrada, o aluno grava de novo e nada e avaliado (a tentativa nao conta).
+            var transcript = await TranscribeWithRetryAsync(audioBytes, withPrompt: true, cancellationToken);
+            if (!IsGarbled(transcript.Text, transcript.DurationSeconds)) return transcript;
+
+            transcript = await TranscribeWithRetryAsync(audioBytes, withPrompt: false, cancellationToken);
+            if (!IsGarbled(transcript.Text, transcript.DurationSeconds)) return transcript;
+
+            throw new ExternalServiceException(
+                "transcricao_vazia",
+                "Não conseguimos transcrever essa gravação. Grave de novo: essa tentativa não foi avaliada nem conta.",
+                statusCode: 503);
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -69,7 +77,14 @@ public class GroqAudioTranscriptionService : IAudioTranscriptionService
         }
     }
 
-    private async Task<AudioTranscript> TranscribeOnceAsync(byte[] audioBytes, CancellationToken cancellationToken)
+    /// <summary>Retry so de falha de rede/HTTP: o Whisper e deterministico, o mesmo audio com o mesmo prompt da o mesmo texto.</summary>
+    private Task<AudioTranscript> TranscribeWithRetryAsync(byte[] audioBytes, bool withPrompt, CancellationToken cancellationToken) =>
+        HttpRetry.RunAsync(
+            () => TranscribeOnceAsync(audioBytes, withPrompt, cancellationToken),
+            ex => HttpRetry.IsTransientFailure(ex, cancellationToken),
+            cancellationToken);
+
+    private async Task<AudioTranscript> TranscribeOnceAsync(byte[] audioBytes, bool withPrompt, CancellationToken cancellationToken)
     {
         using var content = new MultipartFormDataContent();
         using var audioContent = new ByteArrayContent(audioBytes);
@@ -86,22 +101,13 @@ public class GroqAudioTranscriptionService : IAudioTranscriptionService
         content.Add(new StringContent("pt"), "language");
         // Fase 114: a nota da conversa por voz pesa a comunicacao, mas o Whisper tende a limpar "né", "tipo" e "é...".
         // Um prompt escrito com esses vicios faz ele transcrever a fala como foi dita.
-        content.Add(new StringContent(VerbatimPrompt), "prompt");
+        if (withPrompt) content.Add(new StringContent(VerbatimPrompt), "prompt");
 
         var response = await _httpClient.PostAsync("audio/transcriptions", content, cancellationToken);
         await HttpRetry.EnsureSuccessAsync(response, cancellationToken);
 
         var result = await response.Content.ReadFromJsonAsync<GroqTranscriptionResponse>(JsonOptions, cancellationToken);
         var text = result?.Text ?? string.Empty;
-
-        // Resposta 200 mas sem texto util: a Groq roda com audio real, entao isso normalmente e
-        // ruido/instabilidade da propria chamada, nao um resultado "correto" de audio vazio -
-        // entra no mesmo orcamento de retry do RunAsync acima (nao retry indefinido).
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            throw new ExternalServiceException(
-                "transcricao_vazia", "A transcricao do audio veio vazia - tente gravar novamente.");
-        }
 
         // Audio sem fala (microfone errado ou mudo): o Whisper inventa uma frase curta ("you", "Obrigado.") em vez de
         // devolver vazio. Avaliar isso da nota 0 por algo que o aluno nao disse - melhor pedir pra gravar de novo.
@@ -114,6 +120,17 @@ public class GroqAudioTranscriptionService : IAudioTranscriptionService
         }
 
         return new AudioTranscript(text, result?.Duration ?? 0);
+    }
+
+    /// <summary>
+    /// Transcricao que nao pode ser o que o aluno falou: vazia, sem nenhuma letra (" ... ..."), ou menos de 1 palavra a cada
+    /// 5 s num audio de 10 s ou mais (fala normal passa de 2 palavras por segundo). Audio mudo ja saiu antes, em IsNoSpeech.
+    /// </summary>
+    internal static bool IsGarbled(string text, double durationSeconds)
+    {
+        if (!text.Any(char.IsLetter)) return true;
+        var words = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Count(w => w.Any(char.IsLetter));
+        return durationSeconds >= 10 && words * 5 < durationSeconds;
     }
 
     internal const string VerbatimPrompt = "Então, é... tipo, eu acho que, né, hum... a ideia é essa, aí depois, é, vem o resto.";
