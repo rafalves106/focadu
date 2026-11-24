@@ -57,13 +57,13 @@ saída do linter da sala (`sala-cli.js`, deve estar `PASSOU`; senão devolva `aj
 régua é a mesma do dia. Confira, com evidência (campo e trecho):
 
 1. **Contrato de conteúdo, frase a frase.** Para cada afirmação de cada `audio.respostaCorreta` e do
-   `fechamento.respostaCorreta`, onde o aluno a recebeu antes de gravar: teoria desta tarefa ou de uma anterior,
+   `fechamento.respostaCorreta` (se existir; o molde D2 não tem), onde o aluno a recebeu antes de gravar: teoria desta tarefa ou de uma anterior,
    saída no `teste.log`, sala pré-requisito. Afirmação sem origem é ajuste.
-2. **Responda você mesmo.** Responda de boca, por escrito, cada pergunta de áudio e o fechamento usando só o que
+2. **Responda você mesmo.** Responda de boca, por escrito, cada pergunta de áudio (e o fechamento, se existir) usando só o que
    a sala mostrou até ali, em até 1 minuto de fala. Se você não consegue, ou se a resposta certa depende de
    lembrar 5 coisas de tarefas diferentes, a pergunta está errada (ajuste na ficha).
-3. **Uma pergunta por áudio** e o gabarito responde só ela (1 a 3 frases). Fechamento = uma situação e uma
-   decisão, nunca resumo da sala.
+3. **Uma pergunta por áudio** e o gabarito responde só ela (1 a 3 frases). Fechamento (só fora do molde D2) = uma situação e uma
+   decisão, nunca resumo da sala. Sala D2 com `fechamento` no sala.json é ajuste.
 4. **Flag sai do alvo**, não da teoria, e não dá pra chutar entre poucas opções que a teoria lista.
 5. **Correção técnica** de cada afirmação (opção da ferramenta, comportamento padrão, números contra o log).
 6. **Confusões comuns** da ficha desfeitas na teoria; teoria rica no conceito, não só no comando.

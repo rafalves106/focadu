@@ -77,6 +77,34 @@ public class RoomProgressTests
     }
 
     [Fact]
+    public void RoomWithoutFinal_CompletesOnTheLastTaskVoice()
+    {
+        var room = new Room(Guid.NewGuid(),
+            new RoomSpec("sessao-4", "Sala", RoomKind.Tool, null, "Fácil", 35, "resumo", "cenário", "Kali", [], "", "", 1, "hash", "wstg"),
+            [Task("a", "1"), Task("b", "2")]);
+        var progress = new RoomProgress(Guid.NewGuid(), room.Id, Now);
+
+        Assert.False(room.HasFinal);
+        progress.SubmitFlag(room, room.Tasks[0].Id, "1", Now);
+        progress.RecordVoice(room, room.Tasks[0].Id, 90, "fala", null, null, Now);
+        Assert.False(progress.Completed);
+
+        progress.SubmitFlag(room, room.Tasks[1].Id, "2", Now);
+        progress.RecordVoice(room, room.Tasks[1].Id, 40, "fala", null, null, Now);
+        Assert.True(progress.Completed);
+        Assert.Null(progress.FinalScore);
+        Assert.Equal("sala_sem_fechamento", Assert.Throws<DomainException>(() => progress.EnsureCanRecordFinal(room)).Code);
+    }
+
+    [Fact]
+    public void FinalIsAllOrNothing()
+    {
+        Assert.Throws<DomainException>(() => new Room(Guid.NewGuid(),
+            new RoomSpec("x", "Sala", RoomKind.Tool, null, "Fácil", 35, "resumo", "cenário", "Kali", [], "pergunta", "", 1, "hash", "wstg"),
+            [Task("a", "1")]));
+    }
+
+    [Fact]
     public void Final_OpensOnlyWhenEveryTaskHasItsVoice()
     {
         var room = NewRoom();

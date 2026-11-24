@@ -20,7 +20,8 @@ public record RoomTaskDto(
     Guid Id, int Number, string Title, string? ChainLabel, string State, string? Theory, string? Question, string AnswerFormat,
     IReadOnlyList<string> Hints, string? VoicePrompt, DateTime? FlagSolvedAt, RoomVoiceResultDto? Voice);
 
-public record RoomFinalDto(bool Unlocked, string? Prompt, RoomVoiceResultDto? Voice);
+/// <summary><c>Enabled</c> = a sala tem fechamento por áudio; sem ele (Fase 116), <c>Completed</c> diz que a sala terminou.</summary>
+public record RoomFinalDto(bool Unlocked, string? Prompt, RoomVoiceResultDto? Voice, bool Enabled = true, bool Completed = false);
 
 public record RoomStateDto(
     Guid Id, Guid CourseId, string Slug, string Title, string Kind, int? WeekNumber, string Difficulty, int EstimatedMinutes,
@@ -77,12 +78,13 @@ internal static class RoomMapper
                     : null);
         }).ToList();
 
-        var finalUnlocked = !locked && progress is not null && progress.AllTasksDone(room);
+        var finalUnlocked = room.HasFinal && !locked && progress is not null && progress.AllTasksDone(room);
         var final = new RoomFinalDto(
             finalUnlocked, finalUnlocked ? room.FinalPrompt : null,
             progress is { FinalAt: { } finalAt, FinalScore: { } finalScore }
                 ? new RoomVoiceResultDto(finalScore, progress.FinalTranscript ?? string.Empty, progress.FinalImprovementPoints, room.FinalReferenceAnswer, finalAt)
-                : null);
+                : null,
+            room.HasFinal, progress?.Completed == true);
 
         return new RoomStateDto(
             room.Id, room.CourseId, room.Slug, room.Title, room.Kind.ToString(), room.WeekNumber, room.Difficulty, room.EstimatedMinutes,

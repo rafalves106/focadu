@@ -22,6 +22,15 @@ Antes de tudo, leia `.claude/skills/curar-conteudo/SKILL.md`: ele tem os portõe
 5. Grave `secret/conteudo/<curso>/semana-S/dia-N.json` com **um `Write` completo**. Correção é `Edit` cirúrgico, nunca um gerador que reemite o dia.
 6. **D3/D6:** `cd secret && node processo/scripts/linter-dia/src/cli.js conteudo/<curso>/semana-S/dia-N.json --modo completo --nivel <nível> --glossario processo/cursos/<curso>/glossario.md --log processo/cursos/<curso>/logs/dia-N.log [--lab] | tail -30`. Use `--lab` quando o dia tiver `TerminalMission` ou `lab`. Repita até `PASSOU`, no máximo 3 voltas. Se não passar, devolva os erros restantes.
 
+## Autoconferência antes de entregar (corta voltas do D7)
+
+Cada volta do revisor custa uma chamada dele e uma sua. Antes de devolver, releia o dia como o revisor e corrija o que ele costuma pedir (wstg, sessões 1 a 3: 8 ajustes na 1ª volta, 2 na 2ª):
+- **Cada fato do gabarito, do Quiz e do Cloze está no texto do dia** (ou numa sessão anterior que a abertura retoma). Número, sigla e valor que só aparecem no gabarito são ajuste.
+- **Sigla e termo técnico explicados na 1ª vez** que aparecem; termo que o glossário põe em dia futuro não entra.
+- **Limites de tamanho** (seção, parágrafo, tópico, pergunta de voz com 1 "?"): conferidos pelo linter, mas corte antes de rodar.
+- **A mesma ideia não vira duas respostas certas** entre atividades (Quiz, Roleplay, voz): cada uma testa um ângulo.
+- **Escopo da ficha à risca**: nada de bloco, termo ou tarefa a mais ou a menos; divergência vira dúvida, não decisão sua.
+
 ## Modo ajustes (volta do D7)
 
 Leia só o `dia-N.json`, a ficha e o log do dia. Aplique **cada item da lista do revisor** com `Edit` cirúrgico, sem mexer no resto. Para uma regra específica, faça um `grep` pontual em `secret/processo/molde/`. Rode o linter como no passo 6 até `PASSOU`.

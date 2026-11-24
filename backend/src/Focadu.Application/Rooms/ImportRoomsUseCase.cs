@@ -110,8 +110,12 @@ public class ImportRoomsUseCase
                 if (!options.DryRun)
                 {
                     var removed = current.ReplaceContent(room.Spec, room.Tasks);
+                    var now = DateTime.UtcNow;
                     foreach (var progress in progresses)
+                    {
                         progress.RemoveResults(removed);
+                        progress.CompleteIfNoFinal(current, now);
+                    }
                 }
                 outcomes.Add(new RoomImportOutcome(slug, ImportStatus.Updated,
                     $"{room.Tasks.Count} tarefa(s){(removedKeys.Count > 0 ? $", removida(s): {string.Join(", ", removedKeys)}" : "")}"));
@@ -132,7 +136,7 @@ public class ImportRoomsUseCase
 /// Lê e valida um sala.json (Fase 110). Formato (chaves em português, como o resto da curadoria):
 /// <code>
 /// { "titulo", "tipo": "semana|ferramenta|desafio", "semana"?, "ordem", "dificuldade", "minutos", "resumo", "cenario",
-///   "maquina", "prerequisitos": [slug], "fechamento": { "pergunta", "respostaCorreta" },
+///   "maquina", "prerequisitos": [slug], "fechamento"?: { "pergunta", "respostaCorreta" } (opcional desde a Fase 116),
 ///   "tarefas": [ { "chave", "titulo", "elo"?, "teoria", "pergunta", "formatoResposta", "flag", "dicas": [..],
 ///                  "audio": { "pergunta", "respostaCorreta" } } ] }
 /// </code>
@@ -182,7 +186,6 @@ public static class RoomImporter
         var order = Int(root, "ordem", required: true) ?? 0;
         var minutes = Int(root, "minutos", required: true) ?? 0;
         var closing = root.TryGetProperty("fechamento", out var c) && c.ValueKind == JsonValueKind.Object ? c : default;
-        if (closing.ValueKind != JsonValueKind.Object) errors.Add("fechamento: obrigatório");
 
         var tasks = new List<RoomTaskSpec>();
         if (!root.TryGetProperty("tarefas", out var tasksEl) || tasksEl.ValueKind != JsonValueKind.Array || tasksEl.GetArrayLength() == 0)

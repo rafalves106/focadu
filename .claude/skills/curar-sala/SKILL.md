@@ -91,6 +91,7 @@ pergunta final, com a resposta em poucas palavras. Sala sem dia citado: "nenhuma
 | chave | pergunta (uma só, até 220 caracteres) | o que o gabarito diz (1 a 3 frases) | pergunta do dia mais parecida → ângulo novo (interpretar / decidir / consequência / corrigir) e o que da tela ela usa |
 
 ## Fechamento
+Molde D2 (sessões): **não escreva fechamento** (decisão do dono, 23/11/2026); escreva só "Sem fechamento por áudio" nesta seção, sem a coluna "fechamento" na matriz. As linhas abaixo valem para as outras salas.
 Uma situação de trabalho e uma decisão que junta 2 ou 3 ideias da sala (nunca "resuma a sala"), e o que o
 gabarito diz em até 5 frases. Teste: dá para responder em 1 minuto, de boca, sem anotação?
 
@@ -115,7 +116,8 @@ usa a situação de uma conversa por voz nem do Roleplay do dia. Marque `ficha e
 3. **sala.json (S2).** Escreva a partir da ficha: teoria (60 a 200 palavras, leitura fácil do dia, cobrindo cada
    linha da matriz que diz `teoria:<esta chave>` e a confusão comum da tarefa, sem a flag escrita), pergunta,
    `formatoResposta`, flag **copiada da saída real do teste**, 3 dicas, áudio (**uma pergunta**, gabarito de 1 a 3
-   frases) e fechamento (**uma situação e uma decisão**, ~1 minuto). Regras do molde, seção Tarefa.
+   frases) e, fora do molde D2, fechamento (**uma situação e uma decisão**, ~1 minuto). Regras do molde, seção Tarefa.
+   Antes do linter, confira o que o S5 mais reprova: (a) todo fato do gabarito do áudio está na teoria ou na saída do `teste.log` (regra, número e sigla que o dia não ensinou saem); (b) o gabarito responde só a pergunta do áudio, sem a conta inteira nem número que a pergunta não pede; (c) teoria dentro de 200 palavras; (d) quando a próxima tarefa usa uma lista da anterior, a teoria diz "anote os ids"; (e) a pergunta do áudio não é a do dia com outro nome.
 4. **Linter (S3, igual ao D3 do dia).** Rode
    `node secret/processo/scripts/linter-dia/src/sala-cli.js secret/conteudo/<curso>/salas/<slug>/sala.json --log secret/processo/cursos/<curso>/salas/<slug>/teste.log`
    (leitura fácil com os limites do dia, uma pergunta por áudio, tamanho dos gabaritos, flag fora da teoria e
