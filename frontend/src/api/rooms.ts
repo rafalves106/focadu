@@ -74,7 +74,8 @@ export interface RoomState {
   machineOn: boolean;
   startedAt: string | null;
   tasks: RoomTask[];
-  final: { unlocked: boolean; prompt: string | null; voice: RoomVoiceResult | null };
+  /** Fase 116: `enabled` falso = sala sem fechamento por áudio; `completed` diz que terminou. */
+  final: { unlocked: boolean; prompt: string | null; voice: RoomVoiceResult | null; enabled: boolean; completed: boolean };
 }
 
 /** Avaliação por IA do áudio: transcrição + nota (mesmo teto do resumo falado). */

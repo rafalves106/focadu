@@ -19,7 +19,7 @@ public enum RoomTaskState
 /// <summary>
 /// Progresso de um aluno numa Sala (Fase 110), criado quando ele abre a sala pela primeira vez. Regras do dono (15/11/2026):
 /// a tarefa só abre depois do áudio da anterior; nota baixa deixa seguir; dica liberada desde o início, sem desconto; o
-/// fechamento é um áudio curto de "como eu corrigiria", liberado quando todas as tarefas têm áudio. "Máquina ligada" é só
+/// fechamento (opcional desde a Fase 116) é um áudio curto de "como eu corrigiria", liberado quando todas as tarefas têm áudio. "Máquina ligada" é só
 /// a marcação do aluno: a Focadu não enxerga a máquina dele.
 /// </summary>
 public class RoomProgress : Entity
@@ -92,10 +92,24 @@ public class RoomProgress : Entity
     {
         EnsureCanRecordVoice(room, taskId);
         ResultFor(taskId)!.RecordVoice(Math.Clamp(score, 0, 100), transcript, correctedTranscript, improvementPoints, nowUtc);
+        CompleteIfNoFinal(room, nowUtc);
+    }
+
+    /// <summary>
+    /// Sala sem fechamento (Fase 116) termina no áudio da última tarefa: <c>FinalAt</c> marca a conclusão (sem nota de
+    /// fechamento) e <see cref="Completed"/> segue valendo pro resto do sistema. Chamado também na reimportação, pra quem
+    /// já tinha todos os áudios quando o fechamento saiu da sala.
+    /// </summary>
+    public void CompleteIfNoFinal(Room room, DateTime nowUtc)
+    {
+        if (!room.HasFinal && FinalAt is null && AllTasksDone(room))
+            FinalAt = nowUtc;
     }
 
     public void EnsureCanRecordFinal(Room room)
     {
+        if (!room.HasFinal)
+            throw new DomainException("Esta sala não tem fechamento por áudio.", "sala_sem_fechamento");
         if (!AllTasksDone(room))
             throw new DomainException("O fechamento abre depois do áudio de todas as tarefas.", "sala_incompleta");
     }

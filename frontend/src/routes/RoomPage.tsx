@@ -39,7 +39,7 @@ export function RoomPage() {
   const done = doneTasks(room).length;
   const total = room.tasks.length;
   const active = room.tasks.find((t) => t.state === 'Current' || t.state === 'AwaitingVoice');
-  const view = room.final.voice ? 'resumo' : room.final.unlocked && !feedbackFor ? 'fechamento' : 'tarefas';
+  const view = room.final.voice || (!room.final.enabled && room.final.completed && !feedbackFor) ? 'resumo' : room.final.unlocked && !feedbackFor ? 'fechamento' : 'tarefas';
   const where = view === 'resumo' ? 'Resumo' : view === 'fechamento' ? 'Fechamento' : active ? `${unit(room)} ${active.number} de ${total}` : null;
 
   const toggleMachine = async (on: boolean) => {
@@ -80,7 +80,7 @@ export function RoomPage() {
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
           <h1 className="text-lead text-primary md:text-titulo">{view === 'resumo' ? 'Sala concluída' : room.title}</h1>
           <p className="text-pequeno text-muted">
-            {view === 'resumo' ? `${room.title} · ${roomMinutes(room)} min · ${total + 1} áudios` : view === 'fechamento' ? `${total} de ${total} tarefas · falta a sua voz` : roomSubtitle(room)}
+            {view === 'resumo' ? `${room.title} · ${roomMinutes(room)} min · ${room.final.enabled ? total + 1 : total} áudios` : view === 'fechamento' ? `${total} de ${total} tarefas · falta a sua voz` : roomSubtitle(room)}
           </p>
         </div>
         {notice && <p className="text-pequeno text-alert">{notice}</p>}
@@ -269,7 +269,7 @@ function TaskCard({ room, task, onRoom, onVoiced }: { room: RoomState; task: Roo
           </div>
           <p className="text-pequeno text-muted">
             Depois da resposta certa: grave de 30 a 90 s contando o que fez.
-            {next ? ` Só aí ${challenge ? `o ${next.chainLabel ?? `Elo ${next.number}`}` : `a Tarefa ${next.number}`} abre.` : ' Depois vem o fechamento da sala.'}
+            {next ? ` Só aí ${challenge ? `o ${next.chainLabel ?? `Elo ${next.number}`}` : `a Tarefa ${next.number}`} abre.` : room.final.enabled ? ' Depois vem o fechamento da sala.' : ' Depois vem o resumo da sala.'}
           </p>
         </>
       )}
@@ -296,7 +296,7 @@ function FeedbackCard({ room, task, onNext }: { room: RoomState; task: RoomTask;
       <FlagField label="Sua resposta" value="Resposta certa" placeholder="" correct />
       <VoiceFeedback voice={task.voice!} />
       <div className="flex flex-wrap items-center gap-4">
-        <Button onClick={onNext}>{next ? 'Próxima tarefa' : 'Ir pro fechamento'}</Button>
+        <Button onClick={onNext}>{next ? 'Próxima tarefa' : room.final.enabled ? 'Ir pro fechamento' : 'Ver o resumo da sala'}</Button>
         {next && (
           <p className="text-pequeno text-muted">
             {unit(room)} {next.number}: {next.title}
@@ -336,21 +336,25 @@ function FinalCard({ room, onRoom }: { room: RoomState; onRoom: (room: RoomState
 }
 
 function SummaryView({ room, roomsLink }: { room: RoomState; roomsLink: string }) {
-  const final = room.final.voice!;
+  const final = room.final.voice;
+  const last = [...room.tasks].reverse().find((t) => t.voice)?.voice;
+  const average = Math.round(room.tasks.reduce((s, t) => s + (t.voice?.score ?? 0), 0) / Math.max(1, room.tasks.length));
   return (
     <>
-      <FocadaLine size="devolutiva" tone="acerto" label={`Focada · Sala fechada · Nota ${final.score}`}>
-        {final.improvementPoints || 'Você não só entrou: explicou cada passo e disse como fechar a porta.'}
+      <FocadaLine size="devolutiva" tone="acerto" label={`Focada · Sala fechada · Nota ${final?.score ?? average}`}>
+        {final?.improvementPoints || last?.improvementPoints || 'Você não só entrou: explicou cada passo do que fez.'}
       </FocadaLine>
       <ol className="flex flex-col gap-2">
         {room.tasks.map((task) => (
           <TaskRow key={task.id} room={room} task={task} prefix={room.kind === 'Challenge' ? `Elo ${task.number}` : `T${task.number}`} />
         ))}
-        <li className="flex h-12 items-center gap-4 border-2 border-stroke bg-surface px-6">
-          <span className="text-rotulo-sm text-secondary">Fim</span>
-          <span className="min-w-0 flex-1 truncate text-corpo text-primary">Como eu corrigiria a {room.title}</span>
-          <span className="text-rotulo-sm text-accent">Nota {final.score}</span>
-        </li>
+        {final && (
+          <li className="flex h-12 items-center gap-4 border-2 border-stroke bg-surface px-6">
+            <span className="text-rotulo-sm text-secondary">Fim</span>
+            <span className="min-w-0 flex-1 truncate text-corpo text-primary">Como eu corrigiria a {room.title}</span>
+            <span className="text-rotulo-sm text-accent">Nota {final.score}</span>
+          </li>
+        )}
       </ol>
       <div className="flex flex-wrap items-center gap-4">
         <ButtonLink to={roomsLink}>Voltar pras salas</ButtonLink>
@@ -364,7 +368,8 @@ function SummaryView({ room, roomsLink }: { room: RoomState; roomsLink: string }
 
 function SummarySide({ room }: { room: RoomState }) {
   const scores = room.tasks.map((t) => t.voice?.score ?? 0);
-  const average = Math.round([...scores, room.final.voice!.score].reduce((a, b) => a + b, 0) / (scores.length + 1));
+  const all = room.final.voice ? [...scores, room.final.voice.score] : scores;
+  const average = Math.round(all.reduce((a, b) => a + b, 0) / Math.max(1, all.length));
   const weakest = room.tasks.reduce((low, t) => ((t.voice?.score ?? 100) < (low.voice?.score ?? 100) ? t : low), room.tasks[0]);
   return (
     <Card eyebrow="Resumo da sala">

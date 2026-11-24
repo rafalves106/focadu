@@ -36,6 +36,8 @@ public class Room : Entity
     public IReadOnlyList<string> Prerequisites => _prerequisites.AsReadOnly();
     public string FinalPrompt { get; private set; }
     public string FinalReferenceAnswer { get; private set; }
+    /// <summary>Sala com fechamento por áudio (Fase 116: opcional). Sem ele, a sala termina no áudio da última tarefa.</summary>
+    public bool HasFinal => FinalPrompt.Length > 0;
     public int OrderIndex { get; private set; }
     public string ContentHash { get; private set; }
     /// <summary>Pasta do curso em secret/conteudo/ (ex.: "web-security"): o ambiente sai de &lt;pasta&gt;/salas/&lt;slug&gt;/ambiente/.</summary>
@@ -85,8 +87,11 @@ public class Room : Entity
         _prerequisites = spec.Prerequisites.Select(p => p.Trim().ToLowerInvariant()).Where(p => p.Length > 0).Distinct().ToList();
         if (_prerequisites.Contains(Slug))
             throw new DomainException("A sala não pode ser pré-requisito dela mesma.");
-        FinalPrompt = Required(spec.FinalPrompt, "fechamento.pergunta");
-        FinalReferenceAnswer = Required(spec.FinalReferenceAnswer, "fechamento.respostaCorreta");
+        // Fechamento é opcional (Fase 116): sem ele, o áudio de cada tarefa é o único áudio da sala.
+        if (string.IsNullOrWhiteSpace(spec.FinalPrompt) != string.IsNullOrWhiteSpace(spec.FinalReferenceAnswer))
+            throw new DomainException("Sala: o fechamento precisa de pergunta e de respostaCorreta, ou de nenhuma das duas.");
+        FinalPrompt = spec.FinalPrompt?.Trim() ?? string.Empty;
+        FinalReferenceAnswer = spec.FinalReferenceAnswer?.Trim() ?? string.Empty;
         OrderIndex = spec.OrderIndex;
         ContentHash = Required(spec.ContentHash, "hash");
         ContentFolder = Required(spec.ContentFolder, "pasta do curso");

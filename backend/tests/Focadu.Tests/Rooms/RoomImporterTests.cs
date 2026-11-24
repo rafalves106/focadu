@@ -38,7 +38,6 @@ public class RoomImporterTests
 
         Assert.Null(room);
         Assert.Contains(errors, e => e.StartsWith("titulo"));
-        Assert.Contains(errors, e => e.StartsWith("fechamento"));
         Assert.Contains(errors, e => e.StartsWith("tarefas[1].flag"));
         Assert.Contains(errors, e => e.StartsWith("tarefas[1].elo"));
     }
